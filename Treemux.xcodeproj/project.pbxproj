@@ -58,6 +58,9 @@
 		AA000001AABBCCDD00000004 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000004 /* ThemeTests.swift */; };
 		AA000001AABBCCDD00000005 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000005 /* LanguageManager.swift */; };
 		AA000001AABBCCDD00000006 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000006 /* Localizable.xcstrings */; };
+		AA000001AABBCCDD00000007 /* SSHConfigParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000007 /* SSHConfigParser.swift */; };
+		AA000001AABBCCDD00000008 /* SSHConfigService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000008 /* SSHConfigService.swift */; };
+		AA000001AABBCCDD00000009 /* SSHConfigParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000009 /* SSHConfigParserTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -124,6 +127,9 @@
 		AA000002AABBCCDD00000004 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000005 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000006 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000007 /* SSHConfigParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParser.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000008 /* SSHConfigService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigService.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000009 /* SSHConfigParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParserTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -172,6 +178,7 @@
 				656D4A17827E564EDD5A8918 /* PersistenceTests.swift */,
 				DE6931E2152155F3F99223FC /* SessionBackendTests.swift */,
 				443B856819FD330809E0722A /* ShellCommandRunnerTests.swift */,
+				AA000002AABBCCDD00000009 /* SSHConfigParserTests.swift */,
 				AA000002AABBCCDD00000004 /* ThemeTests.swift */,
 				3477DE6F674F94B9457073F4 /* TreemuxTests.swift */,
 				146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */,
@@ -317,6 +324,8 @@
 		BE2277342687AB8B24AA9973 /* SSH */ = {
 			isa = PBXGroup;
 			children = (
+				AA000002AABBCCDD00000007 /* SSHConfigParser.swift */,
+				AA000002AABBCCDD00000008 /* SSHConfigService.swift */,
 			);
 			path = SSH;
 			sourceTree = "<group>";
@@ -494,6 +503,8 @@
 				6CF8F5C7195367C6516F863C /* AppDelegate.swift in Sources */,
 				AA000001AABBCCDD00000002 /* Color+Hex.swift in Sources */,
 				AA000001AABBCCDD00000005 /* LanguageManager.swift in Sources */,
+				AA000001AABBCCDD00000007 /* SSHConfigParser.swift in Sources */,
+				AA000001AABBCCDD00000008 /* SSHConfigService.swift in Sources */,
 				AA000001AABBCCDD00000001 /* ThemeDefinition.swift in Sources */,
 				AA000001AABBCCDD00000003 /* ThemeManager.swift in Sources */,
 				0DA3A254039F1EEA04FB94DB /* AppSettings.swift in Sources */,
@@ -540,6 +551,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9C689BD0883C82F0D099878B /* GitRepositoryServiceTests.swift in Sources */,
+				AA000001AABBCCDD00000009 /* SSHConfigParserTests.swift in Sources */,
 				AA000001AABBCCDD00000004 /* ThemeTests.swift in Sources */,
 				5BE675E29A6A2B29C647BB5E /* PaneLayoutTests.swift in Sources */,
 				309F402A9FFCA18BA24D7BD4 /* PersistenceTests.swift in Sources */,
