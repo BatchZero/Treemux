@@ -67,6 +67,7 @@
 		AA000001AABBCCDD0000000D /* AIToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000D /* AIToolModels.swift */; };
 		AA000001AABBCCDD0000000E /* AIToolService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000E /* AIToolService.swift */; };
 		AA000001AABBCCDD0000000F /* AIToolServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000F /* AIToolServiceTests.swift */; };
+		AA000001AABBCCDD00000010 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000010 /* CommandPaletteView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -142,6 +143,7 @@
 		AA000002AABBCCDD0000000D /* AIToolModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolModels.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD0000000E /* AIToolService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolService.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD0000000F /* AIToolServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolServiceTests.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000010 /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -223,6 +225,7 @@
 		2EC73BD19B6D166E6AE17853 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				AA000002AABBCCDD00000010 /* CommandPaletteView.swift */,
 				5C2110A46976203DDBF9D707 /* TerminalHostView.swift */,
 			);
 			path = Components;
@@ -522,6 +525,7 @@
 				AA000001AABBCCDD0000000E /* AIToolService.swift in Sources */,
 				6CF8F5C7195367C6516F863C /* AppDelegate.swift in Sources */,
 				AA000001AABBCCDD00000002 /* Color+Hex.swift in Sources */,
+				AA000001AABBCCDD00000010 /* CommandPaletteView.swift in Sources */,
 				AA000001AABBCCDD00000005 /* LanguageManager.swift in Sources */,
 				AA000001AABBCCDD0000000A /* OpenProjectSheet.swift in Sources */,
 				AA000001AABBCCDD00000007 /* SSHConfigParser.swift in Sources */,
