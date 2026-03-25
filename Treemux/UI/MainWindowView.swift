@@ -2,6 +2,7 @@
 //  MainWindowView.swift
 //  Treemux
 
+import AppKit
 import SwiftUI
 
 /// Main window view with a NavigationSplitView containing a sidebar and detail pane.
@@ -32,12 +33,15 @@ struct MainWindowView: View {
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Button {
-                    withAnimation {
-                        columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
-                    }
+                    NSApp.keyWindow?.firstResponder?.tryToPerform(
+                        #selector(NSSplitViewController.toggleSidebar(_:)),
+                        with: nil
+                    )
                 } label: {
                     Image(systemName: "sidebar.leading")
                 }
+                .accessibilityLabel("Toggle Sidebar")
+                .help("Toggle Sidebar")
             }
         }
     }

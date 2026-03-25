@@ -17,32 +17,26 @@ final class WindowContext {
 
     /// Creates and shows the main application window.
     func show() {
-        let contentView = MainWindowView()
-            .environmentObject(store)
-
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1200, height: 800),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
+        let host = NSHostingController(
+            rootView: MainWindowView()
+                .environmentObject(store)
         )
-        window.title = "Treemux"
 
-        // Disable macOS window tabbing — its tab overview button looks like
-        // a second sidebar toggle and appears at the far right of the toolbar.
+        let window = NSWindow(contentViewController: host)
+        window.title = "Treemux"
+        window.setContentSize(NSSize(width: 1200, height: 800))
+
+        // Disable macOS window tabbing so the title bar stays focused on the
+        // workspace controls we actually use.
         window.tabbingMode = .disallowed
 
-        // Attach an NSToolbar so SwiftUI .toolbar items render in the title bar.
-        let toolbar = NSToolbar(identifier: "MainToolbar")
-        toolbar.displayMode = .iconOnly
-        window.toolbar = toolbar
-        window.toolbarStyle = .unified
-
-        window.contentView = NSHostingView(rootView: contentView)
+        window.titlebarAppearsTransparent = false
+        window.toolbarStyle = .unifiedCompact
         window.center()
         window.appearance = NSAppearance(named: .darkAqua)
         window.backgroundColor = NSColor(red: 0.07, green: 0.08, blue: 0.09, alpha: 1.0)
         window.makeKeyAndOrderFront(nil)
+
         self.window = window
     }
 }
