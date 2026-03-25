@@ -12,6 +12,9 @@ final class WorkspaceStore: ObservableObject {
     @Published var workspaces: [WorkspaceModel] = []
     @Published var selectedWorkspaceID: UUID?
 
+    @Published var showSettings = false
+    @Published var showCommandPalette = false
+
     @Published var settings: AppSettings {
         didSet { try? settingsPersistence.save(settings) }
     }
