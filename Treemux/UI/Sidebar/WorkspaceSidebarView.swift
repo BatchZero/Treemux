@@ -11,6 +11,13 @@ import SwiftUI
 struct WorkspaceSidebarView: View {
     @EnvironmentObject private var store: WorkspaceStore
 
+    // Rename dialog state
+    @State private var renamingWorkspaceID: UUID?
+    @State private var renameText: String = ""
+
+    // Delete confirmation state
+    @State private var deletingWorkspaceID: UUID?
+
     var body: some View {
         VStack(spacing: 0) {
             // Sidebar content
@@ -19,6 +26,25 @@ struct WorkspaceSidebarView: View {
                 Section {
                     ForEach(store.localWorkspaces) { workspace in
                         WorkspaceRowGroup(workspace: workspace)
+                            .contextMenu {
+                                if workspace.kind == .repository {
+                                    Button {
+                                        renameText = workspace.name
+                                        renamingWorkspaceID = workspace.id
+                                    } label: {
+                                        Label(String(localized: "Rename…"), systemImage: "pencil")
+                                    }
+                                    Divider()
+                                    Button(role: .destructive) {
+                                        deletingWorkspaceID = workspace.id
+                                    } label: {
+                                        Label(String(localized: "Delete"), systemImage: "trash")
+                                    }
+                                }
+                            }
+                    }
+                    .onMove { source, destination in
+                        store.moveLocalWorkspace(from: source, to: destination)
                     }
                 } header: {
                     Text(String(localized: "Local Projects"))
@@ -47,12 +73,46 @@ struct WorkspaceSidebarView: View {
             .buttonStyle(.plain)
         }
         .background(Color(red: 0.07, green: 0.08, blue: 0.09))
+        // Rename alert
+        .alert(String(localized: "Rename Project"), isPresented: Binding(
+            get: { renamingWorkspaceID != nil },
+            set: { if !$0 { renamingWorkspaceID = nil } }
+        )) {
+            TextField(String(localized: "Project Name"), text: $renameText)
+            Button(String(localized: "Cancel"), role: .cancel) {
+                renamingWorkspaceID = nil
+            }
+            Button(String(localized: "Rename")) {
+                if let id = renamingWorkspaceID {
+                    store.renameWorkspace(id, to: renameText)
+                }
+                renamingWorkspaceID = nil
+            }
+        }
+        // Delete confirmation alert
+        .alert(String(localized: "Delete Project?"), isPresented: Binding(
+            get: { deletingWorkspaceID != nil },
+            set: { if !$0 { deletingWorkspaceID = nil } }
+        )) {
+            Button(String(localized: "Cancel"), role: .cancel) {
+                deletingWorkspaceID = nil
+            }
+            Button(String(localized: "Delete"), role: .destructive) {
+                if let id = deletingWorkspaceID {
+                    store.removeWorkspace(id)
+                }
+                deletingWorkspaceID = nil
+            }
+        } message: {
+            Text(String(localized: "This will remove the project from the sidebar. Files on disk will not be affected."))
+        }
     }
 }
 
 /// Groups a workspace row: uses a DisclosureGroup when there are multiple
 /// worktrees, or a plain row when there is zero or one worktree.
 struct WorkspaceRowGroup: View {
+    @EnvironmentObject private var store: WorkspaceStore
     @ObservedObject var workspace: WorkspaceModel
     @State private var isExpanded: Bool = true
 
@@ -63,6 +123,9 @@ struct WorkspaceRowGroup: View {
                 ForEach(workspace.worktrees) { worktree in
                     WorktreeRow(worktree: worktree)
                         .tag(workspace.id) // Selecting a worktree selects the parent workspace
+                }
+                .onMove { source, destination in
+                    store.moveWorktree(in: workspace, from: source, to: destination)
                 }
             } label: {
                 ProjectLabel(workspace: workspace)

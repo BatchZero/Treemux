@@ -118,6 +118,34 @@ final class WorkspaceStore: ObservableObject {
         addWorkspaceFromPath(url)
     }
 
+    // MARK: - Renaming Workspaces
+
+    func renameWorkspace(_ id: UUID, to newName: String) {
+        guard let workspace = workspaces.first(where: { $0.id == id }),
+              !newName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        workspace.name = newName
+        saveWorkspaceState()
+    }
+
+    // MARK: - Reordering Workspaces
+
+    /// Moves local workspaces by translating sidebar indices to the workspaces array.
+    func moveLocalWorkspace(from source: IndexSet, to destination: Int) {
+        var local = localWorkspaces
+        local.move(fromOffsets: source, toOffset: destination)
+        let orderedIDs = local.map { $0.id }
+        let nonLocal = workspaces.filter { ws in !orderedIDs.contains(ws.id) }
+        workspaces = orderedIDs.compactMap { id in workspaces.first { $0.id == id } } + nonLocal
+        saveWorkspaceState()
+    }
+
+    /// Reorders worktrees within a workspace and persists the new order.
+    func moveWorktree(in workspace: WorkspaceModel, from source: IndexSet, to destination: Int) {
+        workspace.worktrees.move(fromOffsets: source, toOffset: destination)
+        workspace.worktreeOrder = workspace.worktrees.map { $0.path.path }
+        saveWorkspaceState()
+    }
+
     // MARK: - Removing Workspaces
 
     func removeWorkspace(_ id: UUID) {
@@ -165,6 +193,14 @@ final class WorkspaceStore: ObservableObject {
             workspace.currentBranch = snapshot.currentBranch
             workspace.worktrees = snapshot.worktrees
             workspace.repositoryStatus = snapshot.status
+            // Sort worktrees by persisted display order
+            if !workspace.worktreeOrder.isEmpty {
+                workspace.worktrees.sort { a, b in
+                    let indexA = workspace.worktreeOrder.firstIndex(of: a.path.path) ?? Int.max
+                    let indexB = workspace.worktreeOrder.firstIndex(of: b.path.path) ?? Int.max
+                    return indexA < indexB
+                }
+            }
         } catch {
             // Not a git repository or git command failed — that's acceptable.
         }
