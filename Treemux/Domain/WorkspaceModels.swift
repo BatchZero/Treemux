@@ -84,3 +84,70 @@ struct RepositoryStatusSnapshot {
     let behindCount: Int
     let untrackedCount: Int
 }
+
+// MARK: - Observable Runtime Model
+
+/// A runtime workspace model observed by UI views via @EnvironmentObject.
+/// Created from a `WorkspaceRecord` and serialized back via `toRecord()`.
+@MainActor
+final class WorkspaceModel: ObservableObject, Identifiable {
+    let id: UUID
+    let kind: WorkspaceKindRecord
+
+    @Published var name: String
+    @Published var repositoryRoot: URL?
+    @Published var isPinned: Bool
+    @Published var isArchived: Bool
+    @Published var sshTarget: SSHTarget?
+    @Published var currentBranch: String?
+    @Published var worktrees: [WorktreeModel] = []
+    @Published var repositoryStatus: RepositoryStatusSnapshot?
+
+    // TODO: Replace with WorkspaceSessionController when Task 13 is implemented.
+    @Published var layout: SessionLayoutNode?
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        kind: WorkspaceKindRecord,
+        repositoryRoot: URL? = nil,
+        isPinned: Bool = false,
+        isArchived: Bool = false,
+        sshTarget: SSHTarget? = nil
+    ) {
+        self.id = id
+        self.kind = kind
+        self.name = name
+        self.repositoryRoot = repositoryRoot
+        self.isPinned = isPinned
+        self.isArchived = isArchived
+        self.sshTarget = sshTarget
+    }
+
+    /// Creates a runtime model from a persisted record.
+    convenience init(from record: WorkspaceRecord) {
+        self.init(
+            id: record.id,
+            name: record.name,
+            kind: record.kind,
+            repositoryRoot: record.repositoryPath.map { URL(fileURLWithPath: $0) },
+            isPinned: record.isPinned,
+            isArchived: record.isArchived,
+            sshTarget: record.sshTarget
+        )
+    }
+
+    /// Serializes the runtime model back to a persistable record.
+    func toRecord() -> WorkspaceRecord {
+        WorkspaceRecord(
+            id: id,
+            kind: kind,
+            name: name,
+            repositoryPath: repositoryRoot?.path,
+            isPinned: isPinned,
+            isArchived: isArchived,
+            sshTarget: sshTarget,
+            worktreeStates: []
+        )
+    }
+}
