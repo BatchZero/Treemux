@@ -20,6 +20,7 @@ final class WorkspaceStore: ObservableObject {
     private let workspaceStatePersistence = WorkspaceStatePersistence()
     private let gitService = GitRepositoryService()
     private let metadataWatcher = WorkspaceMetadataWatchService()
+    private let tmuxService = TmuxService()
 
     /// Virtual "Terminal" workspace shown when no real projects exist.
     /// This workspace is never persisted to disk.
@@ -53,6 +54,18 @@ final class WorkspaceStore: ObservableObject {
             return [terminal]
         }
         return real
+    }
+
+    /// Remote workspaces grouped by server+user combination.
+    var remoteWorkspaceGroups: [(key: String, targets: [WorkspaceModel])] {
+        let remotes = workspaces.filter { !$0.isArchived && $0.kind == .remote }
+        let grouped = Dictionary(grouping: remotes) { ws -> String in
+            guard let target = ws.sshTarget else { return "unknown" }
+            let user = target.user ?? ""
+            return "\(target.displayName)|\(user)"
+        }
+        return grouped.map { (key: $0.key, targets: $0.value) }
+            .sorted { $0.key < $1.key }
     }
 
     init() {
@@ -116,6 +129,19 @@ final class WorkspaceStore: ObservableObject {
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         addWorkspaceFromPath(url)
+    }
+
+    /// Adds a remote workspace via SSH target.
+    func addRemoteWorkspace(target: SSHTarget, name: String) {
+        let workspace = WorkspaceModel(
+            id: UUID(),
+            name: name,
+            kind: .remote,
+            sshTarget: target
+        )
+        workspaces.append(workspace)
+        selectedWorkspaceID = workspace.id
+        saveWorkspaceState()
     }
 
     // MARK: - Renaming Workspaces

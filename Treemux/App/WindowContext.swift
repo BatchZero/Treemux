@@ -9,10 +9,13 @@ import SwiftUI
 @MainActor
 final class WindowContext {
     let store: WorkspaceStore
+    let themeManager: ThemeManager
     private var window: NSWindow?
 
     init(store: WorkspaceStore) {
         self.store = store
+        self.themeManager = ThemeManager(activeThemeID: store.settings.activeThemeID)
+        themeManager.ensureBuiltInThemesExist()
     }
 
     /// Creates and shows the main application window.
@@ -20,6 +23,7 @@ final class WindowContext {
         let host = NSHostingController(
             rootView: MainWindowView()
                 .environmentObject(store)
+                .environmentObject(themeManager)
         )
 
         let window = NSWindow(contentViewController: host)

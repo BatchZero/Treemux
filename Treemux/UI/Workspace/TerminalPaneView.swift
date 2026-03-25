@@ -8,6 +8,7 @@ import SwiftUI
 /// Displays a single terminal pane with a compact header showing status,
 /// title, and working directory, followed by the Ghostty terminal surface.
 struct TerminalPaneView: View {
+    @EnvironmentObject private var theme: ThemeManager
     @ObservedObject var session: ShellSession
 
     var body: some View {
@@ -21,7 +22,7 @@ struct TerminalPaneView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                .strokeBorder(theme.dividerColor, lineWidth: 1)
         )
         .padding(2)
     }
@@ -34,6 +35,34 @@ struct TerminalPaneView: View {
             Circle()
                 .fill(statusColor)
                 .frame(width: 6, height: 6)
+
+            // AI tool badge
+            if let aiTool = session.detectedAITool {
+                HStack(spacing: 3) {
+                    Image(systemName: aiTool.kind.iconName)
+                        .font(.system(size: 9))
+                    Text(aiTool.kind.displayName)
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .foregroundStyle(theme.successColor)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(theme.successColor.opacity(0.12), in: Capsule())
+            }
+
+            // Tmux badge
+            if let tmuxSession = session.detectedTmuxSession {
+                HStack(spacing: 3) {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 9))
+                    Text("tmux: \(tmuxSession)")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .foregroundStyle(theme.accentColor)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(theme.accentColor.opacity(0.12), in: Capsule())
+            }
 
             Text(session.title)
                 .font(.system(size: 11, weight: .medium))
@@ -50,7 +79,7 @@ struct TerminalPaneView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Color(red: 0.07, green: 0.08, blue: 0.09))
+        .background(theme.paneHeaderBackground)
     }
 
     // MARK: - Helpers
