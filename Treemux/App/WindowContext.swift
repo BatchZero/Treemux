@@ -37,10 +37,28 @@ final class WindowContext {
         window.titlebarAppearsTransparent = false
         window.toolbarStyle = .unifiedCompact
         window.center()
-        window.appearance = NSAppearance(named: .darkAqua)
+        applyAppearance(to: window)
         window.backgroundColor = NSColor(red: 0.07, green: 0.08, blue: 0.09, alpha: 1.0)
         window.makeKeyAndOrderFront(nil)
 
         self.window = window
+    }
+
+    /// Applies the appearance setting to the window.
+    private func applyAppearance(to window: NSWindow) {
+        switch store.settings.appearance {
+        case "dark":
+            window.appearance = NSAppearance(named: .darkAqua)
+        case "light":
+            window.appearance = NSAppearance(named: .aqua)
+        default:
+            window.appearance = nil  // Follow system
+        }
+    }
+
+    /// Re-applies appearance to the current window (call when settings change).
+    func updateAppearance() {
+        guard let window else { return }
+        applyAppearance(to: window)
     }
 }
