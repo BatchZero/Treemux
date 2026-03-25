@@ -18,6 +18,12 @@ struct TerminalPaneView: View {
             // Terminal surface
             TerminalHostView(session: session, shouldRestoreFocus: true)
         }
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .padding(2)
     }
 
     // MARK: - Pane header
