@@ -1,0 +1,563 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		28E15CC897C8BE956B0DCF02 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73E706B2F099E80FFCC6F47D /* main.swift */; };
+		6CF8F5C7195367C6516F863C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEB4B388C531158F6E5916EB /* AppDelegate.swift */; };
+		CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3477DE6F674F94B9457073F4 /* TreemuxTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		6F22789832021D28886E3959 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DDF338C428EA22394234AA6E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E1AA74F162F2001DBAF20418;
+			remoteInfo = Treemux;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		3477DE6F674F94B9457073F4 /* TreemuxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxTests.swift; sourceTree = "<group>"; };
+		4650806EA154B4E2C20BAD0A /* TreemuxTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TreemuxTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		6DD2CC0A8B9D60B36E1F8105 /* Treemux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Treemux.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		73E706B2F099E80FFCC6F47D /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		CEB4B388C531158F6E5916EB /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		00BDD3A331D12D95A7B20B1F /* AITool */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = AITool;
+			sourceTree = "<group>";
+		};
+		052178C8BA6AA32DD708B8B4 /* App */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		106B416E1D149A797E5D5030 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		1A4D936F6345D184BA953D63 /* TreemuxTests */ = {
+			isa = PBXGroup;
+			children = (
+				3477DE6F674F94B9457073F4 /* TreemuxTests.swift */,
+			);
+			path = TreemuxTests;
+			sourceTree = "<group>";
+		};
+		27F87459BFC39581FCA8FA83 /* Tmux */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Tmux;
+			sourceTree = "<group>";
+		};
+		27FB2B0F7018B520F8B7A6E3 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Support;
+			sourceTree = "<group>";
+		};
+		2EC73BD19B6D166E6AE17853 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		37F05836B68E913467827126 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		3A68A8398041C9097733E6F0 /* Treemux */ = {
+			isa = PBXGroup;
+			children = (
+				CEB4B388C531158F6E5916EB /* AppDelegate.swift */,
+				73E706B2F099E80FFCC6F47D /* main.swift */,
+				052178C8BA6AA32DD708B8B4 /* App */,
+				B15DAD8207459A93A41EE1CB /* Domain */,
+				106B416E1D149A797E5D5030 /* Persistence */,
+				FC59EC3A6A7A89BE0AD08F6E /* Services */,
+				27FB2B0F7018B520F8B7A6E3 /* Support */,
+				A941FE27AC81125CF3469C58 /* UI */,
+				BB95EFCADB8A6AE8AD0EA06B /* Vendor */,
+			);
+			path = Treemux;
+			sourceTree = "<group>";
+		};
+		4043C724F22F571520359C6A = {
+			isa = PBXGroup;
+			children = (
+				3A68A8398041C9097733E6F0 /* Treemux */,
+				1A4D936F6345D184BA953D63 /* TreemuxTests */,
+				BBE024A13718132377BA6B12 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		47EF60B043AF58645C61BA38 /* Sheets */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Sheets;
+			sourceTree = "<group>";
+		};
+		4C0772C0D286E3EC583553B3 /* Terminal */ = {
+			isa = PBXGroup;
+			children = (
+				EBB92766421BAEA842EC833C /* Ghostty */,
+			);
+			path = Terminal;
+			sourceTree = "<group>";
+		};
+		7733A5BF2FFBC78041E8298D /* Workspace */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Workspace;
+			sourceTree = "<group>";
+		};
+		9C12B30F7DEBED747DCEF00C /* Git */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Git;
+			sourceTree = "<group>";
+		};
+		A941FE27AC81125CF3469C58 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				2EC73BD19B6D166E6AE17853 /* Components */,
+				D19FA00FB0C98719BF40F0F2 /* Settings */,
+				47EF60B043AF58645C61BA38 /* Sheets */,
+				DEDD8107F3DA9BF1E1B0DA2C /* Sidebar */,
+				37F05836B68E913467827126 /* Theme */,
+				7733A5BF2FFBC78041E8298D /* Workspace */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		B15DAD8207459A93A41EE1CB /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		BB95EFCADB8A6AE8AD0EA06B /* Vendor */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Vendor;
+			sourceTree = "<group>";
+		};
+		BBE024A13718132377BA6B12 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				6DD2CC0A8B9D60B36E1F8105 /* Treemux.app */,
+				4650806EA154B4E2C20BAD0A /* TreemuxTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BE2277342687AB8B24AA9973 /* SSH */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = SSH;
+			sourceTree = "<group>";
+		};
+		C43D9DD04BC56E98D500E75B /* Process */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Process;
+			sourceTree = "<group>";
+		};
+		D19FA00FB0C98719BF40F0F2 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		DEDD8107F3DA9BF1E1B0DA2C /* Sidebar */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Sidebar;
+			sourceTree = "<group>";
+		};
+		EBB92766421BAEA842EC833C /* Ghostty */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Ghostty;
+			sourceTree = "<group>";
+		};
+		FC59EC3A6A7A89BE0AD08F6E /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				00BDD3A331D12D95A7B20B1F /* AITool */,
+				9C12B30F7DEBED747DCEF00C /* Git */,
+				C43D9DD04BC56E98D500E75B /* Process */,
+				BE2277342687AB8B24AA9973 /* SSH */,
+				4C0772C0D286E3EC583553B3 /* Terminal */,
+				27F87459BFC39581FCA8FA83 /* Tmux */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		9D99DC0B8D4984DC5E2A7F2A /* TreemuxTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8209025C1B476EBD0828F070 /* Build configuration list for PBXNativeTarget "TreemuxTests" */;
+			buildPhases = (
+				2A29349C439320AE2622BC78 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4F7E1FC4F516DF933FF1AB9B /* PBXTargetDependency */,
+			);
+			name = TreemuxTests;
+			packageProductDependencies = (
+			);
+			productName = TreemuxTests;
+			productReference = 4650806EA154B4E2C20BAD0A /* TreemuxTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		E1AA74F162F2001DBAF20418 /* Treemux */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0550504476B73DF89ECC1D30 /* Build configuration list for PBXNativeTarget "Treemux" */;
+			buildPhases = (
+				10C4D9AA561229E6D0479998 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Treemux;
+			packageProductDependencies = (
+			);
+			productName = Treemux;
+			productReference = 6DD2CC0A8B9D60B36E1F8105 /* Treemux.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DDF338C428EA22394234AA6E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 86FF2123247027B149501C12 /* Build configuration list for PBXProject "Treemux" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 4043C724F22F571520359C6A;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = BBE024A13718132377BA6B12 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E1AA74F162F2001DBAF20418 /* Treemux */,
+				9D99DC0B8D4984DC5E2A7F2A /* TreemuxTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		10C4D9AA561229E6D0479998 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6CF8F5C7195367C6516F863C /* AppDelegate.swift in Sources */,
+				28E15CC897C8BE956B0DCF02 /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2A29349C439320AE2622BC78 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4F7E1FC4F516DF933FF1AB9B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E1AA74F162F2001DBAF20418 /* Treemux */;
+			targetProxy = 6F22789832021D28886E3959 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		09B0647A8A0286FC6C00CD8D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				INFOPLIST_FILE = Treemux/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"-lc++",
+					"-framework",
+					Carbon,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.batchzero.treemux;
+				PRODUCT_NAME = Treemux;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		1E171BC45CA6D9E42D4AFB43 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.batchzero.treemux.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Treemux.app/Contents/MacOS/Treemux";
+			};
+			name = Release;
+		};
+		45196B6A756423613326B67B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.batchzero.treemux.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Treemux.app/Contents/MacOS/Treemux";
+			};
+			name = Debug;
+		};
+		94F6199D7205907B8C6BBE53 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5;
+			};
+			name = Debug;
+		};
+		BF1AFD98341C6C4BF6525D78 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5;
+			};
+			name = Release;
+		};
+		C9363387FB99F8B887B0353E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				INFOPLIST_FILE = Treemux/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"-lc++",
+					"-framework",
+					Carbon,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.batchzero.treemux;
+				PRODUCT_NAME = Treemux;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0550504476B73DF89ECC1D30 /* Build configuration list for PBXNativeTarget "Treemux" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C9363387FB99F8B887B0353E /* Debug */,
+				09B0647A8A0286FC6C00CD8D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8209025C1B476EBD0828F070 /* Build configuration list for PBXNativeTarget "TreemuxTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				45196B6A756423613326B67B /* Debug */,
+				1E171BC45CA6D9E42D4AFB43 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		86FF2123247027B149501C12 /* Build configuration list for PBXProject "Treemux" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				94F6199D7205907B8C6BBE53 /* Debug */,
+				BF1AFD98341C6C4BF6525D78 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = DDF338C428EA22394234AA6E /* Project object */;
+}

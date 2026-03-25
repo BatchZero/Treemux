@@ -1,0 +1,52 @@
+name: Treemux
+
+options:
+  bundleIdPrefix: com.batchzero
+  deploymentTarget:
+    macOS: "15.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  Treemux:
+    type: application
+    platform: macOS
+    sources:
+      - path: Treemux
+        excludes:
+          - Info.plist
+    info:
+      path: Treemux/Info.plist
+      properties:
+        CFBundleDevelopmentRegion: en
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSApplicationCategoryType: public.app-category.developer-tools
+        NSHumanReadableCopyright: "Copyright \u00A9 2026 BatchZero. MIT License."
+        NSPrincipalClass: NSApplication
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.batchzero.treemux
+        PRODUCT_NAME: Treemux
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+        OTHER_LDFLAGS: ["-lc++", "-framework", "Carbon"]
+        LD_RUNPATH_SEARCH_PATHS: ["$(inherited)", "@executable_path/../Frameworks"]
+
+  TreemuxTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: TreemuxTests
+    dependencies:
+      - target: Treemux
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.batchzero.treemux.tests
