@@ -20,7 +20,9 @@
 		6CF8F5C7195367C6516F863C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEB4B388C531158F6E5916EB /* AppDelegate.swift */; };
 		78942DBCD13BA394E9AC92CD /* PaneLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */; };
 		7BAFFB86D4EE2F43992E4808 /* AppSettingsPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48405541E0E22A909B92BA03 /* AppSettingsPersistence.swift */; };
+		89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */; };
 		8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */; };
+		9C689BD0883C82F0D099878B /* GitRepositoryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C328A5FB842A00D096906EE3 /* GitRepositoryServiceTests.swift */; };
 		A9E5418401517BC5CBD9EC92 /* WorkspaceStatePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A99410553280ED6CCCDFEA85 /* WorkspaceStatePersistence.swift */; };
 		CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3477DE6F674F94B9457073F4 /* TreemuxTests.swift */; };
 		D5D2DCD282AEEBB8C4A6F532 /* ShellCommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */; };
@@ -52,6 +54,7 @@
 		6DD2CC0A8B9D60B36E1F8105 /* Treemux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Treemux.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		73E706B2F099E80FFCC6F47D /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		8629D2D5813F897F85840289 /* SSHTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHTarget.swift; sourceTree = "<group>"; };
+		927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitRepositoryService.swift; sourceTree = "<group>"; };
 		92B0D1DFEE9B34109844D751 /* TreemuxGhosttyLogFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyLogFilter.swift; sourceTree = "<group>"; };
 		952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellCommandRunner.swift; sourceTree = "<group>"; };
 		A99410553280ED6CCCDFEA85 /* WorkspaceStatePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStatePersistence.swift; sourceTree = "<group>"; };
@@ -59,6 +62,7 @@
 		BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceModels.swift; sourceTree = "<group>"; };
 		BB01B85899C7236D215CECDD /* TreemuxGhosttyResourcePaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyResourcePaths.swift; sourceTree = "<group>"; };
 		BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackend.swift; sourceTree = "<group>"; };
+		C328A5FB842A00D096906EE3 /* GitRepositoryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitRepositoryServiceTests.swift; sourceTree = "<group>"; };
 		CEB4B388C531158F6E5916EB /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		D8EB47950FCB5E9637572424 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		DE6931E2152155F3F99223FC /* SessionBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackendTests.swift; sourceTree = "<group>"; };
@@ -102,6 +106,7 @@
 		1A4D936F6345D184BA953D63 /* TreemuxTests */ = {
 			isa = PBXGroup;
 			children = (
+				C328A5FB842A00D096906EE3 /* GitRepositoryServiceTests.swift */,
 				4742F4CA09E0C12BCF63C7CD /* PaneLayoutTests.swift */,
 				656D4A17827E564EDD5A8918 /* PersistenceTests.swift */,
 				DE6931E2152155F3F99223FC /* SessionBackendTests.swift */,
@@ -190,6 +195,7 @@
 		9C12B30F7DEBED747DCEF00C /* Git */ = {
 			isa = PBXGroup;
 			children = (
+				927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */,
 			);
 			path = Git;
 			sourceTree = "<group>";
@@ -388,6 +394,7 @@
 				6CF8F5C7195367C6516F863C /* AppDelegate.swift in Sources */,
 				0DA3A254039F1EEA04FB94DB /* AppSettings.swift in Sources */,
 				7BAFFB86D4EE2F43992E4808 /* AppSettingsPersistence.swift in Sources */,
+				89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */,
 				78942DBCD13BA394E9AC92CD /* PaneLayout.swift in Sources */,
 				E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */,
 				4F93E2B9A2A6EC003FCAB4BE /* SessionBackend.swift in Sources */,
@@ -405,6 +412,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9C689BD0883C82F0D099878B /* GitRepositoryServiceTests.swift in Sources */,
 				5BE675E29A6A2B29C647BB5E /* PaneLayoutTests.swift in Sources */,
 				309F402A9FFCA18BA24D7BD4 /* PersistenceTests.swift in Sources */,
 				2C0D2D1CDB0C7DDD9C2487E9 /* SessionBackendTests.swift in Sources */,
