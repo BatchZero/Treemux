@@ -5,12 +5,26 @@
 
 import SwiftUI
 
-/// Placeholder main window view — Task 11 will replace this with NavigationSplitView.
+/// Main window view with a NavigationSplitView containing a sidebar and detail pane.
 struct MainWindowView: View {
     @EnvironmentObject private var store: WorkspaceStore
 
     var body: some View {
-        Text("Treemux — \(store.workspaces.count) workspaces")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        NavigationSplitView {
+            WorkspaceSidebarView()
+        } detail: {
+            if store.selectedWorkspace != nil {
+                WorkspaceDetailView()
+            } else {
+                ContentUnavailableView {
+                    Label(
+                        String(localized: "No Project Selected"),
+                        systemImage: "folder"
+                    )
+                } description: {
+                    Text(String(localized: "Select or open a project to get started"))
+                }
+            }
+        }
     }
 }

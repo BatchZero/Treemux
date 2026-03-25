@@ -30,6 +30,11 @@ final class WorkspaceStore: ObservableObject {
         workspaces.filter { !$0.isArchived }
     }
 
+    /// Local workspaces (repositories and local terminals, non-archived).
+    var localWorkspaces: [WorkspaceModel] {
+        workspaces.filter { !$0.isArchived && ($0.kind == .repository || $0.kind == .localTerminal) }
+    }
+
     init() {
         self.settings = settingsPersistence.load()
         loadWorkspaceState()

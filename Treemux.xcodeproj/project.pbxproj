@@ -15,6 +15,8 @@
 		28E15CC897C8BE956B0DCF02 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73E706B2F099E80FFCC6F47D /* main.swift */; };
 		2C0D2D1CDB0C7DDD9C2487E9 /* SessionBackendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE6931E2152155F3F99223FC /* SessionBackendTests.swift */; };
 		309F402A9FFCA18BA24D7BD4 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656D4A17827E564EDD5A8918 /* PersistenceTests.swift */; };
+		320E9CBA68B37DFD4F22711A /* WorkspaceDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E45B70C0F236F9F0FA025A53 /* WorkspaceDetailView.swift */; };
+		3C1BD4702DECC75E0A4ABD1A /* WorkspaceSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8354D57B9898A0C0ADBD959 /* WorkspaceSidebarView.swift */; };
 		3C1F3562DE4FA89E8C580B30 /* TreemuxGhosttyBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16FE9D700089232316516F73 /* TreemuxGhosttyBootstrap.swift */; };
 		423A99DD3918742FC88745B3 /* TreemuxGhosttyResourcePaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01B85899C7236D215CECDD /* TreemuxGhosttyResourcePaths.swift */; };
 		439B7154F34CC1DC69D74A6E /* TreemuxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE43F77B5BDC0AB70604EC9B /* TreemuxApp.swift */; };
@@ -94,6 +96,8 @@
 		D1E24B640A3303D33931EA85 /* SessionBackendLaunch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackendLaunch.swift; sourceTree = "<group>"; };
 		D8EB47950FCB5E9637572424 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		DE6931E2152155F3F99223FC /* SessionBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackendTests.swift; sourceTree = "<group>"; };
+		E45B70C0F236F9F0FA025A53 /* WorkspaceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDetailView.swift; sourceTree = "<group>"; };
+		E8354D57B9898A0C0ADBD959 /* WorkspaceSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSidebarView.swift; sourceTree = "<group>"; };
 		E993B2E72B0AA5FA2CD8F136 /* TreemuxGhosttyClipboardSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyClipboardSupport.swift; sourceTree = "<group>"; };
 		F59B5026A96BF865D41D0890 /* TreemuxGhosttyShellIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyShellIntegration.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -226,6 +230,7 @@
 		7733A5BF2FFBC78041E8298D /* Workspace */ = {
 			isa = PBXGroup;
 			children = (
+				E45B70C0F236F9F0FA025A53 /* WorkspaceDetailView.swift */,
 			);
 			path = Workspace;
 			sourceTree = "<group>";
@@ -298,6 +303,7 @@
 		DEDD8107F3DA9BF1E1B0DA2C /* Sidebar */ = {
 			isa = PBXGroup;
 			children = (
+				E8354D57B9898A0C0ADBD959 /* WorkspaceSidebarView.swift */,
 			);
 			path = Sidebar;
 			sourceTree = "<group>";
@@ -461,7 +467,9 @@
 				9DB5A3B694A7A2D4D0248724 /* TreemuxGhosttyRuntime.swift in Sources */,
 				527270F31405E3CCEFE8CF79 /* TreemuxGhosttyShellIntegration.swift in Sources */,
 				04885DA006A7F9D402450132 /* WindowContext.swift in Sources */,
+				320E9CBA68B37DFD4F22711A /* WorkspaceDetailView.swift in Sources */,
 				F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */,
+				3C1BD4702DECC75E0A4ABD1A /* WorkspaceSidebarView.swift in Sources */,
 				A9E5418401517BC5CBD9EC92 /* WorkspaceStatePersistence.swift in Sources */,
 				2378FC48E7C0FDF16337AE95 /* WorkspaceStore.swift in Sources */,
 				28E15CC897C8BE956B0DCF02 /* main.swift in Sources */,
