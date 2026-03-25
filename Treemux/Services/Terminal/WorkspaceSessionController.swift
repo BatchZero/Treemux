@@ -1,0 +1,186 @@
+//
+//  WorkspaceSessionController.swift
+//  Treemux
+//
+
+import Foundation
+
+/// Manages multiple ShellSessions for a workspace's split pane layout.
+/// Each pane in the layout tree has a corresponding ShellSession that is
+/// lazily created and started when the pane first becomes visible.
+@MainActor
+final class WorkspaceSessionController: ObservableObject {
+    @Published private(set) var sessions: [UUID: ShellSession] = [:]
+    @Published var layout: SessionLayoutNode
+    @Published var focusedPaneID: UUID? {
+        didSet {
+            updateSessionFocusStates()
+        }
+    }
+    @Published var zoomedPaneID: UUID?
+
+    private let workingDirectory: String
+
+    // MARK: - Initialization
+
+    init(workingDirectory: String) {
+        self.workingDirectory = workingDirectory
+        let initialPaneID = UUID()
+        self.layout = .pane(PaneLeaf(paneID: initialPaneID))
+        self.focusedPaneID = initialPaneID
+    }
+
+    // MARK: - Session management
+
+    /// Returns the session for the given pane, creating and starting it if needed.
+    func ensureSession(for paneID: UUID) -> ShellSession {
+        if let existing = sessions[paneID] { return existing }
+        let session = ShellSession(
+            id: paneID,
+            backendConfiguration: .localShell(LocalShellConfig.defaultShell()),
+            preferredWorkingDirectory: workingDirectory
+        )
+        session.onFocus = { [weak self] in
+            self?.focusedPaneID = paneID
+        }
+        session.onWorkspaceAction = { [weak self] action in
+            self?.handleWorkspaceAction(action, from: paneID)
+        }
+        session.startIfNeeded()
+        sessions[paneID] = session
+        return session
+    }
+
+    /// Returns the session for the given pane without creating it.
+    func session(for paneID: UUID) -> ShellSession? {
+        sessions[paneID]
+    }
+
+    // MARK: - Pane splitting
+
+    /// Splits the given pane along the specified axis, inserting a new pane.
+    func splitPane(_ paneID: UUID, axis: SplitAxis, placement: PaneSplitPlacement = .after) {
+        let newPaneID = UUID()
+        if layout.split(paneID: paneID, axis: axis, newPaneID: newPaneID, placement: placement) {
+            focusedPaneID = newPaneID
+        }
+    }
+
+    // MARK: - Pane closing
+
+    /// Closes the given pane, terminating its session and collapsing the layout.
+    func closePane(_ paneID: UUID) {
+        let allIDs = layout.paneIDs
+        if allIDs.count <= 1 {
+            // Don't close the last pane.
+            return
+        }
+
+        sessions[paneID]?.terminate()
+        sessions.removeValue(forKey: paneID)
+        layout.removePane(paneID)
+
+        if focusedPaneID == paneID {
+            focusedPaneID = layout.paneIDs.first
+        }
+        if zoomedPaneID == paneID {
+            zoomedPaneID = nil
+        }
+    }
+
+    // MARK: - Focus navigation
+
+    /// Moves focus to the next pane in traversal order.
+    func focusNext() {
+        guard let current = focusedPaneID else { return }
+        focusedPaneID = layout.paneID(in: .next, from: current)
+    }
+
+    /// Moves focus to the previous pane in traversal order.
+    func focusPrevious() {
+        guard let current = focusedPaneID else { return }
+        focusedPaneID = layout.paneID(in: .previous, from: current)
+    }
+
+    /// Moves focus in a directional manner (left/right/up/down).
+    func focusDirection(_ direction: PaneFocusDirection) {
+        guard let current = focusedPaneID else { return }
+        if let target = layout.paneID(in: direction, from: current) {
+            focusedPaneID = target
+        }
+    }
+
+    /// Focuses the given pane directly.
+    func focus(_ paneID: UUID) {
+        focusedPaneID = paneID
+        sessions[paneID]?.focus()
+    }
+
+    // MARK: - Zoom
+
+    /// Toggles zoom on the currently focused pane.
+    func toggleZoom() {
+        if zoomedPaneID != nil {
+            zoomedPaneID = nil
+        } else {
+            zoomedPaneID = focusedPaneID
+        }
+    }
+
+    // MARK: - Layout manipulation
+
+    /// Updates the fraction of a split divider.
+    func updateSplitFraction(splitID: UUID, fraction: Double) {
+        _ = layout.updateFraction(splitID: splitID, fraction: fraction)
+    }
+
+    /// Equalizes all split fractions.
+    func equalizeSplits() {
+        layout.equalizeSplits()
+    }
+
+    /// Resizes the split containing the focused pane in the given direction.
+    func resizeFocusedSplit(direction: PaneFocusDirection, amount: UInt16) {
+        guard let current = focusedPaneID else { return }
+        _ = layout.resizeSplit(containing: current, toward: direction, amount: amount)
+    }
+
+    // MARK: - Termination
+
+    /// Terminates all sessions.
+    func terminateAll() {
+        for session in sessions.values {
+            session.terminate()
+        }
+        sessions.removeAll()
+    }
+
+    // MARK: - Private
+
+    private func updateSessionFocusStates() {
+        for (paneID, session) in sessions {
+            session.setFocused(paneID == focusedPaneID)
+        }
+    }
+
+    private func handleWorkspaceAction(_ action: TerminalWorkspaceAction, from paneID: UUID) {
+        switch action {
+        case .createSplit(let axis, let placement):
+            splitPane(paneID, axis: axis, placement: placement)
+        case .focusPane(let direction):
+            focusDirection(direction)
+        case .focusNextPane:
+            focusNext()
+        case .focusPreviousPane:
+            focusPrevious()
+        case .resizeFocusedSplit(let direction, let amount):
+            resizeFocusedSplit(direction: direction, amount: amount)
+        case .equalizeSplits:
+            equalizeSplits()
+        case .togglePaneZoom:
+            toggleZoom()
+        case .closePane:
+            closePane(paneID)
+        }
+    }
+}

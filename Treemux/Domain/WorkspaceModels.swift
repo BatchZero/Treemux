@@ -103,12 +103,8 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     @Published var worktrees: [WorktreeModel] = []
     @Published var repositoryStatus: RepositoryStatusSnapshot?
 
-    // TODO: Replace with WorkspaceSessionController when Task 13 is implemented.
-    @Published var layout: SessionLayoutNode?
-
-    /// The primary terminal session for this workspace.
-    /// Created lazily via `ensurePrimarySession()`.
-    @Published var primarySession: ShellSession?
+    /// Controls all terminal sessions and the split layout for this workspace.
+    @Published var sessionController: WorkspaceSessionController
 
     init(
         id: UUID = UUID(),
@@ -126,6 +122,8 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         self.isPinned = isPinned
         self.isArchived = isArchived
         self.sshTarget = sshTarget
+        let workingDirectory = repositoryRoot?.path ?? NSHomeDirectory()
+        self.sessionController = WorkspaceSessionController(workingDirectory: workingDirectory)
     }
 
     /// Creates a runtime model from a persisted record.
@@ -141,23 +139,9 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         )
     }
 
-    /// Creates and starts the primary shell session if one does not already exist.
-    func ensurePrimarySession() {
-        guard primarySession == nil else { return }
-        let workingDirectory = repositoryRoot?.path ?? NSHomeDirectory()
-        let backend = SessionBackendConfiguration.localShell(.defaultShell())
-        let session = ShellSession(
-            backendConfiguration: backend,
-            preferredWorkingDirectory: workingDirectory
-        )
-        session.startIfNeeded()
-        primarySession = session
-    }
-
-    /// Terminates the primary session and releases it.
-    func terminatePrimarySession() {
-        primarySession?.terminate()
-        primarySession = nil
+    /// Terminates all sessions managed by this workspace.
+    func terminateAllSessions() {
+        sessionController.terminateAll()
     }
 
     /// Serializes the runtime model back to a persistable record.
