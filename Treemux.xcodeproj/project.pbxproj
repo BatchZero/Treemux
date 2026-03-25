@@ -56,6 +56,8 @@
 		AA000001AABBCCDD00000002 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000002 /* Color+Hex.swift */; };
 		AA000001AABBCCDD00000003 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000003 /* ThemeManager.swift */; };
 		AA000001AABBCCDD00000004 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000004 /* ThemeTests.swift */; };
+		AA000001AABBCCDD00000005 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000005 /* LanguageManager.swift */; };
+		AA000001AABBCCDD00000006 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000006 /* Localizable.xcstrings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -120,6 +122,8 @@
 		AA000002AABBCCDD00000002 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000003 /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000004 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000005 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000006 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -186,6 +190,7 @@
 			isa = PBXGroup;
 			children = (
 				AA000002AABBCCDD00000002 /* Color+Hex.swift */,
+				AA000002AABBCCDD00000005 /* LanguageManager.swift */,
 				D10AD81F3E792C490B4656A1 /* PathFormatting.swift */,
 				42FCFF0878EDD3C9AB6D566C /* String+Helpers.swift */,
 			);
@@ -212,6 +217,7 @@
 			isa = PBXGroup;
 			children = (
 				CEB4B388C531158F6E5916EB /* AppDelegate.swift */,
+				AA000002AABBCCDD00000006 /* Localizable.xcstrings */,
 				73E706B2F099E80FFCC6F47D /* main.swift */,
 				052178C8BA6AA32DD708B8B4 /* App */,
 				B15DAD8207459A93A41EE1CB /* Domain */,
@@ -402,6 +408,7 @@
 			buildPhases = (
 				10C4D9AA561229E6D0479998 /* Sources */,
 				B162AB0EFD17B244599623CE /* Frameworks */,
+				AA000003AABBCCDD00000001 /* Resources */,
 				3DB85CAF1AB463FE8582424A /* Copy Ghostty Resources */,
 			);
 			buildRules = (
@@ -432,6 +439,7 @@
 			knownRegions = (
 				Base,
 				en,
+				"zh-Hans",
 			);
 			mainGroup = 4043C724F22F571520359C6A;
 			minimizedProjectReferenceProxies = 1;
@@ -467,6 +475,17 @@
 		};
 /* End PBXShellScriptBuildPhase section */
 
+/* Begin PBXResourcesBuildPhase section */
+		AA000003AABBCCDD00000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA000001AABBCCDD00000006 /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		10C4D9AA561229E6D0479998 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -474,6 +493,7 @@
 			files = (
 				6CF8F5C7195367C6516F863C /* AppDelegate.swift in Sources */,
 				AA000001AABBCCDD00000002 /* Color+Hex.swift in Sources */,
+				AA000001AABBCCDD00000005 /* LanguageManager.swift in Sources */,
 				AA000001AABBCCDD00000001 /* ThemeDefinition.swift in Sources */,
 				AA000001AABBCCDD00000003 /* ThemeManager.swift in Sources */,
 				0DA3A254039F1EEA04FB94DB /* AppSettings.swift in Sources */,

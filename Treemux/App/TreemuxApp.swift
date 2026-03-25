@@ -14,6 +14,7 @@ final class TreemuxApp {
     /// Initializes the store, creates the main window, and shows it.
     func launch() {
         let store = WorkspaceStore()
+        LanguageManager.apply(languageCode: store.settings.language)
         let window = WindowContext(store: store)
         window.show()
         self.windowContext = window
