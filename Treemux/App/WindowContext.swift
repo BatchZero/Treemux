@@ -1,10 +1,21 @@
 //
 //  WindowContext.swift
 //  Treemux
-//
 
 import AppKit
 import SwiftUI
+
+/// NSToolbar subclass that blocks NSSplitViewController from injecting
+/// its automatic .toggleSidebar item — we provide our own in SwiftUI.
+final class SidebarFilteredToolbar: NSToolbar {
+    override func insertItem(
+        withItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
+        at index: Int
+    ) {
+        guard itemIdentifier != .toggleSidebar else { return }
+        super.insertItem(withItemIdentifier: itemIdentifier, at: index)
+    }
+}
 
 /// Manages the main NSWindow and hosts the SwiftUI content view.
 @MainActor
@@ -29,9 +40,11 @@ final class WindowContext {
         )
         window.title = "Treemux"
 
-        // Do NOT attach a manual NSToolbar — NavigationSplitView manages its own
-        // toolbar for the sidebar toggle. Adding one causes NSSplitViewController
-        // to inject a duplicate .toggleSidebar item into the NSToolbar.
+        // Use SidebarFilteredToolbar to prevent the duplicate sidebar toggle
+        // that NSSplitViewController (backing NavigationSplitView) injects.
+        let toolbar = SidebarFilteredToolbar(identifier: "MainToolbar")
+        toolbar.displayMode = .iconOnly
+        window.toolbar = toolbar
         window.toolbarStyle = .unified
 
         window.contentView = NSHostingView(rootView: contentView)
