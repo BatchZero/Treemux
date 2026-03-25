@@ -28,6 +28,13 @@ final class WindowContext {
             defer: false
         )
         window.title = "Treemux"
+
+        // Attach an NSToolbar so SwiftUI .toolbar items render in the title bar.
+        let toolbar = NSToolbar(identifier: "MainToolbar")
+        toolbar.displayMode = .iconOnly
+        window.toolbar = toolbar
+        window.toolbarStyle = .unified
+
         window.contentView = NSHostingView(rootView: contentView)
         window.center()
         window.appearance = NSAppearance(named: .darkAqua)

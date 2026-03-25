@@ -9,6 +9,14 @@ import SwiftUI
 struct MainWindowView: View {
     @EnvironmentObject private var store: WorkspaceStore
 
+    /// Toggle the sidebar by forwarding the action to NSSplitViewController.
+    private func toggleSidebar() {
+        NSApp.keyWindow?.firstResponder?.tryToPerform(
+            #selector(NSSplitViewController.toggleSidebar(_:)),
+            with: nil
+        )
+    }
+
     var body: some View {
         NavigationSplitView {
             WorkspaceSidebarView()
@@ -24,6 +32,17 @@ struct MainWindowView: View {
                     )
                 } description: {
                     Text(String(localized: "Select or open a project to get started"))
+                }
+            }
+        }
+        // Remove the default sidebar toggle and add a custom one pinned to the leading edge.
+        .toolbar(removing: .sidebarToggle)
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    toggleSidebar()
+                } label: {
+                    Image(systemName: "sidebar.left")
                 }
             }
         }
