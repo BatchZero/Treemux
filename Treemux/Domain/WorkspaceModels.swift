@@ -110,6 +110,19 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     /// Controls all terminal sessions and the split layout for this workspace.
     @Published var sessionController: WorkspaceSessionController
 
+    /// Session controllers for individual worktrees, keyed by worktree path.
+    private var worktreeControllers: [String: WorkspaceSessionController] = [:]
+
+    /// Returns a session controller for the given worktree path, creating one if needed.
+    func sessionController(forWorktreePath path: String) -> WorkspaceSessionController {
+        if let existing = worktreeControllers[path] {
+            return existing
+        }
+        let controller = WorkspaceSessionController(workingDirectory: path)
+        worktreeControllers[path] = controller
+        return controller
+    }
+
     init(
         id: UUID = UUID(),
         name: String,
@@ -149,6 +162,10 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     /// Terminates all sessions managed by this workspace.
     func terminateAllSessions() {
         sessionController.terminateAll()
+        for controller in worktreeControllers.values {
+            controller.terminateAll()
+        }
+        worktreeControllers.removeAll()
     }
 
     /// Serializes the runtime model back to a persistable record.
