@@ -72,6 +72,7 @@
 		AA000001AABBCCDD00000012 /* StoredShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000012 /* StoredShortcut.swift */; };
 		AA000001AABBCCDD00000013 /* ShortcutAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000013 /* ShortcutAction.swift */; };
 		AA000001AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift */; };
+		AA000001AABBCCDD00000015 /* ShortcutRecorderButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000015 /* ShortcutRecorderButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -152,6 +153,7 @@
 		AA000002AABBCCDD00000012 /* StoredShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoredShortcut.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000013 /* ShortcutAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutAction.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxKeyboardShortcuts.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000015 /* ShortcutRecorderButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -374,6 +376,7 @@
 			isa = PBXGroup;
 			children = (
 				AA000002AABBCCDD00000011 /* SettingsSheet.swift */,
+				AA000002AABBCCDD00000015 /* ShortcutRecorderButton.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -542,6 +545,7 @@
 				AA000001AABBCCDD0000000A /* OpenProjectSheet.swift in Sources */,
 				AA000001AABBCCDD00000007 /* SSHConfigParser.swift in Sources */,
 				AA000001AABBCCDD00000011 /* SettingsSheet.swift in Sources */,
+				AA000001AABBCCDD00000015 /* ShortcutRecorderButton.swift in Sources */,
 				AA000001AABBCCDD00000013 /* ShortcutAction.swift in Sources */,
 				AA000001AABBCCDD00000012 /* StoredShortcut.swift in Sources */,
 				AA000001AABBCCDD00000008 /* SSHConfigService.swift in Sources */,
