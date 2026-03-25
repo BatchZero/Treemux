@@ -210,7 +210,9 @@ private struct ShortcutsSettingsView: View {
 
     var body: some View {
         Form {
-            ForEach(ShortcutCategory.allCases) { category in
+            ForEach(ShortcutCategory.allCases.filter { cat in
+                ShortcutAction.allCases.contains { $0.category == cat }
+            }) { category in
                 Section(category.title) {
                     let actions = ShortcutAction.allCases.filter { $0.category == category }
                     ForEach(actions) { action in
