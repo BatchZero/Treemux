@@ -106,6 +106,10 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     // TODO: Replace with WorkspaceSessionController when Task 13 is implemented.
     @Published var layout: SessionLayoutNode?
 
+    /// The primary terminal session for this workspace.
+    /// Created lazily via `ensurePrimarySession()`.
+    @Published var primarySession: ShellSession?
+
     init(
         id: UUID = UUID(),
         name: String,
@@ -135,6 +139,25 @@ final class WorkspaceModel: ObservableObject, Identifiable {
             isArchived: record.isArchived,
             sshTarget: record.sshTarget
         )
+    }
+
+    /// Creates and starts the primary shell session if one does not already exist.
+    func ensurePrimarySession() {
+        guard primarySession == nil else { return }
+        let workingDirectory = repositoryRoot?.path ?? NSHomeDirectory()
+        let backend = SessionBackendConfiguration.localShell(.defaultShell())
+        let session = ShellSession(
+            backendConfiguration: backend,
+            preferredWorkingDirectory: workingDirectory
+        )
+        session.startIfNeeded()
+        primarySession = session
+    }
+
+    /// Terminates the primary session and releases it.
+    func terminatePrimarySession() {
+        primarySession?.terminate()
+        primarySession = nil
     }
 
     /// Serializes the runtime model back to a persistable record.
