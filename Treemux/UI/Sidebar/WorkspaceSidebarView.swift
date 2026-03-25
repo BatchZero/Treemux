@@ -6,6 +6,8 @@
 import SwiftUI
 
 /// Sidebar view displaying the list of workspaces with an "Open Project" button.
+/// Projects with multiple worktrees show a disclosure group; single-worktree
+/// projects display a simple row with the branch name underneath.
 struct WorkspaceSidebarView: View {
     @EnvironmentObject private var store: WorkspaceStore
 
@@ -16,8 +18,7 @@ struct WorkspaceSidebarView: View {
                 // Local projects section
                 Section {
                     ForEach(store.localWorkspaces) { workspace in
-                        WorkspaceRow(workspace: workspace)
-                            .tag(workspace.id)
+                        WorkspaceRowGroup(workspace: workspace)
                     }
                 } header: {
                     Text(String(localized: "Local Projects"))
@@ -49,57 +50,54 @@ struct WorkspaceSidebarView: View {
     }
 }
 
-/// A single row in the workspace sidebar list.
-struct WorkspaceRow: View {
+/// Groups a workspace row: uses a DisclosureGroup when there are multiple
+/// worktrees, or a plain row when there is zero or one worktree.
+struct WorkspaceRowGroup: View {
     @ObservedObject var workspace: WorkspaceModel
+    @State private var isExpanded: Bool = true
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                Image(systemName: workspaceIcon)
-                    .foregroundStyle(iconColor)
-                    .font(.system(size: 13))
-                Text(workspace.name)
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
-            }
-
-            // Show worktrees if any
-            if !workspace.worktrees.isEmpty {
+        if workspace.worktrees.count > 1 {
+            // Multiple worktrees: collapsible disclosure group
+            DisclosureGroup(isExpanded: $isExpanded) {
                 ForEach(workspace.worktrees) { worktree in
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.triangle.branch")
-                            .foregroundStyle(.secondary)
-                            .font(.system(size: 10))
-                        Text(worktree.branch ?? worktree.path.lastPathComponent)
-                            .font(.system(size: 11))
-                            .foregroundStyle(worktree.isMainWorktree ? .primary : .secondary)
-                            .lineLimit(1)
-                        if worktree.isMainWorktree {
-                            Text("current")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(Color.white.opacity(0.1), in: Capsule())
-                        }
-                    }
-                    .padding(.leading, 20)
+                    WorktreeRow(worktree: worktree)
+                        .tag(workspace.id) // Selecting a worktree selects the parent workspace
                 }
-            } else if let branch = workspace.currentBranch {
-                HStack(spacing: 6) {
-                    Image(systemName: "arrow.triangle.branch")
-                        .foregroundStyle(.secondary)
-                        .font(.system(size: 10))
+            } label: {
+                ProjectLabel(workspace: workspace)
+            }
+            .tag(workspace.id)
+        } else {
+            // Single or no worktrees: simple row with optional branch info
+            VStack(alignment: .leading, spacing: 2) {
+                ProjectLabel(workspace: workspace)
+                if let branch = workspace.currentBranch {
                     Text(branch)
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                        .padding(.leading, 20)
                 }
-                .padding(.leading, 20)
             }
+            .tag(workspace.id)
         }
-        .padding(.vertical, 2)
+    }
+}
+
+/// Displays a project icon and name.
+struct ProjectLabel: View {
+    @ObservedObject var workspace: WorkspaceModel
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: workspaceIcon)
+                .foregroundStyle(iconColor)
+                .font(.system(size: 13))
+            Text(workspace.name)
+                .font(.system(size: 13, weight: .medium))
+                .lineLimit(1)
+        }
     }
 
     // MARK: - Icon helpers
@@ -123,6 +121,31 @@ struct WorkspaceRow: View {
             return .blue
         case .remote:
             return .orange
+        }
+    }
+}
+
+/// A single worktree row shown inside a disclosure group.
+struct WorktreeRow: View {
+    let worktree: WorktreeModel
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "arrow.triangle.branch")
+                .foregroundStyle(.secondary)
+                .font(.system(size: 11))
+            Text(worktree.branch ?? worktree.path.lastPathComponent)
+                .font(.system(size: 12))
+                .lineLimit(1)
+            Spacer()
+            if worktree.isMainWorktree {
+                Text("current")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.green)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(Color.green.opacity(0.15), in: Capsule())
+            }
         }
     }
 }

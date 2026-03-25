@@ -69,7 +69,7 @@ final class WorkspaceStore: ObservableObject {
             if defaultTerminalWorkspace == nil {
                 defaultTerminalWorkspace = WorkspaceModel(
                     id: UUID(),
-                    name: "Terminal",
+                    name: "~",
                     kind: .localTerminal,
                     repositoryRoot: URL(fileURLWithPath: NSHomeDirectory())
                 )
