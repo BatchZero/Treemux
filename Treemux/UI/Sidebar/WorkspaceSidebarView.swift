@@ -1,8 +1,8 @@
 //
 //  WorkspaceSidebarView.swift
 //  Treemux
-//
 
+import AppKit
 import SwiftUI
 
 /// Sidebar view displaying the list of workspaces with an "Open Project" button.
@@ -10,6 +10,9 @@ import SwiftUI
 /// projects display a simple row with the branch name underneath.
 struct WorkspaceSidebarView: View {
     @EnvironmentObject private var store: WorkspaceStore
+
+    /// Tracks which row the cursor is hovering over.
+    @State private var hoveredID: UUID?
 
     // Rename dialog state
     @State private var renamingWorkspaceID: UUID?
@@ -20,12 +23,14 @@ struct WorkspaceSidebarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Sidebar content
+            // Sidebar content – `selection:` binding enables native click-to-select
+            // and drag-to-reorder; @FocusState keeps the list focused so the
+            // selection highlight is always blue (not gray).
             List(selection: $store.selectedWorkspaceID) {
                 // Local projects section
                 Section {
                     ForEach(store.localWorkspaces) { workspace in
-                        WorkspaceRowGroup(workspace: workspace)
+                        WorkspaceRowGroup(workspace: workspace, hoveredID: $hoveredID)
                             .contextMenu {
                                 if workspace.kind == .repository {
                                     Button {
@@ -56,6 +61,14 @@ struct WorkspaceSidebarView: View {
                 // Remote server sections would go here (Task 18)
             }
             .listStyle(.sidebar)
+            .background(
+                // Disables the system's built-in selection highlight (which
+                // flickers gray/blue depending on focus) so that our custom
+                // .listRowBackground is the only visible row background.
+                OutlineViewConfigurator()
+                    .frame(width: 0, height: 0)
+                    .allowsHitTesting(false)
+            )
 
             // Bottom bar with "Open Project" button
             Divider()
@@ -107,34 +120,111 @@ struct WorkspaceSidebarView: View {
             Text(String(localized: "This will remove the project from the sidebar. Files on disk will not be affected."))
         }
     }
+
 }
+
+// MARK: - AppKit: disable system selection highlight
+
+/// An invisible NSViewRepresentable that finds the sidebar's NSOutlineView
+/// and sets `selectionHighlightStyle = .none`.  This removes the system's
+/// focus-dependent blue/gray highlight so we can draw our own via
+/// `.listRowBackground` (always blue when selected, gray when hovered).
+private struct OutlineViewConfigurator: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        DispatchQueue.main.async { Self.configure(from: view) }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        // Re-apply in case the outline view was recreated by SwiftUI.
+        DispatchQueue.main.async { Self.configure(from: nsView) }
+    }
+
+    private static func configure(from view: NSView) {
+        guard let window = view.window,
+              let outlineView = findOutlineView(in: window.contentView) else { return }
+        if outlineView.selectionHighlightStyle != .none {
+            outlineView.selectionHighlightStyle = .none
+        }
+    }
+
+    private static func findOutlineView(in view: NSView?) -> NSOutlineView? {
+        guard let view = view else { return nil }
+        if let ov = view as? NSOutlineView { return ov }
+        for subview in view.subviews {
+            if let ov = findOutlineView(in: subview) { return ov }
+        }
+        return nil
+    }
+}
+
+// MARK: - Row background helper
+
+/// Blue when selected, gray when hovered, clear otherwise.
+/// This is the sole source of row highlight now that the system's built-in
+/// selection drawing is disabled via `selectionHighlightStyle = .none`.
+@ViewBuilder
+func sidebarRowBackground(isSelected: Bool, isHovered: Bool) -> some View {
+    if isSelected {
+        RoundedRectangle(cornerRadius: 5)
+            .fill(Color.accentColor)
+    } else if isHovered {
+        RoundedRectangle(cornerRadius: 5)
+            .fill(Color.gray.opacity(0.2))
+    } else {
+        Color.clear
+    }
+}
+
+// MARK: - WorkspaceRowGroup
 
 /// Groups a workspace row: uses a DisclosureGroup when there are multiple
 /// worktrees, or a plain row when there is zero or one worktree.
 struct WorkspaceRowGroup: View {
     @EnvironmentObject private var store: WorkspaceStore
     @ObservedObject var workspace: WorkspaceModel
+    @Binding var hoveredID: UUID?
     @State private var isExpanded: Bool = true
+
+    private var isWorkspaceSelected: Bool {
+        store.selectedWorkspaceID == workspace.id
+    }
 
     var body: some View {
         if workspace.worktrees.count > 1 {
             // Multiple worktrees: collapsible disclosure group
             DisclosureGroup(isExpanded: $isExpanded) {
                 ForEach(workspace.worktrees) { worktree in
-                    WorktreeRow(worktree: worktree)
-                        .tag(workspace.id) // Selecting a worktree selects the parent workspace
+                    WorktreeRow(worktree: worktree, hoveredID: $hoveredID)
+                        .tag(worktree.id)
                 }
                 .onMove { source, destination in
                     store.moveWorktree(in: workspace, from: source, to: destination)
                 }
             } label: {
-                ProjectLabel(workspace: workspace)
+                ProjectLabel(
+                    workspace: workspace,
+                    showCurrent: isWorkspaceSelected
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onHover { isHovering in
+                    if isHovering { hoveredID = workspace.id }
+                    else if hoveredID == workspace.id { hoveredID = nil }
+                }
             }
+            .listRowBackground(sidebarRowBackground(
+                isSelected: isWorkspaceSelected,
+                isHovered: hoveredID == workspace.id
+            ))
             .tag(workspace.id)
         } else {
             // Single or no worktrees: simple row with optional branch info
             VStack(alignment: .leading, spacing: 2) {
-                ProjectLabel(workspace: workspace)
+                ProjectLabel(
+                    workspace: workspace,
+                    showCurrent: isWorkspaceSelected
+                )
                 if let branch = workspace.currentBranch {
                     Text(branch)
                         .font(.system(size: 11))
@@ -143,14 +233,25 @@ struct WorkspaceRowGroup: View {
                         .padding(.leading, 20)
                 }
             }
+            .onHover { isHovering in
+                if isHovering { hoveredID = workspace.id }
+                else if hoveredID == workspace.id { hoveredID = nil }
+            }
+            .listRowBackground(sidebarRowBackground(
+                isSelected: isWorkspaceSelected,
+                isHovered: hoveredID == workspace.id
+            ))
             .tag(workspace.id)
         }
     }
 }
 
-/// Displays a project icon and name.
+// MARK: - ProjectLabel
+
+/// Displays a project icon, name, and optional "current" badge.
 struct ProjectLabel: View {
     @ObservedObject var workspace: WorkspaceModel
+    var showCurrent: Bool = false
 
     var body: some View {
         HStack(spacing: 6) {
@@ -160,6 +261,15 @@ struct ProjectLabel: View {
             Text(workspace.name)
                 .font(.system(size: 13, weight: .medium))
                 .lineLimit(1)
+            if showCurrent {
+                Spacer()
+                Text("current")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.green)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(Color.green.opacity(0.15), in: Capsule())
+            }
         }
     }
 
@@ -188,9 +298,17 @@ struct ProjectLabel: View {
     }
 }
 
+// MARK: - WorktreeRow
+
 /// A single worktree row shown inside a disclosure group.
 struct WorktreeRow: View {
+    @EnvironmentObject private var store: WorkspaceStore
     let worktree: WorktreeModel
+    @Binding var hoveredID: UUID?
+
+    private var isSelected: Bool {
+        store.selectedWorkspaceID == worktree.id
+    }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -201,7 +319,7 @@ struct WorktreeRow: View {
                 .font(.system(size: 12))
                 .lineLimit(1)
             Spacer()
-            if worktree.isMainWorktree {
+            if isSelected {
                 Text("current")
                     .font(.system(size: 9, weight: .medium))
                     .foregroundStyle(.green)
@@ -210,5 +328,13 @@ struct WorktreeRow: View {
                     .background(Color.green.opacity(0.15), in: Capsule())
             }
         }
+        .onHover { isHovering in
+            if isHovering { hoveredID = worktree.id }
+            else if hoveredID == worktree.id { hoveredID = nil }
+        }
+        .listRowBackground(sidebarRowBackground(
+            isSelected: isSelected,
+            isHovered: hoveredID == worktree.id
+        ))
     }
 }

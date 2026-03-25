@@ -7,16 +7,26 @@ import SwiftUI
 
 /// Detail view for the selected workspace.
 /// Displays the split pane layout with terminal sessions.
+/// When a specific worktree is selected, shows that worktree's session controller.
 struct WorkspaceDetailView: View {
     @EnvironmentObject private var store: WorkspaceStore
 
+    /// Resolves the active session controller based on workspace vs worktree selection.
+    private var activeController: WorkspaceSessionController? {
+        guard let workspace = store.selectedWorkspace else { return nil }
+        if let worktree = store.selectedWorktree {
+            return workspace.sessionController(forWorktreePath: worktree.path.path)
+        }
+        return workspace.sessionController
+    }
+
     var body: some View {
-        if let workspace = store.selectedWorkspace {
+        if let controller = activeController {
             SplitNodeView(
-                sessionController: workspace.sessionController,
-                node: workspace.sessionController.layout
+                sessionController: controller,
+                node: controller.layout
             )
-            .id(workspace.id)
+            .id(store.selectedWorkspaceID)
         }
     }
 }

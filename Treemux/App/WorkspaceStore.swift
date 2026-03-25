@@ -26,13 +26,31 @@ final class WorkspaceStore: ObservableObject {
     private var defaultTerminalWorkspace: WorkspaceModel?
 
     /// The currently selected workspace, if any.
+    /// Resolves both workspace-level and worktree-level selection.
     /// Falls back to the default terminal workspace when applicable.
     var selectedWorkspace: WorkspaceModel? {
         if let ws = workspaces.first(where: { $0.id == selectedWorkspaceID }) {
             return ws
         }
+        // Check if selection is a worktree ID within any workspace
+        if let ws = workspaces.first(where: { ws in
+            ws.worktrees.contains { $0.id == self.selectedWorkspaceID }
+        }) {
+            return ws
+        }
         if selectedWorkspaceID == defaultTerminalWorkspace?.id {
             return defaultTerminalWorkspace
+        }
+        return nil
+    }
+
+    /// The currently selected worktree, if a worktree (rather than workspace) is selected.
+    var selectedWorktree: WorktreeModel? {
+        guard let id = selectedWorkspaceID else { return nil }
+        for ws in workspaces {
+            if let wt = ws.worktrees.first(where: { $0.id == id }) {
+                return wt
+            }
         }
         return nil
     }
@@ -150,8 +168,13 @@ final class WorkspaceStore: ObservableObject {
 
     func removeWorkspace(_ id: UUID) {
         metadataWatcher.stopWatching(workspaceID: id)
+        // Clear selection if it points to a worktree within this workspace
+        if let ws = workspaces.first(where: { $0.id == id }),
+           ws.worktrees.contains(where: { $0.id == selectedWorkspaceID }) {
+            selectedWorkspaceID = nil
+        }
         workspaces.removeAll { $0.id == id }
-        if selectedWorkspaceID == id {
+        if selectedWorkspaceID == id || selectedWorkspaceID == nil {
             selectedWorkspaceID = workspaces.first?.id
         }
         saveWorkspaceState()
@@ -186,12 +209,31 @@ final class WorkspaceStore: ObservableObject {
     // MARK: - Refreshing
 
     /// Refreshes git state for the given workspace.
+    /// Merges worktrees by path to preserve stable IDs across refreshes.
     func refreshWorkspace(_ workspace: WorkspaceModel) async {
         guard let root = workspace.repositoryRoot else { return }
         do {
             let snapshot = try await gitService.inspectRepository(at: root)
             workspace.currentBranch = snapshot.currentBranch
-            workspace.worktrees = snapshot.worktrees
+
+            // Merge worktrees: preserve IDs for paths that still exist
+            let previousWorktreeIDs = Set(workspace.worktrees.map { $0.id })
+            var merged: [WorktreeModel] = []
+            for newWT in snapshot.worktrees {
+                if let existing = workspace.worktrees.first(where: { $0.path == newWT.path }) {
+                    merged.append(WorktreeModel(
+                        id: existing.id,
+                        path: newWT.path,
+                        branch: newWT.branch,
+                        headCommit: newWT.headCommit,
+                        isMainWorktree: newWT.isMainWorktree
+                    ))
+                } else {
+                    merged.append(newWT)
+                }
+            }
+            workspace.worktrees = merged
+
             workspace.repositoryStatus = snapshot.status
             // Sort worktrees by persisted display order
             if !workspace.worktreeOrder.isEmpty {
@@ -200,6 +242,13 @@ final class WorkspaceStore: ObservableObject {
                     let indexB = workspace.worktreeOrder.firstIndex(of: b.path.path) ?? Int.max
                     return indexA < indexB
                 }
+            }
+
+            // If selected worktree was removed, fall back to workspace selection
+            if let selID = selectedWorkspaceID,
+               previousWorktreeIDs.contains(selID),
+               !merged.contains(where: { $0.id == selID }) {
+                selectedWorkspaceID = workspace.id
             }
         } catch {
             // Not a git repository or git command failed — that's acceptable.
@@ -216,8 +265,17 @@ final class WorkspaceStore: ObservableObject {
     }
 
     func saveWorkspaceState() {
+        // Resolve to workspace-level ID for persistence (worktree IDs are unstable across launches).
+        let resolvedID: UUID? = {
+            guard let id = selectedWorkspaceID else { return nil }
+            if workspaces.contains(where: { $0.id == id }) { return id }
+            if let ws = workspaces.first(where: { ws in ws.worktrees.contains { $0.id == id } }) {
+                return ws.id
+            }
+            return nil
+        }()
         // Exclude the default terminal workspace from persistence — it is virtual.
-        let persistedSelectedID = selectedWorkspaceID == defaultTerminalWorkspace?.id ? nil : selectedWorkspaceID
+        let persistedSelectedID = resolvedID == defaultTerminalWorkspace?.id ? nil : resolvedID
         let state = PersistedWorkspaceState(
             version: 1,
             selectedWorkspaceID: persistedSelectedID,
