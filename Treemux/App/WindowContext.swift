@@ -29,10 +29,9 @@ final class WindowContext {
         )
         window.title = "Treemux"
 
-        // Attach an NSToolbar so SwiftUI .toolbar items render in the title bar.
-        let toolbar = NSToolbar(identifier: "MainToolbar")
-        toolbar.displayMode = .iconOnly
-        window.toolbar = toolbar
+        // Do NOT attach a manual NSToolbar — NavigationSplitView manages its own
+        // toolbar for the sidebar toggle. Adding one causes NSSplitViewController
+        // to inject a duplicate .toggleSidebar item into the NSToolbar.
         window.toolbarStyle = .unified
 
         window.contentView = NSHostingView(rootView: contentView)

@@ -28,8 +28,5 @@ struct MainWindowView: View {
             }
         }
         .navigationSplitViewStyle(.prominentDetail)
-        // Remove the SwiftUI-level sidebar toggle; the AppKit toggle injected by
-        // NSSplitViewController into the manual NSToolbar already provides one.
-        .toolbar(removing: .sidebarToggle)
     }
 }
