@@ -24,6 +24,8 @@ struct WorkspaceRecord: Codable {
     let isArchived: Bool
     let sshTarget: SSHTarget?
     let worktreeStates: [WorktreeSessionStateRecord]
+    /// Persisted display order of worktrees (paths). Nil means default git order.
+    let worktreeOrder: [String]?
 }
 
 /// Persisted state for a single worktree session within a workspace.
@@ -102,6 +104,8 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     @Published var currentBranch: String?
     @Published var worktrees: [WorktreeModel] = []
     @Published var repositoryStatus: RepositoryStatusSnapshot?
+    /// Custom display order of worktrees (paths). Empty means default git order.
+    @Published var worktreeOrder: [String] = []
 
     /// Controls all terminal sessions and the split layout for this workspace.
     @Published var sessionController: WorkspaceSessionController
@@ -113,7 +117,8 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         repositoryRoot: URL? = nil,
         isPinned: Bool = false,
         isArchived: Bool = false,
-        sshTarget: SSHTarget? = nil
+        sshTarget: SSHTarget? = nil,
+        worktreeOrder: [String] = []
     ) {
         self.id = id
         self.kind = kind
@@ -122,6 +127,7 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         self.isPinned = isPinned
         self.isArchived = isArchived
         self.sshTarget = sshTarget
+        self.worktreeOrder = worktreeOrder
         let workingDirectory = repositoryRoot?.path ?? NSHomeDirectory()
         self.sessionController = WorkspaceSessionController(workingDirectory: workingDirectory)
     }
@@ -135,7 +141,8 @@ final class WorkspaceModel: ObservableObject, Identifiable {
             repositoryRoot: record.repositoryPath.map { URL(fileURLWithPath: $0) },
             isPinned: record.isPinned,
             isArchived: record.isArchived,
-            sshTarget: record.sshTarget
+            sshTarget: record.sshTarget,
+            worktreeOrder: record.worktreeOrder ?? []
         )
     }
 
@@ -154,7 +161,8 @@ final class WorkspaceModel: ObservableObject, Identifiable {
             isPinned: isPinned,
             isArchived: isArchived,
             sshTarget: sshTarget,
-            worktreeStates: []
+            worktreeStates: [],
+            worktreeOrder: worktreeOrder.isEmpty ? nil : worktreeOrder
         )
     }
 }
