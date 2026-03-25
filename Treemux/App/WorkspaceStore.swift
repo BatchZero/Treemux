@@ -21,24 +21,64 @@ final class WorkspaceStore: ObservableObject {
     private let gitService = GitRepositoryService()
     private let metadataWatcher = WorkspaceMetadataWatchService()
 
+    /// Virtual "Terminal" workspace shown when no real projects exist.
+    /// This workspace is never persisted to disk.
+    private var defaultTerminalWorkspace: WorkspaceModel?
+
     /// The currently selected workspace, if any.
+    /// Falls back to the default terminal workspace when applicable.
     var selectedWorkspace: WorkspaceModel? {
-        workspaces.first { $0.id == selectedWorkspaceID }
+        if let ws = workspaces.first(where: { $0.id == selectedWorkspaceID }) {
+            return ws
+        }
+        if selectedWorkspaceID == defaultTerminalWorkspace?.id {
+            return defaultTerminalWorkspace
+        }
+        return nil
     }
 
     /// Workspaces visible in the sidebar (non-archived).
     var sidebarWorkspaces: [WorkspaceModel] {
-        workspaces.filter { !$0.isArchived }
+        let real = workspaces.filter { !$0.isArchived }
+        if real.isEmpty, let terminal = defaultTerminalWorkspace {
+            return [terminal]
+        }
+        return real
     }
 
     /// Local workspaces (repositories and local terminals, non-archived).
     var localWorkspaces: [WorkspaceModel] {
-        workspaces.filter { !$0.isArchived && ($0.kind == .repository || $0.kind == .localTerminal) }
+        let real = workspaces.filter { !$0.isArchived && ($0.kind == .repository || $0.kind == .localTerminal) }
+        if real.isEmpty, let terminal = defaultTerminalWorkspace {
+            return [terminal]
+        }
+        return real
     }
 
     init() {
         self.settings = settingsPersistence.load()
         loadWorkspaceState()
+        ensureDefaultTerminal()
+    }
+
+    /// Creates or shows the default "Terminal" workspace when no real workspaces exist.
+    /// Hides it automatically when real projects are present.
+    private func ensureDefaultTerminal() {
+        let hasRealWorkspaces = workspaces.contains { !$0.isArchived }
+        if !hasRealWorkspaces {
+            if defaultTerminalWorkspace == nil {
+                defaultTerminalWorkspace = WorkspaceModel(
+                    id: UUID(),
+                    name: "Terminal",
+                    kind: .localTerminal,
+                    repositoryRoot: URL(fileURLWithPath: NSHomeDirectory())
+                )
+            }
+            // Auto-select the default terminal if nothing is selected
+            if selectedWorkspaceID == nil {
+                selectedWorkspaceID = defaultTerminalWorkspace?.id
+            }
+        }
     }
 
     // MARK: - Workspace Selection
@@ -87,6 +127,11 @@ final class WorkspaceStore: ObservableObject {
             selectedWorkspaceID = workspaces.first?.id
         }
         saveWorkspaceState()
+        // Re-show the default terminal if all real workspaces have been removed
+        ensureDefaultTerminal()
+        if selectedWorkspaceID == nil {
+            selectedWorkspaceID = defaultTerminalWorkspace?.id
+        }
     }
 
     // MARK: - File System Watching
@@ -135,9 +180,11 @@ final class WorkspaceStore: ObservableObject {
     }
 
     func saveWorkspaceState() {
+        // Exclude the default terminal workspace from persistence — it is virtual.
+        let persistedSelectedID = selectedWorkspaceID == defaultTerminalWorkspace?.id ? nil : selectedWorkspaceID
         let state = PersistedWorkspaceState(
             version: 1,
-            selectedWorkspaceID: selectedWorkspaceID,
+            selectedWorkspaceID: persistedSelectedID,
             workspaces: workspaces.map { $0.toRecord() }
         )
         try? workspaceStatePersistence.save(state)
