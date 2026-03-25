@@ -20,6 +20,7 @@ final class WorkspaceStore: ObservableObject {
     private let workspaceStatePersistence = WorkspaceStatePersistence()
     private let gitService = GitRepositoryService()
     private let metadataWatcher = WorkspaceMetadataWatchService()
+    private let tmuxService = TmuxService()
 
     /// Virtual "Terminal" workspace shown when no real projects exist.
     /// This workspace is never persisted to disk.

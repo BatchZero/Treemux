@@ -42,6 +42,9 @@ final class ShellSession: ObservableObject, Identifiable {
     @Published var cols: Int = 80
     @Published var surfaceStatus = TerminalSurfaceStatusSnapshot()
 
+    /// Detected tmux session name, if the shell is running inside tmux.
+    @Published var detectedTmuxSession: String?
+
     var onWorkspaceAction: ((TerminalWorkspaceAction) -> Void)?
     var onFocus: (() -> Void)?
 
@@ -101,6 +104,7 @@ final class ShellSession: ObservableObject, Identifiable {
         surfaceController.onTitleChange = { [weak self] title in
             guard let self, !title.isEmpty else { return }
             self.title = title
+            self.detectTmux(fromTitle: title)
         }
         surfaceController.onWorkingDirectoryChange = { [weak self] directory in
             self?.reportedWorkingDirectory = directory
@@ -301,5 +305,22 @@ final class ShellSession: ObservableObject, Identifiable {
         self.exitCode = exitCode
         lifecycle = .exited
         pid = nil
+    }
+
+    /// Detect if the shell is running inside tmux based on the terminal title.
+    /// When tmux is the foreground process, the title often starts with the session name.
+    private func detectTmux(fromTitle title: String) {
+        let lower = title.lowercased()
+        if lower.contains("tmux") || lower.hasPrefix("[") {
+            // Try to extract session name from "[session-name]" pattern
+            if let openBracket = title.firstIndex(of: "["),
+               let closeBracket = title.firstIndex(of: "]"),
+               openBracket < closeBracket {
+                let sessionName = String(title[title.index(after: openBracket)..<closeBracket])
+                detectedTmuxSession = sessionName
+            } else {
+                detectedTmuxSession = "tmux"
+            }
+        }
     }
 }

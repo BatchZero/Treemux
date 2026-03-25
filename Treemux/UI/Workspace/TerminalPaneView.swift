@@ -36,6 +36,20 @@ struct TerminalPaneView: View {
                 .fill(statusColor)
                 .frame(width: 6, height: 6)
 
+            // Tmux badge
+            if let tmuxSession = session.detectedTmuxSession {
+                HStack(spacing: 3) {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 9))
+                    Text("tmux: \(tmuxSession)")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .foregroundStyle(theme.accentColor)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(theme.accentColor.opacity(0.12), in: Capsule())
+            }
+
             Text(session.title)
                 .font(.system(size: 11, weight: .medium))
                 .lineLimit(1)
