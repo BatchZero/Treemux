@@ -68,6 +68,7 @@
 		AA000001AABBCCDD0000000E /* AIToolService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000E /* AIToolService.swift */; };
 		AA000001AABBCCDD0000000F /* AIToolServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000F /* AIToolServiceTests.swift */; };
 		AA000001AABBCCDD00000010 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000010 /* CommandPaletteView.swift */; };
+		AA000001AABBCCDD00000011 /* SettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000011 /* SettingsSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -144,6 +145,7 @@
 		AA000002AABBCCDD0000000E /* AIToolService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolService.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD0000000F /* AIToolServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolServiceTests.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000010 /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000011 /* SettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -362,6 +364,7 @@
 		D19FA00FB0C98719BF40F0F2 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				AA000002AABBCCDD00000011 /* SettingsSheet.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -529,6 +532,7 @@
 				AA000001AABBCCDD00000005 /* LanguageManager.swift in Sources */,
 				AA000001AABBCCDD0000000A /* OpenProjectSheet.swift in Sources */,
 				AA000001AABBCCDD00000007 /* SSHConfigParser.swift in Sources */,
+				AA000001AABBCCDD00000011 /* SettingsSheet.swift in Sources */,
 				AA000001AABBCCDD00000008 /* SSHConfigService.swift in Sources */,
 				AA000001AABBCCDD00000001 /* ThemeDefinition.swift in Sources */,
 				AA000001AABBCCDD00000003 /* ThemeManager.swift in Sources */,
