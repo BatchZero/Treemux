@@ -30,6 +30,8 @@ final class WindowContext {
         window.title = "Treemux"
         window.contentView = NSHostingView(rootView: contentView)
         window.center()
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.backgroundColor = NSColor(red: 0.07, green: 0.08, blue: 0.09, alpha: 1.0)
         window.makeKeyAndOrderFront(nil)
         self.window = window
     }

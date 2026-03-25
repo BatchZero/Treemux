@@ -12,6 +12,7 @@ struct MainWindowView: View {
     var body: some View {
         NavigationSplitView {
             WorkspaceSidebarView()
+                .navigationSplitViewColumnWidth(min: 180, ideal: 276, max: 400)
         } detail: {
             if store.selectedWorkspace != nil {
                 WorkspaceDetailView()

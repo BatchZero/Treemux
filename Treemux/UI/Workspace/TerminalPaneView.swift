@@ -44,7 +44,7 @@ struct TerminalPaneView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+        .background(Color(red: 0.07, green: 0.08, blue: 0.09))
     }
 
     // MARK: - Helpers

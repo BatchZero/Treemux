@@ -40,6 +40,7 @@ struct WorkspaceSidebarView: View {
             }
             .buttonStyle(.plain)
         }
+        .background(Color(red: 0.07, green: 0.08, blue: 0.09))
     }
 }
 
