@@ -62,6 +62,8 @@
 		AA000001AABBCCDD00000008 /* SSHConfigService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000008 /* SSHConfigService.swift */; };
 		AA000001AABBCCDD00000009 /* SSHConfigParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000009 /* SSHConfigParserTests.swift */; };
 		AA000001AABBCCDD0000000A /* OpenProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000A /* OpenProjectSheet.swift */; };
+		AA000001AABBCCDD0000000B /* TmuxService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000B /* TmuxService.swift */; };
+		AA000001AABBCCDD0000000C /* TmuxServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000C /* TmuxServiceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -132,6 +134,8 @@
 		AA000002AABBCCDD00000008 /* SSHConfigService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigService.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000009 /* SSHConfigParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParserTests.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD0000000A /* OpenProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenProjectSheet.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD0000000B /* TmuxService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxService.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD0000000C /* TmuxServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -182,6 +186,7 @@
 				443B856819FD330809E0722A /* ShellCommandRunnerTests.swift */,
 				AA000002AABBCCDD00000009 /* SSHConfigParserTests.swift */,
 				AA000002AABBCCDD00000004 /* ThemeTests.swift */,
+				AA000002AABBCCDD0000000C /* TmuxServiceTests.swift */,
 				3477DE6F674F94B9457073F4 /* TreemuxTests.swift */,
 				146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */,
 			);
@@ -191,6 +196,7 @@
 		27F87459BFC39581FCA8FA83 /* Tmux */ = {
 			isa = PBXGroup;
 			children = (
+				AA000002AABBCCDD0000000B /* TmuxService.swift */,
 			);
 			path = Tmux;
 			sourceTree = "<group>";
@@ -511,6 +517,7 @@
 				AA000001AABBCCDD00000008 /* SSHConfigService.swift in Sources */,
 				AA000001AABBCCDD00000001 /* ThemeDefinition.swift in Sources */,
 				AA000001AABBCCDD00000003 /* ThemeManager.swift in Sources */,
+				AA000001AABBCCDD0000000B /* TmuxService.swift in Sources */,
 				0DA3A254039F1EEA04FB94DB /* AppSettings.swift in Sources */,
 				7BAFFB86D4EE2F43992E4808 /* AppSettingsPersistence.swift in Sources */,
 				89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */,
@@ -556,6 +563,7 @@
 			files = (
 				9C689BD0883C82F0D099878B /* GitRepositoryServiceTests.swift in Sources */,
 				AA000001AABBCCDD00000009 /* SSHConfigParserTests.swift in Sources */,
+				AA000001AABBCCDD0000000C /* TmuxServiceTests.swift in Sources */,
 				AA000001AABBCCDD00000004 /* ThemeTests.swift in Sources */,
 				5BE675E29A6A2B29C647BB5E /* PaneLayoutTests.swift in Sources */,
 				309F402A9FFCA18BA24D7BD4 /* PersistenceTests.swift in Sources */,
