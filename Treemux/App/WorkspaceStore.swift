@@ -19,6 +19,7 @@ final class WorkspaceStore: ObservableObject {
     private let settingsPersistence = AppSettingsPersistence()
     private let workspaceStatePersistence = WorkspaceStatePersistence()
     private let gitService = GitRepositoryService()
+    private let metadataWatcher = WorkspaceMetadataWatchService()
 
     /// The currently selected workspace, if any.
     var selectedWorkspace: WorkspaceModel? {
@@ -61,7 +62,10 @@ final class WorkspaceStore: ObservableObject {
         workspaces.append(workspace)
         selectedWorkspaceID = workspace.id
         saveWorkspaceState()
-        Task { await refreshWorkspace(workspace) }
+        Task {
+            await refreshWorkspace(workspace)
+            startWatching(workspace)
+        }
     }
 
     /// Presents an open panel and adds the selected directory as a workspace.
@@ -77,11 +81,33 @@ final class WorkspaceStore: ObservableObject {
     // MARK: - Removing Workspaces
 
     func removeWorkspace(_ id: UUID) {
+        metadataWatcher.stopWatching(workspaceID: id)
         workspaces.removeAll { $0.id == id }
         if selectedWorkspaceID == id {
             selectedWorkspaceID = workspaces.first?.id
         }
         saveWorkspaceState()
+    }
+
+    // MARK: - File System Watching
+
+    /// Starts watching git metadata changes for a workspace and auto-refreshes on change.
+    func startWatching(_ workspace: WorkspaceModel) {
+        guard workspace.repositoryRoot != nil else { return }
+        metadataWatcher.watch(workspace: workspace) { [weak self] workspaceID in
+            Task { @MainActor [weak self] in
+                guard let self,
+                      let ws = self.workspaces.first(where: { $0.id == workspaceID }) else { return }
+                await self.refreshWorkspace(ws)
+            }
+        }
+    }
+
+    /// Starts watching all current workspaces.
+    private func startWatchingAll() {
+        for workspace in workspaces {
+            startWatching(workspace)
+        }
     }
 
     // MARK: - Refreshing
@@ -105,6 +131,7 @@ final class WorkspaceStore: ObservableObject {
         let state = workspaceStatePersistence.load()
         selectedWorkspaceID = state.selectedWorkspaceID
         workspaces = state.workspaces.map { WorkspaceModel(from: $0) }
+        startWatchingAll()
     }
 
     func saveWorkspaceState() {
