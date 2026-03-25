@@ -45,6 +45,9 @@ final class ShellSession: ObservableObject, Identifiable {
     /// Detected tmux session name, if the shell is running inside tmux.
     @Published var detectedTmuxSession: String?
 
+    /// Detected AI tool running in this pane.
+    @Published var detectedAITool: AIToolDetection?
+
     var onWorkspaceAction: ((TerminalWorkspaceAction) -> Void)?
     var onFocus: (() -> Void)?
 
@@ -105,6 +108,7 @@ final class ShellSession: ObservableObject, Identifiable {
             guard let self, !title.isEmpty else { return }
             self.title = title
             self.detectTmux(fromTitle: title)
+            self.detectAITool(fromTitle: title)
         }
         surfaceController.onWorkingDirectoryChange = { [weak self] directory in
             self?.reportedWorkingDirectory = directory
@@ -305,6 +309,21 @@ final class ShellSession: ObservableObject, Identifiable {
         self.exitCode = exitCode
         lifecycle = .exited
         pid = nil
+    }
+
+    /// Detect if an AI tool is running based on the terminal title.
+    private func detectAITool(fromTitle title: String) {
+        // Extract the likely process name from the title
+        let processName = title.components(separatedBy: " ").first ?? title
+        if let kind = AIToolKind.detect(processName: processName) {
+            detectedAITool = AIToolDetection(kind: kind, isRunning: true, processName: processName)
+        } else if detectedAITool != nil {
+            // Only clear if the previously detected tool is no longer in the title
+            let lower = title.lowercased()
+            if !lower.contains("claude") && !lower.contains("codex") {
+                detectedAITool = nil
+            }
+        }
     }
 
     /// Detect if the shell is running inside tmux based on the terminal title.

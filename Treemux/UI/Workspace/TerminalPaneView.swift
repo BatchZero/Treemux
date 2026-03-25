@@ -36,6 +36,20 @@ struct TerminalPaneView: View {
                 .fill(statusColor)
                 .frame(width: 6, height: 6)
 
+            // AI tool badge
+            if let aiTool = session.detectedAITool {
+                HStack(spacing: 3) {
+                    Image(systemName: aiTool.kind.iconName)
+                        .font(.system(size: 9))
+                    Text(aiTool.kind.displayName)
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .foregroundStyle(theme.successColor)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(theme.successColor.opacity(0.12), in: Capsule())
+            }
+
             // Tmux badge
             if let tmuxSession = session.detectedTmuxSession {
                 HStack(spacing: 3) {
