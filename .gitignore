@@ -2,3 +2,9 @@
 build/
 DerivedData/
 *.xcuserdata
+*.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+.build/
+Package.resolved
+.DS_Store
+*.swp
+*~
