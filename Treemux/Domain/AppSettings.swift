@@ -12,6 +12,7 @@ struct AppSettings: Codable {
     var version: Int = 1
     var language: String = "system"
     var activeThemeID: String = "treemux-dark"
+    var appearance: String = "system"  // "system", "dark", "light"
     var terminal: TerminalSettings = TerminalSettings()
     var startup: StartupSettings = StartupSettings()
     var ssh: SSHSettings = SSHSettings()
