@@ -21,6 +21,20 @@ targets:
       - path: Treemux
         excludes:
           - Info.plist
+          - Vendor
+          - ghostty
+          - terminfo
+    dependencies:
+      - framework: Treemux/Vendor/GhosttyKit.xcframework
+        embed: false
+    postBuildScripts:
+      - name: Copy Ghostty Resources
+        script: |
+          set -e
+          RESOURCE_ROOT="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
+          mkdir -p "$RESOURCE_ROOT/ghostty" "$RESOURCE_ROOT/terminfo"
+          rsync -a "$SRCROOT/Treemux/ghostty/" "$RESOURCE_ROOT/ghostty/"
+          rsync -a "$SRCROOT/Treemux/terminfo/" "$RESOURCE_ROOT/terminfo/"
     info:
       path: Treemux/Info.plist
       properties:
