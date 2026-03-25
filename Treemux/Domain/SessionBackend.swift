@@ -7,7 +7,7 @@ import Foundation
 
 // MARK: - Local shell configuration
 
-struct LocalShellConfig: Codable {
+struct LocalShellConfig: Codable, Hashable {
     let shellPath: String
     let arguments: [String]
 
@@ -20,7 +20,7 @@ struct LocalShellConfig: Codable {
 
 // MARK: - SSH session configuration
 
-struct SSHSessionConfig: Codable {
+struct SSHSessionConfig: Codable, Hashable {
     let target: SSHTarget
     let remoteCommand: String?
 }
@@ -35,7 +35,7 @@ enum AIToolKind: String, Codable {
 
 // MARK: - Agent session configuration
 
-struct AgentSessionConfig: Codable {
+struct AgentSessionConfig: Codable, Hashable {
     let name: String
     let launchCommand: String
     let arguments: [String]
@@ -45,7 +45,7 @@ struct AgentSessionConfig: Codable {
 
 // MARK: - Tmux attach configuration
 
-struct TmuxAttachConfig: Codable {
+struct TmuxAttachConfig: Codable, Hashable {
     let sessionName: String
     let windowIndex: Int?
     let isRemote: Bool
@@ -54,7 +54,7 @@ struct TmuxAttachConfig: Codable {
 
 // MARK: - Session backend configuration
 
-enum SessionBackendConfiguration: Codable {
+enum SessionBackendConfiguration: Codable, Hashable {
     case localShell(LocalShellConfig)
     case ssh(SSHSessionConfig)
     case agent(AgentSessionConfig)

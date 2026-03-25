@@ -1,0 +1,1536 @@
+//
+//  TreemuxGhosttyController.swift
+//  Treemux
+//
+
+import AppKit
+import Carbon
+import Foundation
+import GhosttyKit
+
+// MARK: - Workspace action
+
+/// Actions that the terminal controller dispatches to the workspace layer.
+enum TerminalWorkspaceAction {
+    case createSplit(axis: SplitAxis, placement: PaneSplitPlacement)
+    case focusPane(PaneFocusDirection)
+    case focusNextPane
+    case focusPreviousPane
+    case resizeFocusedSplit(PaneFocusDirection, amount: UInt16)
+    case equalizeSplits
+    case togglePaneZoom
+    case closePane
+}
+
+/// Split placement relative to the focused pane.
+enum PaneSplitPlacement {
+    case before
+    case after
+}
+
+/// Focus direction within the pane layout.
+enum PaneFocusDirection: String, Codable, CaseIterable {
+    case left
+    case right
+    case up
+    case down
+}
+
+// MARK: - Controller
+
+@MainActor
+final class TreemuxGhosttyController: ManagedTerminalSessionSurfaceController {
+    var resolvedEngine: TerminalEngineKind { .libghosttyPreferred }
+    var view: NSView { terminalView }
+    var onResize: ((Int, Int) -> Void)?
+    var onTitleChange: ((String) -> Void)?
+    var onWorkingDirectoryChange: ((String?) -> Void)?
+    var onFocus: (() -> Void)?
+    var onStatusChange: ((TerminalSurfaceStatusSnapshot) -> Void)?
+    var onProcessExit: ((Int32?) -> Void)?
+    var onWorkspaceAction: ((TerminalWorkspaceAction) -> Void)?
+
+    var managedPID: Int32? { nil }
+    var isManagedSessionRunning: Bool {
+        guard let surface = terminalView.surface else { return false }
+        return !ghostty_surface_process_exited(surface)
+    }
+    var needsConfirmQuit: Bool {
+        guard let surface = terminalView.surface else { return false }
+        return ghostty_surface_needs_confirm_quit(surface)
+    }
+
+    var currentSurface: ghostty_surface_t? { terminalView.surface }
+
+    private let terminalView: TreemuxGhosttySurfaceView
+    private var launchConfiguration: TerminalLaunchConfiguration
+    private var latestTitle: String
+
+    init(launchConfiguration: TerminalLaunchConfiguration) {
+        self.launchConfiguration = launchConfiguration
+        self.latestTitle = launchConfiguration.command.displayName
+        self.terminalView = TreemuxGhosttySurfaceView()
+        terminalView.translatesAutoresizingMaskIntoConstraints = false
+        terminalView.controller = self
+    }
+
+    func sendText(_ text: String) {
+        terminalView.insertTerminalText(text)
+    }
+
+    func beginSearch(initialText: String?) {
+        if let initialText, !initialText.isEmpty {
+            _ = terminalView.performBindingAction(treemuxGhosttySearchBindingAction(for: initialText))
+            return
+        }
+        _ = terminalView.performBindingAction("start_search")
+    }
+
+    func updateSearch(_ text: String) {
+        _ = terminalView.performBindingAction(treemuxGhosttySearchBindingAction(for: text))
+    }
+
+    func searchNext() {
+        _ = terminalView.performBindingAction(treemuxGhosttySearchNavigationBindingAction(.next))
+    }
+
+    func searchPrevious() {
+        _ = terminalView.performBindingAction(treemuxGhosttySearchNavigationBindingAction(.previous))
+    }
+
+    func endSearch() {
+        _ = terminalView.performBindingAction("end_search")
+    }
+
+    func toggleReadOnly() {
+        focus()
+        _ = terminalView.performBindingAction("toggle_readonly")
+    }
+
+    func focus() {
+        terminalView.window?.makeFirstResponder(terminalView)
+    }
+
+    func setFocused(_ isFocused: Bool) {
+        terminalView.setWorkspaceFocus(isFocused)
+    }
+
+    func updateLaunchConfiguration(_ configuration: TerminalLaunchConfiguration) {
+        launchConfiguration = configuration
+    }
+
+    func startManagedSessionIfNeeded() {
+        terminalView.ensureSurface(runtime: TreemuxGhosttyRuntime.shared, launchConfiguration: launchConfiguration)
+        terminalView.syncSurfaceMetrics()
+    }
+
+    func restartManagedSession() {
+        terminalView.recreateSurface(runtime: TreemuxGhosttyRuntime.shared, launchConfiguration: launchConfiguration)
+        terminalView.syncSurfaceMetrics()
+    }
+
+    func terminateManagedSession() {
+        terminalView.destroySurface()
+    }
+
+    // MARK: - Ghostty action dispatch
+
+    func handleGhosttyAction(_ action: ghostty_action_s, on surface: ghostty_surface_t) -> Bool {
+        switch action.tag {
+        case GHOSTTY_ACTION_NEW_SPLIT:
+            dispatchWorkspaceAction(workspaceAction(for: action.action.new_split))
+            return true
+
+        case GHOSTTY_ACTION_GOTO_SPLIT:
+            guard let navigationAction = workspaceNavigationAction(for: action.action.goto_split) else {
+                return false
+            }
+            dispatchWorkspaceAction(navigationAction)
+            return true
+
+        case GHOSTTY_ACTION_RESIZE_SPLIT:
+            guard let direction = paneFocusDirection(for: action.action.resize_split.direction) else {
+                return false
+            }
+            dispatchWorkspaceAction(.resizeFocusedSplit(direction, amount: action.action.resize_split.amount))
+            return true
+
+        case GHOSTTY_ACTION_EQUALIZE_SPLITS:
+            dispatchWorkspaceAction(.equalizeSplits)
+            return true
+
+        case GHOSTTY_ACTION_TOGGLE_SPLIT_ZOOM:
+            dispatchWorkspaceAction(.togglePaneZoom)
+            return true
+
+        case GHOSTTY_ACTION_CLOSE_WINDOW:
+            dispatchWorkspaceAction(.closePane)
+            return true
+
+        case GHOSTTY_ACTION_SET_TITLE, GHOSTTY_ACTION_SET_TAB_TITLE:
+            if let title = action.action.set_title.title.map(String.init(cString:)), !title.isEmpty {
+                latestTitle = title
+                DispatchQueue.main.async { [weak self] in
+                    self?.onTitleChange?(title)
+                }
+            }
+            return true
+
+        case GHOSTTY_ACTION_PWD:
+            let workingDirectory = action.action.pwd.pwd.map(String.init(cString:))
+            DispatchQueue.main.async { [weak self] in
+                self?.onWorkingDirectoryChange?(workingDirectory)
+            }
+            return true
+
+        case GHOSTTY_ACTION_CELL_SIZE:
+            terminalView.syncSurfaceMetrics()
+            return true
+
+        case GHOSTTY_ACTION_RENDERER_HEALTH:
+            terminalView.rendererHealthy = action.action.renderer_health == GHOSTTY_RENDERER_HEALTH_HEALTHY
+            return true
+
+        case GHOSTTY_ACTION_COMMAND_FINISHED:
+            handleCommandFinished(action.action.command_finished)
+            return true
+
+        case GHOSTTY_ACTION_DESKTOP_NOTIFICATION:
+            // TODO: Task 15 — deliver desktop notifications
+            NSSound.beep()
+            return true
+
+        case GHOSTTY_ACTION_RING_BELL:
+            NSSound.beep()
+            return true
+
+        case GHOSTTY_ACTION_OPEN_URL:
+            guard let cString = action.action.open_url.url,
+                  let url = URL(string: String(cString: cString)) else {
+                return false
+            }
+            NSWorkspace.shared.open(url)
+            return true
+
+        case GHOSTTY_ACTION_MOUSE_SHAPE:
+            terminalView.setCursorShape(action.action.mouse_shape)
+            return true
+
+        case GHOSTTY_ACTION_MOUSE_VISIBILITY:
+            terminalView.setCursorVisibility(action.action.mouse_visibility == GHOSTTY_MOUSE_VISIBLE)
+            return true
+
+        case GHOSTTY_ACTION_MOUSE_OVER_LINK:
+            terminalView.hoveredLink = action.action.mouse_over_link.url.map(String.init(cString:))
+            return true
+
+        case GHOSTTY_ACTION_SCROLLBAR:
+            terminalView.scrollbarState = TreemuxGhosttyScrollbarState(action.action.scrollbar)
+            return true
+
+        case GHOSTTY_ACTION_READONLY:
+            terminalView.isReadOnly = action.action.readonly == GHOSTTY_READONLY_ON
+            return true
+
+        case GHOSTTY_ACTION_SECURE_INPUT:
+            // TODO: Task 15 — secure input manager
+            return true
+
+        case GHOSTTY_ACTION_COPY_TITLE_TO_CLIPBOARD:
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(latestTitle, forType: .string)
+            return true
+
+        case GHOSTTY_ACTION_START_SEARCH:
+            terminalView.searchNeedle = action.action.start_search.needle.map(String.init(cString:)) ?? ""
+            return true
+
+        case GHOSTTY_ACTION_END_SEARCH:
+            terminalView.searchNeedle = nil
+            return true
+
+        case GHOSTTY_ACTION_SEARCH_TOTAL:
+            terminalView.searchTotal = Int(action.action.search_total.total)
+            return true
+
+        case GHOSTTY_ACTION_SEARCH_SELECTED:
+            terminalView.searchSelected = Int(action.action.search_selected.selected)
+            return true
+
+        case GHOSTTY_ACTION_KEY_SEQUENCE:
+            terminalView.updateKeySequence(action.action.key_sequence)
+            return true
+
+        case GHOSTTY_ACTION_KEY_TABLE:
+            terminalView.updateKeyTable(action.action.key_table)
+            return true
+
+        case GHOSTTY_ACTION_COLOR_CHANGE:
+            terminalView.applyColorChange(action.action.color_change)
+            return true
+
+        default:
+            return false
+        }
+    }
+
+    func handleManagedProcessExit(exitCode: Int32?) {
+        DispatchQueue.main.async { [weak self] in
+            self?.onProcessExit?(exitCode)
+        }
+    }
+
+    func handleSurfaceClose(processAlive: Bool) {
+        guard treemuxGhosttyShouldReportProcessExitForSurfaceClose(processAlive: processAlive) else { return }
+        handleManagedProcessExit(exitCode: nil)
+    }
+
+    func handleCommandFinished(_ action: ghostty_action_command_finished_s) {
+        // Ghostty reports shell command completion separately from shell process
+        // exit. Treating this as a process exit causes normal commands such as
+        // `clear` to close panes or tabs unexpectedly.
+        _ = treemuxGhosttyShouldReportProcessExitForCommandFinished(action)
+    }
+
+    // MARK: - Clipboard
+
+    func completeClipboardRequest(_ text: String, state: UnsafeMutableRawPointer?, confirmed: Bool) {
+        guard let surface = currentSurface else { return }
+        text.withCString { pointer in
+            ghostty_surface_complete_clipboard_request(surface, pointer, state, confirmed)
+        }
+    }
+
+    func confirmClipboardRead(
+        text: String,
+        state: UnsafeMutableRawPointer?,
+        request: ghostty_clipboard_request_e
+    ) {
+        let alert = NSAlert()
+        switch request {
+        case GHOSTTY_CLIPBOARD_REQUEST_PASTE:
+            alert.messageText = "Paste clipboard into terminal?"
+            alert.informativeText = "Pasting into a shell can execute commands. Review the clipboard contents before continuing."
+        case GHOSTTY_CLIPBOARD_REQUEST_OSC_52_READ:
+            alert.messageText = "Allow terminal to read the clipboard?"
+            alert.informativeText = "A running program requested clipboard access through OSC 52."
+        default:
+            alert.messageText = "Allow clipboard access?"
+            alert.informativeText = "A running program requested clipboard access."
+        }
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Allow")
+        alert.addButton(withTitle: "Cancel")
+        alert.accessoryView = TreemuxClipboardPreviewView(text: text)
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            completeClipboardRequest(text, state: state, confirmed: true)
+        } else {
+            completeClipboardRequest("", state: state, confirmed: false)
+        }
+    }
+
+    func confirmClipboardWrite(text: String, location: ghostty_clipboard_e) {
+        confirmClipboardWrite(
+            items: [TreemuxGhosttyClipboardPayload(mimeType: "text/plain;charset=utf-8", text: text)],
+            location: location
+        )
+    }
+
+    func confirmClipboardWrite(items: [TreemuxGhosttyClipboardPayload], location: ghostty_clipboard_e) {
+        let alert = NSAlert()
+        alert.messageText = "Allow terminal to update the clipboard?"
+        alert.informativeText = location == GHOSTTY_CLIPBOARD_SELECTION
+            ? "A running program wants to write to the selection clipboard."
+            : "A running program wants to write to the system clipboard."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Allow")
+        alert.addButton(withTitle: "Cancel")
+        let previewText = items.first(where: \.isPlainText)?.text ?? items.first?.text ?? ""
+        alert.accessoryView = TreemuxClipboardPreviewView(text: previewText)
+
+        guard alert.runModal() == .alertFirstButtonReturn,
+              let pasteboard = treemuxGhosttyPasteboard(for: location) else {
+            return
+        }
+
+        treemuxGhosttyWriteClipboard(items, to: pasteboard)
+    }
+
+    // MARK: - Surface resize
+
+    fileprivate func handleSurfaceResize(cols: Int, rows: Int) {
+        DispatchQueue.main.async { [weak self] in
+            self?.onResize?(cols, rows)
+        }
+    }
+
+    // MARK: - Workspace action mapping
+
+    private func workspaceAction(for direction: ghostty_action_split_direction_e) -> TerminalWorkspaceAction {
+        switch direction {
+        case GHOSTTY_SPLIT_DIRECTION_LEFT:
+            return .createSplit(axis: .vertical, placement: .before)
+        case GHOSTTY_SPLIT_DIRECTION_UP:
+            return .createSplit(axis: .horizontal, placement: .before)
+        case GHOSTTY_SPLIT_DIRECTION_DOWN:
+            return .createSplit(axis: .horizontal, placement: .after)
+        default:
+            return .createSplit(axis: .vertical, placement: .after)
+        }
+    }
+
+    private func workspaceNavigationAction(for navigation: ghostty_action_goto_split_e) -> TerminalWorkspaceAction? {
+        switch navigation {
+        case GHOSTTY_GOTO_SPLIT_PREVIOUS:
+            return .focusPreviousPane
+        case GHOSTTY_GOTO_SPLIT_NEXT:
+            return .focusNextPane
+        case GHOSTTY_GOTO_SPLIT_UP:
+            return .focusPane(.up)
+        case GHOSTTY_GOTO_SPLIT_LEFT:
+            return .focusPane(.left)
+        case GHOSTTY_GOTO_SPLIT_DOWN:
+            return .focusPane(.down)
+        case GHOSTTY_GOTO_SPLIT_RIGHT:
+            return .focusPane(.right)
+        default:
+            return nil
+        }
+    }
+
+    private func paneFocusDirection(for direction: ghostty_action_resize_split_direction_e) -> PaneFocusDirection? {
+        switch direction {
+        case GHOSTTY_RESIZE_SPLIT_UP:
+            return .up
+        case GHOSTTY_RESIZE_SPLIT_DOWN:
+            return .down
+        case GHOSTTY_RESIZE_SPLIT_LEFT:
+            return .left
+        case GHOSTTY_RESIZE_SPLIT_RIGHT:
+            return .right
+        default:
+            return nil
+        }
+    }
+
+    private func dispatchWorkspaceAction(_ action: TerminalWorkspaceAction) {
+        // Defer layout/session mutations until after libghostty finishes processing the current callback.
+        DispatchQueue.main.async { [weak self] in
+            self?.onWorkspaceAction?(action)
+        }
+    }
+
+    fileprivate func notifyStatusChange() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.onStatusChange?(terminalView.statusSnapshot)
+        }
+    }
+}
+
+// MARK: - Process exit helpers
+
+func treemuxGhosttyShouldReportProcessExitForSurfaceClose(processAlive: Bool) -> Bool {
+    !processAlive
+}
+
+func treemuxGhosttyShouldReportProcessExitForCommandFinished(
+    _: ghostty_action_command_finished_s
+) -> Bool {
+    false
+}
+
+// MARK: - Scrollbar state
+
+private struct TreemuxGhosttyScrollbarState {
+    let total: UInt64
+    let offset: UInt64
+    let length: UInt64
+
+    init(_ source: ghostty_action_scrollbar_s) {
+        total = source.total
+        offset = source.offset
+        length = source.len
+    }
+}
+
+// MARK: - Surface view
+
+@MainActor
+private final class TreemuxGhosttySurfaceView: NSView {
+    weak var controller: TreemuxGhosttyController?
+
+    var surface: ghostty_surface_t?
+    var rendererHealthy = true {
+        didSet { controller?.notifyStatusChange() }
+    }
+    var hoveredLink: String?
+    var scrollbarState: TreemuxGhosttyScrollbarState? {
+        didSet { controller?.notifyStatusChange() }
+    }
+    var searchNeedle: String? {
+        didSet { controller?.notifyStatusChange() }
+    }
+    var searchTotal: Int? {
+        didSet { controller?.notifyStatusChange() }
+    }
+    var searchSelected: Int? {
+        didSet { controller?.notifyStatusChange() }
+    }
+    var isReadOnly = false {
+        didSet { controller?.notifyStatusChange() }
+    }
+
+    private var trackingAreaToken: NSTrackingArea?
+    private var surfaceUserdataToken: UnsafeMutableRawPointer?
+    private var pointerShape: ghostty_action_mouse_shape_e = GHOSTTY_MOUSE_SHAPE_TEXT
+    private var cursorVisible = true
+    private var cursorHiddenToken = false
+    private var mouseInside = false
+    private var markedText = NSMutableAttributedString()
+    private var keyTextAccumulator: [String]?
+    private var activeKeySequence: [String] = []
+    private var activeKeyTables: [String] = []
+    private var surfaceBackgroundColor: NSColor?
+    private var workspaceFocused = false
+    private var handledTextInputCommand = false
+    private var lastPerformKeyEvent: TimeInterval?
+    private var markedSelectionRange = NSRange(location: NSNotFound, length: 0)
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        frame = NSRect(x: 0, y: 0, width: 800, height: 600)
+        registerForDraggedTypes([.fileURL, .URL, .string])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func insertText(_ insertString: Any) {
+        insertText(insertString, replacementRange: NSRange(location: NSNotFound, length: 0))
+    }
+
+    func ensureSurface(runtime: TreemuxGhosttyRuntime, launchConfiguration: TerminalLaunchConfiguration) {
+        guard surface == nil else { return }
+        createSurface(runtime: runtime, launchConfiguration: launchConfiguration)
+    }
+
+    func recreateSurface(runtime: TreemuxGhosttyRuntime, launchConfiguration: TerminalLaunchConfiguration) {
+        destroySurface()
+        createSurface(runtime: runtime, launchConfiguration: launchConfiguration)
+    }
+
+    func setWorkspaceFocus(_ isFocused: Bool) {
+        workspaceFocused = isFocused
+        guard let surface else { return }
+        ghostty_surface_set_focus(surface, isFocused)
+    }
+
+    func destroySurface() {
+        guard let surface else { return }
+        self.surface = nil
+        if let surfaceUserdataToken {
+            TreemuxGhosttyControllerRegistry.shared.unregister(surfaceUserdataToken)
+            self.surfaceUserdataToken = nil
+        }
+        ghostty_surface_set_focus(surface, false)
+        ghostty_surface_free(surface)
+        layer = nil
+        mouseInside = false
+        rendererHealthy = true
+        scrollbarState = nil
+        searchNeedle = nil
+        searchTotal = nil
+        searchSelected = nil
+        isReadOnly = false
+        updateCursorVisibility()
+    }
+
+    var statusSnapshot: TerminalSurfaceStatusSnapshot {
+        TerminalSurfaceStatusSnapshot(
+            rendererHealthy: rendererHealthy,
+            searchQuery: searchNeedle,
+            searchTotal: searchTotal,
+            searchSelected: searchSelected,
+            isReadOnly: isReadOnly,
+            viewport: scrollbarState.map {
+                TerminalViewportStatus(total: $0.total, offset: $0.offset, length: $0.length)
+            }
+        )
+    }
+
+    // MARK: - Tracking areas
+
+    override func updateTrackingAreas() {
+        if let trackingAreaToken {
+            removeTrackingArea(trackingAreaToken)
+        }
+        let trackingAreaToken = NSTrackingArea(
+            rect: bounds,
+            options: [.activeAlways, .inVisibleRect, .mouseEnteredAndExited, .mouseMoved],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingAreaToken)
+        self.trackingAreaToken = trackingAreaToken
+        super.updateTrackingAreas()
+    }
+
+    // MARK: - First responder
+
+    override func becomeFirstResponder() -> Bool {
+        let result = super.becomeFirstResponder()
+        if result, let surface {
+            ghostty_surface_set_focus(surface, true)
+            controller?.onFocus?()
+        }
+        return result
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let result = super.resignFirstResponder()
+        if result, let surface {
+            ghostty_surface_set_focus(surface, false)
+        }
+        return result
+    }
+
+    // MARK: - View lifecycle
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        syncSurfaceMetrics()
+    }
+
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        syncSurfaceMetrics()
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        syncSurfaceMetrics()
+    }
+
+    // MARK: - Mouse events
+
+    override func mouseEntered(with event: NSEvent) {
+        mouseInside = true
+        updateCursorVisibility()
+        applyCursor()
+        sendMousePosition(event)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        mouseInside = false
+        hoveredLink = nil
+        updateCursorVisibility()
+    }
+
+    func syncSurfaceMetrics() {
+        guard let surface else { return }
+
+        let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+        ghostty_surface_set_content_scale(surface, scale, scale)
+
+        let backingBounds = convertToBacking(bounds)
+        ghostty_surface_set_size(
+            surface,
+            UInt32(max(backingBounds.width, 1)),
+            UInt32(max(backingBounds.height, 1))
+        )
+
+        if let screen = window?.screen {
+            ghostty_surface_set_display_id(surface, screen.displayID)
+        }
+
+        let size = ghostty_surface_size(surface)
+        controller?.handleSurfaceResize(cols: Int(size.columns), rows: Int(size.rows))
+    }
+
+    func setCursorShape(_ shape: ghostty_action_mouse_shape_e) {
+        pointerShape = shape
+        applyCursor()
+    }
+
+    func setCursorVisibility(_ visible: Bool) {
+        cursorVisible = visible
+        updateCursorVisibility()
+        applyCursor()
+    }
+
+    func updateKeySequence(_ sequence: ghostty_action_key_sequence_s) {
+        if sequence.active {
+            activeKeySequence = ["sequence"]
+        } else {
+            activeKeySequence.removeAll()
+        }
+    }
+
+    func updateKeyTable(_ keyTable: ghostty_action_key_table_s) {
+        switch keyTable.tag {
+        case GHOSTTY_KEY_TABLE_ACTIVATE:
+            if let name = keyTable.value.activate.name.map(String.init(cString:)),
+               !activeKeyTables.contains(name) {
+                activeKeyTables.append(name)
+            }
+        case GHOSTTY_KEY_TABLE_DEACTIVATE:
+            if let name = keyTable.value.activate.name.map(String.init(cString:)) {
+                activeKeyTables.removeAll(where: { $0 == name })
+            }
+        case GHOSTTY_KEY_TABLE_DEACTIVATE_ALL:
+            activeKeyTables.removeAll()
+        default:
+            break
+        }
+    }
+
+    func applyColorChange(_ change: ghostty_action_color_change_s) {
+        guard change.kind == GHOSTTY_ACTION_COLOR_KIND_BACKGROUND else { return }
+        wantsLayer = true
+        let color = NSColor(
+            red: CGFloat(change.r) / 255,
+            green: CGFloat(change.g) / 255,
+            blue: CGFloat(change.b) / 255,
+            alpha: 1
+        )
+        surfaceBackgroundColor = color
+        layer?.backgroundColor = color.cgColor
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+        guard let surface else { return }
+        let mods = ghosttyMods(event.modifierFlags)
+        ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_PRESS, GHOSTTY_MOUSE_LEFT, mods)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        guard let surface else { return }
+        let mods = ghosttyMods(event.modifierFlags)
+        ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_RELEASE, GHOSTTY_MOUSE_LEFT, mods)
+        ghostty_surface_mouse_pressure(surface, 0, 0)
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        guard let surface else { return }
+        _ = ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_PRESS, GHOSTTY_MOUSE_RIGHT, ghosttyMods(event.modifierFlags))
+    }
+
+    override func rightMouseUp(with event: NSEvent) {
+        guard let surface else { return }
+        _ = ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_RELEASE, GHOSTTY_MOUSE_RIGHT, ghosttyMods(event.modifierFlags))
+    }
+
+    override func otherMouseDown(with event: NSEvent) {
+        guard let surface else { return }
+        _ = ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_PRESS, mouseButton(for: event.buttonNumber), ghosttyMods(event.modifierFlags))
+    }
+
+    override func otherMouseUp(with event: NSEvent) {
+        guard let surface else { return }
+        _ = ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_RELEASE, mouseButton(for: event.buttonNumber), ghosttyMods(event.modifierFlags))
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        sendMousePosition(event)
+        applyCursor()
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        sendMousePosition(event)
+    }
+
+    override func rightMouseDragged(with event: NSEvent) {
+        sendMousePosition(event)
+    }
+
+    override func otherMouseDragged(with event: NSEvent) {
+        sendMousePosition(event)
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        guard let surface else { return }
+        var scrollX = event.scrollingDeltaX
+        var scrollY = event.scrollingDeltaY
+        if event.hasPreciseScrollingDeltas {
+            scrollX *= 2
+            scrollY *= 2
+        }
+        ghostty_surface_mouse_scroll(surface, scrollX, scrollY, scrollMods(for: event))
+    }
+
+    private func scrollMods(for event: NSEvent) -> ghostty_input_scroll_mods_t {
+        var value: Int32 = 0
+        if event.hasPreciseScrollingDeltas {
+            value |= 0b0000_0001
+        }
+        let momentum: Int32
+        switch event.momentumPhase {
+        case .began:      momentum = 1
+        case .stationary: momentum = 2
+        case .changed:    momentum = 3
+        case .ended:      momentum = 4
+        case .cancelled:  momentum = 5
+        case .mayBegin:   momentum = 6
+        default:          momentum = 0
+        }
+        value |= (momentum << 1)
+        return ghostty_input_scroll_mods_t(value)
+    }
+
+    // MARK: - Drag and drop
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        draggedText(from: sender.draggingPasteboard) == nil ? [] : .copy
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        draggingEntered(sender)
+    }
+
+    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        draggedText(from: sender.draggingPasteboard) != nil
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        guard let text = draggedText(from: sender.draggingPasteboard) else { return false }
+        window?.makeFirstResponder(self)
+        insertTerminalText(text)
+        return true
+    }
+
+    // MARK: - Key events
+
+    override func keyDown(with event: NSEvent) {
+        guard let surface else {
+            super.keyDown(with: event)
+            return
+        }
+
+        if shouldPreferRawKeyEvent(for: event) {
+            sendRawKeyEvent(event, on: surface)
+            return
+        }
+
+        let (translationEvent, translationMods) = translationState(for: event, on: surface)
+
+        let textModifiers = event.modifierFlags.intersection([.command, .control])
+        if textModifiers.isEmpty {
+            let hadMarkedTextBeforeInterpretation = hasMarkedText()
+            keyTextAccumulator = []
+            handledTextInputCommand = false
+            interpretKeyEvents([translationEvent])
+            let accumulated = keyTextAccumulator?.joined() ?? ""
+            keyTextAccumulator = nil
+
+            if !accumulated.isEmpty {
+                sendTranslatedKeyEvent(
+                    event,
+                    on: surface,
+                    translationEvent: translationEvent,
+                    translationMods: translationMods,
+                    text: accumulated
+                )
+                return
+            }
+
+            if handledTextInputCommand {
+                return
+            }
+
+            sendRawKeyEvent(
+                event,
+                on: surface,
+                translationEvent: translationEvent,
+                translationMods: translationMods,
+                composing: TreemuxGhosttyTextInputRouting.shouldMarkRawKeyEventAsComposing(
+                    hadMarkedTextBeforeInterpretation: hadMarkedTextBeforeInterpretation,
+                    hasMarkedTextAfterInterpretation: hasMarkedText()
+                )
+            )
+            return
+        }
+
+        sendRawKeyEvent(
+            event,
+            on: surface,
+            translationEvent: translationEvent,
+            translationMods: translationMods
+        )
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard event.type == .keyDown else { return false }
+        guard let firstResponder = window?.firstResponder as? NSView,
+              firstResponder === self || firstResponder.isDescendant(of: self) else {
+            return false
+        }
+        guard let surface else { return false }
+
+        if hasMarkedText(),
+           !event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command) {
+            return false
+        }
+
+        if let flags = bindingFlags(for: event, on: surface) {
+            if ghosttyShouldAttemptMenu(
+                flags: flags,
+                hasActiveKeySequence: !activeKeySequence.isEmpty,
+                hasActiveKeyTable: !activeKeyTables.isEmpty
+            ),
+               let menu = NSApp.mainMenu,
+               menu.performKeyEquivalent(with: event) {
+                return true
+            }
+
+            keyDown(with: event)
+            return true
+        }
+
+        let resolution = resolveGhosttyEquivalentKey(
+            charactersIgnoringModifiers: event.charactersIgnoringModifiers,
+            characters: event.characters,
+            modifierFlags: event.modifierFlags,
+            eventTimestamp: event.timestamp,
+            lastPerformKeyEvent: lastPerformKeyEvent
+        )
+        lastPerformKeyEvent = resolution.nextLastPerformKeyEvent
+
+        guard let equivalent = resolution.equivalent,
+              let finalEvent = NSEvent.keyEvent(
+                with: .keyDown,
+                location: event.locationInWindow,
+                modifierFlags: event.modifierFlags,
+                timestamp: event.timestamp,
+                windowNumber: event.windowNumber,
+                context: nil,
+                characters: equivalent,
+                charactersIgnoringModifiers: equivalent,
+                isARepeat: event.isARepeat,
+                keyCode: event.keyCode
+              ) else {
+            return false
+        }
+
+        keyDown(with: finalEvent)
+        return true
+    }
+
+    override func keyUp(with event: NSEvent) {
+        guard let surface else {
+            super.keyUp(with: event)
+            return
+        }
+        let keyEvent = event.ghosttyKeyEvent(GHOSTTY_ACTION_RELEASE)
+        _ = ghostty_surface_key(surface, keyEvent)
+    }
+
+    override func flagsChanged(with event: NSEvent) {
+        guard let surface else {
+            super.flagsChanged(with: event)
+            return
+        }
+
+        let mods = ghosttyMods(event.modifierFlags)
+        let action: ghostty_input_action_e = mods.rawValue == 0 ? GHOSTTY_ACTION_RELEASE : GHOSTTY_ACTION_PRESS
+        let keyEvent = event.ghosttyKeyEvent(action)
+        _ = ghostty_surface_key(surface, keyEvent)
+    }
+
+    override func doCommand(by selector: Selector) {
+        if let lastPerformKeyEvent,
+           let currentEvent = NSApp.currentEvent,
+           lastPerformKeyEvent == currentEvent.timestamp {
+            NSApp.sendEvent(currentEvent)
+            return
+        }
+
+        switch selector {
+        case #selector(moveToBeginningOfDocument(_:)):
+            handledTextInputCommand = true
+            _ = performBindingAction("scroll_to_top")
+        case #selector(moveToEndOfDocument(_:)):
+            handledTextInputCommand = true
+            _ = performBindingAction("scroll_to_bottom")
+        case #selector(deleteBackward(_:)):
+            guard hasMarkedText() else { break }
+            handledTextInputCommand = true
+            deleteBackwardInMarkedText()
+        default:
+            break
+        }
+    }
+
+    // MARK: - Edit menu actions
+
+    @IBAction func copy(_ sender: Any?) {
+        _ = performBindingAction("copy_to_clipboard")
+    }
+
+    @IBAction func paste(_ sender: Any?) {
+        _ = performBindingAction("paste_from_clipboard")
+    }
+
+    @IBAction override func selectAll(_ sender: Any?) {
+        _ = performBindingAction("select_all")
+    }
+
+    @IBAction func find(_ sender: Any?) {
+        _ = performBindingAction("start_search")
+    }
+
+    @IBAction func findNext(_ sender: Any?) {
+        _ = performBindingAction(treemuxGhosttySearchNavigationBindingAction(.next))
+    }
+
+    @IBAction func findPrevious(_ sender: Any?) {
+        _ = performBindingAction(treemuxGhosttySearchNavigationBindingAction(.previous))
+    }
+
+    @IBAction func findHide(_ sender: Any?) {
+        _ = performBindingAction("end_search")
+    }
+
+    @IBAction override func performTextFinderAction(_ sender: Any?) {
+        guard let action = treemuxTextFinderAction(for: sender) else {
+            super.performTextFinderAction(sender)
+            return
+        }
+
+        switch action {
+        case .showFindInterface:
+            find(sender)
+        case .nextMatch:
+            findNext(sender)
+        case .previousMatch:
+            findPrevious(sender)
+        case .hideFindInterface:
+            findHide(sender)
+        default:
+            super.performTextFinderAction(sender)
+        }
+    }
+
+    @IBAction func toggleReadonly(_ sender: Any?) {
+        _ = performBindingAction("toggle_readonly")
+    }
+
+    // MARK: - Services menu support
+
+    override func validRequestor(
+        forSendType sendType: NSPasteboard.PasteboardType?,
+        returnType: NSPasteboard.PasteboardType?
+    ) -> Any? {
+        let supported: [NSPasteboard.PasteboardType] = [.string, NSPasteboard.PasteboardType("public.utf8-plain-text")]
+
+        if (returnType == nil || supported.contains(returnType!)) &&
+            (sendType == nil || supported.contains(sendType!)) {
+            if let sendType, supported.contains(sendType),
+               let surface,
+               !ghostty_surface_has_selection(surface) {
+                return super.validRequestor(forSendType: sendType, returnType: returnType)
+            }
+            return self
+        }
+
+        return super.validRequestor(forSendType: sendType, returnType: returnType)
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        switch menuItem.action {
+        case #selector(findHide(_:)):
+            return searchNeedle != nil
+        case #selector(toggleReadonly(_:)):
+            menuItem.state = isReadOnly ? .on : .off
+            return true
+        default:
+            return true
+        }
+    }
+
+    func writeSelection(to pboard: NSPasteboard, types: [NSPasteboard.PasteboardType]) -> Bool {
+        guard let selection = selectionText() else { return false }
+        pboard.clearContents()
+        pboard.declareTypes([.string], owner: nil)
+        pboard.setString(selection, forType: .string)
+        return true
+    }
+
+    func readSelection(from pboard: NSPasteboard) -> Bool {
+        guard let string = pboard.treemuxGhosttyBestString else { return false }
+        sendText(string)
+        return true
+    }
+
+    // MARK: - Surface lifecycle
+
+    private func createSurface(runtime: TreemuxGhosttyRuntime, launchConfiguration: TerminalLaunchConfiguration) {
+        guard let controller else { return }
+
+        let surfaceUserdataToken = TreemuxGhosttyControllerRegistry.shared.register(controller)
+        let surface = withSurfaceConfig(
+            userdata: surfaceUserdataToken,
+            launchConfiguration: launchConfiguration
+        ) { configuration in
+            ghostty_surface_new(runtime.app, &configuration)
+        }
+
+        guard let surface else {
+            TreemuxGhosttyControllerRegistry.shared.unregister(surfaceUserdataToken)
+            return
+        }
+        self.surface = surface
+        self.surfaceUserdataToken = surfaceUserdataToken
+        if let surfaceBackgroundColor {
+            wantsLayer = true
+            layer?.backgroundColor = surfaceBackgroundColor.cgColor
+        }
+        ghostty_surface_set_focus(surface, workspaceFocused)
+        syncSurfaceMetrics()
+    }
+
+    private func withSurfaceConfig<T>(
+        userdata: UnsafeMutableRawPointer,
+        launchConfiguration: TerminalLaunchConfiguration,
+        body: (inout ghostty_surface_config_s) -> T
+    ) -> T {
+        var configuration = ghostty_surface_config_new()
+        configuration.platform_tag = GHOSTTY_PLATFORM_MACOS
+        configuration.platform = ghostty_platform_u(
+            macos: ghostty_platform_macos_s(nsview: Unmanaged.passUnretained(self).toOpaque())
+        )
+        configuration.userdata = userdata
+        configuration.scale_factor = Double(window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2)
+        configuration.context = GHOSTTY_SURFACE_CONTEXT_SPLIT
+        configuration.wait_after_command = false
+
+        let workingDirectory = strdup(launchConfiguration.workingDirectory)
+        let command = strdup(launchConfiguration.ghosttyCommand)
+        defer {
+            free(workingDirectory)
+            free(command)
+        }
+
+        configuration.working_directory = workingDirectory.map { UnsafePointer($0) }
+        configuration.command = command.map { UnsafePointer($0) }
+
+        let envStorage = launchConfiguration.environment
+            .sorted { $0.key < $1.key }
+            .map { (strdup($0.key), strdup($0.value)) }
+        defer {
+            for (key, value) in envStorage {
+                free(key)
+                free(value)
+            }
+        }
+
+        if envStorage.isEmpty {
+            configuration.env_vars = nil
+            configuration.env_var_count = 0
+            return body(&configuration)
+        }
+
+        var envVars = envStorage.map {
+            ghostty_env_var_s(
+                key: $0.0.map { UnsafePointer($0) },
+                value: $0.1.map { UnsafePointer($0) }
+            )
+        }
+        return envVars.withUnsafeMutableBufferPointer { buffer in
+            configuration.env_vars = buffer.baseAddress
+            configuration.env_var_count = buffer.count
+            return body(&configuration)
+        }
+    }
+
+    // MARK: - Internal helpers
+
+    private func sendMousePosition(_ event: NSEvent) {
+        guard let surface else { return }
+        let position = convert(event.locationInWindow, from: nil)
+        ghostty_surface_mouse_pos(surface, position.x, frame.height - position.y, ghosttyMods(event.modifierFlags))
+    }
+
+    private func sendRawKeyEvent(
+        _ event: NSEvent,
+        on surface: ghostty_surface_t,
+        translationEvent: NSEvent? = nil,
+        translationMods: NSEvent.ModifierFlags? = nil,
+        composing: Bool = false
+    ) {
+        let action = event.isARepeat ? GHOSTTY_ACTION_REPEAT : GHOSTTY_ACTION_PRESS
+        let resolvedEvent: NSEvent
+        let resolvedMods: NSEvent.ModifierFlags
+        if let translationEvent, let translationMods {
+            resolvedEvent = translationEvent
+            resolvedMods = translationMods
+        } else {
+            resolvedEvent = event
+            resolvedMods = event.modifierFlags
+        }
+
+        var keyEvent = resolvedEvent.ghosttyKeyEvent(
+            action,
+            translationMods: resolvedMods,
+            composing: composing
+        )
+        if let text = textForGhosttyKeyEvent(resolvedEvent), shouldSendGhosttyText(text) {
+            text.withCString { textPointer in
+                keyEvent.text = textPointer
+                _ = ghostty_surface_key(surface, keyEvent)
+            }
+        } else {
+            keyEvent.consumed_mods = GHOSTTY_MODS_NONE
+            _ = ghostty_surface_key(surface, keyEvent)
+        }
+    }
+
+    private func sendTranslatedKeyEvent(
+        _ event: NSEvent,
+        on surface: ghostty_surface_t,
+        translationEvent: NSEvent,
+        translationMods: NSEvent.ModifierFlags,
+        text: String,
+        composing: Bool = false
+    ) {
+        let action = event.isARepeat ? GHOSTTY_ACTION_REPEAT : GHOSTTY_ACTION_PRESS
+        var keyEvent = translationEvent.ghosttyKeyEvent(
+            action,
+            translationMods: translationMods,
+            composing: composing
+        )
+        if shouldSendGhosttyText(text) {
+            text.withCString { textPointer in
+                keyEvent.text = textPointer
+                _ = ghostty_surface_key(surface, keyEvent)
+            }
+        } else {
+            keyEvent.consumed_mods = GHOSTTY_MODS_NONE
+            _ = ghostty_surface_key(surface, keyEvent)
+        }
+    }
+
+    func performBindingAction(_ action: String) -> Bool {
+        guard let surface else { return false }
+        return ghostty_surface_binding_action(surface, action, UInt(action.lengthOfBytes(using: .utf8)))
+    }
+
+    private func bindingFlags(for event: NSEvent, on surface: ghostty_surface_t) -> ghostty_binding_flags_e? {
+        var keyEvent = event.ghosttyKeyEvent(GHOSTTY_ACTION_PRESS, translationMods: event.modifierFlags)
+        let text = textForGhosttyKeyEvent(event).flatMap { shouldSendGhosttyText($0) ? $0 : nil } ?? ""
+        var flags = ghostty_binding_flags_e(0)
+        let isBinding = text.withCString { pointer in
+            keyEvent.text = pointer
+            return ghostty_surface_key_is_binding(surface, keyEvent, &flags)
+        }
+        return isBinding ? flags : nil
+    }
+
+    private func sendText(_ string: String) {
+        guard let surface else { return }
+        let utf8Count = string.utf8.count
+        guard utf8Count > 0 else { return }
+        string.withCString { pointer in
+            ghostty_surface_text(surface, pointer, UInt(utf8Count))
+        }
+    }
+
+    private func shouldPreferRawKeyEvent(for event: NSEvent) -> Bool {
+        TreemuxGhosttyTextInputRouting.shouldPreferRawKeyEvent(
+            keyCode: event.keyCode,
+            modifierFlags: event.modifierFlags
+        )
+    }
+
+    private func translationState(
+        for event: NSEvent,
+        on surface: ghostty_surface_t
+    ) -> (NSEvent, NSEvent.ModifierFlags) {
+        let translatedMods = appKitMods(
+            ghostty_surface_key_translation_mods(surface, ghosttyMods(event.modifierFlags)),
+            fallback: event.modifierFlags
+        )
+
+        guard translatedMods != event.modifierFlags,
+              let translatedEvent = NSEvent.keyEvent(
+                with: event.type,
+                location: event.locationInWindow,
+                modifierFlags: translatedMods,
+                timestamp: event.timestamp,
+                windowNumber: event.windowNumber,
+                context: nil,
+                characters: event.characters(byApplyingModifiers: translatedMods) ?? "",
+                charactersIgnoringModifiers: event.charactersIgnoringModifiers ?? "",
+                isARepeat: event.isARepeat,
+                keyCode: event.keyCode
+              ) else {
+            return (event, translatedMods)
+        }
+
+        return (translatedEvent, translatedMods)
+    }
+
+    private func deleteBackwardInMarkedText() {
+        guard markedText.length > 0 else { return }
+        var state = TreemuxGhosttyMarkedTextState(text: markedText.string, selectedRange: markedSelectionRange)
+        state.deleteBackward()
+        markedText.mutableString.setString(state.text)
+        markedSelectionRange = state.selectedRange
+        syncPreedit()
+    }
+
+    func insertTerminalText(_ string: String) {
+        sendText(string)
+    }
+
+    private func syncPreedit() {
+        guard let surface else { return }
+        let string = markedText.string
+        if string.isEmpty {
+            "".withCString { pointer in
+                ghostty_surface_preedit(surface, pointer, 0)
+            }
+            return
+        }
+
+        string.withCString { pointer in
+            ghostty_surface_preedit(surface, pointer, UInt(string.utf8.count))
+        }
+    }
+
+    private func selectionText() -> String? {
+        guard let surface else { return nil }
+        var text = ghostty_text_s()
+        guard ghostty_surface_read_selection(surface, &text) else { return nil }
+        defer { ghostty_surface_free_text(surface, &text) }
+        return String(cString: text.text)
+    }
+
+    private func applyCursor() {
+        guard mouseInside, cursorVisible else { return }
+        cursor(for: pointerShape).set()
+    }
+
+    private func updateCursorVisibility() {
+        let shouldHide = mouseInside && !cursorVisible
+        guard shouldHide != cursorHiddenToken else { return }
+        cursorHiddenToken = shouldHide
+        if shouldHide {
+            NSCursor.hide()
+        } else {
+            NSCursor.unhide()
+        }
+    }
+
+    private func cursor(for shape: ghostty_action_mouse_shape_e) -> NSCursor {
+        switch shape {
+        case GHOSTTY_MOUSE_SHAPE_DEFAULT:
+            return .arrow
+        case GHOSTTY_MOUSE_SHAPE_TEXT, GHOSTTY_MOUSE_SHAPE_VERTICAL_TEXT:
+            return .iBeam
+        case GHOSTTY_MOUSE_SHAPE_GRAB:
+            return .openHand
+        case GHOSTTY_MOUSE_SHAPE_GRABBING:
+            return .closedHand
+        case GHOSTTY_MOUSE_SHAPE_POINTER:
+            return .pointingHand
+        case GHOSTTY_MOUSE_SHAPE_CONTEXT_MENU:
+            return .contextualMenu
+        case GHOSTTY_MOUSE_SHAPE_CROSSHAIR:
+            return .crosshair
+        case GHOSTTY_MOUSE_SHAPE_NOT_ALLOWED:
+            return .operationNotAllowed
+        case GHOSTTY_MOUSE_SHAPE_E_RESIZE,
+             GHOSTTY_MOUSE_SHAPE_W_RESIZE,
+             GHOSTTY_MOUSE_SHAPE_EW_RESIZE:
+            return .resizeLeftRight
+        case GHOSTTY_MOUSE_SHAPE_N_RESIZE,
+             GHOSTTY_MOUSE_SHAPE_S_RESIZE,
+             GHOSTTY_MOUSE_SHAPE_NS_RESIZE:
+            return .resizeUpDown
+        default:
+            return .arrow
+        }
+    }
+
+    private func mouseButton(for buttonNumber: Int) -> ghostty_input_mouse_button_e {
+        switch buttonNumber {
+        case 2:
+            return GHOSTTY_MOUSE_MIDDLE
+        case 3:
+            return GHOSTTY_MOUSE_FOUR
+        case 4:
+            return GHOSTTY_MOUSE_FIVE
+        default:
+            return GHOSTTY_MOUSE_UNKNOWN
+        }
+    }
+
+    private func draggedText(from pasteboard: NSPasteboard) -> String? {
+        let fileURLs = pasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [URL] ?? []
+        return treemuxTerminalDropText(fileURLs: fileURLs, plainText: pasteboard.string(forType: .string))
+    }
+}
+
+// MARK: - NSServicesMenuRequestor conformance
+
+extension TreemuxGhosttySurfaceView: @preconcurrency NSServicesMenuRequestor {}
+
+// MARK: - NSMenuItemValidation conformance
+
+extension TreemuxGhosttySurfaceView: NSMenuItemValidation {}
+
+// MARK: - NSTextInputClient conformance
+
+extension TreemuxGhosttySurfaceView: @preconcurrency NSTextInputClient {
+    func hasMarkedText() -> Bool {
+        markedText.length > 0
+    }
+
+    func markedRange() -> NSRange {
+        guard markedText.length > 0 else { return NSRange(location: NSNotFound, length: 0) }
+        return NSRange(location: 0, length: markedText.length)
+    }
+
+    func selectedRange() -> NSRange {
+        guard markedText.length > 0 else {
+            return NSRange(location: NSNotFound, length: 0)
+        }
+        return TreemuxGhosttyMarkedTextState.clamp(markedSelectionRange, textLength: markedText.length)
+    }
+
+    func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
+        let replacementText: String
+        switch string {
+        case let value as NSAttributedString:
+            replacementText = value.string
+        case let value as String:
+            replacementText = value
+        default:
+            return
+        }
+
+        var state = TreemuxGhosttyMarkedTextState(text: markedText.string, selectedRange: markedSelectionRange)
+        state.setMarkedText(
+            replacementText,
+            selectedRange: selectedRange,
+            replacementRange: replacementRange
+        )
+        markedText = NSMutableAttributedString(string: state.text)
+        markedSelectionRange = state.selectedRange
+
+        if keyTextAccumulator == nil {
+            syncPreedit()
+        }
+    }
+
+    func unmarkText() {
+        guard markedText.length > 0 else { return }
+        markedText.mutableString.setString("")
+        markedSelectionRange = NSRange(location: NSNotFound, length: 0)
+        syncPreedit()
+    }
+
+    func validAttributesForMarkedText() -> [NSAttributedString.Key] {
+        []
+    }
+
+    func attributedSubstring(forProposedRange range: NSRange, actualRange: NSRangePointer?) -> NSAttributedString? {
+        guard range.length > 0, let selection = selectionText() else { return nil }
+        actualRange?.pointee = NSRange(location: 0, length: selection.count)
+        return NSAttributedString(string: selection)
+    }
+
+    func characterIndex(for point: NSPoint) -> Int {
+        0
+    }
+
+    func firstRect(forCharacterRange range: NSRange, actualRange: NSRangePointer?) -> NSRect {
+        guard let surface else {
+            return NSRect(origin: frame.origin, size: .zero)
+        }
+
+        var x: Double = 0
+        var y: Double = 0
+        var width: Double = Double(ghostty_surface_size(surface).cell_width_px)
+        var height: Double = Double(ghostty_surface_size(surface).cell_height_px)
+        ghostty_surface_ime_point(surface, &x, &y, &width, &height)
+
+        if range.length == 0 {
+            width = 0
+        }
+
+        let viewRect = NSRect(
+            x: x,
+            y: frame.size.height - y,
+            width: width,
+            height: max(height, Double(ghostty_surface_size(surface).cell_height_px))
+        )
+        let windowRect = convert(viewRect, to: nil)
+        guard let window else { return windowRect }
+        return window.convertToScreen(windowRect)
+    }
+
+    func insertText(_ string: Any, replacementRange: NSRange) {
+        var characters = ""
+        switch string {
+        case let value as NSAttributedString:
+            characters = value.string
+        case let value as String:
+            characters = value
+        default:
+            return
+        }
+
+        unmarkText()
+
+        if var accumulator = keyTextAccumulator {
+            accumulator.append(characters)
+            keyTextAccumulator = accumulator
+            return
+        }
+
+        sendText(characters)
+    }
+}
+
+// MARK: - Clipboard preview view
+
+private final class TreemuxClipboardPreviewView: NSScrollView {
+    init(text: String) {
+        super.init(frame: NSRect(x: 0, y: 0, width: 380, height: 160))
+
+        let textView = NSTextView(frame: bounds)
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.drawsBackground = false
+        textView.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        textView.string = text
+
+        borderType = .bezelBorder
+        hasVerticalScroller = true
+        documentView = textView
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
+// MARK: - NSScreen display ID extension
+
+private extension NSScreen {
+    var displayID: UInt32 {
+        (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber).map { UInt32(truncating: $0) } ?? 0
+    }
+}

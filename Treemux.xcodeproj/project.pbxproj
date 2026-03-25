@@ -9,24 +9,35 @@
 /* Begin PBXBuildFile section */
 		0DA3A254039F1EEA04FB94DB /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8EB47950FCB5E9637572424 /* AppSettings.swift */; };
 		14559BCDE89A0A2CA5FD8022 /* ShellCommandRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 443B856819FD330809E0722A /* ShellCommandRunnerTests.swift */; };
+		194928F8929DB9A37A2B9B96 /* TreemuxGhosttyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B99E6A1366954D8A221B273 /* TreemuxGhosttyController.swift */; };
 		28E15CC897C8BE956B0DCF02 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73E706B2F099E80FFCC6F47D /* main.swift */; };
 		2C0D2D1CDB0C7DDD9C2487E9 /* SessionBackendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE6931E2152155F3F99223FC /* SessionBackendTests.swift */; };
 		309F402A9FFCA18BA24D7BD4 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656D4A17827E564EDD5A8918 /* PersistenceTests.swift */; };
 		3C1F3562DE4FA89E8C580B30 /* TreemuxGhosttyBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16FE9D700089232316516F73 /* TreemuxGhosttyBootstrap.swift */; };
 		423A99DD3918742FC88745B3 /* TreemuxGhosttyResourcePaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01B85899C7236D215CECDD /* TreemuxGhosttyResourcePaths.swift */; };
 		4F93E2B9A2A6EC003FCAB4BE /* SessionBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */; };
+		527270F31405E3CCEFE8CF79 /* TreemuxGhosttyShellIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59B5026A96BF865D41D0890 /* TreemuxGhosttyShellIntegration.swift */; };
+		598A1C4D4191754CBAE49BF4 /* TerminalSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24A323012CE09C4999DF9E08 /* TerminalSurface.swift */; };
 		5BE675E29A6A2B29C647BB5E /* PaneLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4742F4CA09E0C12BCF63C7CD /* PaneLayoutTests.swift */; };
+		634F5C15FC031D133DEA6DC1 /* PathFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10AD81F3E792C490B4656A1 /* PathFormatting.swift */; };
 		6AC7580CF74D588D2D19BF03 /* TreemuxGhosttyLogFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92B0D1DFEE9B34109844D751 /* TreemuxGhosttyLogFilter.swift */; };
 		6CF8F5C7195367C6516F863C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEB4B388C531158F6E5916EB /* AppDelegate.swift */; };
+		7405B7C02F6B819CB0A772E5 /* String+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42FCFF0878EDD3C9AB6D566C /* String+Helpers.swift */; };
 		78942DBCD13BA394E9AC92CD /* PaneLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */; };
 		7BAFFB86D4EE2F43992E4808 /* AppSettingsPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48405541E0E22A909B92BA03 /* AppSettingsPersistence.swift */; };
 		89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */; };
 		8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */; };
 		9C689BD0883C82F0D099878B /* GitRepositoryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C328A5FB842A00D096906EE3 /* GitRepositoryServiceTests.swift */; };
+		9DB5A3B694A7A2D4D0248724 /* TreemuxGhosttyRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8C126FDBE3B3FC26672AF2F /* TreemuxGhosttyRuntime.swift */; };
+		A0AD5591657B555F176AEFD8 /* ShellSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2290B3E587177F8B10B05395 /* ShellSession.swift */; };
+		A3A9D3AC7CCAEB6DA3B2D92D /* TreemuxGhosttyControllerRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F2AF4BADCEBABA624578341 /* TreemuxGhosttyControllerRegistry.swift */; };
+		A7746DB757BF4458229659E0 /* SessionBackendLaunch.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E24B640A3303D33931EA85 /* SessionBackendLaunch.swift */; };
 		A9E5418401517BC5CBD9EC92 /* WorkspaceStatePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A99410553280ED6CCCDFEA85 /* WorkspaceStatePersistence.swift */; };
 		CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3477DE6F674F94B9457073F4 /* TreemuxTests.swift */; };
+		CD969404DE603FC36B6116DA /* TreemuxGhosttyClipboardSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E993B2E72B0AA5FA2CD8F136 /* TreemuxGhosttyClipboardSupport.swift */; };
 		D5D2DCD282AEEBB8C4A6F532 /* ShellCommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */; };
 		E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8629D2D5813F897F85840289 /* SSHTarget.swift */; };
+		EDB4207DA8056D870E9EA844 /* TreemuxGhosttyInputSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755FE81839DE8C99362EBC0E /* TreemuxGhosttyInputSupport.swift */; };
 		F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */; };
 		FBA39534A25C607A48314803 /* GhosttyKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = AC606574E1DF3045291D300B /* GhosttyKit.xcframework */; };
 /* End PBXBuildFile section */
@@ -45,7 +56,12 @@
 		146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceModelsTests.swift; sourceTree = "<group>"; };
 		16FE9D700089232316516F73 /* TreemuxGhosttyBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyBootstrap.swift; sourceTree = "<group>"; };
 		1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneLayout.swift; sourceTree = "<group>"; };
+		2290B3E587177F8B10B05395 /* ShellSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellSession.swift; sourceTree = "<group>"; };
+		24A323012CE09C4999DF9E08 /* TerminalSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
 		3477DE6F674F94B9457073F4 /* TreemuxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxTests.swift; sourceTree = "<group>"; };
+		3B99E6A1366954D8A221B273 /* TreemuxGhosttyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyController.swift; sourceTree = "<group>"; };
+		3F2AF4BADCEBABA624578341 /* TreemuxGhosttyControllerRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyControllerRegistry.swift; sourceTree = "<group>"; };
+		42FCFF0878EDD3C9AB6D566C /* String+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Helpers.swift"; sourceTree = "<group>"; };
 		443B856819FD330809E0722A /* ShellCommandRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellCommandRunnerTests.swift; sourceTree = "<group>"; };
 		4650806EA154B4E2C20BAD0A /* TreemuxTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TreemuxTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4742F4CA09E0C12BCF63C7CD /* PaneLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneLayoutTests.swift; sourceTree = "<group>"; };
@@ -53,10 +69,12 @@
 		656D4A17827E564EDD5A8918 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 		6DD2CC0A8B9D60B36E1F8105 /* Treemux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Treemux.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		73E706B2F099E80FFCC6F47D /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		755FE81839DE8C99362EBC0E /* TreemuxGhosttyInputSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyInputSupport.swift; sourceTree = "<group>"; };
 		8629D2D5813F897F85840289 /* SSHTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHTarget.swift; sourceTree = "<group>"; };
 		927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitRepositoryService.swift; sourceTree = "<group>"; };
 		92B0D1DFEE9B34109844D751 /* TreemuxGhosttyLogFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyLogFilter.swift; sourceTree = "<group>"; };
 		952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellCommandRunner.swift; sourceTree = "<group>"; };
+		A8C126FDBE3B3FC26672AF2F /* TreemuxGhosttyRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyRuntime.swift; sourceTree = "<group>"; };
 		A99410553280ED6CCCDFEA85 /* WorkspaceStatePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStatePersistence.swift; sourceTree = "<group>"; };
 		AC606574E1DF3045291D300B /* GhosttyKit.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = GhosttyKit.xcframework; path = Treemux/Vendor/GhosttyKit.xcframework; sourceTree = "<group>"; };
 		BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceModels.swift; sourceTree = "<group>"; };
@@ -64,8 +82,12 @@
 		BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackend.swift; sourceTree = "<group>"; };
 		C328A5FB842A00D096906EE3 /* GitRepositoryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitRepositoryServiceTests.swift; sourceTree = "<group>"; };
 		CEB4B388C531158F6E5916EB /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		D10AD81F3E792C490B4656A1 /* PathFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathFormatting.swift; sourceTree = "<group>"; };
+		D1E24B640A3303D33931EA85 /* SessionBackendLaunch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackendLaunch.swift; sourceTree = "<group>"; };
 		D8EB47950FCB5E9637572424 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		DE6931E2152155F3F99223FC /* SessionBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackendTests.swift; sourceTree = "<group>"; };
+		E993B2E72B0AA5FA2CD8F136 /* TreemuxGhosttyClipboardSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyClipboardSupport.swift; sourceTree = "<group>"; };
+		F59B5026A96BF865D41D0890 /* TreemuxGhosttyShellIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyShellIntegration.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -127,6 +149,8 @@
 		27FB2B0F7018B520F8B7A6E3 /* Support */ = {
 			isa = PBXGroup;
 			children = (
+				D10AD81F3E792C490B4656A1 /* PathFormatting.swift */,
+				42FCFF0878EDD3C9AB6D566C /* String+Helpers.swift */,
 			);
 			path = Support;
 			sourceTree = "<group>";
@@ -180,6 +204,9 @@
 		4C0772C0D286E3EC583553B3 /* Terminal */ = {
 			isa = PBXGroup;
 			children = (
+				D1E24B640A3303D33931EA85 /* SessionBackendLaunch.swift */,
+				2290B3E587177F8B10B05395 /* ShellSession.swift */,
+				24A323012CE09C4999DF9E08 /* TerminalSurface.swift */,
 				EBB92766421BAEA842EC833C /* Ghostty */,
 			);
 			path = Terminal;
@@ -275,8 +302,14 @@
 			isa = PBXGroup;
 			children = (
 				16FE9D700089232316516F73 /* TreemuxGhosttyBootstrap.swift */,
+				E993B2E72B0AA5FA2CD8F136 /* TreemuxGhosttyClipboardSupport.swift */,
+				3B99E6A1366954D8A221B273 /* TreemuxGhosttyController.swift */,
+				3F2AF4BADCEBABA624578341 /* TreemuxGhosttyControllerRegistry.swift */,
+				755FE81839DE8C99362EBC0E /* TreemuxGhosttyInputSupport.swift */,
 				92B0D1DFEE9B34109844D751 /* TreemuxGhosttyLogFilter.swift */,
 				BB01B85899C7236D215CECDD /* TreemuxGhosttyResourcePaths.swift */,
+				A8C126FDBE3B3FC26672AF2F /* TreemuxGhosttyRuntime.swift */,
+				F59B5026A96BF865D41D0890 /* TreemuxGhosttyShellIntegration.swift */,
 			);
 			path = Ghostty;
 			sourceTree = "<group>";
@@ -396,12 +429,23 @@
 				7BAFFB86D4EE2F43992E4808 /* AppSettingsPersistence.swift in Sources */,
 				89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */,
 				78942DBCD13BA394E9AC92CD /* PaneLayout.swift in Sources */,
+				634F5C15FC031D133DEA6DC1 /* PathFormatting.swift in Sources */,
 				E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */,
 				4F93E2B9A2A6EC003FCAB4BE /* SessionBackend.swift in Sources */,
+				A7746DB757BF4458229659E0 /* SessionBackendLaunch.swift in Sources */,
 				D5D2DCD282AEEBB8C4A6F532 /* ShellCommandRunner.swift in Sources */,
+				A0AD5591657B555F176AEFD8 /* ShellSession.swift in Sources */,
+				7405B7C02F6B819CB0A772E5 /* String+Helpers.swift in Sources */,
+				598A1C4D4191754CBAE49BF4 /* TerminalSurface.swift in Sources */,
 				3C1F3562DE4FA89E8C580B30 /* TreemuxGhosttyBootstrap.swift in Sources */,
+				CD969404DE603FC36B6116DA /* TreemuxGhosttyClipboardSupport.swift in Sources */,
+				194928F8929DB9A37A2B9B96 /* TreemuxGhosttyController.swift in Sources */,
+				A3A9D3AC7CCAEB6DA3B2D92D /* TreemuxGhosttyControllerRegistry.swift in Sources */,
+				EDB4207DA8056D870E9EA844 /* TreemuxGhosttyInputSupport.swift in Sources */,
 				6AC7580CF74D588D2D19BF03 /* TreemuxGhosttyLogFilter.swift in Sources */,
 				423A99DD3918742FC88745B3 /* TreemuxGhosttyResourcePaths.swift in Sources */,
+				9DB5A3B694A7A2D4D0248724 /* TreemuxGhosttyRuntime.swift in Sources */,
+				527270F31405E3CCEFE8CF79 /* TreemuxGhosttyShellIntegration.swift in Sources */,
 				F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */,
 				A9E5418401517BC5CBD9EC92 /* WorkspaceStatePersistence.swift in Sources */,
 				28E15CC897C8BE956B0DCF02 /* main.swift in Sources */,
