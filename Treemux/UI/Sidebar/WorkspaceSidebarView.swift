@@ -19,6 +19,9 @@ struct WorkspaceSidebarView: View {
     // Delete confirmation state
     @State private var deletingWorkspaceID: UUID?
 
+    // Open project sheet state
+    @State private var showOpenProjectSheet = false
+
     var body: some View {
         VStack(spacing: 0) {
             // Sidebar content
@@ -54,14 +57,45 @@ struct WorkspaceSidebarView: View {
                         .textCase(nil)
                 }
 
-                // Remote server sections would go here (Task 18)
+                // Remote server sections
+                ForEach(store.remoteWorkspaceGroups, id: \.key) { group in
+                    Section {
+                        ForEach(group.targets) { workspace in
+                            WorkspaceRowGroup(workspace: workspace)
+                                .contextMenu {
+                                    Button {
+                                        renameText = workspace.name
+                                        renamingWorkspaceID = workspace.id
+                                    } label: {
+                                        Label(String(localized: "Rename…"), systemImage: "pencil")
+                                    }
+                                    Divider()
+                                    Button(role: .destructive) {
+                                        deletingWorkspaceID = workspace.id
+                                    } label: {
+                                        Label(String(localized: "Delete"), systemImage: "trash")
+                                    }
+                                }
+                        }
+                    } header: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "circle.fill")
+                                .font(.system(size: 6))
+                                .foregroundStyle(.green)
+                            Text(remoteGroupLabel(group.targets.first))
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .textCase(nil)
+                        }
+                    }
+                }
             }
             .listStyle(.sidebar)
 
             // Bottom bar with "Open Project" button
             Divider()
             Button {
-                store.addWorkspaceFromOpenPanel()
+                showOpenProjectSheet = true
             } label: {
                 HStack {
                     Image(systemName: "plus.circle")
@@ -107,6 +141,18 @@ struct WorkspaceSidebarView: View {
         } message: {
             Text(String(localized: "This will remove the project from the sidebar. Files on disk will not be affected."))
         }
+        .sheet(isPresented: $showOpenProjectSheet) {
+            OpenProjectSheet()
+        }
+    }
+
+    /// Formats the section header label for a remote workspace group.
+    private func remoteGroupLabel(_ workspace: WorkspaceModel?) -> String {
+        guard let target = workspace?.sshTarget else { return "Remote" }
+        if let user = target.user {
+            return "\(target.displayName) (\(user)@)"
+        }
+        return target.displayName
     }
 }
 

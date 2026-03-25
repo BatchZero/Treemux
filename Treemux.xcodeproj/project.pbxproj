@@ -61,6 +61,7 @@
 		AA000001AABBCCDD00000007 /* SSHConfigParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000007 /* SSHConfigParser.swift */; };
 		AA000001AABBCCDD00000008 /* SSHConfigService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000008 /* SSHConfigService.swift */; };
 		AA000001AABBCCDD00000009 /* SSHConfigParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000009 /* SSHConfigParserTests.swift */; };
+		AA000001AABBCCDD0000000A /* OpenProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000A /* OpenProjectSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -130,6 +131,7 @@
 		AA000002AABBCCDD00000007 /* SSHConfigParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParser.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000008 /* SSHConfigService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigService.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000009 /* SSHConfigParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParserTests.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD0000000A /* OpenProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenProjectSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -249,6 +251,7 @@
 		47EF60B043AF58645C61BA38 /* Sheets */ = {
 			isa = PBXGroup;
 			children = (
+				AA000002AABBCCDD0000000A /* OpenProjectSheet.swift */,
 			);
 			path = Sheets;
 			sourceTree = "<group>";
@@ -503,6 +506,7 @@
 				6CF8F5C7195367C6516F863C /* AppDelegate.swift in Sources */,
 				AA000001AABBCCDD00000002 /* Color+Hex.swift in Sources */,
 				AA000001AABBCCDD00000005 /* LanguageManager.swift in Sources */,
+				AA000001AABBCCDD0000000A /* OpenProjectSheet.swift in Sources */,
 				AA000001AABBCCDD00000007 /* SSHConfigParser.swift in Sources */,
 				AA000001AABBCCDD00000008 /* SSHConfigService.swift in Sources */,
 				AA000001AABBCCDD00000001 /* ThemeDefinition.swift in Sources */,
