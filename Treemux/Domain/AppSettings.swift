@@ -17,6 +17,7 @@ struct AppSettings: Codable {
     var startup: StartupSettings = StartupSettings()
     var ssh: SSHSettings = SSHSettings()
     var aiTools: AIToolSettings = AIToolSettings()
+    var shortcutOverrides: [String: ShortcutOverride] = [:]
 }
 
 /// Terminal emulator appearance and behavior settings.
