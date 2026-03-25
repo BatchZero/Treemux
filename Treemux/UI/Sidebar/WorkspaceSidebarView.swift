@@ -66,7 +66,7 @@ struct WorkspaceSidebarView: View {
                 ForEach(store.remoteWorkspaceGroups, id: \.key) { group in
                     Section {
                         ForEach(group.targets) { workspace in
-                            WorkspaceRowGroup(workspace: workspace)
+                            WorkspaceRowGroup(workspace: workspace, hoveredID: $hoveredID)
                                 .contextMenu {
                                     Button {
                                         renameText = workspace.name
