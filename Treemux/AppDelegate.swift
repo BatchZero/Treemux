@@ -133,7 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openSettings() {
-        // Settings are handled via the SettingsSheet in SwiftUI
+        store?.showSettings = true
     }
 
     @objc private func openProject() {
@@ -153,7 +153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggleCommandPalette() {
-        // Command palette is handled in SwiftUI overlay
+        store?.showCommandPalette.toggle()
     }
 
     @objc private func splitHorizontal() {
