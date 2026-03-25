@@ -9,7 +9,10 @@ import SwiftUI
 /// Application orchestrator that owns the store and manages windows.
 @MainActor
 final class TreemuxApp {
-    private var windowContext: WindowContext?
+    private(set) var windowContext: WindowContext?
+
+    /// The central workspace store, accessible after launch.
+    var store: WorkspaceStore? { windowContext?.store }
 
     /// Initializes the store, creates the main window, and shows it.
     func launch() {
