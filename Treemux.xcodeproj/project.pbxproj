@@ -7,8 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0DA3A254039F1EEA04FB94DB /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8EB47950FCB5E9637572424 /* AppSettings.swift */; };
 		28E15CC897C8BE956B0DCF02 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73E706B2F099E80FFCC6F47D /* main.swift */; };
 		2C0D2D1CDB0C7DDD9C2487E9 /* SessionBackendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE6931E2152155F3F99223FC /* SessionBackendTests.swift */; };
+		309F402A9FFCA18BA24D7BD4 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656D4A17827E564EDD5A8918 /* PersistenceTests.swift */; };
 		3C1F3562DE4FA89E8C580B30 /* TreemuxGhosttyBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16FE9D700089232316516F73 /* TreemuxGhosttyBootstrap.swift */; };
 		423A99DD3918742FC88745B3 /* TreemuxGhosttyResourcePaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01B85899C7236D215CECDD /* TreemuxGhosttyResourcePaths.swift */; };
 		4F93E2B9A2A6EC003FCAB4BE /* SessionBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */; };
@@ -16,7 +18,9 @@
 		6AC7580CF74D588D2D19BF03 /* TreemuxGhosttyLogFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92B0D1DFEE9B34109844D751 /* TreemuxGhosttyLogFilter.swift */; };
 		6CF8F5C7195367C6516F863C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEB4B388C531158F6E5916EB /* AppDelegate.swift */; };
 		78942DBCD13BA394E9AC92CD /* PaneLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */; };
+		7BAFFB86D4EE2F43992E4808 /* AppSettingsPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48405541E0E22A909B92BA03 /* AppSettingsPersistence.swift */; };
 		8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */; };
+		A9E5418401517BC5CBD9EC92 /* WorkspaceStatePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A99410553280ED6CCCDFEA85 /* WorkspaceStatePersistence.swift */; };
 		CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3477DE6F674F94B9457073F4 /* TreemuxTests.swift */; };
 		E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8629D2D5813F897F85840289 /* SSHTarget.swift */; };
 		F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */; };
@@ -40,15 +44,19 @@
 		3477DE6F674F94B9457073F4 /* TreemuxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxTests.swift; sourceTree = "<group>"; };
 		4650806EA154B4E2C20BAD0A /* TreemuxTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TreemuxTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4742F4CA09E0C12BCF63C7CD /* PaneLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneLayoutTests.swift; sourceTree = "<group>"; };
+		48405541E0E22A909B92BA03 /* AppSettingsPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsPersistence.swift; sourceTree = "<group>"; };
+		656D4A17827E564EDD5A8918 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 		6DD2CC0A8B9D60B36E1F8105 /* Treemux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Treemux.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		73E706B2F099E80FFCC6F47D /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		8629D2D5813F897F85840289 /* SSHTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHTarget.swift; sourceTree = "<group>"; };
 		92B0D1DFEE9B34109844D751 /* TreemuxGhosttyLogFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyLogFilter.swift; sourceTree = "<group>"; };
+		A99410553280ED6CCCDFEA85 /* WorkspaceStatePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStatePersistence.swift; sourceTree = "<group>"; };
 		AC606574E1DF3045291D300B /* GhosttyKit.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = GhosttyKit.xcframework; path = Treemux/Vendor/GhosttyKit.xcframework; sourceTree = "<group>"; };
 		BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceModels.swift; sourceTree = "<group>"; };
 		BB01B85899C7236D215CECDD /* TreemuxGhosttyResourcePaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyResourcePaths.swift; sourceTree = "<group>"; };
 		BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackend.swift; sourceTree = "<group>"; };
 		CEB4B388C531158F6E5916EB /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		D8EB47950FCB5E9637572424 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		DE6931E2152155F3F99223FC /* SessionBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackendTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -81,6 +89,8 @@
 		106B416E1D149A797E5D5030 /* Persistence */ = {
 			isa = PBXGroup;
 			children = (
+				48405541E0E22A909B92BA03 /* AppSettingsPersistence.swift */,
+				A99410553280ED6CCCDFEA85 /* WorkspaceStatePersistence.swift */,
 			);
 			path = Persistence;
 			sourceTree = "<group>";
@@ -89,6 +99,7 @@
 			isa = PBXGroup;
 			children = (
 				4742F4CA09E0C12BCF63C7CD /* PaneLayoutTests.swift */,
+				656D4A17827E564EDD5A8918 /* PersistenceTests.swift */,
 				DE6931E2152155F3F99223FC /* SessionBackendTests.swift */,
 				3477DE6F674F94B9457073F4 /* TreemuxTests.swift */,
 				146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */,
@@ -194,6 +205,7 @@
 		B15DAD8207459A93A41EE1CB /* Domain */ = {
 			isa = PBXGroup;
 			children = (
+				D8EB47950FCB5E9637572424 /* AppSettings.swift */,
 				1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */,
 				BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */,
 				8629D2D5813F897F85840289 /* SSHTarget.swift */,
@@ -368,6 +380,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				6CF8F5C7195367C6516F863C /* AppDelegate.swift in Sources */,
+				0DA3A254039F1EEA04FB94DB /* AppSettings.swift in Sources */,
+				7BAFFB86D4EE2F43992E4808 /* AppSettingsPersistence.swift in Sources */,
 				78942DBCD13BA394E9AC92CD /* PaneLayout.swift in Sources */,
 				E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */,
 				4F93E2B9A2A6EC003FCAB4BE /* SessionBackend.swift in Sources */,
@@ -375,6 +389,7 @@
 				6AC7580CF74D588D2D19BF03 /* TreemuxGhosttyLogFilter.swift in Sources */,
 				423A99DD3918742FC88745B3 /* TreemuxGhosttyResourcePaths.swift in Sources */,
 				F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */,
+				A9E5418401517BC5CBD9EC92 /* WorkspaceStatePersistence.swift in Sources */,
 				28E15CC897C8BE956B0DCF02 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -384,6 +399,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5BE675E29A6A2B29C647BB5E /* PaneLayoutTests.swift in Sources */,
+				309F402A9FFCA18BA24D7BD4 /* PersistenceTests.swift in Sources */,
 				2C0D2D1CDB0C7DDD9C2487E9 /* SessionBackendTests.swift in Sources */,
 				CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */,
 				8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */,
