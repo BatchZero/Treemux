@@ -1,9 +1,11 @@
 // Treemux/AppDelegate.swift
 import Cocoa
+import Combine
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var treemuxApp: TreemuxApp?
+    private var settingsCancellable: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         TreemuxGhosttyBootstrap.initialize()
@@ -11,6 +13,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         app.launch()
         self.treemuxApp = app
         buildMainMenu()
+
+        if let store = treemuxApp?.store {
+            settingsCancellable = store.$settings
+                .dropFirst()
+                .receive(on: RunLoop.main)
+                .sink { [weak self] _ in
+                    self?.buildMainMenu()
+                }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -23,6 +34,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Menu Bar
 
+    /// Returns the key equivalent and modifier mask for a shortcut action.
+    private func menuShortcut(for action: ShortcutAction) -> (key: String, modifiers: NSEvent.ModifierFlags)? {
+        guard let store,
+              let shortcut = TreemuxKeyboardShortcuts.effectiveShortcut(for: action, in: store.settings),
+              let keyEquiv = shortcut.menuItemKeyEquivalent else {
+            return nil
+        }
+        return (keyEquiv, shortcut.modifierFlags)
+    }
+
+    /// Applies a shortcut binding to a menu item.
+    private func applyShortcut(_ action: ShortcutAction, to item: NSMenuItem) {
+        if let binding = menuShortcut(for: action) {
+            item.keyEquivalent = binding.key
+            item.keyEquivalentModifierMask = binding.modifiers
+        } else {
+            item.keyEquivalent = ""
+        }
+    }
+
     private func buildMainMenu() {
         let mainMenu = NSMenu()
 
@@ -30,8 +61,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let appMenu = NSMenu()
         appMenu.addItem(withTitle: "About Treemux", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
-        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: "")
         settingsItem.target = self
+        applyShortcut(.openSettings, to: settingsItem)
         appMenu.addItem(settingsItem)
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Hide Treemux", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
@@ -47,12 +79,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // File menu
         let fileMenu = NSMenu(title: "File")
-        let openItem = NSMenuItem(title: "Open Project…", action: #selector(openProject), keyEquivalent: "o")
+        let openItem = NSMenuItem(title: "Open Project…", action: #selector(openProject), keyEquivalent: "")
         openItem.target = self
+        applyShortcut(.openProject, to: openItem)
         fileMenu.addItem(openItem)
         fileMenu.addItem(.separator())
-        let closeItem = NSMenuItem(title: "Close Pane", action: #selector(closePane), keyEquivalent: "w")
+        let closeItem = NSMenuItem(title: "Close Pane", action: #selector(closePane), keyEquivalent: "")
         closeItem.target = self
+        applyShortcut(.closePane, to: closeItem)
         fileMenu.addItem(closeItem)
         let fileMenuItem = NSMenuItem()
         fileMenuItem.submenu = fileMenu
@@ -73,13 +107,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // View menu
         let viewMenu = NSMenu(title: "View")
-        let sidebarItem = NSMenuItem(title: "Toggle Sidebar", action: #selector(toggleSidebar), keyEquivalent: "b")
+        let sidebarItem = NSMenuItem(title: "Toggle Sidebar", action: #selector(toggleSidebar), keyEquivalent: "")
         sidebarItem.target = self
+        applyShortcut(.toggleSidebar, to: sidebarItem)
         viewMenu.addItem(sidebarItem)
         viewMenu.addItem(.separator())
-        let commandPaletteItem = NSMenuItem(title: "Command Palette", action: #selector(toggleCommandPalette), keyEquivalent: "P")
-        commandPaletteItem.keyEquivalentModifierMask = [.command, .shift]
+        let commandPaletteItem = NSMenuItem(title: "Command Palette", action: #selector(toggleCommandPalette), keyEquivalent: "")
         commandPaletteItem.target = self
+        applyShortcut(.commandPalette, to: commandPaletteItem)
         viewMenu.addItem(commandPaletteItem)
         let viewMenuItem = NSMenuItem()
         viewMenuItem.submenu = viewMenu
@@ -87,24 +122,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Pane menu
         let paneMenu = NSMenu(title: "Pane")
-        let splitHItem = NSMenuItem(title: "Split Horizontal", action: #selector(splitHorizontal), keyEquivalent: "d")
+        let splitHItem = NSMenuItem(title: "Split Horizontal", action: #selector(splitHorizontal), keyEquivalent: "")
         splitHItem.target = self
+        applyShortcut(.splitHorizontal, to: splitHItem)
         paneMenu.addItem(splitHItem)
-        let splitVItem = NSMenuItem(title: "Split Vertical", action: #selector(splitVertical), keyEquivalent: "D")
-        splitVItem.keyEquivalentModifierMask = [.command, .shift]
+        let splitVItem = NSMenuItem(title: "Split Vertical", action: #selector(splitVertical), keyEquivalent: "")
         splitVItem.target = self
+        applyShortcut(.splitVertical, to: splitVItem)
         paneMenu.addItem(splitVItem)
         paneMenu.addItem(.separator())
-        let nextPaneItem = NSMenuItem(title: "Next Pane", action: #selector(focusNextPane), keyEquivalent: "]")
+        let nextPaneItem = NSMenuItem(title: "Next Pane", action: #selector(focusNextPane), keyEquivalent: "")
         nextPaneItem.target = self
+        applyShortcut(.focusNextPane, to: nextPaneItem)
         paneMenu.addItem(nextPaneItem)
-        let prevPaneItem = NSMenuItem(title: "Previous Pane", action: #selector(focusPreviousPane), keyEquivalent: "[")
+        let prevPaneItem = NSMenuItem(title: "Previous Pane", action: #selector(focusPreviousPane), keyEquivalent: "")
         prevPaneItem.target = self
+        applyShortcut(.focusPreviousPane, to: prevPaneItem)
         paneMenu.addItem(prevPaneItem)
         paneMenu.addItem(.separator())
-        let zoomItem = NSMenuItem(title: "Zoom Pane", action: #selector(zoomPane), keyEquivalent: "\r")
-        zoomItem.keyEquivalentModifierMask = [.command, .shift]
+        let zoomItem = NSMenuItem(title: "Zoom Pane", action: #selector(zoomPane), keyEquivalent: "")
         zoomItem.target = self
+        applyShortcut(.zoomPane, to: zoomItem)
         paneMenu.addItem(zoomItem)
         let paneMenuItem = NSMenuItem()
         paneMenuItem.submenu = paneMenu
