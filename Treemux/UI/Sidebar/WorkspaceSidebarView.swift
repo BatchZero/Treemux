@@ -10,6 +10,7 @@ import SwiftUI
 /// projects display a simple row with the branch name underneath.
 struct WorkspaceSidebarView: View {
     @EnvironmentObject private var store: WorkspaceStore
+    @EnvironmentObject private var theme: ThemeManager
 
     // Rename dialog state
     @State private var renamingWorkspaceID: UUID?
@@ -72,7 +73,7 @@ struct WorkspaceSidebarView: View {
             }
             .buttonStyle(.plain)
         }
-        .background(Color(red: 0.07, green: 0.08, blue: 0.09))
+        .background(theme.sidebarBackground)
         // Rename alert
         .alert(String(localized: "Rename Project"), isPresented: Binding(
             get: { renamingWorkspaceID != nil },

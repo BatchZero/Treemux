@@ -51,7 +51,8 @@ final class PersistenceTests: XCTestCase {
                 WorkspaceRecord(
                     id: UUID(), kind: .repository, name: "test",
                     repositoryPath: "/tmp/test", isPinned: false,
-                    isArchived: false, sshTarget: nil, worktreeStates: []
+                    isArchived: false, sshTarget: nil, worktreeStates: [],
+                    worktreeOrder: nil
                 )
             ]
         )

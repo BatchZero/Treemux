@@ -8,6 +8,7 @@ import SwiftUI
 /// Displays a single terminal pane with a compact header showing status,
 /// title, and working directory, followed by the Ghostty terminal surface.
 struct TerminalPaneView: View {
+    @EnvironmentObject private var theme: ThemeManager
     @ObservedObject var session: ShellSession
 
     var body: some View {
@@ -21,7 +22,7 @@ struct TerminalPaneView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                .strokeBorder(theme.dividerColor, lineWidth: 1)
         )
         .padding(2)
     }
@@ -50,7 +51,7 @@ struct TerminalPaneView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Color(red: 0.07, green: 0.08, blue: 0.09))
+        .background(theme.paneHeaderBackground)
     }
 
     // MARK: - Helpers

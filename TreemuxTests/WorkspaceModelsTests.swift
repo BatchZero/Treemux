@@ -17,7 +17,8 @@ final class WorkspaceModelsTests: XCTestCase {
             isPinned: false,
             isArchived: false,
             sshTarget: nil,
-            worktreeStates: []
+            worktreeStates: [],
+            worktreeOrder: nil
         )
         let data = try JSONEncoder().encode(record)
         let decoded = try JSONDecoder().decode(WorkspaceRecord.self, from: data)
@@ -38,7 +39,8 @@ final class WorkspaceModelsTests: XCTestCase {
             isPinned: false,
             isArchived: false,
             sshTarget: target,
-            worktreeStates: []
+            worktreeStates: [],
+            worktreeOrder: nil
         )
         let data = try JSONEncoder().encode(record)
         let decoded = try JSONDecoder().decode(WorkspaceRecord.self, from: data)

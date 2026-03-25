@@ -52,6 +52,10 @@
 		EDB4207DA8056D870E9EA844 /* TreemuxGhosttyInputSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755FE81839DE8C99362EBC0E /* TreemuxGhosttyInputSupport.swift */; };
 		F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */; };
 		FBA39534A25C607A48314803 /* GhosttyKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = AC606574E1DF3045291D300B /* GhosttyKit.xcframework */; };
+		AA000001AABBCCDD00000001 /* ThemeDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000001 /* ThemeDefinition.swift */; };
+		AA000001AABBCCDD00000002 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000002 /* Color+Hex.swift */; };
+		AA000001AABBCCDD00000003 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000003 /* ThemeManager.swift */; };
+		AA000001AABBCCDD00000004 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000004 /* ThemeTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -112,6 +116,10 @@
 		E993B2E72B0AA5FA2CD8F136 /* TreemuxGhosttyClipboardSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyClipboardSupport.swift; sourceTree = "<group>"; };
 		F59B5026A96BF865D41D0890 /* TreemuxGhosttyShellIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyShellIntegration.swift; sourceTree = "<group>"; };
 		FED0327A7E59732F42304316 /* WorkspaceMetadataWatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceMetadataWatchService.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000001 /* ThemeDefinition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeDefinition.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000002 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000003 /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000004 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -160,6 +168,7 @@
 				656D4A17827E564EDD5A8918 /* PersistenceTests.swift */,
 				DE6931E2152155F3F99223FC /* SessionBackendTests.swift */,
 				443B856819FD330809E0722A /* ShellCommandRunnerTests.swift */,
+				AA000002AABBCCDD00000004 /* ThemeTests.swift */,
 				3477DE6F674F94B9457073F4 /* TreemuxTests.swift */,
 				146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */,
 			);
@@ -176,6 +185,7 @@
 		27FB2B0F7018B520F8B7A6E3 /* Support */ = {
 			isa = PBXGroup;
 			children = (
+				AA000002AABBCCDD00000002 /* Color+Hex.swift */,
 				D10AD81F3E792C490B4656A1 /* PathFormatting.swift */,
 				42FCFF0878EDD3C9AB6D566C /* String+Helpers.swift */,
 			);
@@ -193,6 +203,7 @@
 		37F05836B68E913467827126 /* Theme */ = {
 			isa = PBXGroup;
 			children = (
+				AA000002AABBCCDD00000003 /* ThemeManager.swift */,
 			);
 			path = Theme;
 			sourceTree = "<group>";
@@ -282,6 +293,7 @@
 				1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */,
 				BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */,
 				8629D2D5813F897F85840289 /* SSHTarget.swift */,
+				AA000002AABBCCDD00000001 /* ThemeDefinition.swift */,
 				BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */,
 			);
 			path = Domain;
@@ -461,6 +473,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				6CF8F5C7195367C6516F863C /* AppDelegate.swift in Sources */,
+				AA000001AABBCCDD00000002 /* Color+Hex.swift in Sources */,
+				AA000001AABBCCDD00000001 /* ThemeDefinition.swift in Sources */,
+				AA000001AABBCCDD00000003 /* ThemeManager.swift in Sources */,
 				0DA3A254039F1EEA04FB94DB /* AppSettings.swift in Sources */,
 				7BAFFB86D4EE2F43992E4808 /* AppSettingsPersistence.swift in Sources */,
 				89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */,
@@ -505,6 +520,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9C689BD0883C82F0D099878B /* GitRepositoryServiceTests.swift in Sources */,
+				AA000001AABBCCDD00000004 /* ThemeTests.swift in Sources */,
 				5BE675E29A6A2B29C647BB5E /* PaneLayoutTests.swift in Sources */,
 				309F402A9FFCA18BA24D7BD4 /* PersistenceTests.swift in Sources */,
 				2C0D2D1CDB0C7DDD9C2487E9 /* SessionBackendTests.swift in Sources */,
