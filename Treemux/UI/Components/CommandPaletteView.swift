@@ -124,7 +124,7 @@ struct CommandPaletteView: View {
                 subtitle: nil, icon: "rectangle.split.1x2",
                 shortcut: "⌘D",
                 action: {
-                    if let sc = store.selectedWorkspace?.sessionController,
+                    if let sc = store.activeSessionController,
                        let focused = sc.focusedPaneID {
                         sc.splitPane(focused, axis: .horizontal)
                     }
@@ -135,7 +135,7 @@ struct CommandPaletteView: View {
                 subtitle: nil, icon: "rectangle.split.2x1",
                 shortcut: "⌘⇧D",
                 action: {
-                    if let sc = store.selectedWorkspace?.sessionController,
+                    if let sc = store.activeSessionController,
                        let focused = sc.focusedPaneID {
                         sc.splitPane(focused, axis: .vertical)
                     }
@@ -146,7 +146,7 @@ struct CommandPaletteView: View {
                 subtitle: nil, icon: "xmark.square",
                 shortcut: "⌘W",
                 action: {
-                    if let sc = store.selectedWorkspace?.sessionController,
+                    if let sc = store.activeSessionController,
                        let focused = sc.focusedPaneID {
                         sc.closePane(focused)
                     }
