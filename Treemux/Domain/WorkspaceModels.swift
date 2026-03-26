@@ -356,11 +356,23 @@ final class WorkspaceModel: ObservableObject, Identifiable {
 
     /// Restores tab state from persisted worktree states.
     private func restoreTabState(from worktreeStates: [WorktreeSessionStateRecord]) {
-        guard let state = worktreeStates.first(where: { $0.worktreePath == activeWorktreePath })
-                ?? worktreeStates.first else { return }
-        if state.tabs.isEmpty { return }
-        tabs = state.tabs
-        activeTabID = state.selectedTabID ?? state.tabs.first?.id
+        for state in worktreeStates {
+            if state.worktreePath == activeWorktreePath {
+                // Load active worktree state into visible tabs
+                if !state.tabs.isEmpty {
+                    tabs = state.tabs
+                    activeTabID = state.selectedTabID ?? state.tabs.first?.id
+                }
+            } else {
+                // Store inactive worktree state for later retrieval
+                if !state.tabs.isEmpty {
+                    worktreeTabStates[state.worktreePath] = (
+                        tabs: state.tabs,
+                        activeTabID: state.selectedTabID
+                    )
+                }
+            }
+        }
     }
 
     // MARK: - Worktree Switching

@@ -203,6 +203,48 @@ final class WorkspaceModelsTests: XCTestCase {
     }
 
     @MainActor
+    func testRestoreTabStatePopulatesAllWorktrees() {
+        let mainTab = WorkspaceTabStateRecord.makeDefault(workingDirectory: "/tmp/project", title: "Main Tab")
+        let featureTab = WorkspaceTabStateRecord.makeDefault(workingDirectory: "/tmp/project-feature", title: "Feature Tab")
+
+        let record = WorkspaceRecord(
+            id: UUID(),
+            kind: .repository,
+            name: "test",
+            repositoryPath: "/tmp/project",
+            isPinned: false,
+            isArchived: false,
+            sshTarget: nil,
+            worktreeStates: [
+                WorktreeSessionStateRecord(
+                    worktreePath: "/tmp/project",
+                    branch: "main",
+                    tabs: [mainTab],
+                    selectedTabID: mainTab.id
+                ),
+                WorktreeSessionStateRecord(
+                    worktreePath: "/tmp/project-feature",
+                    branch: "feature",
+                    tabs: [featureTab],
+                    selectedTabID: featureTab.id
+                )
+            ],
+            worktreeOrder: nil
+        )
+
+        let ws = WorkspaceModel(from: record)
+
+        // Active worktree (main) should have its tabs loaded
+        XCTAssertEqual(ws.tabs.count, 1)
+        XCTAssertEqual(ws.tabs[0].title, "Main Tab")
+
+        // Switch to feature worktree — should restore saved tabs, not create default
+        ws.switchToWorktree("/tmp/project-feature")
+        XCTAssertEqual(ws.tabs.count, 1)
+        XCTAssertEqual(ws.tabs[0].title, "Feature Tab")
+    }
+
+    @MainActor
     func testToRecordSerializesTabs() {
         let ws = WorkspaceModel(name: "test", kind: .localTerminal)
         ws.createTab()
