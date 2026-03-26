@@ -145,6 +145,15 @@ final class WorkspaceSessionController: ObservableObject {
         _ = layout.resizeSplit(containing: current, toward: direction, amount: amount)
     }
 
+    // MARK: - Snapshots
+
+    /// Returns pane snapshots for all panes in layout traversal order.
+    func sessionSnapshots() -> [PaneSnapshot] {
+        layout.paneIDs.compactMap { paneID in
+            sessions[paneID]?.snapshot()
+        }
+    }
+
     // MARK: - Termination
 
     /// Terminates all sessions.
