@@ -319,8 +319,43 @@ final class ShellSession: ObservableObject, Identifiable {
     }
 
     private func syncManagedProcessStateAfterLaunch() {
-        pid = surfaceController.managedPID
-        lifecycle = (surfaceController.isManagedSessionRunning || pid != nil) ? .running : .starting
+        // Immediately set lifecycle based on surface state.
+        lifecycle = surfaceController.isManagedSessionRunning ? .running : .starting
+        // Resolve the shell PID asynchronously via process tree.
+        resolveShellPID()
+    }
+
+    /// Discovers this pane's shell PID by searching the process tree for a descendant
+    /// of the app process whose environment contains our TREEMUX_PANE_ID.
+    private func resolveShellPID() {
+        let paneID = id.uuidString
+        let appPID = ProcessInfo.processInfo.processIdentifier
+        Task { [weak self] in
+            let maxAttempts = 10   // 10 × 200ms = 2s
+            for _ in 0..<maxAttempts {
+                try? await Task.sleep(nanoseconds: 200_000_000)
+                if let shellPID = ProcessTree.findDescendant(
+                    of: appPID, envKey: "TREEMUX_PANE_ID", envValue: paneID
+                ) {
+                    await MainActor.run { [weak self] in
+                        guard let self else { return }
+                        self.pid = shellPID
+                        if self.lifecycle == .starting {
+                            self.lifecycle = .running
+                        }
+                    }
+                    return
+                }
+            }
+            // Timeout — log and leave pid as nil. Not fatal; tmux detection
+            // falls back to the placeholder filter in snapshot().
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                if self.lifecycle == .starting {
+                    self.lifecycle = .running
+                }
+            }
+        }
     }
 
     private func applyProcessExit(_ exitCode: Int32?) {
