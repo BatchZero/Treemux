@@ -245,6 +245,61 @@ final class WorkspaceModelsTests: XCTestCase {
     }
 
     @MainActor
+    func testWorktreeStateRoundTripPersistence() {
+        // Create workspace with two worktrees
+        let mainTab = WorkspaceTabStateRecord.makeDefault(workingDirectory: "/tmp/project", title: "Main Tab")
+        let featureTab1 = WorkspaceTabStateRecord.makeDefault(workingDirectory: "/tmp/project-feature", title: "Feature A")
+        let featureTab2 = WorkspaceTabStateRecord.makeDefault(workingDirectory: "/tmp/project-feature", title: "Feature B")
+
+        let record = WorkspaceRecord(
+            id: UUID(),
+            kind: .repository,
+            name: "test",
+            repositoryPath: "/tmp/project",
+            isPinned: false,
+            isArchived: false,
+            sshTarget: nil,
+            worktreeStates: [
+                WorktreeSessionStateRecord(
+                    worktreePath: "/tmp/project",
+                    branch: "main",
+                    tabs: [mainTab],
+                    selectedTabID: mainTab.id
+                ),
+                WorktreeSessionStateRecord(
+                    worktreePath: "/tmp/project-feature",
+                    branch: "feature",
+                    tabs: [featureTab1, featureTab2],
+                    selectedTabID: featureTab2.id
+                )
+            ],
+            worktreeOrder: nil
+        )
+
+        // First load
+        let ws = WorkspaceModel(from: record)
+
+        // Serialize back
+        let saved = ws.toRecord()
+
+        // Verify both worktrees are in the serialized output
+        XCTAssertEqual(saved.worktreeStates.count, 2)
+
+        let mainState = saved.worktreeStates.first(where: { $0.worktreePath == "/tmp/project" })
+        let featureState = saved.worktreeStates.first(where: { $0.worktreePath == "/tmp/project-feature" })
+
+        XCTAssertNotNil(mainState)
+        XCTAssertEqual(mainState?.tabs.count, 1)
+        XCTAssertEqual(mainState?.tabs[0].title, "Main Tab")
+
+        XCTAssertNotNil(featureState)
+        XCTAssertEqual(featureState?.tabs.count, 2)
+        XCTAssertEqual(featureState?.tabs[0].title, "Feature A")
+        XCTAssertEqual(featureState?.tabs[1].title, "Feature B")
+        XCTAssertEqual(featureState?.selectedTabID, featureTab2.id)
+    }
+
+    @MainActor
     func testToRecordSerializesTabs() {
         let ws = WorkspaceModel(name: "test", kind: .localTerminal)
         ws.createTab()
