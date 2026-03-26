@@ -167,7 +167,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private var sessionController: WorkspaceSessionController? {
-        store?.selectedWorkspace?.sessionController
+        store?.activeSessionController
     }
 
     @objc private func openSettings() {
