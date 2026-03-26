@@ -66,14 +66,11 @@ struct MainWindowView: View {
                 .help("Split Right (⌘⇧D)")
 
                 Button {
-                    if let sc = store.activeSessionController,
-                       let focused = sc.focusedPaneID {
-                        sc.splitPane(focused, axis: .horizontal)
-                    }
+                    store.selectedWorkspace?.createTab()
                 } label: {
                     Image(systemName: "plus.rectangle")
                 }
-                .help("New Terminal")
+                .help("New Terminal (⌘T)")
 
                 Button {
                     store.showSettings = true
