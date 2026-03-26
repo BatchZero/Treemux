@@ -409,7 +409,7 @@ final class ShellSession: ObservableObject, Identifiable {
         } else {
             // Bare "tmux" or unrecognized args — resolve the session name after tmux starts.
             detectedTmuxSession = "tmux"
-            resolveRecentTmuxSession()
+            resolveExactTmuxSession()
         }
     }
 
@@ -437,27 +437,53 @@ final class ShellSession: ObservableObject, Identifiable {
         return nil
     }
 
-    /// When bare `tmux` is detected (no session name in command), wait briefly for
-    /// the session to start, then query the most recently created tmux session.
-    private func resolveRecentTmuxSession() {
+    /// When bare `tmux` is detected, resolve the exact session by finding the tmux
+    /// client process that is a descendant of this pane's shell in the process tree.
+    private func resolveExactTmuxSession() {
         Task { [weak self] in
-            // Wait for tmux to finish starting and register the session.
-            try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5s
-            guard let name = await Self.findMostRecentTmuxSession() else { return }
+            // Step 1: Wait for shell PID to be resolved.
+            var shellPID: pid_t?
+            for _ in 0..<15 {  // 15 × 200ms = 3s
+                try? await Task.sleep(nanoseconds: 200_000_000)
+                shellPID = await MainActor.run { self?.pid }
+                if shellPID != nil { break }
+            }
+
+            guard let shellPID else { return }
+
+            // Step 2: Poll for a tmux client descendant of the shell.
+            var sessionName: String?
+            for _ in 0..<10 {  // 10 × 300ms = 3s
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                let desc = ProcessTree.descendants(of: shellPID)
+                if desc.isEmpty { continue }
+
+                // Query tmux for all connected clients.
+                let result = await Self.queryTmuxClients()
+                guard let result else { continue }
+
+                let clients = ProcessTree.parseTmuxClientList(result)
+                // Find the client whose PID is a descendant of our shell.
+                if let match = clients.first(where: { desc.contains($0.clientPID) }) {
+                    sessionName = match.sessionName
+                    break
+                }
+            }
+
+            guard let sessionName else { return }
             await MainActor.run { [weak self] in
                 guard let self, self.detectedTmuxSession == "tmux" else { return }
-                self.detectedTmuxSession = name
+                self.detectedTmuxSession = sessionName
             }
         }
     }
 
-    /// Finds the most recently created tmux session by querying the tmux server.
-    private nonisolated static func findMostRecentTmuxSession() async -> String? {
+    /// Queries tmux for all connected clients and their session names.
+    private nonisolated static func queryTmuxClients() async -> String? {
         let process = Process()
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         process.executableURL = URL(fileURLWithPath: shell)
-        // Sort sessions by creation time (descending) and take the first.
-        process.arguments = ["-lc", "tmux list-sessions -F '#{session_created} #{session_name}' | sort -rn | head -1"]
+        process.arguments = ["-lc", "tmux list-clients -F '#{client_pid} #{session_name}'"]
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
@@ -469,12 +495,7 @@ final class ShellSession: ObservableObject, Identifiable {
         process.waitUntilExit()
         guard process.terminationStatus == 0 else { return nil }
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        guard let output = String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              !output.isEmpty else { return nil }
-        // Output format: "timestamp session_name"
-        let parts = output.split(separator: " ", maxSplits: 1)
-        guard parts.count == 2 else { return nil }
-        return String(parts[1])
+        return String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
