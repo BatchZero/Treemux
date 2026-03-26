@@ -8,7 +8,7 @@ import Foundation
 // MARK: - Application Settings
 
 /// Top-level application settings persisted as JSON.
-struct AppSettings: Codable {
+struct AppSettings: Codable, Equatable {
     var version: Int = 1
     var language: String = "system"
     var activeThemeID: String = "treemux-dark"
@@ -21,23 +21,23 @@ struct AppSettings: Codable {
 }
 
 /// Terminal emulator appearance and behavior settings.
-struct TerminalSettings: Codable {
+struct TerminalSettings: Codable, Equatable {
     var defaultShell: String = "/bin/zsh"
     var fontSize: Int = 14
     var cursorStyle: String = "block"
 }
 
 /// Settings controlling application startup behavior.
-struct StartupSettings: Codable {
+struct StartupSettings: Codable, Equatable {
     var restoreLastSession: Bool = true
 }
 
 /// SSH connection configuration settings.
-struct SSHSettings: Codable {
+struct SSHSettings: Codable, Equatable {
     var configPaths: [String] = ["~/.ssh/config"]
 }
 
 /// AI tool integration settings.
-struct AIToolSettings: Codable {
+struct AIToolSettings: Codable, Equatable {
     var autoDetect: Bool = true
 }
