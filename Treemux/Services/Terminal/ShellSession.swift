@@ -271,10 +271,17 @@ final class ShellSession: ObservableObject, Identifiable {
     // MARK: - Snapshot
 
     func snapshot() -> PaneSnapshot {
-        PaneSnapshot(
+        // Use the cached tmux session name resolved during runtime.
+        // Filter out the generic "tmux" fallback — only save real session names.
+        let tmuxSession: String? = {
+            guard let name = detectedTmuxSession, name != "tmux" else { return nil }
+            return name
+        }()
+        return PaneSnapshot(
             id: id,
             backend: backendConfiguration,
-            workingDirectory: preferredWorkingDirectory
+            workingDirectory: preferredWorkingDirectory,
+            detectedTmuxSession: tmuxSession
         )
     }
 
@@ -291,6 +298,9 @@ final class ShellSession: ObservableObject, Identifiable {
         environment["COLORTERM"] = "truecolor"
         environment["TERM_PROGRAM"] = "Treemux"
         environment["TERM_PROGRAM_VERSION"] = currentVersion()
+        // Enable Ghostty shell integration features: title reporting lets us detect
+        // foreground processes (e.g. tmux) from the terminal title set by preexec.
+        environment["GHOSTTY_SHELL_FEATURES"] = "cursor,title,sudo"
         environment["LANG"] = environment["LANG"] ?? "en_US.UTF-8"
         return environment
     }
@@ -327,19 +337,101 @@ final class ShellSession: ObservableObject, Identifiable {
     }
 
     /// Detect if the shell is running inside tmux based on the terminal title.
-    /// When tmux is the foreground process, the title often starts with the session name.
+    /// Title can be a command string from preexec (e.g. "tmux new -s hello")
+    /// or a tmux status format like "[session-name] ...".
     private func detectTmux(fromTitle title: String) {
         let lower = title.lowercased()
-        if lower.contains("tmux") || lower.hasPrefix("[") {
-            // Try to extract session name from "[session-name]" pattern
-            if let openBracket = title.firstIndex(of: "["),
-               let closeBracket = title.firstIndex(of: "]"),
-               openBracket < closeBracket {
-                let sessionName = String(title[title.index(after: openBracket)..<closeBracket])
-                detectedTmuxSession = sessionName
-            } else {
-                detectedTmuxSession = "tmux"
+
+        // Pattern 1: tmux status bar format "[session-name] ..."
+        if lower.hasPrefix("[") {
+            if let closeBracket = title.firstIndex(of: "]") {
+                let sessionName = String(title[title.index(after: title.startIndex)..<closeBracket])
+                if !sessionName.isEmpty {
+                    detectedTmuxSession = sessionName
+                    return
+                }
             }
         }
+
+        // Pattern 2: preexec title showing the tmux command being run
+        // e.g. "tmux", "tmux new -s hello", "tmux attach -t mysession"
+        guard lower.hasPrefix("tmux") else { return }
+
+        let args = title.split(separator: " ").map(String.init)
+        guard args.first?.lowercased() == "tmux" else { return }
+
+        // Parse -s (new session name) or -t (target session) from the arguments.
+        if let sessionName = Self.parseTmuxSessionName(from: Array(args.dropFirst())) {
+            detectedTmuxSession = sessionName
+        } else {
+            // Bare "tmux" or unrecognized args — resolve the session name after tmux starts.
+            detectedTmuxSession = "tmux"
+            resolveRecentTmuxSession()
+        }
+    }
+
+    /// Parses the session name from tmux command arguments.
+    /// Handles: new -s <name>, new-session -s <name>, attach -t <name>, attach-session -t <name>, a -t <name>
+    private static func parseTmuxSessionName(from args: [String]) -> String? {
+        var i = 0
+        while i < args.count {
+            let arg = args[i]
+            // -s flag: session name for new/new-session
+            if arg == "-s", i + 1 < args.count {
+                return args[i + 1]
+            }
+            // -t flag: target session for attach/attach-session
+            if arg == "-t", i + 1 < args.count {
+                // Target may contain "session:window.pane", extract just session
+                let target = args[i + 1]
+                if let colonIdx = target.firstIndex(of: ":") {
+                    return String(target[target.startIndex..<colonIdx])
+                }
+                return target
+            }
+            i += 1
+        }
+        return nil
+    }
+
+    /// When bare `tmux` is detected (no session name in command), wait briefly for
+    /// the session to start, then query the most recently created tmux session.
+    private func resolveRecentTmuxSession() {
+        Task { [weak self] in
+            // Wait for tmux to finish starting and register the session.
+            try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5s
+            guard let name = await Self.findMostRecentTmuxSession() else { return }
+            await MainActor.run { [weak self] in
+                guard let self, self.detectedTmuxSession == "tmux" else { return }
+                self.detectedTmuxSession = name
+            }
+        }
+    }
+
+    /// Finds the most recently created tmux session by querying the tmux server.
+    private nonisolated static func findMostRecentTmuxSession() async -> String? {
+        let process = Process()
+        let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+        process.executableURL = URL(fileURLWithPath: shell)
+        // Sort sessions by creation time (descending) and take the first.
+        process.arguments = ["-lc", "tmux list-sessions -F '#{session_created} #{session_name}' | sort -rn | head -1"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        guard let output = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              !output.isEmpty else { return nil }
+        // Output format: "timestamp session_name"
+        let parts = output.split(separator: " ", maxSplits: 1)
+        guard parts.count == 2 else { return nil }
+        return String(parts[1])
     }
 }

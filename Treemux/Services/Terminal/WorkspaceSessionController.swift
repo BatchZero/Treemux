@@ -50,9 +50,33 @@ final class WorkspaceSessionController: ObservableObject {
         let snapshotMap = Dictionary(paneSnapshots.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         for paneID in savedLayout.paneIDs {
             let snapshot = snapshotMap[paneID]
+            var backend = snapshot?.backend ?? .localShell(LocalShellConfig.defaultShell())
+
+            // If the pane had a detected tmux session, reattach instead of starting a fresh shell.
+            if let tmuxSession = snapshot?.detectedTmuxSession {
+                switch backend {
+                case .localShell:
+                    backend = .tmuxAttach(TmuxAttachConfig(
+                        sessionName: tmuxSession,
+                        windowIndex: nil,
+                        isRemote: false,
+                        sshTarget: nil
+                    ))
+                case .ssh(let sshConfig):
+                    backend = .tmuxAttach(TmuxAttachConfig(
+                        sessionName: tmuxSession,
+                        windowIndex: nil,
+                        isRemote: true,
+                        sshTarget: sshConfig.target
+                    ))
+                default:
+                    break
+                }
+            }
+
             let session = ShellSession(
                 id: paneID,
-                backendConfiguration: snapshot?.backend ?? .localShell(LocalShellConfig.defaultShell()),
+                backendConfiguration: backend,
                 preferredWorkingDirectory: snapshot?.workingDirectory ?? workingDirectory
             )
             session.onFocus = { [weak self] in

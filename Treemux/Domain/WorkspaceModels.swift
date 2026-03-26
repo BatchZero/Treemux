@@ -102,6 +102,15 @@ struct PaneSnapshot: Codable {
     let id: UUID
     let backend: SessionBackendConfiguration
     let workingDirectory: String?
+    /// The tmux session name detected at save time, used to reattach on restore.
+    let detectedTmuxSession: String?
+
+    init(id: UUID, backend: SessionBackendConfiguration, workingDirectory: String?, detectedTmuxSession: String? = nil) {
+        self.id = id
+        self.backend = backend
+        self.workingDirectory = workingDirectory
+        self.detectedTmuxSession = detectedTmuxSession
+    }
 }
 
 /// Top-level persisted state containing all workspaces.

@@ -91,7 +91,7 @@ extension SessionBackendConfiguration {
         case .tmuxAttach(let configuration):
             // Build an ssh+tmux or local tmux attach command.
             var arguments: [String] = []
-            var executablePath = "/usr/bin/tmux"
+            var executablePath: String
 
             if configuration.isRemote, let sshTarget = configuration.sshTarget {
                 executablePath = "/usr/bin/ssh"
@@ -117,10 +117,15 @@ extension SessionBackendConfiguration {
                 sshArgs.append(tmuxCmd)
                 arguments = sshArgs
             } else {
-                arguments = ["attach-session", "-t", configuration.sessionName]
+                // Use the user's login shell to ensure tmux is found in PATH
+                // (Homebrew installs tmux outside the default GUI app PATH).
+                let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+                executablePath = shell
+                var tmuxCmd = "exec tmux attach-session -t \(configuration.sessionName.shellQuoted)"
                 if let windowIndex = configuration.windowIndex {
-                    arguments = ["attach-session", "-t", "\(configuration.sessionName):\(windowIndex)"]
+                    tmuxCmd = "exec tmux attach-session -t \(configuration.sessionName.shellQuoted):\(windowIndex)"
                 }
+                arguments = ["--login", "-c", tmuxCmd]
             }
 
             return TerminalLaunchConfiguration(
