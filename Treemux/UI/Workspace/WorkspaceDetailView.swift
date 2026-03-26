@@ -12,7 +12,7 @@ struct WorkspaceDetailView: View {
     var body: some View {
         if let workspace = store.selectedWorkspace {
             WorkspaceTabContainerView(workspace: workspace)
-                .id(store.selectedWorkspaceID)
+                .id(workspace.id)
         }
     }
 }

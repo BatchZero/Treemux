@@ -10,7 +10,9 @@ import SwiftUI
 @MainActor
 final class WorkspaceStore: ObservableObject {
     @Published var workspaces: [WorkspaceModel] = []
-    @Published var selectedWorkspaceID: UUID?
+    @Published var selectedWorkspaceID: UUID? {
+        didSet { handleWorktreeSelectionIfNeeded() }
+    }
 
     @Published var showSettings = false
     @Published var showCommandPalette = false
@@ -136,6 +138,22 @@ final class WorkspaceStore: ObservableObject {
     func selectWorkspace(_ id: UUID) {
         selectedWorkspaceID = id
         saveWorkspaceState()
+    }
+
+    /// When a worktree ID is selected in the sidebar, switch the parent workspace
+    /// to that worktree so tabs and pane state update accordingly.
+    private func handleWorktreeSelectionIfNeeded() {
+        guard let selectedID = selectedWorkspaceID else { return }
+        // Find a workspace that contains a worktree with the selected ID
+        guard let workspace = workspaces.first(where: { ws in
+            ws.worktrees.contains { $0.id == selectedID }
+        }),
+        let worktree = workspace.worktrees.first(where: { $0.id == selectedID }) else { return }
+        // Switch the workspace to that worktree's path
+        let path = worktree.path.path
+        if workspace.activeWorktreePath != path {
+            workspace.switchToWorktree(path)
+        }
     }
 
     // MARK: - Adding Workspaces
