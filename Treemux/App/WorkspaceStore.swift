@@ -19,6 +19,11 @@ final class WorkspaceStore: ObservableObject {
         didSet { try? settingsPersistence.save(settings) }
     }
 
+    /// Applies a new settings snapshot (used by SettingsSheet Save).
+    func updateSettings(_ newSettings: AppSettings) {
+        settings = newSettings
+    }
+
     private let settingsPersistence = AppSettingsPersistence()
     private let workspaceStatePersistence = WorkspaceStatePersistence()
     private let gitService = GitRepositoryService()
