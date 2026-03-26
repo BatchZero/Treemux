@@ -196,12 +196,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func splitHorizontal() {
         guard let sc = sessionController, let focused = sc.focusedPaneID else { return }
-        sc.splitPane(focused, axis: .horizontal)
+        sc.splitPane(focused, axis: .vertical)
     }
 
     @objc private func splitVertical() {
         guard let sc = sessionController, let focused = sc.focusedPaneID else { return }
-        sc.splitPane(focused, axis: .vertical)
+        sc.splitPane(focused, axis: .horizontal)
     }
 
     @objc private func focusNextPane() {

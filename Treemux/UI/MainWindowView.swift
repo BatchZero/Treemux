@@ -48,7 +48,7 @@ struct MainWindowView: View {
                 Button {
                     if let sc = store.activeSessionController,
                        let focused = sc.focusedPaneID {
-                        sc.splitPane(focused, axis: .horizontal)
+                        sc.splitPane(focused, axis: .vertical)
                     }
                 } label: {
                     Image(systemName: "rectangle.split.1x2")
@@ -58,7 +58,7 @@ struct MainWindowView: View {
                 Button {
                     if let sc = store.activeSessionController,
                        let focused = sc.focusedPaneID {
-                        sc.splitPane(focused, axis: .vertical)
+                        sc.splitPane(focused, axis: .horizontal)
                     }
                 } label: {
                     Image(systemName: "rectangle.split.2x1")

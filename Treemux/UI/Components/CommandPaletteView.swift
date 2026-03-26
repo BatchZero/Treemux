@@ -120,24 +120,24 @@ struct CommandPaletteView: View {
     private var allCommands: [PaletteCommand] {
         [
             PaletteCommand(
-                title: String(localized: "Split Horizontal"),
+                title: String(localized: "Split Down"),
                 subtitle: nil, icon: "rectangle.split.1x2",
                 shortcut: "⌘D",
                 action: {
                     if let sc = store.activeSessionController,
                        let focused = sc.focusedPaneID {
-                        sc.splitPane(focused, axis: .horizontal)
+                        sc.splitPane(focused, axis: .vertical)
                     }
                 }
             ),
             PaletteCommand(
-                title: String(localized: "Split Vertical"),
+                title: String(localized: "Split Right"),
                 subtitle: nil, icon: "rectangle.split.2x1",
                 shortcut: "⌘⇧D",
                 action: {
                     if let sc = store.activeSessionController,
                        let focused = sc.focusedPaneID {
-                        sc.splitPane(focused, axis: .vertical)
+                        sc.splitPane(focused, axis: .horizontal)
                     }
                 }
             ),
