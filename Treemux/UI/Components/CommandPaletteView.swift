@@ -120,6 +120,34 @@ struct CommandPaletteView: View {
     private var allCommands: [PaletteCommand] {
         [
             PaletteCommand(
+                title: String(localized: "New Tab"),
+                subtitle: nil, icon: "plus.rectangle",
+                shortcut: "⌘T",
+                action: { store.selectedWorkspace?.createTab() }
+            ),
+            PaletteCommand(
+                title: String(localized: "Close Tab"),
+                subtitle: nil, icon: "xmark.rectangle",
+                shortcut: "⌘⇧W",
+                action: {
+                    if let ws = store.selectedWorkspace, let tabID = ws.activeTabID {
+                        ws.closeTab(tabID)
+                    }
+                }
+            ),
+            PaletteCommand(
+                title: String(localized: "Next Tab"),
+                subtitle: nil, icon: "arrow.right.square",
+                shortcut: "⌘⇧]",
+                action: { store.selectedWorkspace?.selectNextTab() }
+            ),
+            PaletteCommand(
+                title: String(localized: "Previous Tab"),
+                subtitle: nil, icon: "arrow.left.square",
+                shortcut: "⌘⇧[",
+                action: { store.selectedWorkspace?.selectPreviousTab() }
+            ),
+            PaletteCommand(
                 title: String(localized: "Split Down"),
                 subtitle: nil, icon: "rectangle.split.1x2",
                 shortcut: "⌘D",
