@@ -3,6 +3,7 @@
 //  Treemux
 
 import AppKit
+import Combine
 import SwiftUI
 
 /// Manages the main NSWindow and hosts the SwiftUI content view.
@@ -11,6 +12,7 @@ final class WindowContext {
     let store: WorkspaceStore
     let themeManager: ThemeManager
     private var window: NSWindow?
+    private var themeCancellable: AnyCancellable?
 
     init(store: WorkspaceStore) {
         self.store = store
@@ -37,28 +39,29 @@ final class WindowContext {
         window.titlebarAppearsTransparent = false
         window.toolbarStyle = .unifiedCompact
         window.center()
-        applyAppearance(to: window)
-        window.backgroundColor = NSColor(red: 0.07, green: 0.08, blue: 0.09, alpha: 1.0)
+        applyThemeAppearance(to: window)
         window.makeKeyAndOrderFront(nil)
 
         self.window = window
+
+        // Observe theme changes to keep the window appearance in sync.
+        themeCancellable = themeManager.$activeTheme
+            .dropFirst()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateAppearance()
+            }
     }
 
-    /// Applies the appearance setting to the window.
-    private func applyAppearance(to window: NSWindow) {
-        switch store.settings.appearance {
-        case "dark":
-            window.appearance = NSAppearance(named: .darkAqua)
-        case "light":
-            window.appearance = NSAppearance(named: .aqua)
-        default:
-            window.appearance = nil  // Follow system
-        }
+    /// Applies the active theme's appearance to the given window.
+    private func applyThemeAppearance(to window: NSWindow) {
+        window.appearance = themeManager.windowAppearance
+        window.backgroundColor = themeManager.nsWindowBackgroundColor
     }
 
-    /// Re-applies appearance to the current window (call when settings change).
+    /// Re-applies appearance to the current window (call when theme changes).
     func updateAppearance() {
         guard let window else { return }
-        applyAppearance(to: window)
+        applyThemeAppearance(to: window)
     }
 }
