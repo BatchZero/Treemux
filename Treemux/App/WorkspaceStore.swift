@@ -325,6 +325,15 @@ final class WorkspaceStore: ObservableObject {
         selectedWorkspaceID = state.selectedWorkspaceID
         workspaces = state.workspaces.map { WorkspaceModel(from: $0) }
         startWatchingAll()
+
+        // Populate worktrees and branch info from git on launch
+        Task {
+            for workspace in workspaces {
+                await refreshWorkspace(workspace)
+            }
+            // Restart watchers with full worktree paths now available
+            startWatchingAll()
+        }
     }
 
     func saveWorkspaceState() {
