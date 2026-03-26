@@ -329,6 +329,37 @@ final class WorkspaceModelsTests: XCTestCase {
     }
 
     @MainActor
+    func testWorktreeSwitchPreservesAndRestoresState() {
+        let ws = WorkspaceModel(
+            name: "test",
+            kind: .repository,
+            repositoryRoot: URL(fileURLWithPath: "/tmp/project")
+        )
+
+        // Start on main worktree, create a second tab
+        XCTAssertEqual(ws.tabs.count, 1)
+        ws.createTab()
+        XCTAssertEqual(ws.tabs.count, 2)
+        let mainTabIDs = ws.tabs.map(\.id)
+
+        // Switch to feature worktree
+        ws.switchToWorktree("/tmp/project-feature")
+        XCTAssertEqual(ws.tabs.count, 1) // New worktree starts with default tab
+        let featureTabID = ws.tabs[0].id
+        XCTAssertFalse(mainTabIDs.contains(featureTabID))
+
+        // Switch back to main — should have 2 tabs again
+        ws.switchToWorktree("/tmp/project")
+        XCTAssertEqual(ws.tabs.count, 2)
+        XCTAssertEqual(Set(ws.tabs.map(\.id)), Set(mainTabIDs))
+
+        // Switch back to feature — should have 1 tab with correct ID
+        ws.switchToWorktree("/tmp/project-feature")
+        XCTAssertEqual(ws.tabs.count, 1)
+        XCTAssertEqual(ws.tabs[0].id, featureTabID)
+    }
+
+    @MainActor
     func testToRecordSerializesTabs() {
         let ws = WorkspaceModel(name: "test", kind: .localTerminal)
         ws.createTab()
