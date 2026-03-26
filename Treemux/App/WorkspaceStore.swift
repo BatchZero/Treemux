@@ -64,6 +64,17 @@ final class WorkspaceStore: ObservableObject {
         return nil
     }
 
+    /// The session controller for the currently active workspace or worktree.
+    /// All UI call sites (toolbar, detail view, command palette, menu bar)
+    /// should use this single source of truth.
+    var activeSessionController: WorkspaceSessionController? {
+        guard let workspace = selectedWorkspace else { return nil }
+        if let worktree = selectedWorktree {
+            return workspace.sessionController(forWorktreePath: worktree.path.path)
+        }
+        return workspace.sessionController
+    }
+
     /// Workspaces visible in the sidebar (non-archived).
     var sidebarWorkspaces: [WorkspaceModel] {
         let real = workspaces.filter { !$0.isArchived }
