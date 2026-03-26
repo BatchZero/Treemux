@@ -410,7 +410,18 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         if let existing = tabControllers[worktreePath]?[tabID] {
             return existing
         }
-        let ctrl = WorkspaceSessionController(workingDirectory: worktreePath)
+
+        // Look up the saved tab state to restore layout and panes
+        let tabState = tabs.first(where: { $0.id == tabID })
+
+        let ctrl = WorkspaceSessionController(
+            workingDirectory: worktreePath,
+            savedLayout: tabState?.layout,
+            paneSnapshots: tabState?.panes ?? [],
+            focusedPaneID: tabState?.focusedPaneID,
+            zoomedPaneID: tabState?.zoomedPaneID
+        )
+
         if tabControllers[worktreePath] == nil {
             tabControllers[worktreePath] = [:]
         }
