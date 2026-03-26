@@ -58,7 +58,7 @@ struct WorkspaceSidebarView: View {
                 } header: {
                     Text(String(localized: "Local Projects"))
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.textSecondary)
                         .textCase(nil)
                 }
 
@@ -89,7 +89,7 @@ struct WorkspaceSidebarView: View {
                                 .foregroundStyle(.green)
                             Text(remoteGroupLabel(group.targets.first))
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(theme.textSecondary)
                                 .textCase(nil)
                         }
                     }
@@ -230,6 +230,7 @@ func sidebarRowBackground(isSelected: Bool, isHovered: Bool) -> some View {
 /// worktrees, or a plain row when there is zero or one worktree.
 struct WorkspaceRowGroup: View {
     @EnvironmentObject private var store: WorkspaceStore
+    @EnvironmentObject private var theme: ThemeManager
     @ObservedObject var workspace: WorkspaceModel
     @Binding var hoveredID: UUID?
     @State private var isExpanded: Bool = true
@@ -275,7 +276,7 @@ struct WorkspaceRowGroup: View {
                 if let branch = workspace.currentBranch {
                     Text(branch)
                         .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.textSecondary)
                         .lineLimit(1)
                         .padding(.leading, 20)
                 }
@@ -350,6 +351,7 @@ struct ProjectLabel: View {
 /// A single worktree row shown inside a disclosure group.
 struct WorktreeRow: View {
     @EnvironmentObject private var store: WorkspaceStore
+    @EnvironmentObject private var theme: ThemeManager
     let worktree: WorktreeModel
     @Binding var hoveredID: UUID?
 
@@ -360,7 +362,7 @@ struct WorktreeRow: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "arrow.triangle.branch")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.textMuted)
                 .font(.system(size: 11))
             Text(worktree.branch ?? worktree.path.lastPathComponent)
                 .font(.system(size: 12))
