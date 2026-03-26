@@ -48,6 +48,8 @@
 		CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3477DE6F674F94B9457073F4 /* TreemuxTests.swift */; };
 		CD969404DE603FC36B6116DA /* TreemuxGhosttyClipboardSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E993B2E72B0AA5FA2CD8F136 /* TreemuxGhosttyClipboardSupport.swift */; };
 		D5D2DCD282AEEBB8C4A6F532 /* ShellCommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */; };
+		BB000001AABBCCDD00000020 /* ProcessTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000002AABBCCDD00000020 /* ProcessTree.swift */; };
+		BB000001AABBCCDD00000021 /* ProcessTreeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000002AABBCCDD00000021 /* ProcessTreeTests.swift */; };
 		E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8629D2D5813F897F85840289 /* SSHTarget.swift */; };
 		EDB4207DA8056D870E9EA844 /* TreemuxGhosttyInputSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755FE81839DE8C99362EBC0E /* TreemuxGhosttyInputSupport.swift */; };
 		F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */; };
@@ -112,6 +114,8 @@
 		927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitRepositoryService.swift; sourceTree = "<group>"; };
 		92B0D1DFEE9B34109844D751 /* TreemuxGhosttyLogFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyLogFilter.swift; sourceTree = "<group>"; };
 		952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellCommandRunner.swift; sourceTree = "<group>"; };
+		BB000002AABBCCDD00000020 /* ProcessTree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTree.swift; sourceTree = "<group>"; };
+		BB000002AABBCCDD00000021 /* ProcessTreeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTreeTests.swift; sourceTree = "<group>"; };
 		9D8662706F495A0DA4CCB1F0 /* WindowContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowContext.swift; sourceTree = "<group>"; };
 		9F23062A273124B6BBE28B71 /* SplitDivider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitDivider.swift; sourceTree = "<group>"; };
 		A22F2A407A07989DE172DA3A /* WorkspaceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStore.swift; sourceTree = "<group>"; };
@@ -203,6 +207,7 @@
 			isa = PBXGroup;
 			children = (
 				AA000002AABBCCDD0000000F /* AIToolServiceTests.swift */,
+				BB000002AABBCCDD00000021 /* ProcessTreeTests.swift */,
 				C328A5FB842A00D096906EE3 /* GitRepositoryServiceTests.swift */,
 				4742F4CA09E0C12BCF63C7CD /* PaneLayoutTests.swift */,
 				656D4A17827E564EDD5A8918 /* PersistenceTests.swift */,
@@ -373,6 +378,7 @@
 		C43D9DD04BC56E98D500E75B /* Process */ = {
 			isa = PBXGroup;
 			children = (
+				BB000002AABBCCDD00000020 /* ProcessTree.swift */,
 				952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */,
 			);
 			path = Process;
@@ -568,6 +574,7 @@
 				E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */,
 				4F93E2B9A2A6EC003FCAB4BE /* SessionBackend.swift in Sources */,
 				A7746DB757BF4458229659E0 /* SessionBackendLaunch.swift in Sources */,
+				BB000001AABBCCDD00000020 /* ProcessTree.swift in Sources */,
 				D5D2DCD282AEEBB8C4A6F532 /* ShellCommandRunner.swift in Sources */,
 				A0AD5591657B555F176AEFD8 /* ShellSession.swift in Sources */,
 				BCEB4C8CE71A07F316E67D13 /* SplitDivider.swift in Sources */,
@@ -612,6 +619,7 @@
 				5BE675E29A6A2B29C647BB5E /* PaneLayoutTests.swift in Sources */,
 				309F402A9FFCA18BA24D7BD4 /* PersistenceTests.swift in Sources */,
 				2C0D2D1CDB0C7DDD9C2487E9 /* SessionBackendTests.swift in Sources */,
+				BB000001AABBCCDD00000021 /* ProcessTreeTests.swift in Sources */,
 				14559BCDE89A0A2CA5FD8022 /* ShellCommandRunnerTests.swift in Sources */,
 				CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */,
 				8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */,
