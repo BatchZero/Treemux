@@ -148,6 +148,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         paneMenuItem.submenu = paneMenu
         mainMenu.addItem(paneMenuItem)
 
+        // Tab menu
+        let tabMenu = NSMenu(title: "Tab")
+        let newTabItem = NSMenuItem(title: "New Tab", action: #selector(newTab), keyEquivalent: "")
+        newTabItem.target = self
+        applyShortcut(.newTab, to: newTabItem)
+        tabMenu.addItem(newTabItem)
+        let closeTabItem = NSMenuItem(title: "Close Tab", action: #selector(closeTab), keyEquivalent: "")
+        closeTabItem.target = self
+        applyShortcut(.closeTab, to: closeTabItem)
+        tabMenu.addItem(closeTabItem)
+        tabMenu.addItem(.separator())
+        let nextTabItem = NSMenuItem(title: "Next Tab", action: #selector(nextTab), keyEquivalent: "")
+        nextTabItem.target = self
+        applyShortcut(.nextTab, to: nextTabItem)
+        tabMenu.addItem(nextTabItem)
+        let prevTabItem = NSMenuItem(title: "Previous Tab", action: #selector(previousTab), keyEquivalent: "")
+        prevTabItem.target = self
+        applyShortcut(.previousTab, to: prevTabItem)
+        tabMenu.addItem(prevTabItem)
+        let tabMenuItem = NSMenuItem()
+        tabMenuItem.submenu = tabMenu
+        mainMenu.addItem(tabMenuItem)
+
         // Window menu
         let windowMenu = NSMenu(title: "Window")
         windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
@@ -214,5 +237,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func zoomPane() {
         sessionController?.toggleZoom()
+    }
+
+    @objc private func newTab() {
+        store?.selectedWorkspace?.createTab()
+    }
+
+    @objc private func closeTab() {
+        guard let ws = store?.selectedWorkspace, let tabID = ws.activeTabID else { return }
+        ws.closeTab(tabID)
+    }
+
+    @objc private func nextTab() {
+        store?.selectedWorkspace?.selectNextTab()
+    }
+
+    @objc private func previousTab() {
+        store?.selectedWorkspace?.selectPreviousTab()
     }
 }
