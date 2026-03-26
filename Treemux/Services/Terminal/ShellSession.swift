@@ -62,9 +62,11 @@ final class ShellSession: ObservableObject, Identifiable {
         backendConfiguration: SessionBackendConfiguration,
         preferredWorkingDirectory: String
     ) {
+        var baseEnv = ShellSession.defaultEnvironment()
+        baseEnv["TREEMUX_PANE_ID"] = id.uuidString
         let launchConfiguration = backendConfiguration.makeLaunchConfiguration(
             preferredWorkingDirectory: preferredWorkingDirectory,
-            baseEnvironment: ShellSession.defaultEnvironment()
+            baseEnvironment: baseEnv
         )
 
         let surface = TerminalSurfaceFactory.make(
@@ -89,9 +91,11 @@ final class ShellSession: ObservableObject, Identifiable {
         self.id = id
         self.backendConfiguration = backendConfiguration
         self.preferredWorkingDirectory = preferredWorkingDirectory
+        var baseEnv = ShellSession.defaultEnvironment()
+        baseEnv["TREEMUX_PANE_ID"] = id.uuidString
         self.launchConfiguration = backendConfiguration.makeLaunchConfiguration(
             preferredWorkingDirectory: preferredWorkingDirectory,
-            baseEnvironment: ShellSession.defaultEnvironment()
+            baseEnvironment: baseEnv
         )
         self.title = launchConfiguration.command.displayName
         self.surfaceController = surfaceController
@@ -173,9 +177,11 @@ final class ShellSession: ObservableObject, Identifiable {
     }
 
     func start() {
+        var baseEnv = Self.defaultEnvironment()
+        baseEnv["TREEMUX_PANE_ID"] = id.uuidString
         launchConfiguration = backendConfiguration.makeLaunchConfiguration(
             preferredWorkingDirectory: preferredWorkingDirectory,
-            baseEnvironment: Self.defaultEnvironment()
+            baseEnvironment: baseEnv
         )
         title = launchConfiguration.command.displayName
 
@@ -193,9 +199,11 @@ final class ShellSession: ObservableObject, Identifiable {
             reportedWorkingDirectory = nil
         }
 
+        var baseEnv = Self.defaultEnvironment()
+        baseEnv["TREEMUX_PANE_ID"] = id.uuidString
         launchConfiguration = backendConfiguration.makeLaunchConfiguration(
             preferredWorkingDirectory: preferredWorkingDirectory,
-            baseEnvironment: Self.defaultEnvironment()
+            baseEnvironment: baseEnv
         )
         surfaceController.updateLaunchConfiguration(launchConfiguration)
         exitCode = nil
