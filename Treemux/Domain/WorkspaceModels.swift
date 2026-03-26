@@ -37,13 +37,64 @@ struct WorktreeSessionStateRecord: Codable {
 }
 
 /// Persisted state for a single tab inside a worktree session.
-struct WorkspaceTabStateRecord: Codable {
+struct WorkspaceTabStateRecord: Codable, Identifiable {
     let id: UUID
-    let title: String
+    var title: String
+    var isManuallyNamed: Bool
     let layout: SessionLayoutNode?
     let panes: [PaneSnapshot]
     let focusedPaneID: UUID?
     let zoomedPaneID: UUID?
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        isManuallyNamed: Bool = false,
+        layout: SessionLayoutNode? = nil,
+        panes: [PaneSnapshot] = [],
+        focusedPaneID: UUID? = nil,
+        zoomedPaneID: UUID? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.isManuallyNamed = isManuallyNamed
+        self.layout = layout
+        self.panes = panes
+        self.focusedPaneID = focusedPaneID
+        self.zoomedPaneID = zoomedPaneID
+    }
+
+    /// Creates a default single-pane tab for the given working directory.
+    static func makeDefault(workingDirectory: String, title: String = "Tab 1") -> WorkspaceTabStateRecord {
+        let paneID = UUID()
+        let pane = PaneSnapshot(
+            id: paneID,
+            backend: .localShell(LocalShellConfig.defaultShell()),
+            workingDirectory: workingDirectory
+        )
+        return WorkspaceTabStateRecord(
+            title: title,
+            layout: .pane(PaneLeaf(paneID: paneID)),
+            panes: [pane],
+            focusedPaneID: paneID
+        )
+    }
+
+    // Support decoding old data without isManuallyNamed field
+    enum CodingKeys: String, CodingKey {
+        case id, title, isManuallyNamed, layout, panes, focusedPaneID, zoomedPaneID
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        isManuallyNamed = try container.decodeIfPresent(Bool.self, forKey: .isManuallyNamed) ?? false
+        layout = try container.decodeIfPresent(SessionLayoutNode.self, forKey: .layout)
+        panes = try container.decodeIfPresent([PaneSnapshot].self, forKey: .panes) ?? []
+        focusedPaneID = try container.decodeIfPresent(UUID.self, forKey: .focusedPaneID)
+        zoomedPaneID = try container.decodeIfPresent(UUID.self, forKey: .zoomedPaneID)
+    }
 }
 
 /// A snapshot of a single pane for serialization.
@@ -107,21 +158,35 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     /// Custom display order of worktrees (paths). Empty means default git order.
     @Published var worktreeOrder: [String] = []
 
-    /// Controls all terminal sessions and the split layout for this workspace.
-    @Published var sessionController: WorkspaceSessionController
+    // MARK: - Tab State
 
-    /// Session controllers for individual worktrees, keyed by worktree path.
-    private var worktreeControllers: [String: WorkspaceSessionController] = [:]
+    @Published var tabs: [WorkspaceTabStateRecord] = []
+    @Published var activeTabID: UUID?
 
-    /// Returns a session controller for the given worktree path, creating one if needed.
-    func sessionController(forWorktreePath path: String) -> WorkspaceSessionController {
-        if let existing = worktreeControllers[path] {
-            return existing
-        }
-        let controller = WorkspaceSessionController(workingDirectory: path)
-        worktreeControllers[path] = controller
-        return controller
+    /// Tab controllers keyed by worktree path → tab ID.
+    private var tabControllers: [String: [UUID: WorkspaceSessionController]] = [:]
+    /// Saved tab state for inactive worktrees.
+    private var worktreeTabStates: [String: (tabs: [WorkspaceTabStateRecord], activeTabID: UUID?)] = [:]
+    /// The worktree path currently being displayed.
+    private(set) var activeWorktreePath: String = ""
+
+    // MARK: - Active Controller
+
+    /// Returns the session controller for the currently active tab, or nil if no tab is active.
+    var sessionController: WorkspaceSessionController? {
+        guard let tabID = activeTabID else { return nil }
+        return controller(forTabID: tabID, worktreePath: activeWorktreePath)
     }
+
+    /// Returns a session controller for the given worktree path, switching if necessary.
+    func sessionController(forWorktreePath path: String) -> WorkspaceSessionController? {
+        if path != activeWorktreePath {
+            switchToWorktree(path)
+        }
+        return sessionController
+    }
+
+    // MARK: - Initialization
 
     init(
         id: UUID = UUID(),
@@ -141,8 +206,13 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         self.isArchived = isArchived
         self.sshTarget = sshTarget
         self.worktreeOrder = worktreeOrder
+
         let workingDirectory = repositoryRoot?.path ?? NSHomeDirectory()
-        self.sessionController = WorkspaceSessionController(workingDirectory: workingDirectory)
+        self.activeWorktreePath = workingDirectory
+
+        let defaultTab = WorkspaceTabStateRecord.makeDefault(workingDirectory: workingDirectory)
+        self.tabs = [defaultTab]
+        self.activeTabID = defaultTab.id
     }
 
     /// Creates a runtime model from a persisted record.
@@ -157,20 +227,215 @@ final class WorkspaceModel: ObservableObject, Identifiable {
             sshTarget: record.sshTarget,
             worktreeOrder: record.worktreeOrder ?? []
         )
+        restoreTabState(from: record.worktreeStates)
     }
 
-    /// Terminates all sessions managed by this workspace.
-    func terminateAllSessions() {
-        sessionController.terminateAll()
-        for controller in worktreeControllers.values {
-            controller.terminateAll()
+    // MARK: - Tab Operations
+
+    /// Creates a new tab and makes it active.
+    func createTab() {
+        saveActiveTabState()
+        let newIndex = tabs.count + 1
+        let newTab = WorkspaceTabStateRecord.makeDefault(
+            workingDirectory: activeWorktreePath,
+            title: "Tab \(newIndex)"
+        )
+        tabs.append(newTab)
+        activeTabID = newTab.id
+    }
+
+    /// Switches to the specified tab.
+    func selectTab(_ tabID: UUID) {
+        guard tabID != activeTabID,
+              tabs.contains(where: { $0.id == tabID }) else { return }
+        saveActiveTabState()
+        activeTabID = tabID
+    }
+
+    /// Closes a tab and cleans up its controller. If it was active, selects an adjacent tab.
+    func closeTab(_ tabID: UUID) {
+        saveActiveTabState()
+        guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
+
+        let path = activeWorktreePath
+        if let ctrl = tabControllers[path]?[tabID] {
+            ctrl.terminateAll()
+            tabControllers[path]?.removeValue(forKey: tabID)
         }
-        worktreeControllers.removeAll()
+
+        tabs.remove(at: index)
+
+        if tabs.isEmpty {
+            activeTabID = nil
+        } else if activeTabID == tabID {
+            let newIndex = min(index, tabs.count - 1)
+            activeTabID = tabs[newIndex].id
+        }
     }
 
-    /// Serializes the runtime model back to a persistable record.
+    /// Renames a tab and marks it as manually named.
+    func renameTab(_ tabID: UUID, title: String) {
+        guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        tabs[index].title = trimmed
+        tabs[index].isManuallyNamed = true
+    }
+
+    /// Reorders tabs via drag-and-drop style offsets.
+    func moveTab(fromOffsets source: IndexSet, toOffset destination: Int) {
+        tabs.move(fromOffsets: source, toOffset: destination)
+    }
+
+    /// Cycles to the next tab, wrapping around.
+    func selectNextTab() {
+        guard tabs.count > 1,
+              let currentID = activeTabID,
+              let index = tabs.firstIndex(where: { $0.id == currentID }) else { return }
+        saveActiveTabState()
+        let nextIndex = (index + 1) % tabs.count
+        activeTabID = tabs[nextIndex].id
+    }
+
+    /// Cycles to the previous tab, wrapping around.
+    func selectPreviousTab() {
+        guard tabs.count > 1,
+              let currentID = activeTabID,
+              let index = tabs.firstIndex(where: { $0.id == currentID }) else { return }
+        saveActiveTabState()
+        let prevIndex = (index - 1 + tabs.count) % tabs.count
+        activeTabID = tabs[prevIndex].id
+    }
+
+    /// Selects a tab by 1-based number (e.g. Cmd+1 selects tab 1).
+    func selectTabByNumber(_ number: Int) {
+        let index = number - 1
+        guard index >= 0, index < tabs.count else { return }
+        selectTab(tabs[index].id)
+    }
+
+    // MARK: - Title Auto-Generation
+
+    /// Returns a suggested title for a tab based on the focused pane's shell session.
+    func suggestedTitle(for ctrl: WorkspaceSessionController, existingTab: WorkspaceTabStateRecord?) -> String {
+        if existingTab?.isManuallyNamed == true {
+            return existingTab?.title ?? "Tab"
+        }
+        if let focusedPaneID = ctrl.focusedPaneID,
+           let session = ctrl.session(for: focusedPaneID) {
+            let title = session.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !title.isEmpty { return title }
+            let dir = session.effectiveWorkingDirectory
+            let basename = URL(fileURLWithPath: dir).lastPathComponent
+            if !basename.isEmpty { return basename }
+        }
+        return existingTab?.title.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Tab"
+    }
+
+    // MARK: - State Save/Load
+
+    /// Saves the current active tab's layout and pane state from its controller.
+    func saveActiveTabState() {
+        guard let tabID = activeTabID,
+              let index = tabs.firstIndex(where: { $0.id == tabID }),
+              let ctrl = tabControllers[activeWorktreePath]?[tabID] else { return }
+
+        let existingTab = tabs[index]
+        let preferredTitle = suggestedTitle(for: ctrl, existingTab: existingTab)
+
+        tabs[index] = WorkspaceTabStateRecord(
+            id: tabID,
+            title: preferredTitle,
+            isManuallyNamed: existingTab.isManuallyNamed,
+            layout: ctrl.layout,
+            panes: ctrl.sessionSnapshots(),
+            focusedPaneID: ctrl.focusedPaneID,
+            zoomedPaneID: ctrl.zoomedPaneID
+        )
+    }
+
+    /// Restores tab state from persisted worktree states.
+    private func restoreTabState(from worktreeStates: [WorktreeSessionStateRecord]) {
+        guard let state = worktreeStates.first(where: { $0.worktreePath == activeWorktreePath })
+                ?? worktreeStates.first else { return }
+        if state.tabs.isEmpty { return }
+        tabs = state.tabs
+        activeTabID = state.selectedTabID ?? state.tabs.first?.id
+    }
+
+    // MARK: - Worktree Switching
+
+    /// Switches to a different worktree, saving current tab state and restoring the target's.
+    func switchToWorktree(_ path: String) {
+        guard path != activeWorktreePath else { return }
+        saveActiveTabState()
+        worktreeTabStates[activeWorktreePath] = (tabs: tabs, activeTabID: activeTabID)
+        activeWorktreePath = path
+
+        if let saved = worktreeTabStates[path] {
+            tabs = saved.tabs
+            activeTabID = saved.activeTabID
+        } else {
+            let defaultTab = WorkspaceTabStateRecord.makeDefault(workingDirectory: path)
+            tabs = [defaultTab]
+            activeTabID = defaultTab.id
+        }
+    }
+
+    // MARK: - Controller Management
+
+    /// Returns or creates a session controller for the given tab and worktree.
+    private func controller(forTabID tabID: UUID, worktreePath: String) -> WorkspaceSessionController {
+        if let existing = tabControllers[worktreePath]?[tabID] {
+            return existing
+        }
+        let ctrl = WorkspaceSessionController(workingDirectory: worktreePath)
+        if tabControllers[worktreePath] == nil {
+            tabControllers[worktreePath] = [:]
+        }
+        tabControllers[worktreePath]?[tabID] = ctrl
+        return ctrl
+    }
+
+    // MARK: - Termination
+
+    /// Terminates all sessions managed by this workspace across all tabs and worktrees.
+    func terminateAllSessions() {
+        for (_, controllers) in tabControllers {
+            for (_, ctrl) in controllers {
+                ctrl.terminateAll()
+            }
+        }
+        tabControllers.removeAll()
+    }
+
+    // MARK: - Persistence
+
+    /// Serializes the runtime model back to a persistable record, including all tab state.
     func toRecord() -> WorkspaceRecord {
-        WorkspaceRecord(
+        saveActiveTabState()
+
+        var allWorktreeStates: [WorktreeSessionStateRecord] = []
+
+        // Active worktree state
+        allWorktreeStates.append(WorktreeSessionStateRecord(
+            worktreePath: activeWorktreePath,
+            branch: currentBranch,
+            tabs: tabs,
+            selectedTabID: activeTabID
+        ))
+
+        // Inactive worktree states
+        for (path, state) in worktreeTabStates where path != activeWorktreePath {
+            allWorktreeStates.append(WorktreeSessionStateRecord(
+                worktreePath: path,
+                branch: nil,
+                tabs: state.tabs,
+                selectedTabID: state.activeTabID
+            ))
+        }
+
+        return WorkspaceRecord(
             id: id,
             kind: kind,
             name: name,
@@ -178,7 +443,7 @@ final class WorkspaceModel: ObservableObject, Identifiable {
             isPinned: isPinned,
             isArchived: isArchived,
             sshTarget: sshTarget,
-            worktreeStates: [],
+            worktreeStates: allWorktreeStates,
             worktreeOrder: worktreeOrder.isEmpty ? nil : worktreeOrder
         )
     }

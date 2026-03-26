@@ -9,6 +9,7 @@ import Foundation
 
 enum ShortcutCategory: String, CaseIterable, Hashable, Identifiable {
     case general
+    case tabs
     case panes
     case window
 
@@ -17,6 +18,7 @@ enum ShortcutCategory: String, CaseIterable, Hashable, Identifiable {
     var title: String {
         switch self {
         case .general: return String(localized: "General")
+        case .tabs: return String(localized: "Tabs")
         case .panes: return String(localized: "Panes")
         case .window: return String(localized: "Window")
         }
@@ -30,6 +32,10 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
     case commandPalette
     case toggleSidebar
     case openProject
+    case newTab
+    case closeTab
+    case nextTab
+    case previousTab
     case splitHorizontal
     case splitVertical
     case closePane
@@ -44,6 +50,8 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
         switch self {
         case .openSettings, .commandPalette, .toggleSidebar, .openProject:
             return .general
+        case .newTab, .closeTab, .nextTab, .previousTab:
+            return .tabs
         case .splitHorizontal, .splitVertical, .closePane,
              .focusNextPane, .focusPreviousPane, .zoomPane, .newClaudeCode:
             return .panes
@@ -56,6 +64,10 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
         case .commandPalette: return String(localized: "Command Palette")
         case .toggleSidebar: return String(localized: "Toggle Sidebar")
         case .openProject: return String(localized: "Open Project")
+        case .newTab: return String(localized: "New Tab")
+        case .closeTab: return String(localized: "Close Tab")
+        case .nextTab: return String(localized: "Next Tab")
+        case .previousTab: return String(localized: "Previous Tab")
         case .splitHorizontal: return String(localized: "Split Down")
         case .splitVertical: return String(localized: "Split Right")
         case .closePane: return String(localized: "Close Pane")
@@ -72,6 +84,10 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
         case .commandPalette: return String(localized: "Search and run commands.")
         case .toggleSidebar: return String(localized: "Show or hide the project sidebar.")
         case .openProject: return String(localized: "Open a directory as a project.")
+        case .newTab: return String(localized: "Create a new terminal tab.")
+        case .closeTab: return String(localized: "Close the current tab.")
+        case .nextTab: return String(localized: "Switch to the next tab.")
+        case .previousTab: return String(localized: "Switch to the previous tab.")
         case .splitHorizontal: return String(localized: "Split the focused pane downward.")
         case .splitVertical: return String(localized: "Split the focused pane to the right.")
         case .closePane: return String(localized: "Close the focused pane.")
@@ -92,6 +108,14 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
             return StoredShortcut(key: "b", command: true, shift: false, option: false, control: false)
         case .openProject:
             return StoredShortcut(key: "o", command: true, shift: false, option: false, control: false)
+        case .newTab:
+            return StoredShortcut(key: "t", command: true, shift: false, option: false, control: false)
+        case .closeTab:
+            return StoredShortcut(key: "w", command: true, shift: true, option: false, control: false)
+        case .nextTab:
+            return StoredShortcut(key: "]", command: true, shift: true, option: false, control: false)
+        case .previousTab:
+            return StoredShortcut(key: "[", command: true, shift: true, option: false, control: false)
         case .splitHorizontal:
             return StoredShortcut(key: "d", command: true, shift: false, option: false, control: false)
         case .splitVertical:
