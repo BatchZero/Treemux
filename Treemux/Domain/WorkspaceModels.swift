@@ -377,21 +377,30 @@ final class WorkspaceModel: ObservableObject, Identifiable {
 
     // MARK: - Worktree Switching
 
-    /// Switches to a different worktree, saving current tab state and restoring the target's.
-    func switchToWorktree(_ path: String) {
-        guard path != activeWorktreePath else { return }
+    /// Saves the current worktree's tab state into the worktreeTabStates dictionary.
+    private func saveActiveWorktreeState() {
         saveActiveTabState()
         worktreeTabStates[activeWorktreePath] = (tabs: tabs, activeTabID: activeTabID)
-        activeWorktreePath = path
+    }
 
-        if let saved = worktreeTabStates[path] {
+    /// Loads the target worktree's tab state from worktreeTabStates, or creates a default.
+    private func loadActiveWorktreeState() {
+        if let saved = worktreeTabStates[activeWorktreePath] {
             tabs = saved.tabs
             activeTabID = saved.activeTabID
         } else {
-            let defaultTab = WorkspaceTabStateRecord.makeDefault(workingDirectory: path)
+            let defaultTab = WorkspaceTabStateRecord.makeDefault(workingDirectory: activeWorktreePath)
             tabs = [defaultTab]
             activeTabID = defaultTab.id
         }
+    }
+
+    /// Switches to a different worktree, saving current tab state and restoring the target's.
+    func switchToWorktree(_ path: String) {
+        guard path != activeWorktreePath else { return }
+        saveActiveWorktreeState()
+        activeWorktreePath = path
+        loadActiveWorktreeState()
     }
 
     // MARK: - Controller Management
