@@ -118,4 +118,97 @@ final class WorkspaceModelsTests: XCTestCase {
         let decoded = try JSONDecoder().decode(PaneSnapshot.self, from: data)
         XCTAssertEqual(decoded.workingDirectory, "/Users/test/code")
     }
+
+    // MARK: - WorkspaceModel Tab Management Tests
+
+    @MainActor
+    func testWorkspaceModelInitializesWithOneDefaultTab() {
+        let ws = WorkspaceModel(name: "test", kind: .localTerminal)
+        XCTAssertEqual(ws.tabs.count, 1)
+        XCTAssertNotNil(ws.activeTabID)
+        XCTAssertEqual(ws.tabs.first?.id, ws.activeTabID)
+    }
+
+    @MainActor
+    func testCreateTabAddsAndActivates() {
+        let ws = WorkspaceModel(name: "test", kind: .localTerminal)
+        let originalTabID = ws.activeTabID
+        ws.createTab()
+        XCTAssertEqual(ws.tabs.count, 2)
+        XCTAssertNotEqual(ws.activeTabID, originalTabID)
+    }
+
+    @MainActor
+    func testCloseTabRemovesAndSelectsAdjacent() {
+        let ws = WorkspaceModel(name: "test", kind: .localTerminal)
+        ws.createTab()
+        ws.createTab()
+        XCTAssertEqual(ws.tabs.count, 3)
+        let middleTab = ws.tabs[1]
+        ws.selectTab(middleTab.id)
+        ws.closeTab(middleTab.id)
+        XCTAssertEqual(ws.tabs.count, 2)
+        XCTAssertNotNil(ws.activeTabID)
+        XCTAssertFalse(ws.tabs.contains { $0.id == middleTab.id })
+    }
+
+    @MainActor
+    func testCloseLastTabResultsInEmptyState() {
+        let ws = WorkspaceModel(name: "test", kind: .localTerminal)
+        let tabID = ws.tabs[0].id
+        ws.closeTab(tabID)
+        XCTAssertTrue(ws.tabs.isEmpty)
+        XCTAssertNil(ws.activeTabID)
+    }
+
+    @MainActor
+    func testRenameTabSetsManuallyNamed() {
+        let ws = WorkspaceModel(name: "test", kind: .localTerminal)
+        let tabID = ws.tabs[0].id
+        ws.renameTab(tabID, title: "My Terminal")
+        XCTAssertEqual(ws.tabs[0].title, "My Terminal")
+        XCTAssertTrue(ws.tabs[0].isManuallyNamed)
+    }
+
+    @MainActor
+    func testMoveTab() {
+        let ws = WorkspaceModel(name: "test", kind: .localTerminal)
+        ws.createTab()
+        ws.createTab()
+        let firstID = ws.tabs[0].id
+        ws.moveTab(fromOffsets: IndexSet(integer: 0), toOffset: 3)
+        XCTAssertEqual(ws.tabs.last?.id, firstID)
+    }
+
+    @MainActor
+    func testSelectNextAndPreviousTabWraps() {
+        let ws = WorkspaceModel(name: "test", kind: .localTerminal)
+        ws.createTab()
+        ws.createTab()
+        ws.selectTab(ws.tabs[0].id)
+        ws.selectPreviousTab()
+        XCTAssertEqual(ws.activeTabID, ws.tabs[2].id)
+        ws.selectNextTab()
+        XCTAssertEqual(ws.activeTabID, ws.tabs[0].id)
+    }
+
+    @MainActor
+    func testSelectTabByNumber() {
+        let ws = WorkspaceModel(name: "test", kind: .localTerminal)
+        ws.createTab()
+        ws.createTab()
+        let secondTabID = ws.tabs[1].id
+        ws.selectTabByNumber(2)
+        XCTAssertEqual(ws.activeTabID, secondTabID)
+    }
+
+    @MainActor
+    func testToRecordSerializesTabs() {
+        let ws = WorkspaceModel(name: "test", kind: .localTerminal)
+        ws.createTab()
+        let record = ws.toRecord()
+        XCTAssertFalse(record.worktreeStates.isEmpty)
+        XCTAssertEqual(record.worktreeStates[0].tabs.count, 2)
+        XCTAssertNotNil(record.worktreeStates[0].selectedTabID)
+    }
 }
