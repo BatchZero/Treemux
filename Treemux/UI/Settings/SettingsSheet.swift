@@ -6,16 +6,25 @@
 import AppKit
 import SwiftUI
 
-/// Tabbed settings sheet covering all configuration areas.
+/// Sidebar-based settings sheet following macOS System Settings pattern.
 struct SettingsSheet: View {
     @EnvironmentObject private var store: WorkspaceStore
     @EnvironmentObject private var theme: ThemeManager
     @Environment(\.dismiss) private var dismiss
 
-    enum SettingsTab: String, CaseIterable {
+    @State private var draft = AppSettings()
+    @State private var originalSettings = AppSettings()
+
+    private var hasChanges: Bool {
+        draft != originalSettings
+    }
+
+    enum SettingsSection: String, CaseIterable, Identifiable {
         case general, terminal, theme, aiTools, ssh, shortcuts
 
-        var label: String {
+        var id: String { rawValue }
+
+        var title: String {
             switch self {
             case .general: return String(localized: "General")
             case .terminal: return String(localized: "Terminal")
@@ -23,6 +32,17 @@ struct SettingsSheet: View {
             case .aiTools: return String(localized: "AI Tools")
             case .ssh: return "SSH"
             case .shortcuts: return String(localized: "Shortcuts")
+            }
+        }
+
+        var subtitle: String {
+            switch self {
+            case .general: return String(localized: "Language and startup behavior")
+            case .terminal: return String(localized: "Shell, font, and cursor settings")
+            case .theme: return String(localized: "Color themes and appearance")
+            case .aiTools: return String(localized: "AI agent detection and presets")
+            case .ssh: return String(localized: "SSH config file paths")
+            case .shortcuts: return String(localized: "Customize keyboard shortcuts")
             }
         }
 
@@ -38,38 +58,90 @@ struct SettingsSheet: View {
         }
     }
 
-    @State private var selectedTab: SettingsTab = .general
+    @State private var selection: SettingsSection = .general
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            ForEach(SettingsTab.allCases, id: \.self) { tab in
-                settingsContent(for: tab)
-                    .tabItem {
-                        Label(tab.label, systemImage: tab.icon)
+        HStack(spacing: 0) {
+            // Sidebar
+            List(SettingsSection.allCases, selection: $selection) { section in
+                Label(section.title, systemImage: section.icon)
+                    .tag(section)
+            }
+            .listStyle(.sidebar)
+            .frame(width: 180)
+
+            Divider()
+
+            // Detail
+            VStack(spacing: 0) {
+                // Header
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(selection.title)
+                        .font(.system(size: 20, weight: .semibold))
+                    Text(selection.subtitle)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 18)
+
+                Divider()
+
+                // Content
+                ScrollView {
+                    settingsContent(for: selection)
+                        .padding(4)
+                }
+
+                // Footer with Save / Cancel
+                Divider()
+                HStack {
+                    Spacer()
+                    Button(String(localized: "Cancel")) {
+                        // Revert theme if it was changed during preview
+                        if draft.activeThemeID != originalSettings.activeThemeID {
+                            theme.setActiveTheme(originalSettings.activeThemeID)
+                        }
+                        dismiss()
                     }
-                    .tag(tab)
+                    .keyboardShortcut(.cancelAction)
+
+                    Button(String(localized: "Save")) {
+                        store.updateSettings(draft)
+                        dismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!hasChanges)
+                    .keyboardShortcut(.defaultAction)
+                }
+                .padding(20)
             }
         }
-        .frame(width: 520, height: 380)
+        .frame(width: 640, height: 460)
+        .task {
+            draft = store.settings
+            originalSettings = store.settings
+        }
     }
 
-    // MARK: - Tab Content
+    // MARK: - Section Content
 
     @ViewBuilder
-    private func settingsContent(for tab: SettingsTab) -> some View {
-        switch tab {
+    private func settingsContent(for section: SettingsSection) -> some View {
+        switch section {
         case .general:
-            GeneralSettingsView(settings: $store.settings)
+            GeneralSettingsView(settings: $draft)
         case .terminal:
-            TerminalSettingsView(settings: $store.settings)
+            TerminalSettingsView(settings: $draft)
         case .theme:
-            ThemeSettingsView(settings: $store.settings, themeManager: theme)
+            ThemeSettingsView(settings: $draft, themeManager: theme)
         case .aiTools:
-            AIToolsSettingsView(settings: $store.settings)
+            AIToolsSettingsView(settings: $draft)
         case .ssh:
-            SSHSettingsView(settings: $store.settings)
+            SSHSettingsView(settings: $draft)
         case .shortcuts:
-            ShortcutsSettingsView()
+            ShortcutsSettingsView(settings: $draft)
         }
     }
 }
@@ -192,7 +264,7 @@ private struct SSHSettingsView: View {
 // MARK: - Shortcuts Settings
 
 private struct ShortcutsSettingsView: View {
-    @EnvironmentObject private var store: WorkspaceStore
+    @Binding var settings: AppSettings
 
     var body: some View {
         Form {
@@ -202,14 +274,14 @@ private struct ShortcutsSettingsView: View {
                 Section(category.title) {
                     let actions = ShortcutAction.allCases.filter { $0.category == category }
                     ForEach(actions) { action in
-                        ShortcutRow(action: action, settings: $store.settings)
+                        ShortcutRow(action: action, settings: $settings)
                     }
                 }
             }
 
             Section {
                 Button(String(localized: "Reset All to Defaults")) {
-                    TreemuxKeyboardShortcuts.resetAll(in: &store.settings)
+                    TreemuxKeyboardShortcuts.resetAll(in: &settings)
                 }
             }
         }
