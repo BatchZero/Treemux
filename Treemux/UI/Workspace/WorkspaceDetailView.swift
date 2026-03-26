@@ -1,7 +1,6 @@
 //
 //  WorkspaceDetailView.swift
 //  Treemux
-//
 
 import SwiftUI
 
@@ -11,22 +10,21 @@ import SwiftUI
 struct WorkspaceDetailView: View {
     @EnvironmentObject private var store: WorkspaceStore
 
-    /// Resolves the active session controller based on workspace vs worktree selection.
-    private var activeController: WorkspaceSessionController? {
-        guard let workspace = store.selectedWorkspace else { return nil }
-        if let worktree = store.selectedWorktree {
-            return workspace.sessionController(forWorktreePath: worktree.path.path)
+    var body: some View {
+        if let controller = store.activeSessionController {
+            WorkspaceSessionDetailView(controller: controller)
+                .id(store.selectedWorkspaceID)
         }
-        return workspace.sessionController
     }
+}
+
+/// Observes the session controller directly so that layout mutations
+/// (e.g. splitPane) propagate to SplitNodeView. Follows the same pattern
+/// as Liney's WorkspaceSessionDetailView.
+private struct WorkspaceSessionDetailView: View {
+    @ObservedObject var controller: WorkspaceSessionController
 
     var body: some View {
-        if let controller = activeController {
-            SplitNodeView(
-                sessionController: controller,
-                node: controller.layout
-            )
-            .id(store.selectedWorkspaceID)
-        }
+        SplitNodeView(sessionController: controller, node: controller.layout)
     }
 }
