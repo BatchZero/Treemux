@@ -87,20 +87,6 @@ private struct GeneralSettingsView: View {
                 Text("中文").tag("zh-Hans")
             }
 
-            Picker(String(localized: "Appearance"), selection: $settings.appearance) {
-                Text(String(localized: "Follow System")).tag("system")
-                Text(String(localized: "Dark")).tag("dark")
-                Text(String(localized: "Light")).tag("light")
-            }
-            .onChange(of: settings.appearance) { _, newValue in
-                let appearance: NSAppearance? = switch newValue {
-                case "dark": NSAppearance(named: .darkAqua)
-                case "light": NSAppearance(named: .aqua)
-                default: nil
-                }
-                NSApp.keyWindow?.appearance = appearance
-            }
-
             Picker(String(localized: "On Startup"), selection: $settings.startup.restoreLastSession) {
                 Text(String(localized: "Restore Last Session")).tag(true)
                 Text(String(localized: "Blank Window")).tag(false)
