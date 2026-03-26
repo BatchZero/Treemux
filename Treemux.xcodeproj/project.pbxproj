@@ -69,6 +69,10 @@
 		AA000001AABBCCDD0000000F /* AIToolServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000F /* AIToolServiceTests.swift */; };
 		AA000001AABBCCDD00000010 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000010 /* CommandPaletteView.swift */; };
 		AA000001AABBCCDD00000011 /* SettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000011 /* SettingsSheet.swift */; };
+		AA000001AABBCCDD00000012 /* StoredShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000012 /* StoredShortcut.swift */; };
+		AA000001AABBCCDD00000013 /* ShortcutAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000013 /* ShortcutAction.swift */; };
+		AA000001AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift */; };
+		AA000001AABBCCDD00000015 /* ShortcutRecorderButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000015 /* ShortcutRecorderButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -146,6 +150,10 @@
 		AA000002AABBCCDD0000000F /* AIToolServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolServiceTests.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000010 /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000011 /* SettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheet.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000012 /* StoredShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoredShortcut.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000013 /* ShortcutAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutAction.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxKeyboardShortcuts.swift; sourceTree = "<group>"; };
+		AA000002AABBCCDD00000015 /* ShortcutRecorderButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -328,8 +336,11 @@
 				D8EB47950FCB5E9637572424 /* AppSettings.swift */,
 				1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */,
 				BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */,
+				AA000002AABBCCDD00000013 /* ShortcutAction.swift */,
 				8629D2D5813F897F85840289 /* SSHTarget.swift */,
+				AA000002AABBCCDD00000012 /* StoredShortcut.swift */,
 				AA000002AABBCCDD00000001 /* ThemeDefinition.swift */,
+				AA000002AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift */,
 				BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */,
 			);
 			path = Domain;
@@ -365,6 +376,7 @@
 			isa = PBXGroup;
 			children = (
 				AA000002AABBCCDD00000011 /* SettingsSheet.swift */,
+				AA000002AABBCCDD00000015 /* ShortcutRecorderButton.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -533,9 +545,13 @@
 				AA000001AABBCCDD0000000A /* OpenProjectSheet.swift in Sources */,
 				AA000001AABBCCDD00000007 /* SSHConfigParser.swift in Sources */,
 				AA000001AABBCCDD00000011 /* SettingsSheet.swift in Sources */,
+				AA000001AABBCCDD00000015 /* ShortcutRecorderButton.swift in Sources */,
+				AA000001AABBCCDD00000013 /* ShortcutAction.swift in Sources */,
+				AA000001AABBCCDD00000012 /* StoredShortcut.swift in Sources */,
 				AA000001AABBCCDD00000008 /* SSHConfigService.swift in Sources */,
 				AA000001AABBCCDD00000001 /* ThemeDefinition.swift in Sources */,
 				AA000001AABBCCDD00000003 /* ThemeManager.swift in Sources */,
+				AA000001AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift in Sources */,
 				AA000001AABBCCDD0000000B /* TmuxService.swift in Sources */,
 				0DA3A254039F1EEA04FB94DB /* AppSettings.swift in Sources */,
 				7BAFFB86D4EE2F43992E4808 /* AppSettingsPersistence.swift in Sources */,

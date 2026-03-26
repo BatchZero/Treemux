@@ -3,6 +3,7 @@
 //  Treemux
 //
 
+import AppKit
 import SwiftUI
 
 /// Tabbed settings sheet covering all configuration areas.
@@ -84,6 +85,20 @@ private struct GeneralSettingsView: View {
                 Text(String(localized: "Follow System")).tag("system")
                 Text("English").tag("en")
                 Text("中文").tag("zh-Hans")
+            }
+
+            Picker(String(localized: "Appearance"), selection: $settings.appearance) {
+                Text(String(localized: "Follow System")).tag("system")
+                Text(String(localized: "Dark")).tag("dark")
+                Text(String(localized: "Light")).tag("light")
+            }
+            .onChange(of: settings.appearance) { _, newValue in
+                let appearance: NSAppearance? = switch newValue {
+                case "dark": NSAppearance(named: .darkAqua)
+                case "light": NSAppearance(named: .aqua)
+                default: nil
+                }
+                NSApp.keyWindow?.appearance = appearance
             }
 
             Picker(String(localized: "On Startup"), selection: $settings.startup.restoreLastSession) {
@@ -191,35 +206,86 @@ private struct SSHSettingsView: View {
 // MARK: - Shortcuts Settings
 
 private struct ShortcutsSettingsView: View {
-    private let shortcuts: [(String, String)] = [
-        ("⌘T", "New Tab"),
-        ("⌘W", "Close Pane"),
-        ("⌘D", "Split Horizontal"),
-        ("⌘⇧D", "Split Vertical"),
-        ("⌘[ / ⌘]", "Switch Panes"),
-        ("⌘⇧Enter", "Zoom Pane"),
-        ("⌘⇧P", "Command Palette"),
-        ("⌘B", "Toggle Sidebar"),
-        ("⌘K", "Quick Switch Project"),
-        ("⌘⇧T", "Theme Switch"),
-        ("⌘⇧C", "New Claude Code"),
-        ("⌘,", "Settings"),
-    ]
+    @EnvironmentObject private var store: WorkspaceStore
 
     var body: some View {
         Form {
-            Section(String(localized: "Keyboard Shortcuts")) {
-                ForEach(shortcuts, id: \.0) { shortcut, action in
-                    HStack {
-                        Text(action)
-                        Spacer()
-                        Text(shortcut)
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundStyle(.secondary)
+            ForEach(ShortcutCategory.allCases.filter { cat in
+                ShortcutAction.allCases.contains { $0.category == cat }
+            }) { category in
+                Section(category.title) {
+                    let actions = ShortcutAction.allCases.filter { $0.category == category }
+                    ForEach(actions) { action in
+                        ShortcutRow(action: action, settings: $store.settings)
                     }
+                }
+            }
+
+            Section {
+                Button(String(localized: "Reset All to Defaults")) {
+                    TreemuxKeyboardShortcuts.resetAll(in: &store.settings)
                 }
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+private struct ShortcutRow: View {
+    let action: ShortcutAction
+    @Binding var settings: AppSettings
+
+    private var state: ShortcutState {
+        TreemuxKeyboardShortcuts.state(for: action, in: settings)
+    }
+
+    private var effectiveShortcut: StoredShortcut? {
+        TreemuxKeyboardShortcuts.effectiveShortcut(for: action, in: settings)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(action.title)
+                        .font(.system(size: 13))
+                    Text(action.subtitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                ShortcutRecorderButton(
+                    shortcut: Binding(
+                        get: { effectiveShortcut },
+                        set: { newShortcut in
+                            if let shortcut = newShortcut {
+                                TreemuxKeyboardShortcuts.setShortcut(shortcut, for: action, in: &settings)
+                            }
+                        }
+                    ),
+                    emptyTitle: String(localized: "Not Set")
+                )
+                .frame(width: 120)
+            }
+
+            HStack(spacing: 8) {
+                if state == .custom {
+                    Button(String(localized: "Reset")) {
+                        TreemuxKeyboardShortcuts.resetShortcut(for: action, in: &settings)
+                    }
+                    .font(.system(size: 11))
+                }
+
+                if state != .disabled {
+                    Button(String(localized: "Disable")) {
+                        TreemuxKeyboardShortcuts.disableShortcut(for: action, in: &settings)
+                    }
+                    .font(.system(size: 11))
+                }
+            }
+        }
+        .padding(.vertical, 2)
     }
 }

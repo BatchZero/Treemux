@@ -43,6 +43,53 @@ struct MainWindowView: View {
                 .accessibilityLabel("Toggle Sidebar")
                 .help("Toggle Sidebar")
             }
+
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    if let sc = store.selectedWorkspace?.sessionController,
+                       let focused = sc.focusedPaneID {
+                        sc.splitPane(focused, axis: .horizontal)
+                    }
+                } label: {
+                    Image(systemName: "rectangle.split.1x2")
+                }
+                .help("Split Down (⌘D)")
+
+                Button {
+                    if let sc = store.selectedWorkspace?.sessionController,
+                       let focused = sc.focusedPaneID {
+                        sc.splitPane(focused, axis: .vertical)
+                    }
+                } label: {
+                    Image(systemName: "rectangle.split.2x1")
+                }
+                .help("Split Right (⌘⇧D)")
+
+                Button {
+                    if let sc = store.selectedWorkspace?.sessionController,
+                       let focused = sc.focusedPaneID {
+                        sc.splitPane(focused, axis: .horizontal)
+                    }
+                } label: {
+                    Image(systemName: "plus.rectangle")
+                }
+                .help("New Terminal")
+
+                Button {
+                    store.showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .help("Settings (⌘,)")
+            }
+        }
+        .sheet(isPresented: $store.showSettings) {
+            SettingsSheet()
+        }
+        .overlay {
+            if store.showCommandPalette {
+                CommandPaletteView(isPresented: $store.showCommandPalette)
+            }
         }
     }
 }
