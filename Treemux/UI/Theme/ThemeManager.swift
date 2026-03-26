@@ -3,6 +3,7 @@
 //  Treemux
 //
 
+import AppKit
 import Foundation
 import SwiftUI
 
@@ -67,6 +68,23 @@ final class ThemeManager: ObservableObject {
     var successColor: Color { Color(hex: activeTheme.ui.success) }
     var warningColor: Color { Color(hex: activeTheme.ui.warning) }
     var dangerColor: Color { Color(hex: activeTheme.ui.danger) }
+
+    // MARK: - Window Appearance
+
+    /// The NSAppearance corresponding to the active theme.
+    var windowAppearance: NSAppearance? {
+        switch activeTheme.appearance {
+        case "light":
+            return NSAppearance(named: .aqua)
+        default:
+            return NSAppearance(named: .darkAqua)
+        }
+    }
+
+    /// The NSColor for NSWindow.backgroundColor derived from the active theme.
+    var nsWindowBackgroundColor: NSColor {
+        NSColor(Color(hex: activeTheme.ui.windowBackground))
+    }
 
     // MARK: - Private
 
