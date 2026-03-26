@@ -300,6 +300,35 @@ final class WorkspaceModelsTests: XCTestCase {
     }
 
     @MainActor
+    func testSessionControllerRestoresLayout() {
+        let paneA = UUID()
+        let paneB = UUID()
+        let savedLayout: SessionLayoutNode = .split(PaneSplitNode(
+            axis: .horizontal,
+            first: .pane(PaneLeaf(paneID: paneA)),
+            second: .pane(PaneLeaf(paneID: paneB))
+        ))
+        let snapshots = [
+            PaneSnapshot(id: paneA, backend: .localShell(LocalShellConfig.defaultShell()), workingDirectory: "/tmp/a"),
+            PaneSnapshot(id: paneB, backend: .localShell(LocalShellConfig.defaultShell()), workingDirectory: "/tmp/b")
+        ]
+
+        let ctrl = WorkspaceSessionController(
+            workingDirectory: "/tmp",
+            savedLayout: savedLayout,
+            paneSnapshots: snapshots,
+            focusedPaneID: paneB,
+            zoomedPaneID: nil
+        )
+
+        // Layout should be the saved split, not a single pane
+        XCTAssertEqual(ctrl.layout.paneIDs.count, 2)
+        XCTAssertTrue(ctrl.layout.paneIDs.contains(paneA))
+        XCTAssertTrue(ctrl.layout.paneIDs.contains(paneB))
+        XCTAssertEqual(ctrl.focusedPaneID, paneB)
+    }
+
+    @MainActor
     func testToRecordSerializesTabs() {
         let ws = WorkspaceModel(name: "test", kind: .localTerminal)
         ws.createTab()
