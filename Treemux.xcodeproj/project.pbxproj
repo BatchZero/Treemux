@@ -73,6 +73,8 @@
 		AA000001AABBCCDD00000013 /* ShortcutAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000013 /* ShortcutAction.swift */; };
 		AA000001AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift */; };
 		AA000001AABBCCDD00000015 /* ShortcutRecorderButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000015 /* ShortcutRecorderButton.swift */; };
+		C8D4F2A15E3B79061A8DC492 /* WorkspaceTabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A3E91C4D2F08A6E1C5B730 /* WorkspaceTabBarView.swift */; };
+		E9F1A73C6B4D85E20839CD54 /* EmptyTabStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6E2F80B3A1C94D5072BEF61 /* EmptyTabStateView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -154,6 +156,8 @@
 		AA000002AABBCCDD00000013 /* ShortcutAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutAction.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxKeyboardShortcuts.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000015 /* ShortcutRecorderButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderButton.swift; sourceTree = "<group>"; };
+		B7A3E91C4D2F08A6E1C5B730 /* WorkspaceTabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTabBarView.swift; sourceTree = "<group>"; };
+		D6E2F80B3A1C94D5072BEF61 /* EmptyTabStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyTabStateView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -298,10 +302,12 @@
 		7733A5BF2FFBC78041E8298D /* Workspace */ = {
 			isa = PBXGroup;
 			children = (
+				D6E2F80B3A1C94D5072BEF61 /* EmptyTabStateView.swift */,
 				9F23062A273124B6BBE28B71 /* SplitDivider.swift */,
 				A7CF1673C70DBE89F480A010 /* SplitNodeView.swift */,
 				A9B01277529CEA9D185C95B0 /* TerminalPaneView.swift */,
 				E45B70C0F236F9F0FA025A53 /* WorkspaceDetailView.swift */,
+				B7A3E91C4D2F08A6E1C5B730 /* WorkspaceTabBarView.swift */,
 			);
 			path = Workspace;
 			sourceTree = "<group>";
@@ -583,6 +589,8 @@
 				04885DA006A7F9D402450132 /* WindowContext.swift in Sources */,
 				320E9CBA68B37DFD4F22711A /* WorkspaceDetailView.swift in Sources */,
 				BF6AC7D0EC7DBA0469366D91 /* WorkspaceMetadataWatchService.swift in Sources */,
+				C8D4F2A15E3B79061A8DC492 /* WorkspaceTabBarView.swift in Sources */,
+				E9F1A73C6B4D85E20839CD54 /* EmptyTabStateView.swift in Sources */,
 				F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */,
 				3AEFD19DA77CAC18BB8B842B /* WorkspaceSessionController.swift in Sources */,
 				3C1BD4702DECC75E0A4ABD1A /* WorkspaceSidebarView.swift in Sources */,
