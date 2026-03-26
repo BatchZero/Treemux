@@ -60,6 +60,54 @@ final class WorkspaceModelsTests: XCTestCase {
         XCTAssertTrue(decoded.workspaces.isEmpty)
     }
 
+    func testTabStateRecordCodableRoundTrip() throws {
+        let tab = WorkspaceTabStateRecord(
+            id: UUID(),
+            title: "My Tab",
+            isManuallyNamed: true,
+            layout: .pane(PaneLeaf(paneID: UUID())),
+            panes: [],
+            focusedPaneID: nil,
+            zoomedPaneID: nil
+        )
+        let data = try JSONEncoder().encode(tab)
+        let decoded = try JSONDecoder().decode(WorkspaceTabStateRecord.self, from: data)
+        XCTAssertEqual(decoded.title, "My Tab")
+        XCTAssertTrue(decoded.isManuallyNamed)
+    }
+
+    func testTabStateRecordDefaultIsManuallyNamed() throws {
+        let tab = WorkspaceTabStateRecord(
+            id: UUID(),
+            title: "Tab 1",
+            layout: nil,
+            panes: [],
+            focusedPaneID: nil,
+            zoomedPaneID: nil
+        )
+        XCTAssertFalse(tab.isManuallyNamed)
+    }
+
+    func testTabStateRecordMakeDefault() throws {
+        let tab = WorkspaceTabStateRecord.makeDefault(workingDirectory: "/tmp/test")
+        XCTAssertEqual(tab.title, "Tab 1")
+        XCTAssertFalse(tab.isManuallyNamed)
+        XCTAssertNotNil(tab.layout)
+        XCTAssertEqual(tab.panes.count, 1)
+        XCTAssertNotNil(tab.focusedPaneID)
+    }
+
+    func testTabStateRecordBackwardCompatibleDecoding() throws {
+        // Simulate old JSON without isManuallyNamed
+        let json = """
+        {"id":"00000000-0000-0000-0000-000000000001","title":"Old Tab","panes":[]}
+        """
+        let data = json.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(WorkspaceTabStateRecord.self, from: data)
+        XCTAssertEqual(decoded.title, "Old Tab")
+        XCTAssertFalse(decoded.isManuallyNamed)
+    }
+
     func testPaneSnapshotCodable() throws {
         let snapshot = PaneSnapshot(
             id: UUID(),

@@ -37,13 +37,64 @@ struct WorktreeSessionStateRecord: Codable {
 }
 
 /// Persisted state for a single tab inside a worktree session.
-struct WorkspaceTabStateRecord: Codable {
+struct WorkspaceTabStateRecord: Codable, Identifiable {
     let id: UUID
-    let title: String
+    var title: String
+    var isManuallyNamed: Bool
     let layout: SessionLayoutNode?
     let panes: [PaneSnapshot]
     let focusedPaneID: UUID?
     let zoomedPaneID: UUID?
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        isManuallyNamed: Bool = false,
+        layout: SessionLayoutNode? = nil,
+        panes: [PaneSnapshot] = [],
+        focusedPaneID: UUID? = nil,
+        zoomedPaneID: UUID? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.isManuallyNamed = isManuallyNamed
+        self.layout = layout
+        self.panes = panes
+        self.focusedPaneID = focusedPaneID
+        self.zoomedPaneID = zoomedPaneID
+    }
+
+    /// Creates a default single-pane tab for the given working directory.
+    static func makeDefault(workingDirectory: String, title: String = "Tab 1") -> WorkspaceTabStateRecord {
+        let paneID = UUID()
+        let pane = PaneSnapshot(
+            id: paneID,
+            backend: .localShell(LocalShellConfig.defaultShell()),
+            workingDirectory: workingDirectory
+        )
+        return WorkspaceTabStateRecord(
+            title: title,
+            layout: .pane(PaneLeaf(paneID: paneID)),
+            panes: [pane],
+            focusedPaneID: paneID
+        )
+    }
+
+    // Support decoding old data without isManuallyNamed field
+    enum CodingKeys: String, CodingKey {
+        case id, title, isManuallyNamed, layout, panes, focusedPaneID, zoomedPaneID
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        isManuallyNamed = try container.decodeIfPresent(Bool.self, forKey: .isManuallyNamed) ?? false
+        layout = try container.decodeIfPresent(SessionLayoutNode.self, forKey: .layout)
+        panes = try container.decodeIfPresent([PaneSnapshot].self, forKey: .panes) ?? []
+        focusedPaneID = try container.decodeIfPresent(UUID.self, forKey: .focusedPaneID)
+        zoomedPaneID = try container.decodeIfPresent(UUID.self, forKey: .zoomedPaneID)
+    }
 }
 
 /// A snapshot of a single pane for serialization.
