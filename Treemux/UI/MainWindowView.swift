@@ -46,7 +46,7 @@ struct MainWindowView: View {
 
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
-                    if let sc = store.selectedWorkspace?.sessionController,
+                    if let sc = store.activeSessionController,
                        let focused = sc.focusedPaneID {
                         sc.splitPane(focused, axis: .horizontal)
                     }
@@ -56,7 +56,7 @@ struct MainWindowView: View {
                 .help("Split Down (⌘D)")
 
                 Button {
-                    if let sc = store.selectedWorkspace?.sessionController,
+                    if let sc = store.activeSessionController,
                        let focused = sc.focusedPaneID {
                         sc.splitPane(focused, axis: .vertical)
                     }
@@ -66,7 +66,7 @@ struct MainWindowView: View {
                 .help("Split Right (⌘⇧D)")
 
                 Button {
-                    if let sc = store.selectedWorkspace?.sessionController,
+                    if let sc = store.activeSessionController,
                        let focused = sc.focusedPaneID {
                         sc.splitPane(focused, axis: .horizontal)
                     }
