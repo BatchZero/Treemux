@@ -75,10 +75,12 @@ struct WorkspaceTabBarView: View {
             .help("New Tab (⌘T)")
             .padding(.trailing, 8)
         }
-        .frame(height: 36)
-        .background(.bar)
+        .frame(height: 38)
+        .background(Color(nsColor: .windowBackgroundColor).opacity(0.6))
         .overlay(alignment: .bottom) {
-            Divider()
+            Rectangle()
+                .fill(.white.opacity(0.08))
+                .frame(height: 1)
         }
     }
 
@@ -102,14 +104,14 @@ private struct TabButton: View {
         Button(action: onSelect) {
             HStack(spacing: 4) {
                 Text(tab.title)
-                    .font(.system(size: 12))
+                    .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
                     .lineLimit(1)
                     .foregroundStyle(isSelected ? .primary : .secondary)
 
                 if paneCount > 1 {
                     Text("\(paneCount)")
                         .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(isSelected ? .secondary : .tertiary)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
                         .background(.quaternary, in: RoundedRectangle(cornerRadius: 3))
@@ -126,20 +128,20 @@ private struct TabButton: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 10)
+            .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(
-                isSelected ? AnyShapeStyle(.selection.opacity(0.3))
-                : isHovered ? AnyShapeStyle(.quaternary)
-                : AnyShapeStyle(.clear)
+                isSelected ? AnyShapeStyle(.white.opacity(0.15))
+                : isHovered ? AnyShapeStyle(.white.opacity(0.08))
+                : AnyShapeStyle(.white.opacity(0.05))
             )
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay(alignment: .bottom) {
                 if isSelected {
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(.tint)
-                        .frame(height: 2)
-                        .padding(.horizontal, 8)
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(Color.accentColor)
+                        .frame(height: 3)
+                        .padding(.horizontal, 6)
                 }
             }
         }
