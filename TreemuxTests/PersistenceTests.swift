@@ -61,4 +61,73 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(loaded.workspaces.count, 1)
         XCTAssertEqual(loaded.workspaces.first?.name, "test")
     }
+
+    func testWorkspaceTabStatePersistenceRoundTrip() throws {
+        let tabID = UUID()
+        let paneID = UUID()
+        let tab = WorkspaceTabStateRecord(
+            id: tabID,
+            title: "My Tab",
+            isManuallyNamed: true,
+            layout: .pane(PaneLeaf(paneID: paneID)),
+            panes: [PaneSnapshot(
+                id: paneID,
+                backend: .localShell(LocalShellConfig.defaultShell()),
+                workingDirectory: "/tmp"
+            )],
+            focusedPaneID: paneID,
+            zoomedPaneID: nil
+        )
+        let worktreeState = WorktreeSessionStateRecord(
+            worktreePath: "/tmp/project",
+            branch: "main",
+            tabs: [tab],
+            selectedTabID: tabID
+        )
+        let workspace = WorkspaceRecord(
+            id: UUID(),
+            kind: .repository,
+            name: "test",
+            repositoryPath: "/tmp/project",
+            isPinned: false,
+            isArchived: false,
+            sshTarget: nil,
+            worktreeStates: [worktreeState],
+            worktreeOrder: nil
+        )
+        let state = PersistedWorkspaceState(
+            version: 1,
+            selectedWorkspaceID: workspace.id,
+            workspaces: [workspace]
+        )
+
+        let persistence = WorkspaceStatePersistence()
+        try persistence.save(state)
+        let loaded = persistence.load()
+
+        XCTAssertEqual(loaded.workspaces.count, 1)
+        let loadedWS = loaded.workspaces[0]
+        XCTAssertEqual(loadedWS.worktreeStates.count, 1)
+        XCTAssertEqual(loadedWS.worktreeStates[0].tabs.count, 1)
+        XCTAssertEqual(loadedWS.worktreeStates[0].tabs[0].title, "My Tab")
+        XCTAssertTrue(loadedWS.worktreeStates[0].tabs[0].isManuallyNamed)
+        XCTAssertEqual(loadedWS.worktreeStates[0].selectedTabID, tabID)
+    }
+
+    func testWorkspaceTabStateMigrationFromEmptyTabs() throws {
+        let workspace = WorkspaceRecord(
+            id: UUID(),
+            kind: .repository,
+            name: "legacy",
+            repositoryPath: "/tmp/legacy",
+            isPinned: false,
+            isArchived: false,
+            sshTarget: nil,
+            worktreeStates: [],
+            worktreeOrder: nil
+        )
+        let data = try JSONEncoder().encode(workspace)
+        let decoded = try JSONDecoder().decode(WorkspaceRecord.self, from: data)
+        XCTAssertTrue(decoded.worktreeStates.isEmpty)
+    }
 }
