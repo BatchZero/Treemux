@@ -30,6 +30,46 @@ final class WorkspaceSessionController: ObservableObject {
         self.focusedPaneID = initialPaneID
     }
 
+    /// Creates a controller restoring a previously saved layout and pane snapshots.
+    /// If savedLayout is nil or paneSnapshots is empty, falls back to single-pane default.
+    convenience init(
+        workingDirectory: String,
+        savedLayout: SessionLayoutNode?,
+        paneSnapshots: [PaneSnapshot],
+        focusedPaneID: UUID?,
+        zoomedPaneID: UUID?
+    ) {
+        self.init(workingDirectory: workingDirectory)
+
+        guard let savedLayout = savedLayout, !paneSnapshots.isEmpty else { return }
+
+        // Restore the saved layout tree
+        self.layout = savedLayout
+
+        // Create sessions from saved snapshots
+        let snapshotMap = Dictionary(paneSnapshots.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        for paneID in savedLayout.paneIDs {
+            let snapshot = snapshotMap[paneID]
+            let session = ShellSession(
+                id: paneID,
+                backendConfiguration: snapshot?.backend ?? .localShell(LocalShellConfig.defaultShell()),
+                preferredWorkingDirectory: snapshot?.workingDirectory ?? workingDirectory
+            )
+            session.onFocus = { [weak self] in
+                self?.focusedPaneID = paneID
+            }
+            session.onWorkspaceAction = { [weak self] action in
+                self?.handleWorkspaceAction(action, from: paneID)
+            }
+            session.startIfNeeded()
+            sessions[paneID] = session
+        }
+
+        // Restore focus and zoom state
+        self.focusedPaneID = focusedPaneID ?? savedLayout.paneIDs.first
+        self.zoomedPaneID = zoomedPaneID
+    }
+
     // MARK: - Session management
 
     /// Returns the session for the given pane, creating and starting it if needed.
