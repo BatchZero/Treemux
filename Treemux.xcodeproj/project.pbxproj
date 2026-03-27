@@ -46,6 +46,7 @@
 		BF6AC7D0EC7DBA0469366D91 /* WorkspaceMetadataWatchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FED0327A7E59732F42304316 /* WorkspaceMetadataWatchService.swift */; };
 		BF9448F0B1E9C5D3B71C956C /* TerminalPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B01277529CEA9D185C95B0 /* TerminalPaneView.swift */; };
 		CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3477DE6F674F94B9457073F4 /* TreemuxTests.swift */; };
+		AB1234567890ABCD12345678 /* TreemuxTabSizingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD9876543210FEDC98765432 /* TreemuxTabSizingTests.swift */; };
 		CD969404DE603FC36B6116DA /* TreemuxGhosttyClipboardSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E993B2E72B0AA5FA2CD8F136 /* TreemuxGhosttyClipboardSupport.swift */; };
 		D5D2DCD282AEEBB8C4A6F532 /* ShellCommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */; };
 		BB000001AABBCCDD00000020 /* ProcessTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000002AABBCCDD00000020 /* ProcessTree.swift */; };
@@ -101,6 +102,7 @@
 		2290B3E587177F8B10B05395 /* ShellSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellSession.swift; sourceTree = "<group>"; };
 		24A323012CE09C4999DF9E08 /* TerminalSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
 		3477DE6F674F94B9457073F4 /* TreemuxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxTests.swift; sourceTree = "<group>"; };
+		CD9876543210FEDC98765432 /* TreemuxTabSizingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxTabSizingTests.swift; sourceTree = "<group>"; };
 		3B99E6A1366954D8A221B273 /* TreemuxGhosttyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyController.swift; sourceTree = "<group>"; };
 		3F2AF4BADCEBABA624578341 /* TreemuxGhosttyControllerRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyControllerRegistry.swift; sourceTree = "<group>"; };
 		42FCFF0878EDD3C9AB6D566C /* String+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Helpers.swift"; sourceTree = "<group>"; };
@@ -224,6 +226,7 @@
 				AA000002AABBCCDD00000009 /* SSHConfigParserTests.swift */,
 				AA000002AABBCCDD00000004 /* ThemeTests.swift */,
 				AA000002AABBCCDD0000000C /* TmuxServiceTests.swift */,
+				CD9876543210FEDC98765432 /* TreemuxTabSizingTests.swift */,
 				3477DE6F674F94B9457073F4 /* TreemuxTests.swift */,
 				146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */,
 			);
@@ -637,6 +640,7 @@
 				2C0D2D1CDB0C7DDD9C2487E9 /* SessionBackendTests.swift in Sources */,
 				BB000001AABBCCDD00000021 /* ProcessTreeTests.swift in Sources */,
 				14559BCDE89A0A2CA5FD8022 /* ShellCommandRunnerTests.swift in Sources */,
+				AB1234567890ABCD12345678 /* TreemuxTabSizingTests.swift in Sources */,
 				CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */,
 				8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */,
 			);

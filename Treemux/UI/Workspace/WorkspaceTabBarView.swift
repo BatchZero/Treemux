@@ -29,7 +29,7 @@ struct WorkspaceTabBarView: View {
                                     renamingTabID = nil
                                 }
                             )
-                            .frame(width: 140)
+                            .frame(width: TreemuxTabSizing.width(for: renameText.isEmpty ? "Tab name" : renameText, paneCount: paneCount(for: tab)))
                         } else {
                             TabButton(
                                 tab: tab,
@@ -106,7 +106,9 @@ private struct TabButton: View {
                 Text(tab.title)
                     .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
                     .lineLimit(1)
+                    .truncationMode(.tail)
                     .foregroundStyle(isSelected ? .primary : .secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 if paneCount > 1 {
                     Text("\(paneCount)")
@@ -126,6 +128,9 @@ private struct TabButton: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                } else {
+                    Color.clear
+                        .frame(width: 16, height: 16)
                 }
             }
             .padding(.horizontal, 12)
@@ -146,6 +151,7 @@ private struct TabButton: View {
             }
         }
         .buttonStyle(.plain)
+        .frame(width: TreemuxTabSizing.width(for: tab.title, paneCount: paneCount))
         .contextMenu {
             Button("Rename…") { onRename() }
             Divider()
@@ -173,6 +179,24 @@ private struct TabRenameField: View {
             .onSubmit { onCommit() }
             .onExitCommand { onCancel() }
             .onAppear { isFocused = true }
+    }
+}
+
+// MARK: - Tab Sizing
+
+enum TreemuxTabSizing {
+    private static let titleFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
+    private static let countFont = NSFont.monospacedSystemFont(ofSize: 9, weight: .medium)
+
+    static func width(for title: String, paneCount: Int) -> CGFloat {
+        let titleWidth = ceil((title as NSString).size(withAttributes: [.font: titleFont]).width)
+        var totalWidth = titleWidth + 44
+        if paneCount > 1 {
+            let countText = "\(paneCount)"
+            let countWidth = ceil((countText as NSString).size(withAttributes: [.font: countFont]).width)
+            totalWidth += countWidth + 12
+        }
+        return min(max(totalWidth, 100), 260)
     }
 }
 

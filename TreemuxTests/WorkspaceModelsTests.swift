@@ -18,7 +18,9 @@ final class WorkspaceModelsTests: XCTestCase {
             isArchived: false,
             sshTarget: nil,
             worktreeStates: [],
-            worktreeOrder: nil
+            worktreeOrder: nil,
+            workspaceIcon: nil,
+            worktreeIconOverrides: nil
         )
         let data = try JSONEncoder().encode(record)
         let decoded = try JSONDecoder().decode(WorkspaceRecord.self, from: data)
@@ -40,7 +42,9 @@ final class WorkspaceModelsTests: XCTestCase {
             isArchived: false,
             sshTarget: target,
             worktreeStates: [],
-            worktreeOrder: nil
+            worktreeOrder: nil,
+            workspaceIcon: nil,
+            worktreeIconOverrides: nil
         )
         let data = try JSONEncoder().encode(record)
         let decoded = try JSONDecoder().decode(WorkspaceRecord.self, from: data)
@@ -229,7 +233,9 @@ final class WorkspaceModelsTests: XCTestCase {
                     selectedTabID: featureTab.id
                 )
             ],
-            worktreeOrder: nil
+            worktreeOrder: nil,
+            workspaceIcon: nil,
+            worktreeIconOverrides: nil
         )
 
         let ws = WorkspaceModel(from: record)
@@ -273,7 +279,9 @@ final class WorkspaceModelsTests: XCTestCase {
                     selectedTabID: featureTab2.id
                 )
             ],
-            worktreeOrder: nil
+            worktreeOrder: nil,
+            workspaceIcon: nil,
+            worktreeIconOverrides: nil
         )
 
         // First load

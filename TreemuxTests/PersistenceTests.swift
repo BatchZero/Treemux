@@ -52,7 +52,9 @@ final class PersistenceTests: XCTestCase {
                     id: UUID(), kind: .repository, name: "test",
                     repositoryPath: "/tmp/test", isPinned: false,
                     isArchived: false, sshTarget: nil, worktreeStates: [],
-                    worktreeOrder: nil
+                    worktreeOrder: nil,
+                    workspaceIcon: nil,
+                    worktreeIconOverrides: nil
                 )
             ]
         )
@@ -93,7 +95,9 @@ final class PersistenceTests: XCTestCase {
             isArchived: false,
             sshTarget: nil,
             worktreeStates: [worktreeState],
-            worktreeOrder: nil
+            worktreeOrder: nil,
+            workspaceIcon: nil,
+            worktreeIconOverrides: nil
         )
         let state = PersistedWorkspaceState(
             version: 1,
@@ -124,7 +128,9 @@ final class PersistenceTests: XCTestCase {
             isArchived: false,
             sshTarget: nil,
             worktreeStates: [],
-            worktreeOrder: nil
+            worktreeOrder: nil,
+            workspaceIcon: nil,
+            worktreeIconOverrides: nil
         )
         let data = try JSONEncoder().encode(workspace)
         let decoded = try JSONDecoder().decode(WorkspaceRecord.self, from: data)
