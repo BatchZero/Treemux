@@ -87,7 +87,7 @@ enum SidebarIconCatalog {
 extension SidebarItemIcon {
     static func random() -> SidebarItemIcon {
         SidebarItemIcon(
-            symbolName: SidebarIconCatalog.symbols.randomElement()?.systemName ?? repositoryDefault.symbolName,
+            symbolName: SidebarIconCatalog.symbols.randomElement()?.systemName ?? "arrow.triangle.branch",
             palette: SidebarIconPalette.allCases.randomElement() ?? .blue,
             fillStyle: SidebarIconFillStyle.allCases.randomElement() ?? .gradient
         )
@@ -105,14 +105,14 @@ extension SidebarItemIcon {
         }
 
         guard let bestScore = scored.map(\.1).max() else {
-            return repositoryDefault
+            return SidebarItemIcon(symbolName: "arrow.triangle.branch", palette: .blue)
         }
 
         let bestCandidates = scored
             .filter { $0.1 == bestScore }
             .map(\.0)
 
-        return bestCandidates.randomElement() ?? repositoryDefault
+        return bestCandidates.randomElement() ?? SidebarItemIcon(symbolName: "arrow.triangle.branch", palette: .blue)
     }
 
     static func randomRepository(
@@ -126,7 +126,7 @@ extension SidebarItemIcon {
         }
 
         guard let bestScore = scored.map(\.1).max() else {
-            return repositoryDefault
+            return SidebarItemIcon(symbolName: "arrow.triangle.branch", palette: .blue)
         }
 
         let bestCandidates = scored
@@ -137,7 +137,7 @@ extension SidebarItemIcon {
             }
             .map(\.0)
 
-        return bestCandidates.first ?? repositoryDefault
+        return bestCandidates.first ?? SidebarItemIcon(symbolName: "arrow.triangle.branch", palette: .blue)
     }
 
     static func generatedWorktreeIcons(
@@ -221,7 +221,7 @@ extension SidebarIconCatalog {
             self.seed = seed
 
             let orderedSymbols = SidebarIconCatalog.seededSymbolNames(seed: seed)
-            primarySymbolName = orderedSymbols.first ?? SidebarItemIcon.repositoryDefault.symbolName
+            primarySymbolName = orderedSymbols.first ?? "arrow.triangle.branch"
             secondarySymbolName = orderedSymbols.dropFirst().first ?? primarySymbolName
 
             let orderedPalettes = SidebarIconCatalog.seededPalettes(seed: seed)

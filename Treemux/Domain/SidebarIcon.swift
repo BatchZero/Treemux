@@ -475,27 +475,9 @@ struct SidebarItemIcon: Codable, Hashable {
 // MARK: - SidebarItemIcon + Defaults
 
 extension SidebarItemIcon {
-    static let repositoryDefault = SidebarItemIcon(
-        symbolName: "arrow.triangle.branch",
-        palette: .blue,
-        fillStyle: .gradient
-    )
-
     static let localTerminalDefault = SidebarItemIcon(
         symbolName: "terminal.fill",
         palette: .teal,
-        fillStyle: .solid
-    )
-
-    static let remoteDefault = SidebarItemIcon(
-        symbolName: "globe",
-        palette: .orange,
-        fillStyle: .gradient
-    )
-
-    static let worktreeDefault = SidebarItemIcon(
-        symbolName: "circle.fill",
-        palette: .mint,
         fillStyle: .solid
     )
 }
