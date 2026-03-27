@@ -36,6 +36,13 @@ struct WorkspaceSidebarView: View {
                     ForEach(store.localWorkspaces) { workspace in
                         WorkspaceRowGroup(workspace: workspace, hoveredID: $hoveredID)
                             .contextMenu {
+                                Button {
+                                    store.sidebarIconCustomizationRequest = SidebarIconCustomizationRequest(
+                                        target: .workspace(workspace.id)
+                                    )
+                                } label: {
+                                    Label(String(localized: "Change Icon…"), systemImage: "paintpalette")
+                                }
                                 if workspace.kind == .repository {
                                     Button {
                                         renameText = workspace.name
@@ -43,12 +50,12 @@ struct WorkspaceSidebarView: View {
                                     } label: {
                                         Label(String(localized: "Rename…"), systemImage: "pencil")
                                     }
-                                    Divider()
-                                    Button(role: .destructive) {
-                                        deletingWorkspaceID = workspace.id
-                                    } label: {
-                                        Label(String(localized: "Delete"), systemImage: "trash")
-                                    }
+                                }
+                                Divider()
+                                Button(role: .destructive) {
+                                    deletingWorkspaceID = workspace.id
+                                } label: {
+                                    Label(String(localized: "Delete"), systemImage: "trash")
                                 }
                             }
                     }
@@ -68,6 +75,13 @@ struct WorkspaceSidebarView: View {
                         ForEach(group.targets) { workspace in
                             WorkspaceRowGroup(workspace: workspace, hoveredID: $hoveredID)
                                 .contextMenu {
+                                    Button {
+                                        store.sidebarIconCustomizationRequest = SidebarIconCustomizationRequest(
+                                            target: .workspace(workspace.id)
+                                        )
+                                    } label: {
+                                        Label(String(localized: "Change Icon…"), systemImage: "paintpalette")
+                                    }
                                     Button {
                                         renameText = workspace.name
                                         renamingWorkspaceID = workspace.id
@@ -156,6 +170,11 @@ struct WorkspaceSidebarView: View {
         }
         .sheet(isPresented: $showOpenProjectSheet) {
             OpenProjectSheet()
+        }
+        .sheet(item: $store.sidebarIconCustomizationRequest) { request in
+            SidebarIconCustomizationSheet(request: request)
+                .environmentObject(store)
+                .environmentObject(theme)
         }
     }
 
@@ -358,6 +377,15 @@ struct WorktreeRow: View {
         .onHover { isHovering in
             if isHovering { hoveredID = worktree.id }
             else if hoveredID == worktree.id { hoveredID = nil }
+        }
+        .contextMenu {
+            Button {
+                store.sidebarIconCustomizationRequest = SidebarIconCustomizationRequest(
+                    target: .worktree(workspaceID: workspace.id, worktreePath: worktree.path.path)
+                )
+            } label: {
+                Label(String(localized: "Change Icon…"), systemImage: "paintpalette")
+            }
         }
         .listRowBackground(sidebarRowBackground(
             isSelected: isSelected,
