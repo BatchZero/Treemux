@@ -20,11 +20,13 @@ final class WorkspaceSessionController: ObservableObject {
     @Published var zoomedPaneID: UUID?
 
     private let workingDirectory: String
+    private let sshTarget: SSHTarget?
 
     // MARK: - Initialization
 
-    init(workingDirectory: String) {
+    init(workingDirectory: String, sshTarget: SSHTarget? = nil) {
         self.workingDirectory = workingDirectory
+        self.sshTarget = sshTarget
         let initialPaneID = UUID()
         self.layout = .pane(PaneLeaf(paneID: initialPaneID))
         self.focusedPaneID = initialPaneID
@@ -34,12 +36,13 @@ final class WorkspaceSessionController: ObservableObject {
     /// If savedLayout is nil or paneSnapshots is empty, falls back to single-pane default.
     convenience init(
         workingDirectory: String,
+        sshTarget: SSHTarget? = nil,
         savedLayout: SessionLayoutNode?,
         paneSnapshots: [PaneSnapshot],
         focusedPaneID: UUID?,
         zoomedPaneID: UUID?
     ) {
-        self.init(workingDirectory: workingDirectory)
+        self.init(workingDirectory: workingDirectory, sshTarget: sshTarget)
 
         guard let savedLayout = savedLayout, !paneSnapshots.isEmpty else { return }
 
@@ -50,7 +53,7 @@ final class WorkspaceSessionController: ObservableObject {
         let snapshotMap = Dictionary(paneSnapshots.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         for paneID in savedLayout.paneIDs {
             let snapshot = snapshotMap[paneID]
-            var backend = snapshot?.backend ?? .localShell(LocalShellConfig.defaultShell())
+            var backend = snapshot?.backend ?? .defaultBackend(for: sshTarget)
 
             // If the pane had a detected tmux session, reattach instead of starting a fresh shell.
             if let tmuxSession = snapshot?.detectedTmuxSession {
@@ -101,7 +104,7 @@ final class WorkspaceSessionController: ObservableObject {
         if let existing = sessions[paneID] { return existing }
         let session = ShellSession(
             id: paneID,
-            backendConfiguration: .localShell(LocalShellConfig.defaultShell()),
+            backendConfiguration: .defaultBackend(for: sshTarget),
             preferredWorkingDirectory: workingDirectory
         )
         session.onFocus = { [weak self] in

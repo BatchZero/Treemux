@@ -441,4 +441,60 @@ final class WorkspaceModelsTests: XCTestCase {
             XCTFail("Expected .localShell backend")
         }
     }
+
+    // MARK: - WorkspaceSessionController sshTarget tests
+
+    @MainActor
+    func testEnsureSessionWithSSHTargetCreatesSSHSession() {
+        let target = SSHTarget(
+            host: "server1", port: 22, user: "user1",
+            identityFile: nil, displayName: "server1", remotePath: "/home/user1"
+        )
+        let ctrl = WorkspaceSessionController(workingDirectory: "/home/user1", sshTarget: target)
+        let paneID = ctrl.layout.paneIDs.first!
+        let session = ctrl.ensureSession(for: paneID)
+        if case .ssh(let config) = session.backendConfiguration {
+            XCTAssertEqual(config.target.host, "server1")
+        } else {
+            XCTFail("Expected .ssh backend, got \(session.backendConfiguration)")
+        }
+    }
+
+    @MainActor
+    func testEnsureSessionWithoutSSHTargetCreatesLocalShell() {
+        let ctrl = WorkspaceSessionController(workingDirectory: "/tmp/test")
+        let paneID = ctrl.layout.paneIDs.first!
+        let session = ctrl.ensureSession(for: paneID)
+        if case .localShell = session.backendConfiguration {
+            // expected
+        } else {
+            XCTFail("Expected .localShell backend")
+        }
+    }
+
+    @MainActor
+    func testConvenienceInitFallbackUsesSSHTarget() {
+        let target = SSHTarget(
+            host: "server1", port: 22, user: "user1",
+            identityFile: nil, displayName: "server1", remotePath: "/home/user1"
+        )
+        let paneID = UUID()
+        let savedLayout: SessionLayoutNode = .pane(PaneLeaf(paneID: paneID))
+        // Empty snapshots to trigger fallback path
+        let ctrl = WorkspaceSessionController(
+            workingDirectory: "/home/user1",
+            sshTarget: target,
+            savedLayout: savedLayout,
+            paneSnapshots: [],
+            focusedPaneID: paneID,
+            zoomedPaneID: nil
+        )
+        // The pane exists in layout but had no snapshot, so ensureSession creates it
+        let session = ctrl.ensureSession(for: paneID)
+        if case .ssh(let config) = session.backendConfiguration {
+            XCTAssertEqual(config.target.host, "server1")
+        } else {
+            XCTFail("Expected .ssh backend from fallback, got \(session.backendConfiguration)")
+        }
+    }
 }
