@@ -82,11 +82,11 @@ struct WorkspaceTabStateRecord: Codable, Identifiable {
     }
 
     /// Creates a default single-pane tab for the given working directory.
-    static func makeDefault(workingDirectory: String, title: String = "Tab 1") -> WorkspaceTabStateRecord {
+    static func makeDefault(workingDirectory: String, sshTarget: SSHTarget? = nil, title: String = "Tab 1") -> WorkspaceTabStateRecord {
         let paneID = UUID()
         let pane = PaneSnapshot(
             id: paneID,
-            backend: .localShell(LocalShellConfig.defaultShell()),
+            backend: .defaultBackend(for: sshTarget),
             workingDirectory: workingDirectory
         )
         return WorkspaceTabStateRecord(

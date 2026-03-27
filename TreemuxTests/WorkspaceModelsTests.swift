@@ -412,4 +412,33 @@ final class WorkspaceModelsTests: XCTestCase {
             XCTFail("Expected .ssh, got \(backend)")
         }
     }
+
+    // MARK: - makeDefault(sshTarget:)
+
+    func testMakeDefaultWithSSHTargetCreatesSSHBackend() {
+        let target = SSHTarget(
+            host: "server1", port: 22, user: "user1",
+            identityFile: nil, displayName: "server1", remotePath: "/home/user1"
+        )
+        let tab = WorkspaceTabStateRecord.makeDefault(
+            workingDirectory: "/home/user1",
+            sshTarget: target
+        )
+        XCTAssertEqual(tab.panes.count, 1)
+        if case .ssh(let config) = tab.panes[0].backend {
+            XCTAssertEqual(config.target.host, "server1")
+        } else {
+            XCTFail("Expected .ssh backend, got \(tab.panes[0].backend)")
+        }
+    }
+
+    func testMakeDefaultWithoutSSHTargetCreatesLocalShell() {
+        let tab = WorkspaceTabStateRecord.makeDefault(workingDirectory: "/tmp/test")
+        XCTAssertEqual(tab.panes.count, 1)
+        if case .localShell = tab.panes[0].backend {
+            // expected
+        } else {
+            XCTFail("Expected .localShell backend")
+        }
+    }
 }
