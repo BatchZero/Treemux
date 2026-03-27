@@ -453,6 +453,7 @@ final class WorkspaceModel: ObservableObject, Identifiable {
 
         let ctrl = WorkspaceSessionController(
             workingDirectory: worktreePath,
+            sshTarget: sshTarget,
             savedLayout: tabState?.layout,
             paneSnapshots: tabState?.panes ?? [],
             focusedPaneID: tabState?.focusedPaneID,
