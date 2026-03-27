@@ -13,6 +13,7 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(settings.language, "system")
         XCTAssertEqual(settings.activeThemeID, "treemux-dark")
         XCTAssertTrue(settings.startup.restoreLastSession)
+        XCTAssertEqual(settings.defaultLocalTerminalIcon, .localTerminalDefault)
     }
 
     func testAppSettingsCodableRoundTrip() throws {

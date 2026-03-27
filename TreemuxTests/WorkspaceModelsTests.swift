@@ -35,7 +35,7 @@ final class WorkspaceModelsTests: XCTestCase {
         )
         let record = WorkspaceRecord(
             id: UUID(),
-            kind: .remote,
+            kind: .repository,
             name: "proj",
             repositoryPath: nil,
             isPinned: false,
@@ -48,7 +48,18 @@ final class WorkspaceModelsTests: XCTestCase {
         )
         let data = try JSONEncoder().encode(record)
         let decoded = try JSONDecoder().decode(WorkspaceRecord.self, from: data)
-        XCTAssertEqual(decoded.kind, .remote)
+        XCTAssertEqual(decoded.kind, .repository)
+        XCTAssertEqual(decoded.sshTarget?.host, "server1")
+    }
+
+    func testLegacyRemoteKindDecodesToRepository() throws {
+        // Simulate old JSON with "remote" kind
+        let json = """
+        {"id":"00000000-0000-0000-0000-000000000001","kind":"remote","name":"proj","isPinned":false,"isArchived":false,"sshTarget":{"host":"server1","port":22,"user":"user1","displayName":"server1"},"worktreeStates":[]}
+        """
+        let data = json.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(WorkspaceRecord.self, from: data)
+        XCTAssertEqual(decoded.kind, .repository)
         XCTAssertEqual(decoded.sshTarget?.host, "server1")
     }
 
