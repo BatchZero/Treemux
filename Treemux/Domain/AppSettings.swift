@@ -18,6 +18,10 @@ struct AppSettings: Codable, Equatable {
     var ssh: SSHSettings = SSHSettings()
     var aiTools: AIToolSettings = AIToolSettings()
     var shortcutOverrides: [String: ShortcutOverride] = [:]
+    var defaultRepositoryIcon: SidebarItemIcon = .repositoryDefault
+    var defaultLocalTerminalIcon: SidebarItemIcon = .localTerminalDefault
+    var defaultRemoteIcon: SidebarItemIcon = .remoteDefault
+    var defaultWorktreeIcon: SidebarItemIcon = .worktreeDefault
 }
 
 /// Terminal emulator appearance and behavior settings.
