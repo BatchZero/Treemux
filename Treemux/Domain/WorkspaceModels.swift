@@ -7,11 +7,24 @@ import Foundation
 
 // MARK: - Persistent Records (Codable)
 
-/// The kind of workspace: local repository, bare terminal, or remote SSH.
+/// The kind of workspace: local repository or bare terminal.
+/// Remote repositories use `.repository` with a non-nil `sshTarget`.
 enum WorkspaceKindRecord: String, Codable {
     case repository
     case localTerminal
-    case remote
+
+    // Migration: decode legacy "remote" as "repository"
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        if rawValue == "remote" {
+            self = .repository
+        } else if let value = WorkspaceKindRecord(rawValue: rawValue) {
+            self = value
+        } else {
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unknown kind: \(rawValue)")
+        }
+    }
 }
 
 /// A serializable record representing a single workspace.
