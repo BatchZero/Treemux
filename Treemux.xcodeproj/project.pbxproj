@@ -80,6 +80,7 @@
 		CC000001AABBCCDD00000001 /* SidebarIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000001 /* SidebarIcon.swift */; };
 		CC000001AABBCCDD00000002 /* SidebarIconCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000002 /* SidebarIconCatalog.swift */; };
 		CC000001AABBCCDD00000003 /* SidebarItemIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000003 /* SidebarItemIconView.swift */; };
+		CC000001AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -168,6 +169,7 @@
 		CC000002AABBCCDD00000001 /* SidebarIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIcon.swift; sourceTree = "<group>"; };
 		CC000002AABBCCDD00000002 /* SidebarIconCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIconCatalog.swift; sourceTree = "<group>"; };
 		CC000002AABBCCDD00000003 /* SidebarItemIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarItemIconView.swift; sourceTree = "<group>"; };
+		CC000002AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIconCustomizationSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -294,6 +296,7 @@
 			isa = PBXGroup;
 			children = (
 				AA000002AABBCCDD0000000A /* OpenProjectSheet.swift */,
+				CC000002AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift */,
 			);
 			path = Sheets;
 			sourceTree = "<group>";
@@ -589,6 +592,7 @@
 				CC000001AABBCCDD00000001 /* SidebarIcon.swift in Sources */,
 				CC000001AABBCCDD00000002 /* SidebarIconCatalog.swift in Sources */,
 				CC000001AABBCCDD00000003 /* SidebarItemIconView.swift in Sources */,
+				CC000001AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift in Sources */,
 				BCEB4C8CE71A07F316E67D13 /* SplitDivider.swift in Sources */,
 				3342176CAA82F4D5A9EA3AC0 /* SplitNodeView.swift in Sources */,
 				7405B7C02F6B819CB0A772E5 /* String+Helpers.swift in Sources */,
