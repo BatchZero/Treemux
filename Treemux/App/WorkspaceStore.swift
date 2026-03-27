@@ -16,6 +16,7 @@ final class WorkspaceStore: ObservableObject {
 
     @Published var showSettings = false
     @Published var showCommandPalette = false
+    @Published var sidebarIconCustomizationRequest: SidebarIconCustomizationRequest?
 
     @Published var settings: AppSettings {
         didSet { try? settingsPersistence.save(settings) }
@@ -355,4 +356,158 @@ final class WorkspaceStore: ObservableObject {
         )
         try? workspaceStatePersistence.save(state)
     }
+
+    // MARK: - Sidebar Icons
+
+    /// Returns the resolved sidebar icon for a workspace, considering user overrides and app defaults.
+    func sidebarIcon(for workspace: WorkspaceModel) -> SidebarItemIcon {
+        if let override = workspace.workspaceIcon {
+            return override
+        }
+        switch workspace.kind {
+        case .repository:
+            return settings.defaultRepositoryIcon
+        case .localTerminal:
+            return settings.defaultLocalTerminalIcon
+        case .remote:
+            return settings.defaultRemoteIcon
+        }
+    }
+
+    /// Returns the resolved sidebar icon for a worktree, considering user overrides, app defaults,
+    /// and deterministic generation when using the default worktree icon.
+    func sidebarIcon(for worktree: WorktreeModel, in workspace: WorkspaceModel) -> SidebarItemIcon {
+        if let override = workspace.worktreeIconOverrides[worktree.path.path] {
+            return override
+        }
+        if settings.defaultWorktreeIcon != .worktreeDefault {
+            return settings.defaultWorktreeIcon
+        }
+        let generatedIcons = SidebarItemIcon.generatedWorktreeIcons(
+            seedSourcesByID: Dictionary(
+                uniqueKeysWithValues: workspace.worktrees.map { candidate in
+                    (candidate.path.path, worktreeIconSeed(for: candidate, in: workspace))
+                }
+            ),
+            overrides: workspace.worktreeIconOverrides
+        )
+        return generatedIcons[worktree.path.path] ?? .randomRepository(
+            preferredSeed: worktreeIconSeed(for: worktree, in: workspace),
+            avoiding: []
+        )
+    }
+
+    /// Generates a stable seed string for deterministic worktree icon generation.
+    private func worktreeIconSeed(for worktree: WorktreeModel, in workspace: WorkspaceModel) -> String {
+        let repositoryName = workspace.repositoryRoot.map { $0.lastPathComponent } ?? workspace.name
+        let displayName = worktree.branch ?? worktree.path.lastPathComponent
+        return "\(repositoryName)|\(displayName)|\(worktree.path.path)"
+    }
+
+    /// Updates the sidebar icon for the given target (workspace, worktree, or app default).
+    func updateSidebarIcon(_ icon: SidebarItemIcon, for target: SidebarIconCustomizationTarget) {
+        switch target {
+        case .workspace(let workspaceID):
+            guard let workspace = workspaces.first(where: { $0.id == workspaceID }) else { return }
+            workspace.workspaceIcon = icon
+        case .worktree(let workspaceID, let worktreePath):
+            guard let workspace = workspaces.first(where: { $0.id == workspaceID }) else { return }
+            workspace.worktreeIconOverrides[worktreePath] = icon
+        case .appDefaultRepository:
+            settings.defaultRepositoryIcon = icon
+        case .appDefaultLocalTerminal:
+            settings.defaultLocalTerminalIcon = icon
+        case .appDefaultRemote:
+            settings.defaultRemoteIcon = icon
+        case .appDefaultWorktree:
+            settings.defaultWorktreeIcon = icon
+        }
+        saveWorkspaceState()
+    }
+
+    /// Resets the sidebar icon for the given target back to its default value.
+    func resetSidebarIcon(for target: SidebarIconCustomizationTarget) {
+        switch target {
+        case .workspace(let workspaceID):
+            guard let workspace = workspaces.first(where: { $0.id == workspaceID }) else { return }
+            workspace.workspaceIcon = nil
+        case .worktree(let workspaceID, let worktreePath):
+            guard let workspace = workspaces.first(where: { $0.id == workspaceID }) else { return }
+            workspace.worktreeIconOverrides[worktreePath] = nil
+        case .appDefaultRepository:
+            settings.defaultRepositoryIcon = .repositoryDefault
+        case .appDefaultLocalTerminal:
+            settings.defaultLocalTerminalIcon = .localTerminalDefault
+        case .appDefaultRemote:
+            settings.defaultRemoteIcon = .remoteDefault
+        case .appDefaultWorktree:
+            settings.defaultWorktreeIcon = .worktreeDefault
+        }
+        saveWorkspaceState()
+    }
+
+    /// Returns a human-readable title for the icon customization request.
+    func sidebarIconRequestTitle(_ request: SidebarIconCustomizationRequest) -> String {
+        switch request.target {
+        case .workspace(let id):
+            return workspaces.first(where: { $0.id == id })?.name ?? "Workspace"
+        case .worktree(let workspaceID, let worktreePath):
+            guard let ws = workspaces.first(where: { $0.id == workspaceID }) else {
+                return URL(fileURLWithPath: worktreePath).lastPathComponent
+            }
+            let wtName = ws.worktrees.first(where: { $0.path.path == worktreePath })?.branch
+                ?? URL(fileURLWithPath: worktreePath).lastPathComponent
+            return "\(ws.name) / \(wtName)"
+        case .appDefaultRepository:
+            return String(localized: "Default Repository Icon")
+        case .appDefaultLocalTerminal:
+            return String(localized: "Default Terminal Icon")
+        case .appDefaultRemote:
+            return String(localized: "Default Remote Icon")
+        case .appDefaultWorktree:
+            return String(localized: "Default Worktree Icon")
+        }
+    }
+
+    /// Returns the current icon selection for the given customization target.
+    func sidebarIconSelection(for target: SidebarIconCustomizationTarget) -> SidebarItemIcon {
+        switch target {
+        case .workspace(let id):
+            guard let ws = workspaces.first(where: { $0.id == id }) else { return settings.defaultRepositoryIcon }
+            return ws.workspaceIcon ?? sidebarIcon(for: ws)
+        case .worktree(let workspaceID, let worktreePath):
+            guard let ws = workspaces.first(where: { $0.id == workspaceID }) else { return settings.defaultWorktreeIcon }
+            if let override = ws.worktreeIconOverrides[worktreePath] {
+                return override
+            }
+            guard let wt = ws.worktrees.first(where: { $0.path.path == worktreePath }) else {
+                return settings.defaultWorktreeIcon
+            }
+            return sidebarIcon(for: wt, in: ws)
+        case .appDefaultRepository:
+            return settings.defaultRepositoryIcon
+        case .appDefaultLocalTerminal:
+            return settings.defaultLocalTerminalIcon
+        case .appDefaultRemote:
+            return settings.defaultRemoteIcon
+        case .appDefaultWorktree:
+            return settings.defaultWorktreeIcon
+        }
+    }
+}
+
+// MARK: - Sidebar Icon Customization
+
+enum SidebarIconCustomizationTarget {
+    case workspace(UUID)
+    case worktree(workspaceID: UUID, worktreePath: String)
+    case appDefaultRepository
+    case appDefaultLocalTerminal
+    case appDefaultRemote
+    case appDefaultWorktree
+}
+
+struct SidebarIconCustomizationRequest: Identifiable {
+    let id = UUID()
+    let target: SidebarIconCustomizationTarget
 }
