@@ -41,7 +41,7 @@ struct SettingsSheet: View {
             case .general: return String(localized: "Language and startup behavior")
             case .terminal: return String(localized: "Shell, font, and cursor settings")
             case .theme: return String(localized: "Color themes and appearance")
-            case .sidebarIcons: return String(localized: "Default icons for workspaces and worktrees")
+            case .sidebarIcons: return String(localized: "Customize icons for workspaces and worktrees")
             case .aiTools: return String(localized: "AI agent detection and presets")
             case .ssh: return String(localized: "SSH config file paths")
             case .shortcuts: return String(localized: "Customize keyboard shortcuts")
@@ -357,39 +357,90 @@ private struct ShortcutRow: View {
 
 private struct SidebarIconsSettingsView: View {
     @Binding var settings: AppSettings
+    @EnvironmentObject private var store: WorkspaceStore
+
+    /// Repository workspaces (non-archived) for the instance-level icon list.
+    private var repositoryWorkspaces: [WorkspaceModel] {
+        store.workspaces.filter { !$0.isArchived && $0.kind == .repository }
+    }
 
     var body: some View {
         Form {
-            Section(String(localized: "Default Icons")) {
-                SidebarIconEditorCard(
-                    title: String(localized: "Repository"),
-                    subtitle: String(localized: "Default icon for git repositories"),
-                    icon: $settings.defaultRepositoryIcon,
-                    randomizer: SidebarItemIcon.randomRepository
-                )
-
+            // Global default: Terminal only
+            Section(String(localized: "Default")) {
                 SidebarIconEditorCard(
                     title: String(localized: "Terminal"),
                     subtitle: String(localized: "Default icon for local terminals"),
                     icon: $settings.defaultLocalTerminalIcon,
                     randomizer: SidebarItemIcon.random
                 )
+            }
 
-                SidebarIconEditorCard(
-                    title: String(localized: "Remote"),
-                    subtitle: String(localized: "Default icon for remote connections"),
-                    icon: $settings.defaultRemoteIcon,
-                    randomizer: SidebarItemIcon.randomRepository
-                )
+            // Per-repository instance icons
+            ForEach(repositoryWorkspaces) { workspace in
+                Section(workspace.name) {
+                    // Workspace icon row
+                    WorkspaceIconRow(workspace: workspace)
 
-                SidebarIconEditorCard(
-                    title: String(localized: "Worktree"),
-                    subtitle: String(localized: "Default icon for git worktrees"),
-                    icon: $settings.defaultWorktreeIcon,
-                    randomizer: SidebarItemIcon.randomRepository
-                )
+                    // Worktree icon rows
+                    ForEach(workspace.worktrees) { worktree in
+                        WorktreeIconRow(workspace: workspace, worktree: worktree)
+                    }
+                }
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// A clickable row showing a workspace's current icon. Tapping opens the customization sheet.
+private struct WorkspaceIconRow: View {
+    @EnvironmentObject private var store: WorkspaceStore
+    @ObservedObject var workspace: WorkspaceModel
+
+    var body: some View {
+        Button {
+            store.sidebarIconCustomizationRequest = SidebarIconCustomizationRequest(
+                target: .workspace(workspace.id)
+            )
+        } label: {
+            HStack(spacing: 10) {
+                SidebarItemIconView(icon: store.sidebarIcon(for: workspace), size: 22)
+                Text(workspace.name)
+                    .font(.system(size: 12, weight: .medium))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// A clickable row showing a worktree's current icon. Tapping opens the customization sheet.
+private struct WorktreeIconRow: View {
+    @EnvironmentObject private var store: WorkspaceStore
+    @ObservedObject var workspace: WorkspaceModel
+    let worktree: WorktreeModel
+
+    var body: some View {
+        Button {
+            store.sidebarIconCustomizationRequest = SidebarIconCustomizationRequest(
+                target: .worktree(workspaceID: workspace.id, worktreePath: worktree.path.path)
+            )
+        } label: {
+            HStack(spacing: 10) {
+                SidebarItemIconView(icon: store.sidebarIcon(for: worktree, in: workspace), size: 18)
+                    .padding(.leading, 12)
+                Text(worktree.branch ?? worktree.path.lastPathComponent)
+                    .font(.system(size: 12))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .buttonStyle(.plain)
     }
 }
