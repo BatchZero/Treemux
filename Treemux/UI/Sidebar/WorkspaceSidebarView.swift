@@ -244,7 +244,7 @@ struct WorkspaceRowGroup: View {
             // Multiple worktrees: collapsible disclosure group
             DisclosureGroup(isExpanded: $isExpanded) {
                 ForEach(workspace.worktrees) { worktree in
-                    WorktreeRow(worktree: worktree, hoveredID: $hoveredID)
+                    WorktreeRow(workspace: workspace, worktree: worktree, hoveredID: $hoveredID)
                         .tag(worktree.id)
                 }
                 .onMove { source, destination in
@@ -298,14 +298,13 @@ struct WorkspaceRowGroup: View {
 
 /// Displays a project icon, name, and optional "current" badge.
 struct ProjectLabel: View {
+    @EnvironmentObject private var store: WorkspaceStore
     @ObservedObject var workspace: WorkspaceModel
     var showCurrent: Bool = false
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: workspaceIcon)
-                .foregroundStyle(iconColor)
-                .font(.system(size: 13))
+            SidebarItemIconView(icon: store.sidebarIcon(for: workspace), size: 22)
             Text(workspace.name)
                 .font(.system(size: 13, weight: .medium))
                 .lineLimit(1)
@@ -320,30 +319,6 @@ struct ProjectLabel: View {
             }
         }
     }
-
-    // MARK: - Icon helpers
-
-    private var workspaceIcon: String {
-        switch workspace.kind {
-        case .localTerminal:
-            return "apple.terminal"
-        case .repository:
-            return "folder.fill"
-        case .remote:
-            return "globe"
-        }
-    }
-
-    private var iconColor: Color {
-        switch workspace.kind {
-        case .localTerminal:
-            return .green
-        case .repository:
-            return .blue
-        case .remote:
-            return .orange
-        }
-    }
 }
 
 // MARK: - WorktreeRow
@@ -352,6 +327,7 @@ struct ProjectLabel: View {
 struct WorktreeRow: View {
     @EnvironmentObject private var store: WorkspaceStore
     @EnvironmentObject private var theme: ThemeManager
+    @ObservedObject var workspace: WorkspaceModel
     let worktree: WorktreeModel
     @Binding var hoveredID: UUID?
 
@@ -361,9 +337,11 @@ struct WorktreeRow: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "arrow.triangle.branch")
-                .foregroundStyle(theme.textMuted)
-                .font(.system(size: 11))
+            SidebarItemIconView(
+                icon: store.sidebarIcon(for: worktree, in: workspace),
+                size: 18,
+                isActive: isSelected
+            )
             Text(worktree.branch ?? worktree.path.lastPathComponent)
                 .font(.system(size: 12))
                 .lineLimit(1)
