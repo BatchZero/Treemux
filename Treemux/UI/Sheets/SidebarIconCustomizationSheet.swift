@@ -91,7 +91,7 @@ struct SidebarIconCustomizationSheet: View {
     let request: SidebarIconCustomizationRequest
     @EnvironmentObject private var store: WorkspaceStore
     @Environment(\.dismiss) private var dismiss
-    @State private var icon = SidebarItemIcon.repositoryDefault
+    @State private var icon = SidebarItemIcon(symbolName: "arrow.triangle.branch", palette: .blue)
 
     private var title: String {
         store.sidebarIconRequestTitle(request)
@@ -143,7 +143,7 @@ struct SidebarIconCustomizationSheet: View {
                 return SidebarItemIcon.randomRepository
             }
             return SidebarItemIcon.random
-        case .appDefaultRepository, .worktree, .appDefaultWorktree, .appDefaultRemote:
+        case .worktree:
             return SidebarItemIcon.randomRepository
         case .appDefaultLocalTerminal:
             return SidebarItemIcon.random
