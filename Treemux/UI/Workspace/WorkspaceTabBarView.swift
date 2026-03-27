@@ -185,11 +185,14 @@ private struct TabRenameField: View {
 // MARK: - Tab Sizing
 
 enum TreemuxTabSizing {
+    // Always measure with .semibold so tab width stays stable regardless of
+    // selection state (unselected tabs use .medium, which is slightly narrower).
     private static let titleFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
     private static let countFont = NSFont.monospacedSystemFont(ofSize: 9, weight: .medium)
 
     static func width(for title: String, paneCount: Int) -> CGFloat {
         let titleWidth = ceil((title as NSString).size(withAttributes: [.font: titleFont]).width)
+        // 12 leading + 4 HStack spacing + 16 close button + 12 trailing
         var totalWidth = titleWidth + 44
         if paneCount > 1 {
             let countText = "\(paneCount)"
