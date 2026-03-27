@@ -60,6 +60,15 @@ enum SessionBackendConfiguration: Codable, Hashable {
     case agent(AgentSessionConfig)
     case tmuxAttach(TmuxAttachConfig)
 
+    /// Returns the appropriate default backend for the given SSH target.
+    /// SSH target present → SSH session; nil → local shell.
+    static func defaultBackend(for sshTarget: SSHTarget?) -> SessionBackendConfiguration {
+        if let target = sshTarget {
+            return .ssh(SSHSessionConfig(target: target, remoteCommand: nil))
+        }
+        return .localShell(LocalShellConfig.defaultShell())
+    }
+
     private enum CodingKeys: String, CodingKey {
         case type
     }

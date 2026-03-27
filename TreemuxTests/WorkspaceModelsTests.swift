@@ -387,4 +387,29 @@ final class WorkspaceModelsTests: XCTestCase {
         XCTAssertEqual(record.worktreeStates[0].tabs.count, 2)
         XCTAssertNotNil(record.worktreeStates[0].selectedTabID)
     }
+
+    // MARK: - SessionBackendConfiguration.defaultBackend(for:)
+
+    func testDefaultBackendWithNilTargetReturnsLocalShell() {
+        let backend = SessionBackendConfiguration.defaultBackend(for: nil)
+        if case .localShell = backend {
+            // expected
+        } else {
+            XCTFail("Expected .localShell, got \(backend)")
+        }
+    }
+
+    func testDefaultBackendWithSSHTargetReturnsSSH() {
+        let target = SSHTarget(
+            host: "server1", port: 22, user: "user1",
+            identityFile: nil, displayName: "server1", remotePath: "/home/user1"
+        )
+        let backend = SessionBackendConfiguration.defaultBackend(for: target)
+        if case .ssh(let config) = backend {
+            XCTAssertEqual(config.target.host, "server1")
+            XCTAssertNil(config.remoteCommand)
+        } else {
+            XCTFail("Expected .ssh, got \(backend)")
+        }
+    }
 }
