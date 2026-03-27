@@ -20,7 +20,7 @@ struct SettingsSheet: View {
     }
 
     enum SettingsSection: String, CaseIterable, Identifiable {
-        case general, terminal, theme, aiTools, ssh, shortcuts
+        case general, terminal, theme, sidebarIcons, aiTools, ssh, shortcuts
 
         var id: String { rawValue }
 
@@ -29,6 +29,7 @@ struct SettingsSheet: View {
             case .general: return String(localized: "General")
             case .terminal: return String(localized: "Terminal")
             case .theme: return String(localized: "Theme")
+            case .sidebarIcons: return String(localized: "Sidebar Icons")
             case .aiTools: return String(localized: "AI Tools")
             case .ssh: return "SSH"
             case .shortcuts: return String(localized: "Shortcuts")
@@ -40,6 +41,7 @@ struct SettingsSheet: View {
             case .general: return String(localized: "Language and startup behavior")
             case .terminal: return String(localized: "Shell, font, and cursor settings")
             case .theme: return String(localized: "Color themes and appearance")
+            case .sidebarIcons: return String(localized: "Default icons for workspaces and worktrees")
             case .aiTools: return String(localized: "AI agent detection and presets")
             case .ssh: return String(localized: "SSH config file paths")
             case .shortcuts: return String(localized: "Customize keyboard shortcuts")
@@ -51,6 +53,7 @@ struct SettingsSheet: View {
             case .general: return "gear"
             case .terminal: return "apple.terminal"
             case .theme: return "paintbrush"
+            case .sidebarIcons: return "paintpalette"
             case .aiTools: return "brain.head.profile"
             case .ssh: return "network"
             case .shortcuts: return "keyboard"
@@ -136,6 +139,8 @@ struct SettingsSheet: View {
             TerminalSettingsView(settings: $draft)
         case .theme:
             ThemeSettingsView(settings: $draft, themeManager: theme)
+        case .sidebarIcons:
+            SidebarIconsSettingsView(settings: $draft)
         case .aiTools:
             AIToolsSettingsView(settings: $draft)
         case .ssh:
@@ -345,5 +350,46 @@ private struct ShortcutRow: View {
             }
         }
         .padding(.vertical, 2)
+    }
+}
+
+// MARK: - Sidebar Icons Settings
+
+private struct SidebarIconsSettingsView: View {
+    @Binding var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section(String(localized: "Default Icons")) {
+                SidebarIconEditorCard(
+                    title: String(localized: "Repository"),
+                    subtitle: String(localized: "Default icon for git repositories"),
+                    icon: $settings.defaultRepositoryIcon,
+                    randomizer: SidebarItemIcon.randomRepository
+                )
+
+                SidebarIconEditorCard(
+                    title: String(localized: "Terminal"),
+                    subtitle: String(localized: "Default icon for local terminals"),
+                    icon: $settings.defaultLocalTerminalIcon,
+                    randomizer: SidebarItemIcon.random
+                )
+
+                SidebarIconEditorCard(
+                    title: String(localized: "Remote"),
+                    subtitle: String(localized: "Default icon for remote connections"),
+                    icon: $settings.defaultRemoteIcon,
+                    randomizer: SidebarItemIcon.randomRepository
+                )
+
+                SidebarIconEditorCard(
+                    title: String(localized: "Worktree"),
+                    subtitle: String(localized: "Default icon for git worktrees"),
+                    icon: $settings.defaultWorktreeIcon,
+                    randomizer: SidebarItemIcon.randomRepository
+                )
+            }
+        }
+        .formStyle(.grouped)
     }
 }
