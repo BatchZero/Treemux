@@ -244,7 +244,7 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         let workingDirectory = repositoryRoot?.path ?? NSHomeDirectory()
         self.activeWorktreePath = workingDirectory
 
-        let defaultTab = WorkspaceTabStateRecord.makeDefault(workingDirectory: workingDirectory)
+        let defaultTab = WorkspaceTabStateRecord.makeDefault(workingDirectory: workingDirectory, sshTarget: sshTarget)
         self.tabs = [defaultTab]
         self.activeTabID = defaultTab.id
     }
@@ -274,6 +274,7 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         let newIndex = tabs.count + 1
         let newTab = WorkspaceTabStateRecord.makeDefault(
             workingDirectory: activeWorktreePath,
+            sshTarget: sshTarget,
             title: "Tab \(newIndex)"
         )
         tabs.append(newTab)
@@ -425,7 +426,7 @@ final class WorkspaceModel: ObservableObject, Identifiable {
             tabs = saved.tabs
             activeTabID = saved.activeTabID
         } else {
-            let defaultTab = WorkspaceTabStateRecord.makeDefault(workingDirectory: activeWorktreePath)
+            let defaultTab = WorkspaceTabStateRecord.makeDefault(workingDirectory: activeWorktreePath, sshTarget: sshTarget)
             tabs = [defaultTab]
             activeTabID = defaultTab.id
         }
