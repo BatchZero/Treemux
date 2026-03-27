@@ -26,6 +26,10 @@ struct WorkspaceRecord: Codable {
     let worktreeStates: [WorktreeSessionStateRecord]
     /// Persisted display order of worktrees (paths). Nil means default git order.
     let worktreeOrder: [String]?
+    /// User-customized sidebar icon for this workspace.
+    let workspaceIcon: SidebarItemIcon?
+    /// Per-worktree icon overrides, keyed by worktree path.
+    let worktreeIconOverrides: [String: SidebarItemIcon]?
 }
 
 /// Persisted state for a single worktree session within a workspace.
@@ -166,6 +170,10 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     @Published var repositoryStatus: RepositoryStatusSnapshot?
     /// Custom display order of worktrees (paths). Empty means default git order.
     @Published var worktreeOrder: [String] = []
+    /// User-customized sidebar icon for this workspace.
+    @Published var workspaceIcon: SidebarItemIcon?
+    /// Per-worktree icon overrides, keyed by worktree path.
+    @Published var worktreeIconOverrides: [String: SidebarItemIcon] = [:]
 
     // MARK: - Tab State
 
@@ -205,7 +213,9 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         isPinned: Bool = false,
         isArchived: Bool = false,
         sshTarget: SSHTarget? = nil,
-        worktreeOrder: [String] = []
+        worktreeOrder: [String] = [],
+        workspaceIcon: SidebarItemIcon? = nil,
+        worktreeIconOverrides: [String: SidebarItemIcon] = [:]
     ) {
         self.id = id
         self.kind = kind
@@ -215,6 +225,8 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         self.isArchived = isArchived
         self.sshTarget = sshTarget
         self.worktreeOrder = worktreeOrder
+        self.workspaceIcon = workspaceIcon
+        self.worktreeIconOverrides = worktreeIconOverrides
 
         let workingDirectory = repositoryRoot?.path ?? NSHomeDirectory()
         self.activeWorktreePath = workingDirectory
@@ -234,7 +246,9 @@ final class WorkspaceModel: ObservableObject, Identifiable {
             isPinned: record.isPinned,
             isArchived: record.isArchived,
             sshTarget: record.sshTarget,
-            worktreeOrder: record.worktreeOrder ?? []
+            worktreeOrder: record.worktreeOrder ?? [],
+            workspaceIcon: record.workspaceIcon,
+            worktreeIconOverrides: record.worktreeIconOverrides ?? [:]
         )
         restoreTabState(from: record.worktreeStates)
     }
@@ -485,7 +499,9 @@ final class WorkspaceModel: ObservableObject, Identifiable {
             isArchived: isArchived,
             sshTarget: sshTarget,
             worktreeStates: allWorktreeStates,
-            worktreeOrder: worktreeOrder.isEmpty ? nil : worktreeOrder
+            worktreeOrder: worktreeOrder.isEmpty ? nil : worktreeOrder,
+            workspaceIcon: workspaceIcon,
+            worktreeIconOverrides: worktreeIconOverrides.isEmpty ? nil : worktreeIconOverrides
         )
     }
 }
