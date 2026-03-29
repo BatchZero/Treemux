@@ -11,12 +11,15 @@ import SwiftUI
 final class WindowContext {
     let store: WorkspaceStore
     let themeManager: ThemeManager
+    let languageManager: LanguageManager
     private var window: NSWindow?
     private var themeCancellable: AnyCancellable?
+    private var localeCancellable: AnyCancellable?
 
     init(store: WorkspaceStore) {
         self.store = store
         self.themeManager = ThemeManager(activeThemeID: store.settings.activeThemeID)
+        self.languageManager = LanguageManager(languageCode: store.settings.language)
         themeManager.ensureBuiltInThemesExist()
     }
 
@@ -26,6 +29,8 @@ final class WindowContext {
             rootView: MainWindowView()
                 .environmentObject(store)
                 .environmentObject(themeManager)
+                .environmentObject(languageManager)
+                .environment(\.locale, languageManager.locale)
         )
 
         let window = NSWindow(contentViewController: host)
@@ -50,6 +55,19 @@ final class WindowContext {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 self?.updateAppearance()
+            }
+
+        // Observe language changes to update the root view's locale environment.
+        localeCancellable = languageManager.$locale
+            .dropFirst()
+            .receive(on: RunLoop.main)
+            .sink { [weak host, weak self] newLocale in
+                guard let self, let host else { return }
+                host.rootView = MainWindowView()
+                    .environmentObject(self.store)
+                    .environmentObject(self.themeManager)
+                    .environmentObject(self.languageManager)
+                    .environment(\.locale, newLocale)
             }
     }
 
