@@ -45,36 +45,44 @@ struct WorkspaceRowContent: View {
 
     @State private var isHovered = false
 
+    private var activityIndicator: SidebarIconActivityIndicator {
+        if workspace.hasAnyRunningSessions {
+            return .working
+        }
+        if workspace.activeWorktreePath == workspace.repositoryRoot?.path {
+            return .current
+        }
+        return .none
+    }
+
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             SidebarItemIconView(
                 icon: store.sidebarIcon(for: workspace),
-                size: 22
+                size: 22,
+                activityIndicator: activityIndicator,
+                isEmphasized: isSelected
             )
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(workspace.name)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(theme.sidebarForeground)
                     .lineLimit(1)
                 if workspace.worktrees.count <= 1, let branch = workspace.currentBranch {
                     Text(branch)
-                        .font(.system(size: 11))
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
                         .foregroundStyle(theme.textSecondary)
                         .lineLimit(1)
                 }
             }
             Spacer()
-            if isSelected {
-                Text("current")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.green)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 1)
-                    .background(Color.green.opacity(0.15), in: Capsule())
+            if activityIndicator == .current {
+                SidebarInfoBadge(text: "current", tone: .subtleSuccess)
             }
         }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
+        .padding(.leading, 2)
+        .padding(.trailing, 4)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(isHovered && !isSelected ? theme.sidebarSelection.opacity(0.3) : Color.clear)
@@ -97,29 +105,39 @@ struct WorktreeRowContent: View {
 
     @State private var isHovered = false
 
+    private var activityIndicator: SidebarIconActivityIndicator {
+        if workspace.hasRunningSessions(forWorktreePath: worktree.path.path) {
+            return .working
+        }
+        if workspace.activeWorktreePath == worktree.path.path {
+            return .current
+        }
+        return .none
+    }
+
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             SidebarItemIconView(
                 icon: store.sidebarIcon(for: worktree, in: workspace),
-                size: 18,
-                isActive: isSelected
+                size: 16,
+                usesCircularShape: true,
+                activityIndicator: activityIndicator,
+                isEmphasized: isSelected
             )
+            .frame(width: 24, alignment: .leading)
             Text(worktree.branch ?? worktree.path.lastPathComponent)
-                .font(.system(size: 12))
+                .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(theme.sidebarForeground)
                 .lineLimit(1)
             Spacer()
-            if isSelected {
-                Text("current")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.green)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 1)
-                    .background(Color.green.opacity(0.15), in: Capsule())
+            if activityIndicator == .current {
+                SidebarInfoBadge(text: "current", tone: .subtleSuccess)
             }
         }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 2)
+        .padding(.vertical, 1)
+        .padding(.leading, 5)
+        .padding(.trailing, 4)
+        .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(isHovered && !isSelected ? theme.sidebarSelection.opacity(0.3) : Color.clear)
