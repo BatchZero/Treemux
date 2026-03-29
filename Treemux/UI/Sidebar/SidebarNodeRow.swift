@@ -36,7 +36,7 @@ struct SidebarNodeRow: View {
 
 // MARK: - WorkspaceRowContent
 
-/// Displays workspace icon, name, optional branch, and current badge.
+/// Displays workspace icon, name, and optional branch.
 struct WorkspaceRowContent: View {
     let workspace: WorkspaceModel
     let store: WorkspaceStore
