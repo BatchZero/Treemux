@@ -236,7 +236,7 @@ private struct SSHSettingsView: View {
         Form {
             Section(String(localized: "SSH Config Paths")) {
                 ForEach(settings.ssh.configPaths.indices, id: \.self) { index in
-                    TextField("Path", text: $settings.ssh.configPaths[index])
+                    TextField(String(localized: "Path"), text: $settings.ssh.configPaths[index])
                 }
             }
         }

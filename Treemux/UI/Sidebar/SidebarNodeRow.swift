@@ -77,7 +77,7 @@ struct WorkspaceRowContent: View {
             }
             Spacer()
             if activityIndicator == .current {
-                SidebarInfoBadge(text: "current", tone: .subtleSuccess)
+                SidebarInfoBadge(text: String(localized: "current"), tone: .subtleSuccess)
             }
         }
         .padding(.vertical, 4)
@@ -131,7 +131,7 @@ struct WorktreeRowContent: View {
                 .lineLimit(1)
             Spacer()
             if activityIndicator == .current {
-                SidebarInfoBadge(text: "current", tone: .subtleSuccess)
+                SidebarInfoBadge(text: String(localized: "current"), tone: .subtleSuccess)
             }
         }
         .padding(.vertical, 1)

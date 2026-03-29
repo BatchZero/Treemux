@@ -40,8 +40,8 @@ struct MainWindowView: View {
                 } label: {
                     Image(systemName: "sidebar.leading")
                 }
-                .accessibilityLabel("Toggle Sidebar")
-                .help("Toggle Sidebar")
+                .accessibilityLabel(String(localized: "Toggle Sidebar"))
+                .help(String(localized: "Toggle Sidebar"))
             }
 
             ToolbarItemGroup(placement: .primaryAction) {
@@ -53,7 +53,7 @@ struct MainWindowView: View {
                 } label: {
                     Image(systemName: "rectangle.split.1x2")
                 }
-                .help("Split Down (⌘D)")
+                .help(String(localized: "Split Down (⌘D)"))
 
                 Button {
                     if let sc = store.activeSessionController,
@@ -63,21 +63,21 @@ struct MainWindowView: View {
                 } label: {
                     Image(systemName: "rectangle.split.2x1")
                 }
-                .help("Split Right (⌘⇧D)")
+                .help(String(localized: "Split Right (⌘⇧D)"))
 
                 Button {
                     store.selectedWorkspace?.createTab()
                 } label: {
                     Image(systemName: "plus.rectangle")
                 }
-                .help("New Terminal (⌘T)")
+                .help(String(localized: "New Terminal (⌘T)"))
 
                 Button {
                     store.showSettings = true
                 } label: {
                     Image(systemName: "gearshape")
                 }
-                .help("Settings (⌘,)")
+                .help(String(localized: "Settings (⌘,)"))
             }
         }
         .sheet(isPresented: $store.showSettings) {

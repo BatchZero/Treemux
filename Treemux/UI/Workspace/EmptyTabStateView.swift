@@ -15,17 +15,17 @@ struct EmptyTabStateView: View {
                 .font(.system(size: 48, weight: .thin))
                 .foregroundStyle(.tertiary)
 
-            Text("No open terminals")
+            Text(String(localized: "No open terminals"))
                 .font(.title3)
                 .foregroundStyle(.secondary)
 
             Button(action: onCreateTab) {
-                Label("New Terminal", systemImage: "plus")
+                Label(String(localized: "New Terminal"), systemImage: "plus")
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
 
-            Text("⌘T to create a new tab")
+            Text(String(localized: "⌘T to create a new tab"))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }

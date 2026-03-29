@@ -29,18 +29,18 @@ struct SidebarIconEditorCard: View {
                     }
                 }
                 Spacer()
-                Button("Random") { icon = randomizer() }
+                Button(String(localized: "Random")) { icon = randomizer() }
             }
 
             // Row 2: Symbol picker dropdown
-            Picker("Symbol", selection: $icon.symbolName) {
+            Picker(String(localized: "Symbol"), selection: $icon.symbolName) {
                 ForEach(SidebarIconCatalog.symbols, id: \.systemName) { symbol in
                     Label(symbol.title, systemImage: symbol.systemName).tag(symbol.systemName)
                 }
             }
 
             // Row 3: Fill style segmented control
-            Picker("Style", selection: $icon.fillStyle) {
+            Picker(String(localized: "Style"), selection: $icon.fillStyle) {
                 ForEach(SidebarIconFillStyle.allCases) { style in
                     Text(style.title).tag(style)
                 }
@@ -49,7 +49,7 @@ struct SidebarIconEditorCard: View {
 
             // Row 4: Palette grid
             VStack(alignment: .leading, spacing: 8) {
-                Text("Palette")
+                Text(String(localized: "Palette"))
                     .font(.system(size: 11, weight: .semibold))
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 34), spacing: 8)], spacing: 8) {
                     ForEach(SidebarIconPalette.allCases) { palette in
@@ -99,7 +99,7 @@ struct SidebarIconCustomizationSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Customize Sidebar Icon")
+            Text(String(localized: "Customize Sidebar Icon"))
                 .font(.system(size: 20, weight: .semibold))
 
             Text(title)
@@ -107,22 +107,22 @@ struct SidebarIconCustomizationSheet: View {
                 .foregroundStyle(.secondary)
 
             SidebarIconEditorCard(
-                title: "Icon",
-                subtitle: "Choose a symbol, palette, and fill treatment",
+                title: String(localized: "Icon"),
+                subtitle: String(localized: "Choose a symbol, palette, and fill treatment"),
                 icon: $icon,
                 randomizer: randomizer
             )
 
             HStack {
                 Spacer()
-                Button("Reset") {
+                Button(String(localized: "Reset")) {
                     store.resetSidebarIcon(for: request.target)
                     dismiss()
                 }
-                Button("Cancel") {
+                Button(String(localized: "Cancel")) {
                     dismiss()
                 }
-                Button("Save") {
+                Button(String(localized: "Save")) {
                     store.updateSidebarIcon(icon, for: request.target)
                     dismiss()
                 }
