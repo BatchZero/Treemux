@@ -8,6 +8,7 @@ import SwiftUI
 /// Main window view with a NavigationSplitView containing a sidebar and detail pane.
 struct MainWindowView: View {
     @EnvironmentObject private var store: WorkspaceStore
+    @EnvironmentObject private var languageManager: LanguageManager
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
@@ -82,6 +83,7 @@ struct MainWindowView: View {
         }
         .sheet(isPresented: $store.showSettings) {
             SettingsSheet()
+                .environment(\.locale, languageManager.locale)
         }
         .overlay {
             if store.showCommandPalette {

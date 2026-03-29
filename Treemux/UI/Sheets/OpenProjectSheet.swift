@@ -9,6 +9,7 @@ import SwiftUI
 struct OpenProjectSheet: View {
     @EnvironmentObject private var store: WorkspaceStore
     @EnvironmentObject private var theme: ThemeManager
+    @EnvironmentObject private var languageManager: LanguageManager
     @Environment(\.dismiss) private var dismiss
 
     enum ProjectMode: String, CaseIterable {
@@ -140,6 +141,7 @@ struct OpenProjectSheet: View {
                 ) { selectedPath in
                     remotePath = selectedPath
                 }
+                .environment(\.locale, languageManager.locale)
             }
         }
     }

@@ -9,6 +9,7 @@ import SwiftUI
 struct WorkspaceSidebarView: View {
     @EnvironmentObject private var store: WorkspaceStore
     @EnvironmentObject private var theme: ThemeManager
+    @EnvironmentObject private var languageManager: LanguageManager
 
     // Rename dialog state
     @State private var renamingWorkspaceID: UUID?
@@ -85,11 +86,13 @@ struct WorkspaceSidebarView: View {
         }
         .sheet(isPresented: $showOpenProjectSheet) {
             OpenProjectSheet()
+                .environment(\.locale, languageManager.locale)
         }
         .sheet(item: $store.sidebarIconCustomizationRequest) { request in
             SidebarIconCustomizationSheet(request: request)
                 .environmentObject(store)
                 .environmentObject(theme)
+                .environment(\.locale, languageManager.locale)
         }
     }
 }
