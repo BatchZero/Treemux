@@ -216,6 +216,17 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         return sessionController
     }
 
+    /// Returns true if the given worktree path has any active tab controllers (running sessions).
+    func hasRunningSessions(forWorktreePath path: String) -> Bool {
+        guard let controllers = tabControllers[path] else { return false }
+        return !controllers.isEmpty
+    }
+
+    /// Returns true if any worktree path in this workspace has running sessions.
+    var hasAnyRunningSessions: Bool {
+        tabControllers.values.contains { !$0.isEmpty }
+    }
+
     // MARK: - Initialization
 
     init(
@@ -459,6 +470,10 @@ final class WorkspaceModel: ObservableObject, Identifiable {
             focusedPaneID: tabState?.focusedPaneID,
             zoomedPaneID: tabState?.zoomedPaneID
         )
+
+        ctrl.onPaneStateChanged = { [weak self] in
+            self?.saveActiveTabState()
+        }
 
         if tabControllers[worktreePath] == nil {
             tabControllers[worktreePath] = [:]
