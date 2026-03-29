@@ -5,6 +5,10 @@
 
 import SwiftUI
 
+extension Notification.Name {
+    static let treemuxTerminalSettingsDidChange = Notification.Name("treemuxTerminalSettingsDidChange")
+}
+
 /// Central state management for all workspaces.
 /// UI views observe this store via @EnvironmentObject.
 @MainActor
@@ -24,7 +28,11 @@ final class WorkspaceStore: ObservableObject {
 
     /// Applies a new settings snapshot (used by SettingsSheet Save).
     func updateSettings(_ newSettings: AppSettings) {
+        let terminalChanged = settings.terminal != newSettings.terminal
         settings = newSettings
+        if terminalChanged {
+            NotificationCenter.default.post(name: .treemuxTerminalSettingsDidChange, object: newSettings.terminal)
+        }
     }
 
     private let settingsPersistence = AppSettingsPersistence()
