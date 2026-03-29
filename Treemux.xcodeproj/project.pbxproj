@@ -90,6 +90,10 @@
 		CC000001AABBCCDD0000000A /* SidebarContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD0000000A /* SidebarContainerView.swift */; };
 		CC000001AABBCCDD0000000B /* SidebarCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD0000000B /* SidebarCoordinator.swift */; };
 		CC000001AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift */; };
+		DD000001AABBCCDD00000001 /* SFTPDirectoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002AABBCCDD00000001 /* SFTPDirectoryEntry.swift */; };
+		DD000001AABBCCDD00000002 /* SFTPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002AABBCCDD00000002 /* SFTPService.swift */; };
+		DD000001AABBCCDD00000003 /* RemoteDirectoryBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002AABBCCDD00000003 /* RemoteDirectoryBrowser.swift */; };
+		DD000001AABBCCDD00000004 /* RemoteDirectoryBrowserViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002AABBCCDD00000004 /* RemoteDirectoryBrowserViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -188,6 +192,10 @@
 		CC000002AABBCCDD0000000A /* SidebarContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarContainerView.swift; sourceTree = "<group>"; };
 		CC000002AABBCCDD0000000B /* SidebarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarCoordinator.swift; sourceTree = "<group>"; };
 		CC000002AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceOutlineSidebar.swift; sourceTree = "<group>"; };
+		DD000002AABBCCDD00000001 /* SFTPDirectoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPDirectoryEntry.swift; sourceTree = "<group>"; };
+		DD000002AABBCCDD00000002 /* SFTPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPService.swift; sourceTree = "<group>"; };
+		DD000002AABBCCDD00000003 /* RemoteDirectoryBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDirectoryBrowser.swift; sourceTree = "<group>"; };
+		DD000002AABBCCDD00000004 /* RemoteDirectoryBrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDirectoryBrowserViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -315,6 +323,8 @@
 			isa = PBXGroup;
 			children = (
 				AA000002AABBCCDD0000000A /* OpenProjectSheet.swift */,
+				DD000002AABBCCDD00000003 /* RemoteDirectoryBrowser.swift */,
+				DD000002AABBCCDD00000004 /* RemoteDirectoryBrowserViewModel.swift */,
 				CC000002AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift */,
 			);
 			path = Sheets;
@@ -464,12 +474,22 @@
 			path = Ghostty;
 			sourceTree = "<group>";
 		};
+		DD000003AABBCCDD00000001 /* SFTP */ = {
+			isa = PBXGroup;
+			children = (
+				DD000002AABBCCDD00000001 /* SFTPDirectoryEntry.swift */,
+				DD000002AABBCCDD00000002 /* SFTPService.swift */,
+			);
+			path = SFTP;
+			sourceTree = "<group>";
+		};
 		FC59EC3A6A7A89BE0AD08F6E /* Services */ = {
 			isa = PBXGroup;
 			children = (
 				00BDD3A331D12D95A7B20B1F /* AITool */,
 				9C12B30F7DEBED747DCEF00C /* Git */,
 				C43D9DD04BC56E98D500E75B /* Process */,
+				DD000003AABBCCDD00000001 /* SFTP */,
 				BE2277342687AB8B24AA9973 /* SSH */,
 				4C0772C0D286E3EC583553B3 /* Terminal */,
 				27F87459BFC39581FCA8FA83 /* Tmux */,
@@ -659,6 +679,10 @@
 				A9E5418401517BC5CBD9EC92 /* WorkspaceStatePersistence.swift in Sources */,
 				2378FC48E7C0FDF16337AE95 /* WorkspaceStore.swift in Sources */,
 				28E15CC897C8BE956B0DCF02 /* main.swift in Sources */,
+				DD000001AABBCCDD00000001 /* SFTPDirectoryEntry.swift in Sources */,
+				DD000001AABBCCDD00000002 /* SFTPService.swift in Sources */,
+				DD000001AABBCCDD00000003 /* RemoteDirectoryBrowser.swift in Sources */,
+				DD000001AABBCCDD00000004 /* RemoteDirectoryBrowserViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
