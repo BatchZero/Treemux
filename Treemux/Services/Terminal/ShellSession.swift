@@ -308,7 +308,9 @@ final class ShellSession: ObservableObject, Identifiable {
         environment["TERM_PROGRAM_VERSION"] = currentVersion()
         // Enable Ghostty shell integration features: title reporting lets us detect
         // foreground processes (e.g. tmux) from the terminal title set by preexec.
-        environment["GHOSTTY_SHELL_FEATURES"] = "cursor,title,sudo"
+        // Note: "cursor" feature is intentionally omitted — it overrides cursor-style
+        // set via Ghostty config. Cursor shape is controlled by AppSettings instead.
+        environment["GHOSTTY_SHELL_FEATURES"] = "title,sudo"
         environment["LANG"] = environment["LANG"] ?? "en_US.UTF-8"
         return environment
     }
