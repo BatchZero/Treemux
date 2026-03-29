@@ -102,6 +102,12 @@ final class TreemuxGhosttyRuntime: NSObject {
             name: NSApplication.didResignActiveNotification,
             object: nil
         )
+        center.addObserver(
+            self,
+            selector: #selector(terminalSettingsDidChange(_:)),
+            name: .treemuxTerminalSettingsDidChange,
+            object: nil
+        )
     }
 
     @objc private func keyboardSelectionDidChange(_ notification: Notification) {
@@ -114,6 +120,24 @@ final class TreemuxGhosttyRuntime: NSObject {
 
     @objc private func applicationDidResignActive(_ notification: Notification) {
         ghostty_app_set_focus(app, false)
+    }
+
+    @objc private func terminalSettingsDidChange(_ notification: Notification) {
+        guard let terminal = notification.object as? TerminalSettings else { return }
+        reloadGhosttyConfig(with: terminal)
+    }
+
+    private func reloadGhosttyConfig(with terminal: TerminalSettings) {
+        guard let newConfig = ghostty_config_new() else { return }
+        ghostty_config_load_default_files(newConfig)
+
+        if let tempURL = writeTemporaryGhosttyConfig(for: terminal) {
+            ghostty_config_load_file(newConfig, tempURL.path)
+            try? FileManager.default.removeItem(at: tempURL)
+        }
+
+        ghostty_config_finalize(newConfig)
+        ghostty_app_update_config(app, newConfig)
     }
 
     // MARK: - Callback implementations
