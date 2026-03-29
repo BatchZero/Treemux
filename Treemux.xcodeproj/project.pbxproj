@@ -81,6 +81,7 @@
 		CC000001AABBCCDD00000001 /* SidebarIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000001 /* SidebarIcon.swift */; };
 		CC000001AABBCCDD00000002 /* SidebarIconCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000002 /* SidebarIconCatalog.swift */; };
 		CC000001AABBCCDD00000003 /* SidebarItemIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000003 /* SidebarItemIconView.swift */; };
+		CC000001AABBCCDD00000099 /* SidebarInfoBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000099 /* SidebarInfoBadge.swift */; };
 		CC000001AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift */; };
 		CC000001AABBCCDD00000005 /* SidebarNodeItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000005 /* SidebarNodeItem.swift */; };
 		CC000001AABBCCDD00000006 /* SidebarRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000006 /* SidebarRowView.swift */; };
@@ -90,6 +91,8 @@
 		CC000001AABBCCDD0000000A /* SidebarContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD0000000A /* SidebarContainerView.swift */; };
 		CC000001AABBCCDD0000000B /* SidebarCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD0000000B /* SidebarCoordinator.swift */; };
 		CC000001AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift */; };
+		DD000001SFTP00000001 /* SFTPDirectoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002SFTP00000001 /* SFTPDirectoryEntry.swift */; };
+		DD000001SFTP00000002 /* SFTPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002SFTP00000002 /* SFTPService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -179,6 +182,7 @@
 		CC000002AABBCCDD00000001 /* SidebarIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIcon.swift; sourceTree = "<group>"; };
 		CC000002AABBCCDD00000002 /* SidebarIconCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIconCatalog.swift; sourceTree = "<group>"; };
 		CC000002AABBCCDD00000003 /* SidebarItemIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarItemIconView.swift; sourceTree = "<group>"; };
+		CC000002AABBCCDD00000099 /* SidebarInfoBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarInfoBadge.swift; sourceTree = "<group>"; };
 		CC000002AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIconCustomizationSheet.swift; sourceTree = "<group>"; };
 		CC000002AABBCCDD00000005 /* SidebarNodeItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNodeItem.swift; sourceTree = "<group>"; };
 		CC000002AABBCCDD00000006 /* SidebarRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarRowView.swift; sourceTree = "<group>"; };
@@ -188,6 +192,8 @@
 		CC000002AABBCCDD0000000A /* SidebarContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarContainerView.swift; sourceTree = "<group>"; };
 		CC000002AABBCCDD0000000B /* SidebarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarCoordinator.swift; sourceTree = "<group>"; };
 		CC000002AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceOutlineSidebar.swift; sourceTree = "<group>"; };
+		DD000002SFTP00000001 /* SFTPDirectoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPDirectoryEntry.swift; sourceTree = "<group>"; };
+		DD000002SFTP00000002 /* SFTPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -429,6 +435,7 @@
 				CC000002AABBCCDD00000007 /* SidebarCellView.swift */,
 				CC000002AABBCCDD0000000A /* SidebarContainerView.swift */,
 				CC000002AABBCCDD00000003 /* SidebarItemIconView.swift */,
+				CC000002AABBCCDD00000099 /* SidebarInfoBadge.swift */,
 				CC000002AABBCCDD00000005 /* SidebarNodeItem.swift */,
 				CC000002AABBCCDD00000008 /* SidebarNodeRow.swift */,
 				CC000002AABBCCDD00000009 /* SidebarOutlineView.swift */,
@@ -470,11 +477,21 @@
 				00BDD3A331D12D95A7B20B1F /* AITool */,
 				9C12B30F7DEBED747DCEF00C /* Git */,
 				C43D9DD04BC56E98D500E75B /* Process */,
+				DD000003SFTP00000001 /* SFTP */,
 				BE2277342687AB8B24AA9973 /* SSH */,
 				4C0772C0D286E3EC583553B3 /* Terminal */,
 				27F87459BFC39581FCA8FA83 /* Tmux */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		DD000003SFTP00000001 /* SFTP */ = {
+			isa = PBXGroup;
+			children = (
+				DD000002SFTP00000001 /* SFTPDirectoryEntry.swift */,
+				DD000002SFTP00000002 /* SFTPService.swift */,
+			);
+			path = SFTP;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -623,6 +640,7 @@
 				CC000001AABBCCDD00000001 /* SidebarIcon.swift in Sources */,
 				CC000001AABBCCDD00000002 /* SidebarIconCatalog.swift in Sources */,
 				CC000001AABBCCDD00000003 /* SidebarItemIconView.swift in Sources */,
+				CC000001AABBCCDD00000099 /* SidebarInfoBadge.swift in Sources */,
 				CC000001AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift in Sources */,
 				CC000001AABBCCDD00000005 /* SidebarNodeItem.swift in Sources */,
 				CC000001AABBCCDD00000006 /* SidebarRowView.swift in Sources */,
@@ -632,6 +650,8 @@
 				CC000001AABBCCDD0000000A /* SidebarContainerView.swift in Sources */,
 				CC000001AABBCCDD0000000B /* SidebarCoordinator.swift in Sources */,
 				CC000001AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift in Sources */,
+				DD000001SFTP00000001 /* SFTPDirectoryEntry.swift in Sources */,
+				DD000001SFTP00000002 /* SFTPService.swift in Sources */,
 				BCEB4C8CE71A07F316E67D13 /* SplitDivider.swift in Sources */,
 				3342176CAA82F4D5A9EA3AC0 /* SplitNodeView.swift in Sources */,
 				7405B7C02F6B819CB0A772E5 /* String+Helpers.swift in Sources */,
