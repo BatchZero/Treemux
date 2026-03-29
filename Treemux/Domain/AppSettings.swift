@@ -24,7 +24,7 @@ struct AppSettings: Codable, Equatable {
 struct TerminalSettings: Codable, Equatable {
     var defaultShell: String = "/bin/zsh"
     var fontSize: Int = 14
-    var cursorStyle: String = "block"
+    var cursorStyle: String = "bar"
 }
 
 /// Settings controlling application startup behavior.
