@@ -254,7 +254,7 @@ private struct ShortcutsSettingsView: View {
             ForEach(ShortcutCategory.allCases.filter { cat in
                 ShortcutAction.allCases.contains { $0.category == cat }
             }) { category in
-                Section(category.title) {
+                Section(LocalizedStringKey(category.title)) {
                     let actions = ShortcutAction.allCases.filter { $0.category == category }
                     ForEach(actions) { action in
                         ShortcutRow(action: action, settings: $settings)
@@ -288,9 +288,9 @@ private struct ShortcutRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(action.title)
+                    Text(LocalizedStringKey(action.title))
                         .font(.system(size: 13))
-                    Text(action.subtitle)
+                    Text(LocalizedStringKey(action.subtitle))
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }

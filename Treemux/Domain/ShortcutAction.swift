@@ -17,10 +17,10 @@ enum ShortcutCategory: String, CaseIterable, Hashable, Identifiable {
 
     var title: String {
         switch self {
-        case .general: return String(localized: "General")
-        case .tabs: return String(localized: "Tabs")
-        case .panes: return String(localized: "Panes")
-        case .window: return String(localized: "Window")
+        case .general: return "General"
+        case .tabs: return "Tabs"
+        case .panes: return "Panes"
+        case .window: return "Window"
         }
     }
 }
@@ -60,41 +60,41 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
 
     var title: String {
         switch self {
-        case .openSettings: return String(localized: "Settings")
-        case .commandPalette: return String(localized: "Command Palette")
-        case .toggleSidebar: return String(localized: "Toggle Sidebar")
-        case .openProject: return String(localized: "Open Project")
-        case .newTab: return String(localized: "New Tab")
-        case .closeTab: return String(localized: "Close Tab")
-        case .nextTab: return String(localized: "Next Tab")
-        case .previousTab: return String(localized: "Previous Tab")
-        case .splitHorizontal: return String(localized: "Split Down")
-        case .splitVertical: return String(localized: "Split Right")
-        case .closePane: return String(localized: "Close Pane")
-        case .focusNextPane: return String(localized: "Next Pane")
-        case .focusPreviousPane: return String(localized: "Previous Pane")
-        case .zoomPane: return String(localized: "Zoom Pane")
-        case .newClaudeCode: return String(localized: "New Claude Code Session")
+        case .openSettings: return "Settings"
+        case .commandPalette: return "Command Palette"
+        case .toggleSidebar: return "Toggle Sidebar"
+        case .openProject: return "Open Project"
+        case .newTab: return "New Tab"
+        case .closeTab: return "Close Tab"
+        case .nextTab: return "Next Tab"
+        case .previousTab: return "Previous Tab"
+        case .splitHorizontal: return "Split Down"
+        case .splitVertical: return "Split Right"
+        case .closePane: return "Close Pane"
+        case .focusNextPane: return "Next Pane"
+        case .focusPreviousPane: return "Previous Pane"
+        case .zoomPane: return "Zoom Pane"
+        case .newClaudeCode: return "New Claude Code Session"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .openSettings: return String(localized: "Open the Treemux settings panel.")
-        case .commandPalette: return String(localized: "Search and run commands.")
-        case .toggleSidebar: return String(localized: "Show or hide the project sidebar.")
-        case .openProject: return String(localized: "Open a directory as a project.")
-        case .newTab: return String(localized: "Create a new terminal tab.")
-        case .closeTab: return String(localized: "Close the current tab.")
-        case .nextTab: return String(localized: "Switch to the next tab.")
-        case .previousTab: return String(localized: "Switch to the previous tab.")
-        case .splitHorizontal: return String(localized: "Split the focused pane downward.")
-        case .splitVertical: return String(localized: "Split the focused pane to the right.")
-        case .closePane: return String(localized: "Close the focused pane.")
-        case .focusNextPane: return String(localized: "Move focus to the next pane.")
-        case .focusPreviousPane: return String(localized: "Move focus to the previous pane.")
-        case .zoomPane: return String(localized: "Zoom or unzoom the focused pane.")
-        case .newClaudeCode: return String(localized: "Open a new Claude Code terminal.")
+        case .openSettings: return "Open the Treemux settings panel."
+        case .commandPalette: return "Search and run commands."
+        case .toggleSidebar: return "Show or hide the project sidebar."
+        case .openProject: return "Open a directory as a project."
+        case .newTab: return "Create a new terminal tab."
+        case .closeTab: return "Close the current tab."
+        case .nextTab: return "Switch to the next tab."
+        case .previousTab: return "Switch to the previous tab."
+        case .splitHorizontal: return "Split the focused pane downward."
+        case .splitVertical: return "Split the focused pane to the right."
+        case .closePane: return "Close the focused pane."
+        case .focusNextPane: return "Move focus to the next pane."
+        case .focusPreviousPane: return "Move focus to the previous pane."
+        case .zoomPane: return "Zoom or unzoom the focused pane."
+        case .newClaudeCode: return "Open a new Claude Code terminal."
         }
     }
 
