@@ -77,7 +77,7 @@ struct WorkspaceRowContent: View {
         .padding(.vertical, 2)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isHovered && !isSelected ? Color.gray.opacity(0.12) : Color.clear)
+                .fill(isHovered && !isSelected ? theme.sidebarSelection.opacity(0.3) : Color.clear)
         )
         .onHover { hovering in
             isHovered = hovering
@@ -122,7 +122,7 @@ struct WorktreeRowContent: View {
         .padding(.vertical, 2)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isHovered && !isSelected ? Color.gray.opacity(0.12) : Color.clear)
+                .fill(isHovered && !isSelected ? theme.sidebarSelection.opacity(0.3) : Color.clear)
         )
         .onHover { hovering in
             isHovered = hovering

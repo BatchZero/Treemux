@@ -88,6 +88,8 @@
 		CC000001AABBCCDD00000008 /* SidebarNodeRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000008 /* SidebarNodeRow.swift */; };
 		CC000001AABBCCDD00000009 /* SidebarOutlineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000009 /* SidebarOutlineView.swift */; };
 		CC000001AABBCCDD0000000A /* SidebarContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD0000000A /* SidebarContainerView.swift */; };
+		CC000001AABBCCDD0000000B /* SidebarCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD0000000B /* SidebarCoordinator.swift */; };
+		CC000001AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -184,6 +186,8 @@
 		CC000002AABBCCDD00000008 /* SidebarNodeRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNodeRow.swift; sourceTree = "<group>"; };
 		CC000002AABBCCDD00000009 /* SidebarOutlineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarOutlineView.swift; sourceTree = "<group>"; };
 		CC000002AABBCCDD0000000A /* SidebarContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarContainerView.swift; sourceTree = "<group>"; };
+		CC000002AABBCCDD0000000B /* SidebarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarCoordinator.swift; sourceTree = "<group>"; };
+		CC000002AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceOutlineSidebar.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -429,6 +433,8 @@
 				CC000002AABBCCDD00000008 /* SidebarNodeRow.swift */,
 				CC000002AABBCCDD00000009 /* SidebarOutlineView.swift */,
 				CC000002AABBCCDD00000006 /* SidebarRowView.swift */,
+				CC000002AABBCCDD0000000B /* SidebarCoordinator.swift */,
+				CC000002AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift */,
 				E8354D57B9898A0C0ADBD959 /* WorkspaceSidebarView.swift */,
 			);
 			path = Sidebar;
@@ -624,6 +630,8 @@
 				CC000001AABBCCDD00000008 /* SidebarNodeRow.swift in Sources */,
 				CC000001AABBCCDD00000009 /* SidebarOutlineView.swift in Sources */,
 				CC000001AABBCCDD0000000A /* SidebarContainerView.swift in Sources */,
+				CC000001AABBCCDD0000000B /* SidebarCoordinator.swift in Sources */,
+				CC000001AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift in Sources */,
 				BCEB4C8CE71A07F316E67D13 /* SplitDivider.swift in Sources */,
 				3342176CAA82F4D5A9EA3AC0 /* SplitNodeView.swift in Sources */,
 				7405B7C02F6B819CB0A772E5 /* String+Helpers.swift in Sources */,
