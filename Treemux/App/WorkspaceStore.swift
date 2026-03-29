@@ -322,6 +322,9 @@ final class WorkspaceStore: ObservableObject {
                !merged.contains(where: { $0.id == selID }) {
                 selectedWorkspaceID = workspace.id
             }
+
+            // Notify SwiftUI that child model data changed so the sidebar rebuilds.
+            objectWillChange.send()
         } catch {
             // Not a git repository or git command failed — that's acceptable.
         }
