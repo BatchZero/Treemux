@@ -4,21 +4,44 @@
 //
 
 import Foundation
+import SwiftUI
 
-/// Manages application language override.
-/// When language is "system", uses the OS locale. Otherwise, overrides
-/// the app's preferred language to the specified code ("en" or "zh-Hans").
-enum LanguageManager {
+/// Manages application language override and publishes a Locale
+/// for SwiftUI environment injection.
+@MainActor
+final class LanguageManager: ObservableObject {
 
-    /// Apply the language setting from AppSettings.
-    /// Call this early in app launch before any UI is shown.
-    static func apply(languageCode: String) {
-        guard languageCode != "system" else {
-            // Remove any override; follow system language
+    /// The active locale derived from the language setting.
+    /// Bind this to `.environment(\.locale)` on the root view.
+    @Published private(set) var locale: Locale
+
+    init(languageCode: String) {
+        self.locale = Self.resolveLocale(languageCode)
+        Self.persistOverride(languageCode)
+    }
+
+    /// Apply a new language setting at runtime.
+    /// Updates the published locale (immediate SwiftUI effect)
+    /// and persists the override for next launch.
+    func apply(languageCode: String) {
+        locale = Self.resolveLocale(languageCode)
+        Self.persistOverride(languageCode)
+    }
+
+    // MARK: - Private
+
+    private static func resolveLocale(_ code: String) -> Locale {
+        guard code != "system" else {
+            return Locale.autoupdatingCurrent
+        }
+        return Locale(identifier: code)
+    }
+
+    private static func persistOverride(_ code: String) {
+        guard code != "system" else {
             UserDefaults.standard.removeObject(forKey: "AppleLanguages")
             return
         }
-        // Override the preferred language
-        UserDefaults.standard.set([languageCode], forKey: "AppleLanguages")
+        UserDefaults.standard.set([code], forKey: "AppleLanguages")
     }
 }
