@@ -133,6 +133,7 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         if outlineView.selectedRow != row {
             isApplyingSelection = true
             outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+            outlineView.scrollRowToVisible(row)
             isApplyingSelection = false
         }
 
