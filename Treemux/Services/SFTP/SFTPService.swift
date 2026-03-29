@@ -6,7 +6,6 @@
 import Foundation
 import Citadel
 import Crypto
-import Logging
 
 // MARK: - Error types
 
@@ -15,7 +14,6 @@ enum SFTPServiceError: LocalizedError {
     case noAuthMethodAvailable
     case keyFileNotFound(String)
     case unsupportedKeyType(String)
-    case connectionFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -27,8 +25,6 @@ enum SFTPServiceError: LocalizedError {
             return "SSH key file not found: \(path)"
         case .unsupportedKeyType(let type):
             return "Unsupported SSH key type: \(type)"
-        case .connectionFailed(let reason):
-            return "SSH connection failed: \(reason)"
         }
     }
 }
