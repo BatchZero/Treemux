@@ -19,6 +19,9 @@ final class WorkspaceSessionController: ObservableObject {
     }
     @Published var zoomedPaneID: UUID?
 
+    /// Called after pane operations to notify the workspace model of state changes.
+    var onPaneStateChanged: (() -> Void)?
+
     private let workingDirectory: String
     private let sshTarget: SSHTarget?
 
@@ -131,6 +134,7 @@ final class WorkspaceSessionController: ObservableObject {
         if layout.split(paneID: paneID, axis: axis, newPaneID: newPaneID, placement: placement) {
             focusedPaneID = newPaneID
         }
+        onPaneStateChanged?()
     }
 
     // MARK: - Pane closing
@@ -153,6 +157,7 @@ final class WorkspaceSessionController: ObservableObject {
         if zoomedPaneID == paneID {
             zoomedPaneID = nil
         }
+        onPaneStateChanged?()
     }
 
     // MARK: - Focus navigation
@@ -161,12 +166,14 @@ final class WorkspaceSessionController: ObservableObject {
     func focusNext() {
         guard let current = focusedPaneID else { return }
         focusedPaneID = layout.paneID(in: .next, from: current)
+        onPaneStateChanged?()
     }
 
     /// Moves focus to the previous pane in traversal order.
     func focusPrevious() {
         guard let current = focusedPaneID else { return }
         focusedPaneID = layout.paneID(in: .previous, from: current)
+        onPaneStateChanged?()
     }
 
     /// Moves focus in a directional manner (left/right/up/down).
@@ -175,12 +182,14 @@ final class WorkspaceSessionController: ObservableObject {
         if let target = layout.paneID(in: direction, from: current) {
             focusedPaneID = target
         }
+        onPaneStateChanged?()
     }
 
     /// Focuses the given pane directly.
     func focus(_ paneID: UUID) {
         focusedPaneID = paneID
         sessions[paneID]?.focus()
+        onPaneStateChanged?()
     }
 
     // MARK: - Zoom
@@ -192,6 +201,7 @@ final class WorkspaceSessionController: ObservableObject {
         } else {
             zoomedPaneID = focusedPaneID
         }
+        onPaneStateChanged?()
     }
 
     // MARK: - Layout manipulation
@@ -204,12 +214,14 @@ final class WorkspaceSessionController: ObservableObject {
     /// Equalizes all split fractions.
     func equalizeSplits() {
         layout.equalizeSplits()
+        onPaneStateChanged?()
     }
 
     /// Resizes the split containing the focused pane in the given direction.
     func resizeFocusedSplit(direction: PaneFocusDirection, amount: UInt16) {
         guard let current = focusedPaneID else { return }
         _ = layout.resizeSplit(containing: current, toward: direction, amount: amount)
+        onPaneStateChanged?()
     }
 
     // MARK: - Snapshots
