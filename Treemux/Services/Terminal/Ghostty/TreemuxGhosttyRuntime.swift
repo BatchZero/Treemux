@@ -28,6 +28,14 @@ final class TreemuxGhosttyRuntime: NSObject {
             fatalError("Unable to allocate libghostty config")
         }
         ghostty_config_load_default_files(configuration)
+
+        // Override with Treemux terminal settings
+        let terminalSettings = AppSettingsPersistence().load().terminal
+        if let tempURL = writeTemporaryGhosttyConfig(for: terminalSettings) {
+            ghostty_config_load_file(configuration, tempURL.path)
+            try? FileManager.default.removeItem(at: tempURL)
+        }
+
         ghostty_config_finalize(configuration)
         config = configuration
 
@@ -48,6 +56,24 @@ final class TreemuxGhosttyRuntime: NSObject {
         self.app = app
         ghostty_app_set_focus(app, NSApp.isActive)
         installObservers()
+    }
+
+    /// Writes Treemux terminal settings as a temporary Ghostty config file.
+    /// Caller must delete the returned URL after use.
+    private func writeTemporaryGhosttyConfig(for terminal: TerminalSettings) -> URL? {
+        let lines = [
+            "cursor-style = \(terminal.cursorStyle)",
+            "font-size = \(terminal.fontSize)",
+        ]
+        let content = lines.joined(separator: "\n") + "\n"
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("treemux-ghostty-\(UUID().uuidString).conf")
+        do {
+            try content.write(to: url, atomically: true, encoding: .utf8)
+            return url
+        } catch {
+            return nil
+        }
     }
 
     func tick() {
