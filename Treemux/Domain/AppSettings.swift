@@ -16,7 +16,6 @@ struct AppSettings: Codable, Equatable {
     var terminal: TerminalSettings = TerminalSettings()
     var startup: StartupSettings = StartupSettings()
     var ssh: SSHSettings = SSHSettings()
-    var aiTools: AIToolSettings = AIToolSettings()
     var shortcutOverrides: [String: ShortcutOverride] = [:]
     var defaultLocalTerminalIcon: SidebarItemIcon = .localTerminalDefault
 }
@@ -38,7 +37,3 @@ struct SSHSettings: Codable, Equatable {
     var configPaths: [String] = ["~/.ssh/config"]
 }
 
-/// AI tool integration settings.
-struct AIToolSettings: Codable, Equatable {
-    var autoDetect: Bool = true
-}

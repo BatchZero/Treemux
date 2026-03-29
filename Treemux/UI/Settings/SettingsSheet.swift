@@ -20,7 +20,7 @@ struct SettingsSheet: View {
     }
 
     enum SettingsSection: String, CaseIterable, Identifiable {
-        case general, terminal, theme, sidebarIcons, aiTools, ssh, shortcuts
+        case general, terminal, theme, sidebarIcons, ssh, shortcuts
 
         var id: String { rawValue }
 
@@ -30,7 +30,6 @@ struct SettingsSheet: View {
             case .terminal: return String(localized: "Terminal")
             case .theme: return String(localized: "Theme")
             case .sidebarIcons: return String(localized: "Sidebar Icons")
-            case .aiTools: return String(localized: "AI Tools")
             case .ssh: return "SSH"
             case .shortcuts: return String(localized: "Shortcuts")
             }
@@ -42,7 +41,6 @@ struct SettingsSheet: View {
             case .terminal: return String(localized: "Shell, font, and cursor settings")
             case .theme: return String(localized: "Color themes and appearance")
             case .sidebarIcons: return String(localized: "Customize icons for workspaces and worktrees")
-            case .aiTools: return String(localized: "AI agent detection and presets")
             case .ssh: return String(localized: "SSH config file paths")
             case .shortcuts: return String(localized: "Customize keyboard shortcuts")
             }
@@ -54,7 +52,6 @@ struct SettingsSheet: View {
             case .terminal: return "apple.terminal"
             case .theme: return "paintbrush"
             case .sidebarIcons: return "paintpalette"
-            case .aiTools: return "brain.head.profile"
             case .ssh: return "network"
             case .shortcuts: return "keyboard"
             }
@@ -141,8 +138,6 @@ struct SettingsSheet: View {
             ThemeSettingsView(settings: $draft, themeManager: theme)
         case .sidebarIcons:
             SidebarIconsSettingsView(settings: $draft)
-        case .aiTools:
-            AIToolsSettingsView(settings: $draft)
         case .ssh:
             SSHSettingsView(settings: $draft)
         case .shortcuts:
@@ -222,25 +217,6 @@ private struct ThemeSettingsView: View {
 
             Section {
                 Text(String(localized: "Place custom theme JSON files in ~/.treemux/themes/"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .formStyle(.grouped)
-    }
-}
-
-// MARK: - AI Tools Settings
-
-private struct AIToolsSettingsView: View {
-    @Binding var settings: AppSettings
-
-    var body: some View {
-        Form {
-            Toggle(String(localized: "Auto-detect AI Tools"), isOn: $settings.aiTools.autoDetect)
-
-            Section {
-                Text(String(localized: "Place agent preset JSON files in ~/.treemux/agents/"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
