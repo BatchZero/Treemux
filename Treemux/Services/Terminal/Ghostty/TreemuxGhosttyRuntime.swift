@@ -138,6 +138,7 @@ final class TreemuxGhosttyRuntime: NSObject {
 
         ghostty_config_finalize(newConfig)
         ghostty_app_update_config(app, newConfig)
+        config = newConfig
     }
 
     // MARK: - Callback implementations
