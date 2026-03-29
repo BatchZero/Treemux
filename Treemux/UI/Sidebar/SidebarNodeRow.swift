@@ -76,9 +76,6 @@ struct WorkspaceRowContent: View {
                 }
             }
             Spacer()
-            if activityIndicator == .current {
-                SidebarInfoBadge(text: "current", tone: .subtleSuccess)
-            }
         }
         .padding(.vertical, 4)
         .padding(.leading, 2)
@@ -130,7 +127,9 @@ struct WorktreeRowContent: View {
                 .foregroundStyle(theme.sidebarForeground)
                 .lineLimit(1)
             Spacer()
-            if activityIndicator == .current {
+            // Show badge based on workspace model directly, not activity indicator,
+            // so it remains visible even when terminal sessions are running.
+            if workspace.activeWorktreePath == worktree.path.path {
                 SidebarInfoBadge(text: "current", tone: .subtleSuccess)
             }
         }
