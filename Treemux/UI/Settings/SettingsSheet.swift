@@ -25,25 +25,25 @@ struct SettingsSheet: View {
 
         var id: String { rawValue }
 
-        var title: String {
+        var title: LocalizedStringKey {
             switch self {
-            case .general: return String(localized: "General")
-            case .terminal: return String(localized: "Terminal")
-            case .theme: return String(localized: "Theme")
-            case .sidebarIcons: return String(localized: "Sidebar Icons")
+            case .general: return "General"
+            case .terminal: return "Terminal"
+            case .theme: return "Theme"
+            case .sidebarIcons: return "Sidebar Icons"
             case .ssh: return "SSH"
-            case .shortcuts: return String(localized: "Shortcuts")
+            case .shortcuts: return "Shortcuts"
             }
         }
 
-        var subtitle: String {
+        var subtitle: LocalizedStringKey {
             switch self {
-            case .general: return String(localized: "Language and startup behavior")
-            case .terminal: return String(localized: "Shell, font, and cursor settings")
-            case .theme: return String(localized: "Color themes and appearance")
-            case .sidebarIcons: return String(localized: "Customize icons for workspaces and worktrees")
-            case .ssh: return String(localized: "SSH config file paths")
-            case .shortcuts: return String(localized: "Customize keyboard shortcuts")
+            case .general: return "Language and startup behavior"
+            case .terminal: return "Shell, font, and cursor settings"
+            case .theme: return "Color themes and appearance"
+            case .sidebarIcons: return "Customize icons for workspaces and worktrees"
+            case .ssh: return "SSH config file paths"
+            case .shortcuts: return "Customize keyboard shortcuts"
             }
         }
 
@@ -99,7 +99,7 @@ struct SettingsSheet: View {
                 Divider()
                 HStack {
                     Spacer()
-                    Button(String(localized: "Cancel")) {
+                    Button("Cancel") {
                         // Revert theme if it was changed during preview
                         if draft.activeThemeID != originalSettings.activeThemeID {
                             theme.setActiveTheme(originalSettings.activeThemeID)
@@ -108,7 +108,7 @@ struct SettingsSheet: View {
                     }
                     .keyboardShortcut(.cancelAction)
 
-                    Button(String(localized: "Save")) {
+                    Button("Save") {
                         store.updateSettings(draft)
                         languageManager.apply(languageCode: draft.language)
                         dismiss()
@@ -155,15 +155,15 @@ private struct GeneralSettingsView: View {
 
     var body: some View {
         Form {
-            Picker(String(localized: "Language"), selection: $settings.language) {
-                Text(String(localized: "Follow System")).tag("system")
+            Picker("Language", selection: $settings.language) {
+                Text("Follow System").tag("system")
                 Text("English").tag("en")
                 Text("中文").tag("zh-Hans")
             }
 
-            Picker(String(localized: "On Startup"), selection: $settings.startup.restoreLastSession) {
-                Text(String(localized: "Restore Last Session")).tag(true)
-                Text(String(localized: "Blank Window")).tag(false)
+            Picker("On Startup", selection: $settings.startup.restoreLastSession) {
+                Text("Restore Last Session").tag(true)
+                Text("Blank Window").tag(false)
             }
         }
         .formStyle(.grouped)
@@ -177,23 +177,23 @@ private struct TerminalSettingsView: View {
 
     var body: some View {
         Form {
-            TextField(String(localized: "Default Shell"), text: $settings.terminal.defaultShell)
+            TextField("Default Shell", text: $settings.terminal.defaultShell)
 
             Stepper(
                 value: $settings.terminal.fontSize, in: 8...32
             ) {
                 HStack {
-                    Text(String(localized: "Font Size"))
+                    Text("Font Size")
                     Spacer()
                     Text("\(settings.terminal.fontSize)")
                         .foregroundStyle(.secondary)
                 }
             }
 
-            Picker(String(localized: "Cursor Style"), selection: $settings.terminal.cursorStyle) {
-                Text(String(localized: "Block")).tag("block")
-                Text(String(localized: "Bar")).tag("bar")
-                Text(String(localized: "Underline")).tag("underline")
+            Picker("Cursor Style", selection: $settings.terminal.cursorStyle) {
+                Text("Block").tag("block")
+                Text("Bar").tag("bar")
+                Text("Underline").tag("underline")
             }
         }
         .formStyle(.grouped)
@@ -208,7 +208,7 @@ private struct ThemeSettingsView: View {
 
     var body: some View {
         Form {
-            Picker(String(localized: "Active Theme"), selection: $settings.activeThemeID) {
+            Picker("Active Theme", selection: $settings.activeThemeID) {
                 ForEach(themeManager.availableThemes) { theme in
                     Text(theme.name).tag(theme.id)
                 }
@@ -218,7 +218,7 @@ private struct ThemeSettingsView: View {
             }
 
             Section {
-                Text(String(localized: "Place custom theme JSON files in ~/.treemux/themes/"))
+                Text("Place custom theme JSON files in ~/.treemux/themes/")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -234,9 +234,9 @@ private struct SSHSettingsView: View {
 
     var body: some View {
         Form {
-            Section(String(localized: "SSH Config Paths")) {
+            Section("SSH Config Paths") {
                 ForEach(settings.ssh.configPaths.indices, id: \.self) { index in
-                    TextField(String(localized: "Path"), text: $settings.ssh.configPaths[index])
+                    TextField("Path", text: $settings.ssh.configPaths[index])
                 }
             }
         }
@@ -263,7 +263,7 @@ private struct ShortcutsSettingsView: View {
             }
 
             Section {
-                Button(String(localized: "Reset All to Defaults")) {
+                Button("Reset All to Defaults") {
                     TreemuxKeyboardShortcuts.resetAll(in: &settings)
                 }
             }
@@ -306,21 +306,21 @@ private struct ShortcutRow: View {
                             }
                         }
                     ),
-                    emptyTitle: String(localized: "Not Set")
+                    emptyTitle: String(localized: "Not Set")  // NSButton requires String
                 )
                 .frame(width: 120)
             }
 
             HStack(spacing: 8) {
                 if state == .custom {
-                    Button(String(localized: "Reset")) {
+                    Button("Reset") {
                         TreemuxKeyboardShortcuts.resetShortcut(for: action, in: &settings)
                     }
                     .font(.system(size: 11))
                 }
 
                 if state != .disabled {
-                    Button(String(localized: "Disable")) {
+                    Button("Disable") {
                         TreemuxKeyboardShortcuts.disableShortcut(for: action, in: &settings)
                     }
                     .font(.system(size: 11))
@@ -345,10 +345,10 @@ private struct SidebarIconsSettingsView: View {
     var body: some View {
         Form {
             // Global default: Terminal only
-            Section(String(localized: "Default")) {
+            Section("Default") {
                 SidebarIconEditorCard(
-                    title: String(localized: "Terminal"),
-                    subtitle: String(localized: "Default icon for local terminals"),
+                    title: "Terminal",
+                    subtitle: "Default icon for local terminals",
                     icon: $settings.defaultLocalTerminalIcon,
                     randomizer: SidebarItemIcon.random
                 )

@@ -9,8 +9,8 @@ import SwiftUI
 
 /// A reusable card that lets the user pick a symbol, palette, and fill style for a sidebar icon.
 struct SidebarIconEditorCard: View {
-    let title: String
-    let subtitle: String?
+    let title: LocalizedStringKey
+    let subtitle: LocalizedStringKey?
     @Binding var icon: SidebarItemIcon
     var randomizer: () -> SidebarItemIcon = SidebarItemIcon.random
 
@@ -29,18 +29,18 @@ struct SidebarIconEditorCard: View {
                     }
                 }
                 Spacer()
-                Button(String(localized: "Random")) { icon = randomizer() }
+                Button("Random") { icon = randomizer() }
             }
 
             // Row 2: Symbol picker dropdown
-            Picker(String(localized: "Symbol"), selection: $icon.symbolName) {
+            Picker("Symbol", selection: $icon.symbolName) {
                 ForEach(SidebarIconCatalog.symbols, id: \.systemName) { symbol in
                     Label(symbol.title, systemImage: symbol.systemName).tag(symbol.systemName)
                 }
             }
 
             // Row 3: Fill style segmented control
-            Picker(String(localized: "Style"), selection: $icon.fillStyle) {
+            Picker("Style", selection: $icon.fillStyle) {
                 ForEach(SidebarIconFillStyle.allCases) { style in
                     Text(style.title).tag(style)
                 }
@@ -49,7 +49,7 @@ struct SidebarIconEditorCard: View {
 
             // Row 4: Palette grid
             VStack(alignment: .leading, spacing: 8) {
-                Text(String(localized: "Palette"))
+                Text("Palette")
                     .font(.system(size: 11, weight: .semibold))
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 34), spacing: 8)], spacing: 8) {
                     ForEach(SidebarIconPalette.allCases) { palette in
@@ -99,7 +99,7 @@ struct SidebarIconCustomizationSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text(String(localized: "Customize Sidebar Icon"))
+            Text("Customize Sidebar Icon")
                 .font(.system(size: 20, weight: .semibold))
 
             Text(title)
@@ -107,22 +107,22 @@ struct SidebarIconCustomizationSheet: View {
                 .foregroundStyle(.secondary)
 
             SidebarIconEditorCard(
-                title: String(localized: "Icon"),
-                subtitle: String(localized: "Choose a symbol, palette, and fill treatment"),
+                title: "Icon",
+                subtitle: "Choose a symbol, palette, and fill treatment",
                 icon: $icon,
                 randomizer: randomizer
             )
 
             HStack {
                 Spacer()
-                Button(String(localized: "Reset")) {
+                Button("Reset") {
                     store.resetSidebarIcon(for: request.target)
                     dismiss()
                 }
-                Button(String(localized: "Cancel")) {
+                Button("Cancel") {
                     dismiss()
                 }
-                Button(String(localized: "Save")) {
+                Button("Save") {
                     store.updateSidebarIcon(icon, for: request.target)
                     dismiss()
                 }

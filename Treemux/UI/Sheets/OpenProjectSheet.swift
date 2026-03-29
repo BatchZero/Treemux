@@ -26,6 +26,7 @@ struct OpenProjectSheet: View {
     @State private var selectedTargetIndex: Int = 0
     @State private var remotePath: String = ""
     @State private var isLoadingTargets = false
+    @State private var showRemoteBrowser = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -122,8 +123,23 @@ struct OpenProjectSheet: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                TextField("/home/user/project", text: $remotePath)
-                    .textFieldStyle(.roundedBorder)
+                HStack {
+                    TextField("/home/user/project", text: $remotePath)
+                        .textFieldStyle(.roundedBorder)
+                    Button(String(localized: "Choose…")) {
+                        showRemoteBrowser = true
+                    }
+                    .disabled(sshTargets.isEmpty)
+                }
+            }
+        }
+        .sheet(isPresented: $showRemoteBrowser) {
+            if selectedTargetIndex < sshTargets.count {
+                RemoteDirectoryBrowser(
+                    sshTarget: sshTargets[selectedTargetIndex]
+                ) { selectedPath in
+                    remotePath = selectedPath
+                }
             }
         }
     }

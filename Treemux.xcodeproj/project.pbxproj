@@ -65,6 +65,8 @@
 		AA000001AABBCCDD00000008 /* SSHConfigService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000008 /* SSHConfigService.swift */; };
 		AA000001AABBCCDD00000009 /* SSHConfigParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000009 /* SSHConfigParserTests.swift */; };
 		AA000001AABBCCDD0000000A /* OpenProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000A /* OpenProjectSheet.swift */; };
+		DD000001RDB000000001 /* RemoteDirectoryBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002RDB000000001 /* RemoteDirectoryBrowser.swift */; };
+		DD000001RDB000000002 /* RemoteDirectoryBrowserViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002RDB000000002 /* RemoteDirectoryBrowserViewModel.swift */; };
 		AA000001AABBCCDD0000000B /* TmuxService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000B /* TmuxService.swift */; };
 		AA000001AABBCCDD0000000C /* TmuxServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000C /* TmuxServiceTests.swift */; };
 		AA000001AABBCCDD0000000D /* AIToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000D /* AIToolModels.swift */; };
@@ -166,6 +168,8 @@
 		AA000002AABBCCDD00000008 /* SSHConfigService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigService.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD00000009 /* SSHConfigParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParserTests.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD0000000A /* OpenProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenProjectSheet.swift; sourceTree = "<group>"; };
+		DD000002RDB000000001 /* RemoteDirectoryBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDirectoryBrowser.swift; sourceTree = "<group>"; };
+		DD000002RDB000000002 /* RemoteDirectoryBrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDirectoryBrowserViewModel.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD0000000B /* TmuxService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxService.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD0000000C /* TmuxServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxServiceTests.swift; sourceTree = "<group>"; };
 		AA000002AABBCCDD0000000D /* AIToolModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolModels.swift; sourceTree = "<group>"; };
@@ -321,6 +325,8 @@
 			isa = PBXGroup;
 			children = (
 				AA000002AABBCCDD0000000A /* OpenProjectSheet.swift */,
+				DD000002RDB000000001 /* RemoteDirectoryBrowser.swift */,
+				DD000002RDB000000002 /* RemoteDirectoryBrowserViewModel.swift */,
 				CC000002AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift */,
 			);
 			path = Sheets;
@@ -615,6 +621,8 @@
 				AA000001AABBCCDD00000010 /* CommandPaletteView.swift in Sources */,
 				AA000001AABBCCDD00000005 /* LanguageManager.swift in Sources */,
 				AA000001AABBCCDD0000000A /* OpenProjectSheet.swift in Sources */,
+				DD000001RDB000000001 /* RemoteDirectoryBrowser.swift in Sources */,
+				DD000001RDB000000002 /* RemoteDirectoryBrowserViewModel.swift in Sources */,
 				AA000001AABBCCDD00000007 /* SSHConfigParser.swift in Sources */,
 				AA000001AABBCCDD00000011 /* SettingsSheet.swift in Sources */,
 				AA000001AABBCCDD00000015 /* ShortcutRecorderButton.swift in Sources */,
