@@ -497,4 +497,25 @@ final class WorkspaceModelsTests: XCTestCase {
             XCTFail("Expected .ssh backend from fallback, got \(session.backendConfiguration)")
         }
     }
+
+    @MainActor
+    func testOnPaneStateChangedFiringOnPaneOperations() {
+        let ctrl = WorkspaceSessionController(workingDirectory: "/tmp/test")
+        var callbackCount = 0
+        ctrl.onPaneStateChanged = { callbackCount += 1 }
+
+        let paneID = ctrl.layout.paneIDs.first!
+
+        // splitPane should fire callback
+        ctrl.splitPane(paneID, axis: .horizontal)
+        XCTAssertEqual(callbackCount, 1)
+
+        // toggleZoom should fire callback
+        ctrl.toggleZoom()
+        XCTAssertEqual(callbackCount, 2)
+
+        // focusNext should fire callback (now 2 panes to cycle through)
+        ctrl.focusNext()
+        XCTAssertEqual(callbackCount, 3)
+    }
 }

@@ -471,6 +471,10 @@ final class WorkspaceModel: ObservableObject, Identifiable {
             zoomedPaneID: tabState?.zoomedPaneID
         )
 
+        ctrl.onPaneStateChanged = { [weak self] in
+            self?.saveActiveTabState()
+        }
+
         if tabControllers[worktreePath] == nil {
             tabControllers[worktreePath] = [:]
         }
