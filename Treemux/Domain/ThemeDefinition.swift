@@ -61,6 +61,8 @@ struct UIColors: Codable {
     let danger: String
     /// Window background color for NSWindow / toolbar tinting.
     let windowBackground: String
+    /// Stroke color for sidebar selection highlight (optional for backward compat).
+    let sidebarSelectionStroke: String?
 }
 
 // Backward-compatible decoding: defaults `windowBackground` to `paneBackground` when missing.
@@ -83,6 +85,7 @@ extension UIColors {
         warning = try container.decode(String.self, forKey: .warning)
         danger = try container.decode(String.self, forKey: .danger)
         windowBackground = try container.decodeIfPresent(String.self, forKey: .windowBackground) ?? paneBackground
+        sidebarSelectionStroke = try container.decodeIfPresent(String.self, forKey: .sidebarSelectionStroke)
     }
 }
 
@@ -130,7 +133,8 @@ extension ThemeDefinition {
             success: "#4FD67B",
             warning: "#F0A830",
             danger: "#EB6B57",
-            windowBackground: "#111317"
+            windowBackground: "#111317",
+            sidebarSelectionStroke: "#418ADE"
         ),
         font: nil
     )
@@ -169,7 +173,8 @@ extension ThemeDefinition {
             success: "#34A853",
             warning: "#D99116",
             danger: "#D93025",
-            windowBackground: "#FFFFFF"
+            windowBackground: "#FFFFFF",
+            sidebarSelectionStroke: "#2F7DE1"
         ),
         font: nil
     )

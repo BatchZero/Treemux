@@ -69,6 +69,16 @@ final class ThemeManager: ObservableObject {
     var warningColor: Color { Color(hex: activeTheme.ui.warning) }
     var dangerColor: Color { Color(hex: activeTheme.ui.danger) }
 
+    // MARK: - Resolved AppKit Colors (for NSOutlineView sidebar)
+
+    var sidebarSelectionFillNS: NSColor { NSColor(sidebarSelection) }
+    var sidebarSelectionStrokeNS: NSColor {
+        if let hex = activeTheme.ui.sidebarSelectionStroke {
+            return NSColor(Color(hex: hex)).withAlphaComponent(0.9)
+        }
+        return NSColor(accentColor).withAlphaComponent(0.9)
+    }
+
     // MARK: - Window Appearance
 
     /// The NSAppearance corresponding to the active theme.
