@@ -10,6 +10,7 @@ import SwiftUI
 struct SettingsSheet: View {
     @EnvironmentObject private var store: WorkspaceStore
     @EnvironmentObject private var theme: ThemeManager
+    @EnvironmentObject private var languageManager: LanguageManager
     @Environment(\.dismiss) private var dismiss
 
     @State private var draft = AppSettings()
@@ -109,6 +110,7 @@ struct SettingsSheet: View {
 
                     Button(String(localized: "Save")) {
                         store.updateSettings(draft)
+                        languageManager.apply(languageCode: draft.language)
                         dismiss()
                     }
                     .buttonStyle(.borderedProminent)
