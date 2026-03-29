@@ -72,7 +72,7 @@ struct WorkspaceTabBarView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .help(String(localized: "New Tab (⌘T)"))
+            .help("New Tab (⌘T)")
             .padding(.trailing, 8)
         }
         .frame(height: 38)
@@ -153,9 +153,9 @@ private struct TabButton: View {
         .buttonStyle(.plain)
         .frame(width: TreemuxTabSizing.width(for: tab.title, paneCount: paneCount))
         .contextMenu {
-            Button(String(localized: "Rename…")) { onRename() }
+            Button("Rename…") { onRename() }
             Divider()
-            Button(String(localized: "Close Tab")) { onClose() }
+            Button("Close Tab") { onClose() }
         }
     }
 }
@@ -169,7 +169,7 @@ private struct TabRenameField: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        TextField(String(localized: "Tab name"), text: $text)
+        TextField("Tab name", text: $text)
             .textFieldStyle(.plain)
             .font(.system(size: 12))
             .padding(.horizontal, 10)

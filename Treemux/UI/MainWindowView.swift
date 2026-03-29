@@ -20,11 +20,11 @@ struct MainWindowView: View {
             } else {
                 ContentUnavailableView {
                     Label(
-                        String(localized: "No Project Selected"),
+                        "No Project Selected",
                         systemImage: "folder"
                     )
                 } description: {
-                    Text(String(localized: "Select or open a project to get started"))
+                    Text("Select or open a project to get started")
                 }
             }
         }
@@ -40,8 +40,8 @@ struct MainWindowView: View {
                 } label: {
                     Image(systemName: "sidebar.leading")
                 }
-                .accessibilityLabel(String(localized: "Toggle Sidebar"))
-                .help(String(localized: "Toggle Sidebar"))
+                .accessibilityLabel("Toggle Sidebar")
+                .help("Toggle Sidebar")
             }
 
             ToolbarItemGroup(placement: .primaryAction) {
@@ -53,7 +53,7 @@ struct MainWindowView: View {
                 } label: {
                     Image(systemName: "rectangle.split.1x2")
                 }
-                .help(String(localized: "Split Down (⌘D)"))
+                .help("Split Down (⌘D)")
 
                 Button {
                     if let sc = store.activeSessionController,
@@ -63,21 +63,21 @@ struct MainWindowView: View {
                 } label: {
                     Image(systemName: "rectangle.split.2x1")
                 }
-                .help(String(localized: "Split Right (⌘⇧D)"))
+                .help("Split Right (⌘⇧D)")
 
                 Button {
                     store.selectedWorkspace?.createTab()
                 } label: {
                     Image(systemName: "plus.rectangle")
                 }
-                .help(String(localized: "New Terminal (⌘T)"))
+                .help("New Terminal (⌘T)")
 
                 Button {
                     store.showSettings = true
                 } label: {
                     Image(systemName: "gearshape")
                 }
-                .help(String(localized: "Settings (⌘,)"))
+                .help("Settings (⌘,)")
             }
         }
         .sheet(isPresented: $store.showSettings) {

@@ -15,7 +15,7 @@ struct SidebarInfoBadge: View {
         case warning
     }
 
-    let text: String
+    let text: LocalizedStringKey
     let tone: Tone
 
     private var foreground: Color {
