@@ -13,6 +13,7 @@ class DirectoryNode: Identifiable, ObservableObject {
     let name: String
     let path: String
     @Published var children: [DirectoryNode]?  // nil = not yet loaded
+    @Published var isExpanded: Bool = false
     @Published var isLoading: Bool = false
     @Published var error: String?
 
@@ -76,6 +77,7 @@ class RemoteDirectoryBrowserViewModel: ObservableObject {
     func expandNode(_ node: DirectoryNode) async {
         guard node.children == nil else { return }  // Already loaded
         node.isLoading = true
+        node.isExpanded = true
         node.error = nil
         do {
             let entries = try await sftpService.listDirectories(at: node.path)

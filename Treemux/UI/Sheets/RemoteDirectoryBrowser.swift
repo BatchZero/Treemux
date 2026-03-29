@@ -7,7 +7,6 @@ import SwiftUI
 
 /// Sheet that displays a tree-style remote directory browser via SFTP.
 struct RemoteDirectoryBrowser: View {
-    @EnvironmentObject private var theme: ThemeManager
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: RemoteDirectoryBrowserViewModel
 
@@ -185,41 +184,31 @@ struct DirectoryNodeRow: View {
     }
 
     var body: some View {
-        if let children = node.children {
-            // Node has been loaded (may be empty or have children)
-            DisclosureGroup(
-                isExpanded: Binding(
-                    get: { true },
-                    set: { _ in }
-                )
-            ) {
-                childContent(children)
-            } label: {
-                nodeLabel
-            }
-        } else {
-            // Node not yet loaded — show as expandable
-            DisclosureGroup(
-                isExpanded: Binding(
-                    get: { false },
-                    set: { isExpanding in
-                        if isExpanding { expandAction(node) }
+        DisclosureGroup(
+            isExpanded: Binding(
+                get: { node.isExpanded },
+                set: { newValue in
+                    node.isExpanded = newValue
+                    if newValue && node.children == nil {
+                        expandAction(node)
                     }
-                )
-            ) {
-                if node.isLoading {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .controlSize(.mini)
-                        Text(String(localized: "Loading…"))
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.leading, 4)
                 }
-            } label: {
-                nodeLabel
+            )
+        ) {
+            if node.isLoading {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .controlSize(.mini)
+                    Text(String(localized: "Loading…"))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.leading, 4)
+            } else if let children = node.children {
+                childContent(children)
             }
+        } label: {
+            nodeLabel
         }
     }
 
