@@ -41,7 +41,7 @@ struct WorkspaceSidebarView: View {
             } label: {
                 HStack {
                     Image(systemName: "plus.circle")
-                    Text(String(localized: "Open Project..."))
+                    Text("Open Project...")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 12)
@@ -51,15 +51,15 @@ struct WorkspaceSidebarView: View {
         }
         .background(theme.sidebarBackground)
         // Rename alert
-        .alert(String(localized: "Rename Project"), isPresented: Binding(
+        .alert("Rename Project", isPresented: Binding(
             get: { renamingWorkspaceID != nil },
             set: { if !$0 { renamingWorkspaceID = nil } }
         )) {
-            TextField(String(localized: "Project Name"), text: $renameText)
-            Button(String(localized: "Cancel"), role: .cancel) {
+            TextField("Project Name", text: $renameText)
+            Button("Cancel", role: .cancel) {
                 renamingWorkspaceID = nil
             }
-            Button(String(localized: "Rename")) {
+            Button("Rename") {
                 if let id = renamingWorkspaceID {
                     store.renameWorkspace(id, to: renameText)
                 }
@@ -67,21 +67,21 @@ struct WorkspaceSidebarView: View {
             }
         }
         // Delete confirmation alert
-        .alert(String(localized: "Delete Project?"), isPresented: Binding(
+        .alert("Delete Project?", isPresented: Binding(
             get: { deletingWorkspaceID != nil },
             set: { if !$0 { deletingWorkspaceID = nil } }
         )) {
-            Button(String(localized: "Cancel"), role: .cancel) {
+            Button("Cancel", role: .cancel) {
                 deletingWorkspaceID = nil
             }
-            Button(String(localized: "Delete"), role: .destructive) {
+            Button("Delete", role: .destructive) {
                 if let id = deletingWorkspaceID {
                     store.removeWorkspace(id)
                 }
                 deletingWorkspaceID = nil
             }
         } message: {
-            Text(String(localized: "This will remove the project from the sidebar. Files on disk will not be affected."))
+            Text("This will remove the project from the sidebar. Files on disk will not be affected.")
         }
         .sheet(isPresented: $showOpenProjectSheet) {
             OpenProjectSheet()

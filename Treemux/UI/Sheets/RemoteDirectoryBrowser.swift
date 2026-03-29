@@ -43,7 +43,7 @@ struct RemoteDirectoryBrowser: View {
 
     private var titleBar: some View {
         HStack {
-            Text(String(localized: "Select Remote Directory"))
+            Text("Select Remote Directory")
                 .font(.headline)
             Spacer()
         }
@@ -57,7 +57,7 @@ struct RemoteDirectoryBrowser: View {
         HStack(spacing: 8) {
             Image(systemName: "folder")
                 .foregroundStyle(.secondary)
-            TextField(String(localized: "/path/to/directory"), text: $viewModel.pathBarText)
+            TextField("/path/to/directory", text: $viewModel.pathBarText)
                 .textFieldStyle(.roundedBorder)
                 .onSubmit {
                     Task { await viewModel.navigateTo(path: viewModel.pathBarText) }
@@ -86,7 +86,7 @@ struct RemoteDirectoryBrowser: View {
         VStack(spacing: 8) {
             ProgressView()
                 .controlSize(.small)
-            Text(String(localized: "Connecting…"))
+            Text("Connecting…")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
         }
@@ -103,7 +103,7 @@ struct RemoteDirectoryBrowser: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)
-            Button(String(localized: "Retry")) {
+            Button("Retry") {
                 Task { await viewModel.connect() }
             }
             .controlSize(.small)
@@ -112,7 +112,7 @@ struct RemoteDirectoryBrowser: View {
     }
 
     private var emptyView: some View {
-        Text(String(localized: "No directories found"))
+        Text("No directories found")
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -145,19 +145,19 @@ struct RemoteDirectoryBrowser: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
             } else {
-                Text(String(localized: "No directory selected"))
+                Text("No directory selected")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.tertiary)
             }
 
             Spacer()
 
-            Button(String(localized: "Cancel")) {
+            Button("Cancel") {
                 dismiss()
             }
             .keyboardShortcut(.cancelAction)
 
-            Button(String(localized: "Open")) {
+            Button("Open") {
                 if let path = viewModel.selectedPath {
                     onSelect(path)
                     dismiss()
@@ -199,7 +199,7 @@ struct DirectoryNodeRow: View {
                 HStack(spacing: 6) {
                     ProgressView()
                         .controlSize(.mini)
-                    Text(String(localized: "Loading…"))
+                    Text("Loading…")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
@@ -215,7 +215,7 @@ struct DirectoryNodeRow: View {
     @ViewBuilder
     private func childContent(_ children: [DirectoryNode]) -> some View {
         if children.isEmpty {
-            Text(String(localized: "Empty directory"))
+            Text("Empty directory")
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
                 .padding(.leading, 4)

@@ -31,13 +31,13 @@ struct OpenProjectSheet: View {
     var body: some View {
         VStack(spacing: 16) {
             // Title
-            Text(String(localized: "Open Project"))
+            Text("Open Project")
                 .font(.headline)
 
             // Mode picker
             Picker("", selection: $mode) {
-                Text(String(localized: "Local Project")).tag(ProjectMode.local)
-                Text(String(localized: "Remote Server")).tag(ProjectMode.remote)
+                Text("Local Project").tag(ProjectMode.local)
+                Text("Remote Server").tag(ProjectMode.remote)
             }
             .pickerStyle(.segmented)
 
@@ -50,12 +50,12 @@ struct OpenProjectSheet: View {
             // Action buttons
             HStack {
                 Spacer()
-                Button(String(localized: "Cancel")) {
+                Button("Cancel") {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
 
-                Button(String(localized: "Open")) {
+                Button("Open") {
                     openProject()
                     dismiss()
                 }
@@ -74,7 +74,7 @@ struct OpenProjectSheet: View {
 
     private var localModeView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(String(localized: "Choose a local folder:"))
+            Text("Choose a local folder:")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -84,7 +84,7 @@ struct OpenProjectSheet: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer()
-                Button(String(localized: "Choose…")) {
+                Button("Choose…") {
                     chooseLocalFolder()
                 }
             }
@@ -102,11 +102,11 @@ struct OpenProjectSheet: View {
                 ProgressView()
                     .frame(maxWidth: .infinity)
             } else if sshTargets.isEmpty {
-                Text(String(localized: "No SSH hosts found in ~/.ssh/config"))
+                Text("No SSH hosts found in ~/.ssh/config")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
             } else {
-                Text(String(localized: "Server:"))
+                Text("Server:")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
@@ -119,14 +119,14 @@ struct OpenProjectSheet: View {
                 }
                 .labelsHidden()
 
-                Text(String(localized: "Remote Path:"))
+                Text("Remote Path:")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
                 HStack {
                     TextField("/home/user/project", text: $remotePath)
                         .textFieldStyle(.roundedBorder)
-                    Button(String(localized: "Choose…")) {
+                    Button("Choose…") {
                         showRemoteBrowser = true
                     }
                     .disabled(sshTargets.isEmpty)

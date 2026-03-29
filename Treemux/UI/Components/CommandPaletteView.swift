@@ -41,7 +41,7 @@ struct CommandPaletteView: View {
                     Image(systemName: "command")
                         .foregroundStyle(theme.textMuted)
                     TextField(
-                        String(localized: "Search commands…"),
+                        "Search commands…",
                         text: $query
                     )
                     .textFieldStyle(.plain)
@@ -60,7 +60,7 @@ struct CommandPaletteView: View {
                     LazyVStack(spacing: 2) {
                         let filtered = filteredCommands
                         if filtered.isEmpty {
-                            Text(String(localized: "No matching commands"))
+                            Text("No matching commands")
                                 .font(.system(size: 12))
                                 .foregroundStyle(theme.textMuted)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -120,13 +120,13 @@ struct CommandPaletteView: View {
     private var allCommands: [PaletteCommand] {
         [
             PaletteCommand(
-                title: String(localized: "New Tab"),
+                title: "New Tab",
                 subtitle: nil, icon: "plus.rectangle",
                 shortcut: "⌘T",
                 action: { store.selectedWorkspace?.createTab() }
             ),
             PaletteCommand(
-                title: String(localized: "Close Tab"),
+                title: "Close Tab",
                 subtitle: nil, icon: "xmark.rectangle",
                 shortcut: "⌘⇧W",
                 action: {
@@ -136,19 +136,19 @@ struct CommandPaletteView: View {
                 }
             ),
             PaletteCommand(
-                title: String(localized: "Next Tab"),
+                title: "Next Tab",
                 subtitle: nil, icon: "arrow.right.square",
                 shortcut: "⌘⇧]",
                 action: { store.selectedWorkspace?.selectNextTab() }
             ),
             PaletteCommand(
-                title: String(localized: "Previous Tab"),
+                title: "Previous Tab",
                 subtitle: nil, icon: "arrow.left.square",
                 shortcut: "⌘⇧[",
                 action: { store.selectedWorkspace?.selectPreviousTab() }
             ),
             PaletteCommand(
-                title: String(localized: "Split Down"),
+                title: "Split Down",
                 subtitle: nil, icon: "rectangle.split.1x2",
                 shortcut: "⌘D",
                 action: {
@@ -159,7 +159,7 @@ struct CommandPaletteView: View {
                 }
             ),
             PaletteCommand(
-                title: String(localized: "Split Right"),
+                title: "Split Right",
                 subtitle: nil, icon: "rectangle.split.2x1",
                 shortcut: "⌘⇧D",
                 action: {
@@ -170,7 +170,7 @@ struct CommandPaletteView: View {
                 }
             ),
             PaletteCommand(
-                title: String(localized: "Close Pane"),
+                title: "Close Pane",
                 subtitle: nil, icon: "xmark.square",
                 shortcut: "⌘W",
                 action: {
@@ -181,7 +181,7 @@ struct CommandPaletteView: View {
                 }
             ),
             PaletteCommand(
-                title: String(localized: "Toggle Sidebar"),
+                title: "Toggle Sidebar",
                 subtitle: nil, icon: "sidebar.leading",
                 shortcut: "⌘B",
                 action: {
@@ -192,19 +192,19 @@ struct CommandPaletteView: View {
                 }
             ),
             PaletteCommand(
-                title: String(localized: "New Claude Code Session"),
+                title: "New Claude Code Session",
                 subtitle: "claude", icon: "brain.head.profile",
                 shortcut: "⌘⇧C",
                 action: {}
             ),
             PaletteCommand(
-                title: String(localized: "New Codex Session"),
+                title: "New Codex Session",
                 subtitle: "codex", icon: "wand.and.stars",
                 shortcut: nil,
                 action: {}
             ),
             PaletteCommand(
-                title: String(localized: "Open Project..."),
+                title: "Open Project...",
                 subtitle: nil, icon: "plus.circle",
                 shortcut: nil,
                 action: {}
@@ -244,10 +244,10 @@ private struct CommandRow: View {
                 .frame(width: 20)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(command.title)
+                Text(LocalizedStringKey(command.title))
                     .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
                 if let subtitle = command.subtitle {
-                    Text(subtitle)
+                    Text(LocalizedStringKey(subtitle))
                         .font(.system(size: 10))
                         .foregroundStyle(theme.textMuted)
                 }
