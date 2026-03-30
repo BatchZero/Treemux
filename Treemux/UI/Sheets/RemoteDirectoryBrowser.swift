@@ -73,6 +73,8 @@ struct RemoteDirectoryBrowser: View {
     private var directoryContent: some View {
         if viewModel.isConnecting {
             connectingView
+        } else if viewModel.needsPassword {
+            passwordPromptView
         } else if let error = viewModel.connectionError {
             errorView(error)
         } else if viewModel.rootNodes.isEmpty {
@@ -89,6 +91,35 @@ struct RemoteDirectoryBrowser: View {
             Text("Connecting…")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var passwordPromptView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "lock.shield")
+                .font(.system(size: 24))
+                .foregroundStyle(.secondary)
+            Text("Password Required")
+                .font(.system(size: 13, weight: .semibold))
+            Text("Key-based authentication failed. Enter password to connect.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+
+            SecureField("Password", text: $viewModel.password)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 240)
+                .onSubmit {
+                    Task { await viewModel.connectWithPassword() }
+                }
+
+            Button("Connect") {
+                Task { await viewModel.connectWithPassword() }
+            }
+            .keyboardShortcut(.defaultAction)
+            .disabled(viewModel.password.isEmpty)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

@@ -31,6 +31,8 @@ class RemoteDirectoryBrowserViewModel: ObservableObject {
     @Published var selectedPath: String? = nil
     @Published var isConnecting: Bool = false
     @Published var connectionError: String? = nil
+    @Published var needsPassword: Bool = false
+    @Published var password: String = ""
 
     private let sftpService = SFTPService()
     private let sshTarget: SSHTarget
@@ -40,19 +42,42 @@ class RemoteDirectoryBrowserViewModel: ObservableObject {
     }
 
     /// Connect to the remote server and load the home directory.
+    /// Tries key-based auth first; on failure shows password prompt.
     func connect() async {
         isConnecting = true
         connectionError = nil
+        needsPassword = false
         do {
             try await sftpService.connect(target: sshTarget)
-            let home = try await sftpService.homeDirectory()
-            pathBarText = home
-            let entries = try await sftpService.listDirectories(at: home)
-            rootNodes = entries.map { DirectoryNode(name: $0.name, path: $0.path) }
+            try await loadHomeDirectory()
+        } catch SFTPServiceError.authenticationFailed {
+            // Key auth failed — prompt the user for a password
+            needsPassword = true
         } catch {
             connectionError = error.localizedDescription
         }
         isConnecting = false
+    }
+
+    /// Retry connection using the password entered by the user.
+    func connectWithPassword() async {
+        isConnecting = true
+        connectionError = nil
+        do {
+            try await sftpService.connectWithPassword(target: sshTarget, password: password)
+            needsPassword = false
+            try await loadHomeDirectory()
+        } catch {
+            connectionError = error.localizedDescription
+        }
+        isConnecting = false
+    }
+
+    private func loadHomeDirectory() async throws {
+        let home = try await sftpService.homeDirectory()
+        pathBarText = home
+        let entries = try await sftpService.listDirectories(at: home)
+        rootNodes = entries.map { DirectoryNode(name: $0.name, path: $0.path) }
     }
 
     /// Navigate to a specific path (from path bar input).
