@@ -6,7 +6,7 @@ PROJECT_FILE="${PROJECT_FILE:-$ROOT_DIR/Treemux.xcodeproj/project.pbxproj}"
 APP_NAME="${APP_NAME:-Treemux}"
 PROJECT_PATH="${PROJECT_PATH:-$ROOT_DIR/Treemux.xcodeproj}"
 SCHEME="${SCHEME:-Treemux}"
-RELEASE_ARCHS="${RELEASE_ARCHS:-arm64 x86_64}"
+RELEASE_ARCHS="${RELEASE_ARCHS:-arm64}"
 OUTPUT_DIR="${OUTPUT_DIR:-$ROOT_DIR/dist}"
 APPCAST_FILE="${APPCAST_FILE:-$ROOT_DIR/appcast.xml}"
 SIGN_SCRIPT="${SIGN_SCRIPT:-$ROOT_DIR/scripts/sign_macos.sh}"
@@ -243,6 +243,9 @@ else
   PROJECT_PATH="$PROJECT_PATH" \
   SCHEME="$SCHEME" \
   "$ROOT_DIR/scripts/build_macos_app.sh"
+
+  # Ad-hoc sign so Sparkle generate_appcast can process the archive
+  /usr/bin/codesign --force --sign - --deep "$OUTPUT_DIR/$APP_NAME.app"
 fi
 
 if [[ ! -f "$DIST_DMG_PATH" ]]; then
