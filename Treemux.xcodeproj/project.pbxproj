@@ -8,93 +8,96 @@
 
 /* Begin PBXBuildFile section */
 		04885DA006A7F9D402450132 /* WindowContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8662706F495A0DA4CCB1F0 /* WindowContext.swift */; };
+		093FE0959D31BD1AE6676D1A /* RemoteDirectoryBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9250C83EF14A84383E73002A /* RemoteDirectoryBrowser.swift */; };
+		0D6E9070C727E942960D4BBB /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = B962317687AFEC7E1E5FC75D /* Color+Hex.swift */; };
 		0DA3A254039F1EEA04FB94DB /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8EB47950FCB5E9637572424 /* AppSettings.swift */; };
+		0E5862A0ECFBA02E71850208 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 307BCBA7FBBD837C1D886367 /* Localizable.xcstrings */; };
+		11799B542DF852B119E2960A /* SettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 719F86B8BC90BA882B83152E /* SettingsSheet.swift */; };
 		14559BCDE89A0A2CA5FD8022 /* ShellCommandRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 443B856819FD330809E0722A /* ShellCommandRunnerTests.swift */; };
+		17F6E36CAD2008C8EA72726A /* Citadel in Frameworks */ = {isa = PBXBuildFile; productRef = 6A0BCC9E620E634555EA4F1E /* Citadel */; };
 		194928F8929DB9A37A2B9B96 /* TreemuxGhosttyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B99E6A1366954D8A221B273 /* TreemuxGhosttyController.swift */; };
+		1C97D7734948943CC82C0690 /* SidebarIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4737DC60E37C9A4390082193 /* SidebarIcon.swift */; };
+		1F2D077FE3D8F5CE1D84C25F /* AppUpdaterController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 581FDA0779784EFB231AAF34 /* AppUpdaterController.swift */; };
 		2378FC48E7C0FDF16337AE95 /* WorkspaceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A22F2A407A07989DE172DA3A /* WorkspaceStore.swift */; };
 		28E15CC897C8BE956B0DCF02 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73E706B2F099E80FFCC6F47D /* main.swift */; };
+		29B9BE6617E084063B96EFD7 /* TmuxService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41730B3CCAF114169789A087 /* TmuxService.swift */; };
+		29F835B65E91D82E36B87BAC /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 0BA0168B1395D9FAD0C21BA8 /* Sparkle */; };
 		2C0D2D1CDB0C7DDD9C2487E9 /* SessionBackendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE6931E2152155F3F99223FC /* SessionBackendTests.swift */; };
+		2E5F9E3972854C00535CA4D0 /* RemoteDirectoryBrowserViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3579E21F95E49A08C0BE1E5F /* RemoteDirectoryBrowserViewModel.swift */; };
+		2E95D3030037EA348DA55570 /* SidebarInfoBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BECE531477D114732B3DB1E /* SidebarInfoBadge.swift */; };
 		309F402A9FFCA18BA24D7BD4 /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656D4A17827E564EDD5A8918 /* PersistenceTests.swift */; };
 		320E9CBA68B37DFD4F22711A /* WorkspaceDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E45B70C0F236F9F0FA025A53 /* WorkspaceDetailView.swift */; };
 		3342176CAA82F4D5A9EA3AC0 /* SplitNodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7CF1673C70DBE89F480A010 /* SplitNodeView.swift */; };
+		385A3EF810559BD598E183D9 /* StoredShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E4EF6D7547B58727542BA5A /* StoredShortcut.swift */; };
 		3AEFD19DA77CAC18BB8B842B /* WorkspaceSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20079BE9FA1D7054C79699F2 /* WorkspaceSessionController.swift */; };
 		3C1BD4702DECC75E0A4ABD1A /* WorkspaceSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8354D57B9898A0C0ADBD959 /* WorkspaceSidebarView.swift */; };
 		3C1F3562DE4FA89E8C580B30 /* TreemuxGhosttyBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16FE9D700089232316516F73 /* TreemuxGhosttyBootstrap.swift */; };
 		423A99DD3918742FC88745B3 /* TreemuxGhosttyResourcePaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01B85899C7236D215CECDD /* TreemuxGhosttyResourcePaths.swift */; };
 		439B7154F34CC1DC69D74A6E /* TreemuxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE43F77B5BDC0AB70604EC9B /* TreemuxApp.swift */; };
+		442CB9EA611EDEE7671526B0 /* SidebarOutlineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8D68F5A6F0ED9F5EFE5FE0 /* SidebarOutlineView.swift */; };
 		44D9A39F7E62E88E88ED2DAD /* TerminalHostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C2110A46976203DDBF9D707 /* TerminalHostView.swift */; };
+		44F22E50FB5925ABD08DD1F1 /* SidebarItemIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD730723C379BFA4C7D00F8 /* SidebarItemIconView.swift */; };
 		4F93E2B9A2A6EC003FCAB4BE /* SessionBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */; };
+		50703AC7FE57471B65F8443A /* SSHConfigParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB0ABA0B08B1F2185D6C82B5 /* SSHConfigParserTests.swift */; };
+		50C21D8AC4C1ED7392DFE623 /* SidebarNodeRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B54286475B6DAD0B729F4A46 /* SidebarNodeRow.swift */; };
 		527270F31405E3CCEFE8CF79 /* TreemuxGhosttyShellIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59B5026A96BF865D41D0890 /* TreemuxGhosttyShellIntegration.swift */; };
+		5351A8FEC13D97EF089698A6 /* AIToolService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0ADD20D44C25E3A40CE443 /* AIToolService.swift */; };
 		5695944A97F022496C2F055E /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4606940266A11E096CC79EAB /* MainWindowView.swift */; };
 		598A1C4D4191754CBAE49BF4 /* TerminalSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24A323012CE09C4999DF9E08 /* TerminalSurface.swift */; };
 		5BE675E29A6A2B29C647BB5E /* PaneLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4742F4CA09E0C12BCF63C7CD /* PaneLayoutTests.swift */; };
+		5F3742698653D0782E4868AF /* ShortcutAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4243A3471A4DF010C611D196 /* ShortcutAction.swift */; };
+		5F96AB0D170D545A2C558022 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2816C1F90B7E4C359D63033F /* ThemeManager.swift */; };
+		606C2C95D482C8D3CBB6503F /* AIToolServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BBA3AE3C8A5250A068D141D /* AIToolServiceTests.swift */; };
 		634F5C15FC031D133DEA6DC1 /* PathFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10AD81F3E792C490B4656A1 /* PathFormatting.swift */; };
+		6633C6D74ADB9DFDA3DA98B6 /* SFTPDirectoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ABC31C96A9F51C865E1FCD /* SFTPDirectoryEntry.swift */; };
 		6AC7580CF74D588D2D19BF03 /* TreemuxGhosttyLogFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92B0D1DFEE9B34109844D751 /* TreemuxGhosttyLogFilter.swift */; };
 		6CF8F5C7195367C6516F863C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEB4B388C531158F6E5916EB /* AppDelegate.swift */; };
+		70CD5351C08FA2E28198EB68 /* SidebarIconCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92B183417582C15AE89A8698 /* SidebarIconCatalog.swift */; };
+		72AAF9CD646BD3A52B8927C5 /* SSHConfigParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84FF18E9726EDA37A4D07CB5 /* SSHConfigParser.swift */; };
 		7405B7C02F6B819CB0A772E5 /* String+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42FCFF0878EDD3C9AB6D566C /* String+Helpers.swift */; };
 		78942DBCD13BA394E9AC92CD /* PaneLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */; };
 		7BAFFB86D4EE2F43992E4808 /* AppSettingsPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48405541E0E22A909B92BA03 /* AppSettingsPersistence.swift */; };
+		7C890E7C842699E9E4E18606 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */; };
+		86E976461528AC1A196E4DC6 /* ProcessTreeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 081CA32DCF94FDC4583766A2 /* ProcessTreeTests.swift */; };
 		89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */; };
+		89A2C91A680D947F1C2B176D /* ShortcutRecorderButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A169E6DF74EAE95F932D40F0 /* ShortcutRecorderButton.swift */; };
+		8B1F02071634EF5A0330144B /* TmuxServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */; };
+		8D26A31A9A417D3D41DA60C6 /* WorkspaceOutlineSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5FB45C7299B44CB5A534F28 /* WorkspaceOutlineSidebar.swift */; };
 		8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */; };
+		9522E1F5358CF0C642D88DD6 /* SidebarRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74852C7BACA536876045BD7A /* SidebarRowView.swift */; };
+		955F5B8946B3F80A7AACDC6D /* SidebarCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62EB76FEF501CC1380FB2607 /* SidebarCoordinator.swift */; };
 		9C689BD0883C82F0D099878B /* GitRepositoryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C328A5FB842A00D096906EE3 /* GitRepositoryServiceTests.swift */; };
 		9DB5A3B694A7A2D4D0248724 /* TreemuxGhosttyRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8C126FDBE3B3FC26672AF2F /* TreemuxGhosttyRuntime.swift */; };
+		9E3EDA87C6172DCC23C14AFE /* OpenProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BE07A133DAF6C1DB4F89297 /* OpenProjectSheet.swift */; };
+		9FDC3211E658A3C2D037F2DC /* WorkspaceTabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353A1A1130509D2930C26D93 /* WorkspaceTabBarView.swift */; };
 		A0AD5591657B555F176AEFD8 /* ShellSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2290B3E587177F8B10B05395 /* ShellSession.swift */; };
 		A3A9D3AC7CCAEB6DA3B2D92D /* TreemuxGhosttyControllerRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F2AF4BADCEBABA624578341 /* TreemuxGhosttyControllerRegistry.swift */; };
 		A7746DB757BF4458229659E0 /* SessionBackendLaunch.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E24B640A3303D33931EA85 /* SessionBackendLaunch.swift */; };
 		A9E5418401517BC5CBD9EC92 /* WorkspaceStatePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A99410553280ED6CCCDFEA85 /* WorkspaceStatePersistence.swift */; };
+		AC0D68343F5882A238D02833 /* SFTPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 827594A3628098FC39EC59E0 /* SFTPService.swift */; };
+		AF47FA8C9BDE3F99FB9864B1 /* SidebarNodeItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 195EA28E9C93EE6E874ED6ED /* SidebarNodeItem.swift */; };
+		B59CF4748DD593CD50B8EDE1 /* ThemeDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4395952ABD9D2EEC212FD8C3 /* ThemeDefinition.swift */; };
+		B620A3848F1EF7DE7BDC62A2 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32F18F29A965B9650B203208 /* LanguageManager.swift */; };
 		BCEB4C8CE71A07F316E67D13 /* SplitDivider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F23062A273124B6BBE28B71 /* SplitDivider.swift */; };
+		BD1E15B46C40E1A341C3B5B6 /* SidebarContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 562B8C6A2EC32280F3C88E13 /* SidebarContainerView.swift */; };
 		BF6AC7D0EC7DBA0469366D91 /* WorkspaceMetadataWatchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FED0327A7E59732F42304316 /* WorkspaceMetadataWatchService.swift */; };
 		BF9448F0B1E9C5D3B71C956C /* TerminalPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B01277529CEA9D185C95B0 /* TerminalPaneView.swift */; };
+		C009122F97AB2808837169E1 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DBD7F6E96DFD37B6863693 /* ThemeTests.swift */; };
+		C8CF939E271138CC0721952C /* SidebarIconCustomizationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2596BF207C9F981D9A0FE02D /* SidebarIconCustomizationSheet.swift */; };
+		C932ED5A8C19385027F0691D /* SSHConfigService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56CFE929900AA3468AB1BA5B /* SSHConfigService.swift */; };
 		CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3477DE6F674F94B9457073F4 /* TreemuxTests.swift */; };
-		773C04A53173491BBC17E3EC /* TreemuxTabSizingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 165AD706F84F45FC90264B06 /* TreemuxTabSizingTests.swift */; };
 		CD969404DE603FC36B6116DA /* TreemuxGhosttyClipboardSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E993B2E72B0AA5FA2CD8F136 /* TreemuxGhosttyClipboardSupport.swift */; };
+		CDB05808B946D402F0D9385D /* SidebarCellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF28F45ACFC8C05BE9BD98A9 /* SidebarCellView.swift */; };
+		CED37FBB27DAA8CBE601AD3C /* EmptyTabStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 383CC60F01FDAD8B71C8EF65 /* EmptyTabStateView.swift */; };
+		D2D97673DE196B9D5B0B826E /* ProcessTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFCB1FCCBAF466E03F7A8DD8 /* ProcessTree.swift */; };
 		D5D2DCD282AEEBB8C4A6F532 /* ShellCommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */; };
-		BB000001AABBCCDD00000020 /* ProcessTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000002AABBCCDD00000020 /* ProcessTree.swift */; };
-		BB000001AABBCCDD00000021 /* ProcessTreeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000002AABBCCDD00000021 /* ProcessTreeTests.swift */; };
+		D971AE91A6477480A05CC577 /* AIToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C29C7AC42BC16FDDD118A64 /* AIToolModels.swift */; };
+		DDB379227505CCDD96BB62C1 /* TreemuxKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7DBEF3A8FDA651804A6D8A /* TreemuxKeyboardShortcuts.swift */; };
 		E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8629D2D5813F897F85840289 /* SSHTarget.swift */; };
 		EDB4207DA8056D870E9EA844 /* TreemuxGhosttyInputSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755FE81839DE8C99362EBC0E /* TreemuxGhosttyInputSupport.swift */; };
 		F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */; };
 		FBA39534A25C607A48314803 /* GhosttyKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = AC606574E1DF3045291D300B /* GhosttyKit.xcframework */; };
-		AA000001AABBCCDD00000001 /* ThemeDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000001 /* ThemeDefinition.swift */; };
-		AA000001AABBCCDD00000002 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000002 /* Color+Hex.swift */; };
-		AA000001AABBCCDD00000003 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000003 /* ThemeManager.swift */; };
-		AA000001AABBCCDD00000004 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000004 /* ThemeTests.swift */; };
-		AA000001AABBCCDD00000005 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000005 /* LanguageManager.swift */; };
-		AA000001AABBCCDD00000006 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000006 /* Localizable.xcstrings */; };
-		AA000001AABBCCDD00000007 /* SSHConfigParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000007 /* SSHConfigParser.swift */; };
-		AA000001AABBCCDD00000008 /* SSHConfigService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000008 /* SSHConfigService.swift */; };
-		AA000001AABBCCDD00000009 /* SSHConfigParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000009 /* SSHConfigParserTests.swift */; };
-		AA000001AABBCCDD0000000A /* OpenProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000A /* OpenProjectSheet.swift */; };
-		DD000001RDB000000001 /* RemoteDirectoryBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002RDB000000001 /* RemoteDirectoryBrowser.swift */; };
-		DD000001RDB000000002 /* RemoteDirectoryBrowserViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002RDB000000002 /* RemoteDirectoryBrowserViewModel.swift */; };
-		AA000001AABBCCDD0000000B /* TmuxService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000B /* TmuxService.swift */; };
-		AA000001AABBCCDD0000000C /* TmuxServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000C /* TmuxServiceTests.swift */; };
-		AA000001AABBCCDD0000000D /* AIToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000D /* AIToolModels.swift */; };
-		AA000001AABBCCDD0000000E /* AIToolService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000E /* AIToolService.swift */; };
-		AA000001AABBCCDD0000000F /* AIToolServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD0000000F /* AIToolServiceTests.swift */; };
-		AA000001AABBCCDD00000010 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000010 /* CommandPaletteView.swift */; };
-		AA000001AABBCCDD00000011 /* SettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000011 /* SettingsSheet.swift */; };
-		AA000001AABBCCDD00000012 /* StoredShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000012 /* StoredShortcut.swift */; };
-		AA000001AABBCCDD00000013 /* ShortcutAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000013 /* ShortcutAction.swift */; };
-		AA000001AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift */; };
-		AA000001AABBCCDD00000015 /* ShortcutRecorderButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000002AABBCCDD00000015 /* ShortcutRecorderButton.swift */; };
-		C8D4F2A15E3B79061A8DC492 /* WorkspaceTabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A3E91C4D2F08A6E1C5B730 /* WorkspaceTabBarView.swift */; };
-		E9F1A73C6B4D85E20839CD54 /* EmptyTabStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6E2F80B3A1C94D5072BEF61 /* EmptyTabStateView.swift */; };
-		CC000001AABBCCDD00000001 /* SidebarIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000001 /* SidebarIcon.swift */; };
-		CC000001AABBCCDD00000002 /* SidebarIconCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000002 /* SidebarIconCatalog.swift */; };
-		CC000001AABBCCDD00000003 /* SidebarItemIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000003 /* SidebarItemIconView.swift */; };
-		CC000001AABBCCDD00000099 /* SidebarInfoBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000099 /* SidebarInfoBadge.swift */; };
-		CC000001AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift */; };
-		CC000001AABBCCDD00000005 /* SidebarNodeItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000005 /* SidebarNodeItem.swift */; };
-		CC000001AABBCCDD00000006 /* SidebarRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000006 /* SidebarRowView.swift */; };
-		CC000001AABBCCDD00000007 /* SidebarCellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000007 /* SidebarCellView.swift */; };
-		CC000001AABBCCDD00000008 /* SidebarNodeRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000008 /* SidebarNodeRow.swift */; };
-		CC000001AABBCCDD00000009 /* SidebarOutlineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD00000009 /* SidebarOutlineView.swift */; };
-		CC000001AABBCCDD0000000A /* SidebarContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD0000000A /* SidebarContainerView.swift */; };
-		CC000001AABBCCDD0000000B /* SidebarCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD0000000B /* SidebarCoordinator.swift */; };
-		CC000001AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift */; };
-		DD000001SFTP00000001 /* SFTPDirectoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002SFTP00000001 /* SFTPDirectoryEntry.swift */; };
-		DD000001SFTP00000002 /* SFTPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000002SFTP00000002 /* SFTPService.swift */; };
+		FC0884EBD132C797A61FC4A1 /* TreemuxTabSizingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9B87785B633D3E01905E33E /* TreemuxTabSizingTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -108,96 +111,97 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		081CA32DCF94FDC4583766A2 /* ProcessTreeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTreeTests.swift; sourceTree = "<group>"; };
 		146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceModelsTests.swift; sourceTree = "<group>"; };
 		16FE9D700089232316516F73 /* TreemuxGhosttyBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyBootstrap.swift; sourceTree = "<group>"; };
+		195EA28E9C93EE6E874ED6ED /* SidebarNodeItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNodeItem.swift; sourceTree = "<group>"; };
+		1B7DBEF3A8FDA651804A6D8A /* TreemuxKeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxKeyboardShortcuts.swift; sourceTree = "<group>"; };
 		1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneLayout.swift; sourceTree = "<group>"; };
 		20079BE9FA1D7054C79699F2 /* WorkspaceSessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSessionController.swift; sourceTree = "<group>"; };
 		2290B3E587177F8B10B05395 /* ShellSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellSession.swift; sourceTree = "<group>"; };
 		24A323012CE09C4999DF9E08 /* TerminalSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
+		2596BF207C9F981D9A0FE02D /* SidebarIconCustomizationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIconCustomizationSheet.swift; sourceTree = "<group>"; };
+		2816C1F90B7E4C359D63033F /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
+		2BECE531477D114732B3DB1E /* SidebarInfoBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarInfoBadge.swift; sourceTree = "<group>"; };
+		2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
+		307BCBA7FBBD837C1D886367 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		32F18F29A965B9650B203208 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
+		33DBD7F6E96DFD37B6863693 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
 		3477DE6F674F94B9457073F4 /* TreemuxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxTests.swift; sourceTree = "<group>"; };
-		165AD706F84F45FC90264B06 /* TreemuxTabSizingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxTabSizingTests.swift; sourceTree = "<group>"; };
+		353A1A1130509D2930C26D93 /* WorkspaceTabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTabBarView.swift; sourceTree = "<group>"; };
+		3579E21F95E49A08C0BE1E5F /* RemoteDirectoryBrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDirectoryBrowserViewModel.swift; sourceTree = "<group>"; };
+		3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxServiceTests.swift; sourceTree = "<group>"; };
+		383CC60F01FDAD8B71C8EF65 /* EmptyTabStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyTabStateView.swift; sourceTree = "<group>"; };
 		3B99E6A1366954D8A221B273 /* TreemuxGhosttyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyController.swift; sourceTree = "<group>"; };
+		3D0ADD20D44C25E3A40CE443 /* AIToolService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolService.swift; sourceTree = "<group>"; };
+		3E4EF6D7547B58727542BA5A /* StoredShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoredShortcut.swift; sourceTree = "<group>"; };
 		3F2AF4BADCEBABA624578341 /* TreemuxGhosttyControllerRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyControllerRegistry.swift; sourceTree = "<group>"; };
+		41730B3CCAF114169789A087 /* TmuxService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxService.swift; sourceTree = "<group>"; };
+		4243A3471A4DF010C611D196 /* ShortcutAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutAction.swift; sourceTree = "<group>"; };
 		42FCFF0878EDD3C9AB6D566C /* String+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Helpers.swift"; sourceTree = "<group>"; };
+		4395952ABD9D2EEC212FD8C3 /* ThemeDefinition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeDefinition.swift; sourceTree = "<group>"; };
 		443B856819FD330809E0722A /* ShellCommandRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellCommandRunnerTests.swift; sourceTree = "<group>"; };
 		4606940266A11E096CC79EAB /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
 		4650806EA154B4E2C20BAD0A /* TreemuxTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TreemuxTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4737DC60E37C9A4390082193 /* SidebarIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIcon.swift; sourceTree = "<group>"; };
 		4742F4CA09E0C12BCF63C7CD /* PaneLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneLayoutTests.swift; sourceTree = "<group>"; };
 		48405541E0E22A909B92BA03 /* AppSettingsPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsPersistence.swift; sourceTree = "<group>"; };
+		4BBA3AE3C8A5250A068D141D /* AIToolServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolServiceTests.swift; sourceTree = "<group>"; };
+		562B8C6A2EC32280F3C88E13 /* SidebarContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarContainerView.swift; sourceTree = "<group>"; };
+		56CFE929900AA3468AB1BA5B /* SSHConfigService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigService.swift; sourceTree = "<group>"; };
+		581FDA0779784EFB231AAF34 /* AppUpdaterController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdaterController.swift; sourceTree = "<group>"; };
 		5C2110A46976203DDBF9D707 /* TerminalHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalHostView.swift; sourceTree = "<group>"; };
+		62EB76FEF501CC1380FB2607 /* SidebarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarCoordinator.swift; sourceTree = "<group>"; };
 		656D4A17827E564EDD5A8918 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 		6DD2CC0A8B9D60B36E1F8105 /* Treemux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Treemux.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		719F86B8BC90BA882B83152E /* SettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheet.swift; sourceTree = "<group>"; };
 		73E706B2F099E80FFCC6F47D /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		74852C7BACA536876045BD7A /* SidebarRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarRowView.swift; sourceTree = "<group>"; };
 		755FE81839DE8C99362EBC0E /* TreemuxGhosttyInputSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyInputSupport.swift; sourceTree = "<group>"; };
+		7BE07A133DAF6C1DB4F89297 /* OpenProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenProjectSheet.swift; sourceTree = "<group>"; };
+		7C29C7AC42BC16FDDD118A64 /* AIToolModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolModels.swift; sourceTree = "<group>"; };
+		827594A3628098FC39EC59E0 /* SFTPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPService.swift; sourceTree = "<group>"; };
+		84FF18E9726EDA37A4D07CB5 /* SSHConfigParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParser.swift; sourceTree = "<group>"; };
 		8629D2D5813F897F85840289 /* SSHTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHTarget.swift; sourceTree = "<group>"; };
+		9250C83EF14A84383E73002A /* RemoteDirectoryBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDirectoryBrowser.swift; sourceTree = "<group>"; };
 		927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitRepositoryService.swift; sourceTree = "<group>"; };
 		92B0D1DFEE9B34109844D751 /* TreemuxGhosttyLogFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyLogFilter.swift; sourceTree = "<group>"; };
+		92B183417582C15AE89A8698 /* SidebarIconCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIconCatalog.swift; sourceTree = "<group>"; };
 		952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellCommandRunner.swift; sourceTree = "<group>"; };
-		BB000002AABBCCDD00000020 /* ProcessTree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTree.swift; sourceTree = "<group>"; };
-		BB000002AABBCCDD00000021 /* ProcessTreeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTreeTests.swift; sourceTree = "<group>"; };
 		9D8662706F495A0DA4CCB1F0 /* WindowContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowContext.swift; sourceTree = "<group>"; };
 		9F23062A273124B6BBE28B71 /* SplitDivider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitDivider.swift; sourceTree = "<group>"; };
+		A169E6DF74EAE95F932D40F0 /* ShortcutRecorderButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderButton.swift; sourceTree = "<group>"; };
 		A22F2A407A07989DE172DA3A /* WorkspaceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStore.swift; sourceTree = "<group>"; };
 		A7CF1673C70DBE89F480A010 /* SplitNodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitNodeView.swift; sourceTree = "<group>"; };
 		A8C126FDBE3B3FC26672AF2F /* TreemuxGhosttyRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyRuntime.swift; sourceTree = "<group>"; };
 		A99410553280ED6CCCDFEA85 /* WorkspaceStatePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStatePersistence.swift; sourceTree = "<group>"; };
 		A9B01277529CEA9D185C95B0 /* TerminalPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPaneView.swift; sourceTree = "<group>"; };
 		AC606574E1DF3045291D300B /* GhosttyKit.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = GhosttyKit.xcframework; path = Treemux/Vendor/GhosttyKit.xcframework; sourceTree = "<group>"; };
+		B54286475B6DAD0B729F4A46 /* SidebarNodeRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNodeRow.swift; sourceTree = "<group>"; };
+		B962317687AFEC7E1E5FC75D /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceModels.swift; sourceTree = "<group>"; };
 		BB01B85899C7236D215CECDD /* TreemuxGhosttyResourcePaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyResourcePaths.swift; sourceTree = "<group>"; };
 		BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackend.swift; sourceTree = "<group>"; };
 		BE43F77B5BDC0AB70604EC9B /* TreemuxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxApp.swift; sourceTree = "<group>"; };
+		BF28F45ACFC8C05BE9BD98A9 /* SidebarCellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarCellView.swift; sourceTree = "<group>"; };
+		BFCB1FCCBAF466E03F7A8DD8 /* ProcessTree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTree.swift; sourceTree = "<group>"; };
 		C328A5FB842A00D096906EE3 /* GitRepositoryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitRepositoryServiceTests.swift; sourceTree = "<group>"; };
+		CD8D68F5A6F0ED9F5EFE5FE0 /* SidebarOutlineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarOutlineView.swift; sourceTree = "<group>"; };
 		CEB4B388C531158F6E5916EB /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		D10AD81F3E792C490B4656A1 /* PathFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathFormatting.swift; sourceTree = "<group>"; };
 		D1E24B640A3303D33931EA85 /* SessionBackendLaunch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackendLaunch.swift; sourceTree = "<group>"; };
+		D5FB45C7299B44CB5A534F28 /* WorkspaceOutlineSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceOutlineSidebar.swift; sourceTree = "<group>"; };
 		D8EB47950FCB5E9637572424 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		DE6931E2152155F3F99223FC /* SessionBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackendTests.swift; sourceTree = "<group>"; };
 		E45B70C0F236F9F0FA025A53 /* WorkspaceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDetailView.swift; sourceTree = "<group>"; };
 		E8354D57B9898A0C0ADBD959 /* WorkspaceSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSidebarView.swift; sourceTree = "<group>"; };
 		E993B2E72B0AA5FA2CD8F136 /* TreemuxGhosttyClipboardSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyClipboardSupport.swift; sourceTree = "<group>"; };
+		E9B87785B633D3E01905E33E /* TreemuxTabSizingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxTabSizingTests.swift; sourceTree = "<group>"; };
+		EAD730723C379BFA4C7D00F8 /* SidebarItemIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarItemIconView.swift; sourceTree = "<group>"; };
+		F2ABC31C96A9F51C865E1FCD /* SFTPDirectoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPDirectoryEntry.swift; sourceTree = "<group>"; };
 		F59B5026A96BF865D41D0890 /* TreemuxGhosttyShellIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyShellIntegration.swift; sourceTree = "<group>"; };
+		FB0ABA0B08B1F2185D6C82B5 /* SSHConfigParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParserTests.swift; sourceTree = "<group>"; };
 		FED0327A7E59732F42304316 /* WorkspaceMetadataWatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceMetadataWatchService.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000001 /* ThemeDefinition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeDefinition.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000002 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000003 /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000004 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000005 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000006 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000007 /* SSHConfigParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParser.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000008 /* SSHConfigService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigService.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000009 /* SSHConfigParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParserTests.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD0000000A /* OpenProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenProjectSheet.swift; sourceTree = "<group>"; };
-		DD000002RDB000000001 /* RemoteDirectoryBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDirectoryBrowser.swift; sourceTree = "<group>"; };
-		DD000002RDB000000002 /* RemoteDirectoryBrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDirectoryBrowserViewModel.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD0000000B /* TmuxService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxService.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD0000000C /* TmuxServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxServiceTests.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD0000000D /* AIToolModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolModels.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD0000000E /* AIToolService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolService.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD0000000F /* AIToolServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolServiceTests.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000010 /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000011 /* SettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheet.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000012 /* StoredShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoredShortcut.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000013 /* ShortcutAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutAction.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxKeyboardShortcuts.swift; sourceTree = "<group>"; };
-		AA000002AABBCCDD00000015 /* ShortcutRecorderButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderButton.swift; sourceTree = "<group>"; };
-		B7A3E91C4D2F08A6E1C5B730 /* WorkspaceTabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTabBarView.swift; sourceTree = "<group>"; };
-		D6E2F80B3A1C94D5072BEF61 /* EmptyTabStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyTabStateView.swift; sourceTree = "<group>"; };
-		CC000002AABBCCDD00000001 /* SidebarIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIcon.swift; sourceTree = "<group>"; };
-		CC000002AABBCCDD00000002 /* SidebarIconCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIconCatalog.swift; sourceTree = "<group>"; };
-		CC000002AABBCCDD00000003 /* SidebarItemIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarItemIconView.swift; sourceTree = "<group>"; };
-		CC000002AABBCCDD00000099 /* SidebarInfoBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarInfoBadge.swift; sourceTree = "<group>"; };
-		CC000002AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIconCustomizationSheet.swift; sourceTree = "<group>"; };
-		CC000002AABBCCDD00000005 /* SidebarNodeItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNodeItem.swift; sourceTree = "<group>"; };
-		CC000002AABBCCDD00000006 /* SidebarRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarRowView.swift; sourceTree = "<group>"; };
-		CC000002AABBCCDD00000007 /* SidebarCellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarCellView.swift; sourceTree = "<group>"; };
-		CC000002AABBCCDD00000008 /* SidebarNodeRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNodeRow.swift; sourceTree = "<group>"; };
-		CC000002AABBCCDD00000009 /* SidebarOutlineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarOutlineView.swift; sourceTree = "<group>"; };
-		CC000002AABBCCDD0000000A /* SidebarContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarContainerView.swift; sourceTree = "<group>"; };
-		CC000002AABBCCDD0000000B /* SidebarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarCoordinator.swift; sourceTree = "<group>"; };
-		CC000002AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceOutlineSidebar.swift; sourceTree = "<group>"; };
-		DD000002SFTP00000001 /* SFTPDirectoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPDirectoryEntry.swift; sourceTree = "<group>"; };
-		DD000002SFTP00000002 /* SFTPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -206,6 +210,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				FBA39534A25C607A48314803 /* GhosttyKit.xcframework in Frameworks */,
+				17F6E36CAD2008C8EA72726A /* Citadel in Frameworks */,
+				29F835B65E91D82E36B87BAC /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -215,7 +221,7 @@
 		00BDD3A331D12D95A7B20B1F /* AITool */ = {
 			isa = PBXGroup;
 			children = (
-				AA000002AABBCCDD0000000E /* AIToolService.swift */,
+				3D0ADD20D44C25E3A40CE443 /* AIToolService.swift */,
 			);
 			path = AITool;
 			sourceTree = "<group>";
@@ -242,17 +248,17 @@
 		1A4D936F6345D184BA953D63 /* TreemuxTests */ = {
 			isa = PBXGroup;
 			children = (
-				AA000002AABBCCDD0000000F /* AIToolServiceTests.swift */,
-				BB000002AABBCCDD00000021 /* ProcessTreeTests.swift */,
+				4BBA3AE3C8A5250A068D141D /* AIToolServiceTests.swift */,
 				C328A5FB842A00D096906EE3 /* GitRepositoryServiceTests.swift */,
 				4742F4CA09E0C12BCF63C7CD /* PaneLayoutTests.swift */,
 				656D4A17827E564EDD5A8918 /* PersistenceTests.swift */,
+				081CA32DCF94FDC4583766A2 /* ProcessTreeTests.swift */,
 				DE6931E2152155F3F99223FC /* SessionBackendTests.swift */,
 				443B856819FD330809E0722A /* ShellCommandRunnerTests.swift */,
-				AA000002AABBCCDD00000009 /* SSHConfigParserTests.swift */,
-				AA000002AABBCCDD00000004 /* ThemeTests.swift */,
-				AA000002AABBCCDD0000000C /* TmuxServiceTests.swift */,
-				165AD706F84F45FC90264B06 /* TreemuxTabSizingTests.swift */,
+				FB0ABA0B08B1F2185D6C82B5 /* SSHConfigParserTests.swift */,
+				33DBD7F6E96DFD37B6863693 /* ThemeTests.swift */,
+				3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */,
+				E9B87785B633D3E01905E33E /* TreemuxTabSizingTests.swift */,
 				3477DE6F674F94B9457073F4 /* TreemuxTests.swift */,
 				146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */,
 			);
@@ -262,7 +268,7 @@
 		27F87459BFC39581FCA8FA83 /* Tmux */ = {
 			isa = PBXGroup;
 			children = (
-				AA000002AABBCCDD0000000B /* TmuxService.swift */,
+				41730B3CCAF114169789A087 /* TmuxService.swift */,
 			);
 			path = Tmux;
 			sourceTree = "<group>";
@@ -270,8 +276,8 @@
 		27FB2B0F7018B520F8B7A6E3 /* Support */ = {
 			isa = PBXGroup;
 			children = (
-				AA000002AABBCCDD00000002 /* Color+Hex.swift */,
-				AA000002AABBCCDD00000005 /* LanguageManager.swift */,
+				B962317687AFEC7E1E5FC75D /* Color+Hex.swift */,
+				32F18F29A965B9650B203208 /* LanguageManager.swift */,
 				D10AD81F3E792C490B4656A1 /* PathFormatting.swift */,
 				42FCFF0878EDD3C9AB6D566C /* String+Helpers.swift */,
 			);
@@ -281,7 +287,7 @@
 		2EC73BD19B6D166E6AE17853 /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				AA000002AABBCCDD00000010 /* CommandPaletteView.swift */,
+				2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */,
 				5C2110A46976203DDBF9D707 /* TerminalHostView.swift */,
 			);
 			path = Components;
@@ -290,7 +296,7 @@
 		37F05836B68E913467827126 /* Theme */ = {
 			isa = PBXGroup;
 			children = (
-				AA000002AABBCCDD00000003 /* ThemeManager.swift */,
+				2816C1F90B7E4C359D63033F /* ThemeManager.swift */,
 			);
 			path = Theme;
 			sourceTree = "<group>";
@@ -299,7 +305,7 @@
 			isa = PBXGroup;
 			children = (
 				CEB4B388C531158F6E5916EB /* AppDelegate.swift */,
-				AA000002AABBCCDD00000006 /* Localizable.xcstrings */,
+				307BCBA7FBBD837C1D886367 /* Localizable.xcstrings */,
 				73E706B2F099E80FFCC6F47D /* main.swift */,
 				052178C8BA6AA32DD708B8B4 /* App */,
 				B15DAD8207459A93A41EE1CB /* Domain */,
@@ -324,10 +330,10 @@
 		47EF60B043AF58645C61BA38 /* Sheets */ = {
 			isa = PBXGroup;
 			children = (
-				AA000002AABBCCDD0000000A /* OpenProjectSheet.swift */,
-				DD000002RDB000000001 /* RemoteDirectoryBrowser.swift */,
-				DD000002RDB000000002 /* RemoteDirectoryBrowserViewModel.swift */,
-				CC000002AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift */,
+				7BE07A133DAF6C1DB4F89297 /* OpenProjectSheet.swift */,
+				9250C83EF14A84383E73002A /* RemoteDirectoryBrowser.swift */,
+				3579E21F95E49A08C0BE1E5F /* RemoteDirectoryBrowserViewModel.swift */,
+				2596BF207C9F981D9A0FE02D /* SidebarIconCustomizationSheet.swift */,
 			);
 			path = Sheets;
 			sourceTree = "<group>";
@@ -344,15 +350,23 @@
 			path = Terminal;
 			sourceTree = "<group>";
 		};
+		548CA6E525908810B6555E84 /* Updates */ = {
+			isa = PBXGroup;
+			children = (
+				581FDA0779784EFB231AAF34 /* AppUpdaterController.swift */,
+			);
+			path = Updates;
+			sourceTree = "<group>";
+		};
 		7733A5BF2FFBC78041E8298D /* Workspace */ = {
 			isa = PBXGroup;
 			children = (
-				D6E2F80B3A1C94D5072BEF61 /* EmptyTabStateView.swift */,
+				383CC60F01FDAD8B71C8EF65 /* EmptyTabStateView.swift */,
 				9F23062A273124B6BBE28B71 /* SplitDivider.swift */,
 				A7CF1673C70DBE89F480A010 /* SplitNodeView.swift */,
 				A9B01277529CEA9D185C95B0 /* TerminalPaneView.swift */,
 				E45B70C0F236F9F0FA025A53 /* WorkspaceDetailView.swift */,
-				B7A3E91C4D2F08A6E1C5B730 /* WorkspaceTabBarView.swift */,
+				353A1A1130509D2930C26D93 /* WorkspaceTabBarView.swift */,
 			);
 			path = Workspace;
 			sourceTree = "<group>";
@@ -380,20 +394,29 @@
 			path = UI;
 			sourceTree = "<group>";
 		};
+		AF43C481DF88960E43386FEF /* SFTP */ = {
+			isa = PBXGroup;
+			children = (
+				F2ABC31C96A9F51C865E1FCD /* SFTPDirectoryEntry.swift */,
+				827594A3628098FC39EC59E0 /* SFTPService.swift */,
+			);
+			path = SFTP;
+			sourceTree = "<group>";
+		};
 		B15DAD8207459A93A41EE1CB /* Domain */ = {
 			isa = PBXGroup;
 			children = (
-				AA000002AABBCCDD0000000D /* AIToolModels.swift */,
+				7C29C7AC42BC16FDDD118A64 /* AIToolModels.swift */,
 				D8EB47950FCB5E9637572424 /* AppSettings.swift */,
 				1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */,
 				BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */,
-				AA000002AABBCCDD00000013 /* ShortcutAction.swift */,
-				CC000002AABBCCDD00000001 /* SidebarIcon.swift */,
-				CC000002AABBCCDD00000002 /* SidebarIconCatalog.swift */,
+				4243A3471A4DF010C611D196 /* ShortcutAction.swift */,
+				4737DC60E37C9A4390082193 /* SidebarIcon.swift */,
+				92B183417582C15AE89A8698 /* SidebarIconCatalog.swift */,
 				8629D2D5813F897F85840289 /* SSHTarget.swift */,
-				AA000002AABBCCDD00000012 /* StoredShortcut.swift */,
-				AA000002AABBCCDD00000001 /* ThemeDefinition.swift */,
-				AA000002AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift */,
+				3E4EF6D7547B58727542BA5A /* StoredShortcut.swift */,
+				4395952ABD9D2EEC212FD8C3 /* ThemeDefinition.swift */,
+				1B7DBEF3A8FDA651804A6D8A /* TreemuxKeyboardShortcuts.swift */,
 				BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */,
 			);
 			path = Domain;
@@ -411,8 +434,8 @@
 		BE2277342687AB8B24AA9973 /* SSH */ = {
 			isa = PBXGroup;
 			children = (
-				AA000002AABBCCDD00000007 /* SSHConfigParser.swift */,
-				AA000002AABBCCDD00000008 /* SSHConfigService.swift */,
+				84FF18E9726EDA37A4D07CB5 /* SSHConfigParser.swift */,
+				56CFE929900AA3468AB1BA5B /* SSHConfigService.swift */,
 			);
 			path = SSH;
 			sourceTree = "<group>";
@@ -420,7 +443,7 @@
 		C43D9DD04BC56E98D500E75B /* Process */ = {
 			isa = PBXGroup;
 			children = (
-				BB000002AABBCCDD00000020 /* ProcessTree.swift */,
+				BFCB1FCCBAF466E03F7A8DD8 /* ProcessTree.swift */,
 				952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */,
 			);
 			path = Process;
@@ -429,8 +452,8 @@
 		D19FA00FB0C98719BF40F0F2 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
-				AA000002AABBCCDD00000011 /* SettingsSheet.swift */,
-				AA000002AABBCCDD00000015 /* ShortcutRecorderButton.swift */,
+				719F86B8BC90BA882B83152E /* SettingsSheet.swift */,
+				A169E6DF74EAE95F932D40F0 /* ShortcutRecorderButton.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -438,16 +461,16 @@
 		DEDD8107F3DA9BF1E1B0DA2C /* Sidebar */ = {
 			isa = PBXGroup;
 			children = (
-				CC000002AABBCCDD00000007 /* SidebarCellView.swift */,
-				CC000002AABBCCDD0000000A /* SidebarContainerView.swift */,
-				CC000002AABBCCDD00000003 /* SidebarItemIconView.swift */,
-				CC000002AABBCCDD00000099 /* SidebarInfoBadge.swift */,
-				CC000002AABBCCDD00000005 /* SidebarNodeItem.swift */,
-				CC000002AABBCCDD00000008 /* SidebarNodeRow.swift */,
-				CC000002AABBCCDD00000009 /* SidebarOutlineView.swift */,
-				CC000002AABBCCDD00000006 /* SidebarRowView.swift */,
-				CC000002AABBCCDD0000000B /* SidebarCoordinator.swift */,
-				CC000002AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift */,
+				BF28F45ACFC8C05BE9BD98A9 /* SidebarCellView.swift */,
+				562B8C6A2EC32280F3C88E13 /* SidebarContainerView.swift */,
+				62EB76FEF501CC1380FB2607 /* SidebarCoordinator.swift */,
+				2BECE531477D114732B3DB1E /* SidebarInfoBadge.swift */,
+				EAD730723C379BFA4C7D00F8 /* SidebarItemIconView.swift */,
+				195EA28E9C93EE6E874ED6ED /* SidebarNodeItem.swift */,
+				B54286475B6DAD0B729F4A46 /* SidebarNodeRow.swift */,
+				CD8D68F5A6F0ED9F5EFE5FE0 /* SidebarOutlineView.swift */,
+				74852C7BACA536876045BD7A /* SidebarRowView.swift */,
+				D5FB45C7299B44CB5A534F28 /* WorkspaceOutlineSidebar.swift */,
 				E8354D57B9898A0C0ADBD959 /* WorkspaceSidebarView.swift */,
 			);
 			path = Sidebar;
@@ -483,21 +506,13 @@
 				00BDD3A331D12D95A7B20B1F /* AITool */,
 				9C12B30F7DEBED747DCEF00C /* Git */,
 				C43D9DD04BC56E98D500E75B /* Process */,
-				DD000003SFTP00000001 /* SFTP */,
+				AF43C481DF88960E43386FEF /* SFTP */,
 				BE2277342687AB8B24AA9973 /* SSH */,
 				4C0772C0D286E3EC583553B3 /* Terminal */,
 				27F87459BFC39581FCA8FA83 /* Tmux */,
+				548CA6E525908810B6555E84 /* Updates */,
 			);
 			path = Services;
-			sourceTree = "<group>";
-		};
-		DD000003SFTP00000001 /* SFTP */ = {
-			isa = PBXGroup;
-			children = (
-				DD000002SFTP00000001 /* SFTPDirectoryEntry.swift */,
-				DD000002SFTP00000002 /* SFTPService.swift */,
-			);
-			path = SFTP;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -526,8 +541,8 @@
 			buildConfigurationList = 0550504476B73DF89ECC1D30 /* Build configuration list for PBXNativeTarget "Treemux" */;
 			buildPhases = (
 				10C4D9AA561229E6D0479998 /* Sources */,
+				6209C5E6F10D6D8901B776A2 /* Resources */,
 				B162AB0EFD17B244599623CE /* Frameworks */,
-				AA000003AABBCCDD00000001 /* Resources */,
 				3DB85CAF1AB463FE8582424A /* Copy Ghostty Resources */,
 			);
 			buildRules = (
@@ -536,7 +551,8 @@
 			);
 			name = Treemux;
 			packageProductDependencies = (
-				AA110001CITADELPROD0001 /* Citadel */,
+				6A0BCC9E620E634555EA4F1E /* Citadel */,
+				0BA0168B1395D9FAD0C21BA8 /* Sparkle */,
 			);
 			productName = Treemux;
 			productReference = 6DD2CC0A8B9D60B36E1F8105 /* Treemux.app */;
@@ -564,7 +580,8 @@
 			mainGroup = 4043C724F22F571520359C6A;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				AA110002CITADELPKGREF01 /* XCRemoteSwiftPackageReference "Citadel" */,
+				8DA7ACE1A0101A1A2B6EE7DA /* XCRemoteSwiftPackageReference "Citadel" */,
+				2C9A2C63248A592DF46B4F85 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BBE024A13718132377BA6B12 /* Products */;
@@ -576,6 +593,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6209C5E6F10D6D8901B776A2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0E5862A0ECFBA02E71850208 /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		3DB85CAF1AB463FE8582424A /* Copy Ghostty Resources */ = {
@@ -598,74 +626,63 @@
 		};
 /* End PBXShellScriptBuildPhase section */
 
-/* Begin PBXResourcesBuildPhase section */
-		AA000003AABBCCDD00000001 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				AA000001AABBCCDD00000006 /* Localizable.xcstrings in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
 		10C4D9AA561229E6D0479998 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA000001AABBCCDD0000000D /* AIToolModels.swift in Sources */,
-				AA000001AABBCCDD0000000E /* AIToolService.swift in Sources */,
+				D971AE91A6477480A05CC577 /* AIToolModels.swift in Sources */,
+				5351A8FEC13D97EF089698A6 /* AIToolService.swift in Sources */,
 				6CF8F5C7195367C6516F863C /* AppDelegate.swift in Sources */,
-				AA000001AABBCCDD00000002 /* Color+Hex.swift in Sources */,
-				AA000001AABBCCDD00000010 /* CommandPaletteView.swift in Sources */,
-				AA000001AABBCCDD00000005 /* LanguageManager.swift in Sources */,
-				AA000001AABBCCDD0000000A /* OpenProjectSheet.swift in Sources */,
-				DD000001RDB000000001 /* RemoteDirectoryBrowser.swift in Sources */,
-				DD000001RDB000000002 /* RemoteDirectoryBrowserViewModel.swift in Sources */,
-				AA000001AABBCCDD00000007 /* SSHConfigParser.swift in Sources */,
-				AA000001AABBCCDD00000011 /* SettingsSheet.swift in Sources */,
-				AA000001AABBCCDD00000015 /* ShortcutRecorderButton.swift in Sources */,
-				AA000001AABBCCDD00000013 /* ShortcutAction.swift in Sources */,
-				AA000001AABBCCDD00000012 /* StoredShortcut.swift in Sources */,
-				AA000001AABBCCDD00000008 /* SSHConfigService.swift in Sources */,
-				AA000001AABBCCDD00000001 /* ThemeDefinition.swift in Sources */,
-				AA000001AABBCCDD00000003 /* ThemeManager.swift in Sources */,
-				AA000001AABBCCDD00000014 /* TreemuxKeyboardShortcuts.swift in Sources */,
-				AA000001AABBCCDD0000000B /* TmuxService.swift in Sources */,
 				0DA3A254039F1EEA04FB94DB /* AppSettings.swift in Sources */,
 				7BAFFB86D4EE2F43992E4808 /* AppSettingsPersistence.swift in Sources */,
+				1F2D077FE3D8F5CE1D84C25F /* AppUpdaterController.swift in Sources */,
+				0D6E9070C727E942960D4BBB /* Color+Hex.swift in Sources */,
+				7C890E7C842699E9E4E18606 /* CommandPaletteView.swift in Sources */,
+				CED37FBB27DAA8CBE601AD3C /* EmptyTabStateView.swift in Sources */,
 				89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */,
+				B620A3848F1EF7DE7BDC62A2 /* LanguageManager.swift in Sources */,
 				5695944A97F022496C2F055E /* MainWindowView.swift in Sources */,
+				9E3EDA87C6172DCC23C14AFE /* OpenProjectSheet.swift in Sources */,
 				78942DBCD13BA394E9AC92CD /* PaneLayout.swift in Sources */,
 				634F5C15FC031D133DEA6DC1 /* PathFormatting.swift in Sources */,
+				D2D97673DE196B9D5B0B826E /* ProcessTree.swift in Sources */,
+				093FE0959D31BD1AE6676D1A /* RemoteDirectoryBrowser.swift in Sources */,
+				2E5F9E3972854C00535CA4D0 /* RemoteDirectoryBrowserViewModel.swift in Sources */,
+				6633C6D74ADB9DFDA3DA98B6 /* SFTPDirectoryEntry.swift in Sources */,
+				AC0D68343F5882A238D02833 /* SFTPService.swift in Sources */,
+				72AAF9CD646BD3A52B8927C5 /* SSHConfigParser.swift in Sources */,
+				C932ED5A8C19385027F0691D /* SSHConfigService.swift in Sources */,
 				E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */,
 				4F93E2B9A2A6EC003FCAB4BE /* SessionBackend.swift in Sources */,
 				A7746DB757BF4458229659E0 /* SessionBackendLaunch.swift in Sources */,
-				BB000001AABBCCDD00000020 /* ProcessTree.swift in Sources */,
+				11799B542DF852B119E2960A /* SettingsSheet.swift in Sources */,
 				D5D2DCD282AEEBB8C4A6F532 /* ShellCommandRunner.swift in Sources */,
 				A0AD5591657B555F176AEFD8 /* ShellSession.swift in Sources */,
-				CC000001AABBCCDD00000001 /* SidebarIcon.swift in Sources */,
-				CC000001AABBCCDD00000002 /* SidebarIconCatalog.swift in Sources */,
-				CC000001AABBCCDD00000003 /* SidebarItemIconView.swift in Sources */,
-				CC000001AABBCCDD00000099 /* SidebarInfoBadge.swift in Sources */,
-				CC000001AABBCCDD00000004 /* SidebarIconCustomizationSheet.swift in Sources */,
-				CC000001AABBCCDD00000005 /* SidebarNodeItem.swift in Sources */,
-				CC000001AABBCCDD00000006 /* SidebarRowView.swift in Sources */,
-				CC000001AABBCCDD00000007 /* SidebarCellView.swift in Sources */,
-				CC000001AABBCCDD00000008 /* SidebarNodeRow.swift in Sources */,
-				CC000001AABBCCDD00000009 /* SidebarOutlineView.swift in Sources */,
-				CC000001AABBCCDD0000000A /* SidebarContainerView.swift in Sources */,
-				CC000001AABBCCDD0000000B /* SidebarCoordinator.swift in Sources */,
-				CC000001AABBCCDD0000000C /* WorkspaceOutlineSidebar.swift in Sources */,
-				DD000001SFTP00000001 /* SFTPDirectoryEntry.swift in Sources */,
-				DD000001SFTP00000002 /* SFTPService.swift in Sources */,
+				5F3742698653D0782E4868AF /* ShortcutAction.swift in Sources */,
+				89A2C91A680D947F1C2B176D /* ShortcutRecorderButton.swift in Sources */,
+				CDB05808B946D402F0D9385D /* SidebarCellView.swift in Sources */,
+				BD1E15B46C40E1A341C3B5B6 /* SidebarContainerView.swift in Sources */,
+				955F5B8946B3F80A7AACDC6D /* SidebarCoordinator.swift in Sources */,
+				1C97D7734948943CC82C0690 /* SidebarIcon.swift in Sources */,
+				70CD5351C08FA2E28198EB68 /* SidebarIconCatalog.swift in Sources */,
+				C8CF939E271138CC0721952C /* SidebarIconCustomizationSheet.swift in Sources */,
+				2E95D3030037EA348DA55570 /* SidebarInfoBadge.swift in Sources */,
+				44F22E50FB5925ABD08DD1F1 /* SidebarItemIconView.swift in Sources */,
+				AF47FA8C9BDE3F99FB9864B1 /* SidebarNodeItem.swift in Sources */,
+				50C21D8AC4C1ED7392DFE623 /* SidebarNodeRow.swift in Sources */,
+				442CB9EA611EDEE7671526B0 /* SidebarOutlineView.swift in Sources */,
+				9522E1F5358CF0C642D88DD6 /* SidebarRowView.swift in Sources */,
 				BCEB4C8CE71A07F316E67D13 /* SplitDivider.swift in Sources */,
 				3342176CAA82F4D5A9EA3AC0 /* SplitNodeView.swift in Sources */,
+				385A3EF810559BD598E183D9 /* StoredShortcut.swift in Sources */,
 				7405B7C02F6B819CB0A772E5 /* String+Helpers.swift in Sources */,
 				44D9A39F7E62E88E88ED2DAD /* TerminalHostView.swift in Sources */,
 				BF9448F0B1E9C5D3B71C956C /* TerminalPaneView.swift in Sources */,
 				598A1C4D4191754CBAE49BF4 /* TerminalSurface.swift in Sources */,
+				B59CF4748DD593CD50B8EDE1 /* ThemeDefinition.swift in Sources */,
+				5F96AB0D170D545A2C558022 /* ThemeManager.swift in Sources */,
+				29B9BE6617E084063B96EFD7 /* TmuxService.swift in Sources */,
 				439B7154F34CC1DC69D74A6E /* TreemuxApp.swift in Sources */,
 				3C1F3562DE4FA89E8C580B30 /* TreemuxGhosttyBootstrap.swift in Sources */,
 				CD969404DE603FC36B6116DA /* TreemuxGhosttyClipboardSupport.swift in Sources */,
@@ -676,16 +693,17 @@
 				423A99DD3918742FC88745B3 /* TreemuxGhosttyResourcePaths.swift in Sources */,
 				9DB5A3B694A7A2D4D0248724 /* TreemuxGhosttyRuntime.swift in Sources */,
 				527270F31405E3CCEFE8CF79 /* TreemuxGhosttyShellIntegration.swift in Sources */,
+				DDB379227505CCDD96BB62C1 /* TreemuxKeyboardShortcuts.swift in Sources */,
 				04885DA006A7F9D402450132 /* WindowContext.swift in Sources */,
 				320E9CBA68B37DFD4F22711A /* WorkspaceDetailView.swift in Sources */,
 				BF6AC7D0EC7DBA0469366D91 /* WorkspaceMetadataWatchService.swift in Sources */,
-				C8D4F2A15E3B79061A8DC492 /* WorkspaceTabBarView.swift in Sources */,
-				E9F1A73C6B4D85E20839CD54 /* EmptyTabStateView.swift in Sources */,
 				F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */,
+				8D26A31A9A417D3D41DA60C6 /* WorkspaceOutlineSidebar.swift in Sources */,
 				3AEFD19DA77CAC18BB8B842B /* WorkspaceSessionController.swift in Sources */,
 				3C1BD4702DECC75E0A4ABD1A /* WorkspaceSidebarView.swift in Sources */,
 				A9E5418401517BC5CBD9EC92 /* WorkspaceStatePersistence.swift in Sources */,
 				2378FC48E7C0FDF16337AE95 /* WorkspaceStore.swift in Sources */,
+				9FDC3211E658A3C2D037F2DC /* WorkspaceTabBarView.swift in Sources */,
 				28E15CC897C8BE956B0DCF02 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -694,17 +712,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA000001AABBCCDD0000000F /* AIToolServiceTests.swift in Sources */,
+				606C2C95D482C8D3CBB6503F /* AIToolServiceTests.swift in Sources */,
 				9C689BD0883C82F0D099878B /* GitRepositoryServiceTests.swift in Sources */,
-				AA000001AABBCCDD00000009 /* SSHConfigParserTests.swift in Sources */,
-				AA000001AABBCCDD0000000C /* TmuxServiceTests.swift in Sources */,
-				AA000001AABBCCDD00000004 /* ThemeTests.swift in Sources */,
 				5BE675E29A6A2B29C647BB5E /* PaneLayoutTests.swift in Sources */,
 				309F402A9FFCA18BA24D7BD4 /* PersistenceTests.swift in Sources */,
+				86E976461528AC1A196E4DC6 /* ProcessTreeTests.swift in Sources */,
+				50703AC7FE57471B65F8443A /* SSHConfigParserTests.swift in Sources */,
 				2C0D2D1CDB0C7DDD9C2487E9 /* SessionBackendTests.swift in Sources */,
-				BB000001AABBCCDD00000021 /* ProcessTreeTests.swift in Sources */,
 				14559BCDE89A0A2CA5FD8022 /* ShellCommandRunnerTests.swift in Sources */,
-				773C04A53173491BBC17E3EC /* TreemuxTabSizingTests.swift in Sources */,
+				C009122F97AB2808837169E1 /* ThemeTests.swift in Sources */,
+				8B1F02071634EF5A0330144B /* TmuxServiceTests.swift in Sources */,
+				FC0884EBD132C797A61FC4A1 /* TreemuxTabSizingTests.swift in Sources */,
 				CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */,
 				8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */,
 			);
@@ -836,7 +854,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.0.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -895,7 +913,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.0.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -967,7 +985,15 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		AA110002CITADELPKGREF01 /* XCRemoteSwiftPackageReference "Citadel" */ = {
+		2C9A2C63248A592DF46B4F85 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = exactVersion;
+				version = 2.7.3;
+			};
+		};
+		8DA7ACE1A0101A1A2B6EE7DA /* XCRemoteSwiftPackageReference "Citadel" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/orlandos-nl/Citadel";
 			requirement = {
@@ -978,9 +1004,14 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		AA110001CITADELPROD0001 /* Citadel */ = {
+		0BA0168B1395D9FAD0C21BA8 /* Sparkle */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = AA110002CITADELPKGREF01 /* XCRemoteSwiftPackageReference "Citadel" */;
+			package = 2C9A2C63248A592DF46B4F85 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+		6A0BCC9E620E634555EA4F1E /* Citadel */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8DA7ACE1A0101A1A2B6EE7DA /* XCRemoteSwiftPackageReference "Citadel" */;
 			productName = Citadel;
 		};
 /* End XCSwiftPackageProductDependency section */

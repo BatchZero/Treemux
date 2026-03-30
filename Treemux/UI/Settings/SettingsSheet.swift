@@ -21,7 +21,7 @@ struct SettingsSheet: View {
     }
 
     enum SettingsSection: String, CaseIterable, Identifiable {
-        case general, terminal, theme, sidebarIcons, ssh, shortcuts
+        case general, terminal, theme, sidebarIcons, ssh, shortcuts, updates
 
         var id: String { rawValue }
 
@@ -33,6 +33,7 @@ struct SettingsSheet: View {
             case .sidebarIcons: return "Sidebar Icons"
             case .ssh: return "SSH"
             case .shortcuts: return "Shortcuts"
+            case .updates: return "Updates"
             }
         }
 
@@ -44,6 +45,7 @@ struct SettingsSheet: View {
             case .sidebarIcons: return "Customize icons for workspaces and worktrees"
             case .ssh: return "SSH config file paths"
             case .shortcuts: return "Customize keyboard shortcuts"
+            case .updates: return "Software update preferences"
             }
         }
 
@@ -55,6 +57,7 @@ struct SettingsSheet: View {
             case .sidebarIcons: return "paintpalette"
             case .ssh: return "network"
             case .shortcuts: return "keyboard"
+            case .updates: return "arrow.triangle.2.circlepath"
             }
         }
     }
@@ -144,6 +147,8 @@ struct SettingsSheet: View {
             SSHSettingsView(settings: $draft)
         case .shortcuts:
             ShortcutsSettingsView(settings: $draft)
+        case .updates:
+            UpdateSettingsView(settings: $draft)
         }
     }
 }
@@ -328,6 +333,47 @@ private struct ShortcutRow: View {
             }
         }
         .padding(.vertical, 2)
+    }
+}
+
+// MARK: - Update Settings
+
+private struct UpdateSettingsView: View {
+    @Binding var settings: AppSettings
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
+    }
+
+    private var buildNumber: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "–"
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Automatically check for updates",
+                       isOn: $settings.updates.automaticallyChecksForUpdates)
+
+                Toggle("Automatically download updates",
+                       isOn: $settings.updates.automaticallyDownloadsUpdates)
+                    .disabled(!settings.updates.automaticallyChecksForUpdates)
+            }
+
+            Section {
+                HStack {
+                    Text("Version")
+                    Spacer()
+                    Text("\(appVersion) (\(buildNumber))")
+                        .foregroundStyle(.secondary)
+                }
+
+                Button("Check for Updates…") {
+                    AppUpdaterController.shared.checkForUpdates()
+                }
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 
