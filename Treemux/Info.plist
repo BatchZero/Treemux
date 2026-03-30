@@ -24,5 +24,9 @@
 	<string>Copyright © 2026 BatchZero. MIT License.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/BatchZero/Treemux/stable/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>bfBuujWR9izxMmCzjuTzRkcvqdLe8c+uaGU/visxZbk=</string>
 </dict>
 </plist>

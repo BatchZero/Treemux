@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         app.launch()
         self.treemuxApp = app
         buildMainMenu()
+        configureUpdater(checkInBackground: true)
 
         if let store = treemuxApp?.store {
             settingsCancellable = store.$settings
@@ -20,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .receive(on: RunLoop.main)
                 .sink { [weak self] _ in
                     self?.buildMainMenu()
+                    self?.configureUpdater(checkInBackground: false)
                 }
         }
     }
@@ -65,6 +67,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsItem.target = self
         applyShortcut(.openSettings, to: settingsItem)
         appMenu.addItem(settingsItem)
+        let checkUpdatesItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+        checkUpdatesItem.target = self
+        appMenu.addItem(checkUpdatesItem)
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Hide Treemux", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         let hideOthersItem = NSMenuItem(title: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
@@ -254,5 +259,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func previousTab() {
         store?.selectedWorkspace?.selectPreviousTab()
+    }
+
+    // MARK: - Updates
+
+    private func configureUpdater(checkInBackground: Bool) {
+        guard let settings = store?.settings.updates else { return }
+        AppUpdaterController.shared.configure(
+            automaticallyChecks: settings.automaticallyChecksForUpdates,
+            automaticallyDownloads: settings.automaticallyDownloadsUpdates,
+            checkInBackground: checkInBackground
+        )
+    }
+
+    @objc private func checkForUpdates() {
+        AppUpdaterController.shared.checkForUpdates()
     }
 }

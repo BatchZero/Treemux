@@ -18,6 +18,7 @@ struct AppSettings: Codable, Equatable {
     var ssh: SSHSettings = SSHSettings()
     var shortcutOverrides: [String: ShortcutOverride] = [:]
     var defaultLocalTerminalIcon: SidebarItemIcon = .localTerminalDefault
+    var updates: UpdateSettings = UpdateSettings()
 }
 
 /// Terminal emulator appearance and behavior settings.
@@ -35,5 +36,11 @@ struct StartupSettings: Codable, Equatable {
 /// SSH connection configuration settings.
 struct SSHSettings: Codable, Equatable {
     var configPaths: [String] = ["~/.ssh/config"]
+}
+
+/// Software update preferences.
+struct UpdateSettings: Codable, Equatable {
+    var automaticallyChecksForUpdates: Bool = true
+    var automaticallyDownloadsUpdates: Bool = false
 }
 
