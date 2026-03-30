@@ -42,7 +42,6 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
     case focusNextPane
     case focusPreviousPane
     case zoomPane
-    case newClaudeCode
 
     var id: String { rawValue }
 
@@ -53,7 +52,7 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
         case .newTab, .closeTab, .nextTab, .previousTab:
             return .tabs
         case .splitHorizontal, .splitVertical, .closePane,
-             .focusNextPane, .focusPreviousPane, .zoomPane, .newClaudeCode:
+             .focusNextPane, .focusPreviousPane, .zoomPane:
             return .panes
         }
     }
@@ -74,7 +73,6 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
         case .focusNextPane: return "Next Pane"
         case .focusPreviousPane: return "Previous Pane"
         case .zoomPane: return "Zoom Pane"
-        case .newClaudeCode: return "New Claude Code Session"
         }
     }
 
@@ -94,7 +92,6 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
         case .focusNextPane: return "Move focus to the next pane."
         case .focusPreviousPane: return "Move focus to the previous pane."
         case .zoomPane: return "Zoom or unzoom the focused pane."
-        case .newClaudeCode: return "Open a new Claude Code terminal."
         }
     }
 
@@ -128,8 +125,6 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
             return StoredShortcut(key: "[", command: true, shift: false, option: false, control: false)
         case .zoomPane:
             return StoredShortcut(key: "\r", command: true, shift: true, option: false, control: false)
-        case .newClaudeCode:
-            return StoredShortcut(key: "c", command: true, shift: true, option: false, control: false)
         }
     }
 }
