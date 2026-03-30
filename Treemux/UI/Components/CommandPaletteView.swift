@@ -192,12 +192,6 @@ struct CommandPaletteView: View {
                 }
             ),
             PaletteCommand(
-                title: "New Claude Code Session",
-                subtitle: "claude", icon: "brain.head.profile",
-                shortcut: "⌘⇧C",
-                action: {}
-            ),
-            PaletteCommand(
                 title: "New Codex Session",
                 subtitle: "codex", icon: "wand.and.stars",
                 shortcut: nil,
