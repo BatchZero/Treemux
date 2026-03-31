@@ -135,6 +135,7 @@ struct PersistedWorkspaceState: Codable {
     let version: Int
     let selectedWorkspaceID: UUID?
     let workspaces: [WorkspaceRecord]
+    var collapsedSections: [String]?
 }
 
 // MARK: - Runtime Models
