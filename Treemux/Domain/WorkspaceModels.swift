@@ -252,7 +252,7 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         self.workspaceIcon = workspaceIcon
         self.worktreeIconOverrides = worktreeIconOverrides
 
-        let workingDirectory = repositoryRoot?.path ?? NSHomeDirectory()
+        let workingDirectory = repositoryRoot?.path ?? sshTarget?.remotePath ?? NSHomeDirectory()
         self.activeWorktreePath = workingDirectory
 
         let defaultTab = WorkspaceTabStateRecord.makeDefault(workingDirectory: workingDirectory, sshTarget: sshTarget)

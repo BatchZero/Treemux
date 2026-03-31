@@ -56,12 +56,26 @@ extension SessionBackendConfiguration {
             )
 
         case .ssh(let configuration):
+            var sshArgs = configuration.sshArguments()
+
+            // When no explicit remote command is set and a remote working
+            // directory is known, start the shell in that directory.
+            if configuration.remoteCommand == nil,
+               !preferredWorkingDirectory.isEmpty,
+               preferredWorkingDirectory != NSHomeDirectory() {
+                let escaped = preferredWorkingDirectory
+                    .replacingOccurrences(of: "'", with: "'\\''")
+                // Force PTY allocation since we're passing a remote command
+                sshArgs.insert("-t", at: 0)
+                sshArgs.append("cd '\(escaped)' && exec $SHELL -l")
+            }
+
             return TerminalLaunchConfiguration(
                 workingDirectory: NSHomeDirectory(),
                 environment: baseEnvironment,
                 command: TerminalCommandDefinition(
                     executablePath: "/usr/bin/ssh",
-                    arguments: configuration.sshArguments(),
+                    arguments: sshArgs,
                     displayName: configuration.target.displayName
                 ),
                 backendConfiguration: self

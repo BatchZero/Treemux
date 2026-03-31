@@ -106,6 +106,124 @@ actor GitRepositoryService {
         )
     }
 
+    // MARK: - Remote (SSH) Operations
+
+    /// Inspects a remote repository via SSH and returns a snapshot of its state.
+    func inspectRepository(remotePath: String, sshTarget: SSHTarget) async throws -> RepositorySnapshot {
+        let escapedPath = shellEscape(remotePath)
+        // Run branch, head, worktree, and status commands in one SSH invocation to minimize round-trips.
+        let script = """
+        cd \(escapedPath) && \
+        echo __BRANCH__ && git rev-parse --abbrev-ref HEAD && \
+        echo __HEAD__ && git rev-parse --short HEAD && \
+        echo __WORKTREE__ && git worktree list --porcelain && \
+        echo __STATUS__ && git status --porcelain && \
+        echo __AHEAD_BEHIND__ && git rev-list --left-right --count HEAD...@{upstream} 2>/dev/null || true
+        """
+        let result = try await runSSH(target: sshTarget, command: script)
+        guard result.exitCode == 0 else {
+            throw GitError.commandFailed(result.errorOutput)
+        }
+        return parseRemoteInspection(result.output)
+    }
+
+    /// Parses the combined output of the remote inspection script.
+    private func parseRemoteInspection(_ output: String) -> RepositorySnapshot {
+        var branch: String?
+        var head: String?
+        var worktreeOutput = ""
+        var statusOutput = ""
+        var aheadBehindOutput = ""
+
+        enum Section { case none, branch, head, worktree, status, aheadBehind }
+        var section: Section = .none
+
+        for line in output.split(separator: "\n", omittingEmptySubsequences: false) {
+            let s = String(line)
+            switch s {
+            case "__BRANCH__": section = .branch; continue
+            case "__HEAD__": section = .head; continue
+            case "__WORKTREE__": section = .worktree; continue
+            case "__STATUS__": section = .status; continue
+            case "__AHEAD_BEHIND__": section = .aheadBehind; continue
+            default: break
+            }
+            switch section {
+            case .branch: branch = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            case .head: head = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            case .worktree: worktreeOutput += s + "\n"
+            case .status: statusOutput += s + "\n"
+            case .aheadBehind: aheadBehindOutput += s.trimmingCharacters(in: .whitespacesAndNewlines)
+            case .none: break
+            }
+        }
+
+        let worktrees = parseWorktreeList(worktreeOutput)
+
+        let statusLines = statusOutput.split(separator: "\n")
+        let changedCount = statusLines.filter { !$0.hasPrefix("??") }.count
+        let untrackedCount = statusLines.filter { $0.hasPrefix("??") }.count
+
+        var ahead = 0
+        var behind = 0
+        let abParts = aheadBehindOutput.split(separator: "\t")
+        if abParts.count == 2 {
+            ahead = Int(abParts[0]) ?? 0
+            behind = Int(abParts[1]) ?? 0
+        }
+
+        let status = RepositoryStatusSnapshot(
+            changedFileCount: changedCount,
+            aheadCount: ahead,
+            behindCount: behind,
+            untrackedCount: untrackedCount
+        )
+
+        return RepositorySnapshot(
+            currentBranch: branch,
+            headCommit: head,
+            worktrees: worktrees,
+            status: status
+        )
+    }
+
+    // MARK: - SSH Helper
+
+    private struct SSHResult {
+        let exitCode: Int32
+        let output: String
+        let errorOutput: String
+    }
+
+    /// Runs a command on a remote host via system SSH.
+    private func runSSH(target: SSHTarget, command: String) async throws -> SSHResult {
+        var args: [String] = [
+            "-o", "BatchMode=yes",
+            "-o", "ConnectTimeout=10",
+            "-o", "StrictHostKeyChecking=accept-new",
+            "-p", "\(target.port)"
+        ]
+        if let identityFile = target.identityFile {
+            let expandedPath = (identityFile as NSString).expandingTildeInPath
+            args += ["-i", expandedPath]
+        }
+        let username = target.user ?? NSUserName()
+        args.append("\(username)@\(target.host)")
+        args.append(command)
+
+        let result = try await ShellCommandRunner.run(
+            "/usr/bin/ssh",
+            arguments: args
+        )
+        return SSHResult(exitCode: result.exitCode, output: result.output, errorOutput: result.errorOutput)
+    }
+
+    private func shellEscape(_ path: String) -> String {
+        "'" + path.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
+    // MARK: - Local Worktree Management
+
     /// Creates a new worktree for the given branch at the target path.
     func createWorktree(at repoPath: URL, branch: String, targetPath: URL) async throws {
         let result = try await ShellCommandRunner.run(

@@ -206,6 +206,9 @@ final class WorkspaceStore: ObservableObject {
         workspaces.append(workspace)
         selectedWorkspaceID = workspace.id
         saveWorkspaceState()
+        Task {
+            await refreshWorkspace(workspace)
+        }
     }
 
     // MARK: - Renaming Workspaces
@@ -282,10 +285,17 @@ final class WorkspaceStore: ObservableObject {
 
     /// Refreshes git state for the given workspace.
     /// Merges worktrees by path to preserve stable IDs across refreshes.
+    /// Supports both local repositories (via local git) and remote repositories (via SSH).
     func refreshWorkspace(_ workspace: WorkspaceModel) async {
-        guard let root = workspace.repositoryRoot else { return }
+        let snapshot: RepositorySnapshot
         do {
-            let snapshot = try await gitService.inspectRepository(at: root)
+            if let root = workspace.repositoryRoot {
+                snapshot = try await gitService.inspectRepository(at: root)
+            } else if let sshTarget = workspace.sshTarget, let remotePath = sshTarget.remotePath {
+                snapshot = try await gitService.inspectRepository(remotePath: remotePath, sshTarget: sshTarget)
+            } else {
+                return
+            }
             workspace.currentBranch = snapshot.currentBranch
 
             // Merge worktrees: preserve IDs for paths that still exist
