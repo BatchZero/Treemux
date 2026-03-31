@@ -10,7 +10,7 @@
             <sparkle:version>1</sparkle:version>
             <sparkle:shortVersionString>0.0.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/BatchZero/Treemux/releases/download/v0.0.1/Treemux-0.0.1.app.zip" length="24549461" type="application/octet-stream" sparkle:edSignature="PWpWr3YZAjwOq/9wXmD/JWX20toZhzF+E+gU+8KXbUgVcy0D4Q4FvmtnDscxdBWvO/EoBUAl9u41th012T7wDA=="/>
+            <enclosure url="https://github.com/BatchZero/Treemux/releases/download/v0.0.1/Treemux-0.0.1.app.zip" length="24548759" type="application/octet-stream" sparkle:edSignature="oNv6TyzDAz4nA2I7wt/vrSXVb3gq7Naw84IEgroklW8stTMzXgQAQXTHhYMKMXFZRxu5uoHDAPoJmn+PfnnwCQ=="/>
         </item>
     </channel>
 </rss>
