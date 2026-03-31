@@ -518,4 +518,68 @@ final class WorkspaceModelsTests: XCTestCase {
         ctrl.focusNext()
         XCTAssertEqual(callbackCount, 3)
     }
+
+    // MARK: - Section Persistence & Remote Group Display Title Tests
+
+    func testPersistedWorkspaceStateWithCollapsedSections() throws {
+        let state = PersistedWorkspaceState(
+            version: 1,
+            selectedWorkspaceID: nil,
+            workspaces: [],
+            collapsedSections: ["local", "myserver|root"]
+        )
+        let data = try JSONEncoder().encode(state)
+        let decoded = try JSONDecoder().decode(PersistedWorkspaceState.self, from: data)
+        XCTAssertEqual(decoded.collapsedSections, ["local", "myserver|root"])
+    }
+
+    func testPersistedWorkspaceStateNilCollapsedSections() throws {
+        let state = PersistedWorkspaceState(
+            version: 1,
+            selectedWorkspaceID: nil,
+            workspaces: [],
+            collapsedSections: nil
+        )
+        let data = try JSONEncoder().encode(state)
+        let decoded = try JSONDecoder().decode(PersistedWorkspaceState.self, from: data)
+        XCTAssertNil(decoded.collapsedSections)
+    }
+
+    func testPersistedWorkspaceStateBackwardsCompatibility() throws {
+        let json = """
+        {"version":1,"selectedWorkspaceID":null,"workspaces":[]}
+        """
+        let data = json.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(PersistedWorkspaceState.self, from: data)
+        XCTAssertNil(decoded.collapsedSections)
+    }
+
+    func testSidebarSectionPersistenceKey() {
+        let local = SidebarSection.local
+        XCTAssertEqual(local.persistenceKey, "local")
+
+        let remote = SidebarSection.remote(groupKey: "server1|root", displayTitle: "server1 (root@10.0.0.1)")
+        XCTAssertEqual(remote.persistenceKey, "server1|root")
+    }
+
+    @MainActor
+    func testRemoteGroupDisplayTitle() {
+        let targetWithUser = SSHTarget(
+            host: "192.168.1.100", port: 22, user: "root",
+            identityFile: nil, displayName: "my-server", remotePath: nil
+        )
+        XCTAssertEqual(
+            WorkspaceStore.remoteGroupDisplayTitle(for: targetWithUser),
+            "my-server (root@192.168.1.100)"
+        )
+
+        let targetWithoutUser = SSHTarget(
+            host: "192.168.1.100", port: 22, user: nil,
+            identityFile: nil, displayName: "my-server", remotePath: nil
+        )
+        XCTAssertEqual(
+            WorkspaceStore.remoteGroupDisplayTitle(for: targetWithoutUser),
+            "my-server (192.168.1.100)"
+        )
+    }
 }
