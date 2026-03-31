@@ -51,23 +51,42 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
     /// Called from updateNSView. Rebuilds nodes only when the fingerprint changes;
     /// always synchronizes selection.
     func apply(
-        workspaces: [WorkspaceModel],
+        store: WorkspaceStore,
         selectedWorkspaceID: UUID?,
         theme: ThemeManager
     ) {
         self.theme = theme
-        let fingerprint = dataFingerprint(workspaces: workspaces)
+        let localWorkspaces = store.localWorkspaces
+        let remoteGroups = store.remoteWorkspaceGroups
+        let allWorkspaces = localWorkspaces + remoteGroups.flatMap(\.targets)
+        let fingerprint = dataFingerprint(workspaces: allWorkspaces)
         let dataChanged = fingerprint != lastDataFingerprint
 
         if dataChanged {
             lastDataFingerprint = fingerprint
-            rootNodes = buildNodes(from: workspaces)
+            rootNodes = buildNodes(
+                localWorkspaces: localWorkspaces,
+                remoteGroups: remoteGroups
+            )
             container?.reloadOutlineData()
 
-            // Expand all workspace nodes by default.
             guard let outlineView = container?.outlineView else { return }
+            // Expand all nodes by default, then collapse persisted sections.
             for node in rootNodes {
                 outlineView.expandItem(node)
+                // Expand workspace children (worktrees)
+                for child in node.children {
+                    if child.isExpandable {
+                        outlineView.expandItem(child)
+                    }
+                }
+            }
+            // Apply persisted collapsed state
+            for node in rootNodes {
+                if case .section(let section) = node.kind,
+                   store.collapsedSections.contains(section.persistenceKey) {
+                    outlineView.collapseItem(node)
+                }
             }
             synchronizeSelection(on: outlineView, selectedWorkspaceID: selectedWorkspaceID)
         } else {
@@ -93,18 +112,57 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
 
     // MARK: - Build Nodes
 
-    private func buildNodes(from workspaces: [WorkspaceModel]) -> [SidebarNodeItem] {
-        workspaces.map { workspace in
-            let children: [SidebarNodeItem]
-            if workspace.worktrees.count > 1 {
-                children = workspace.worktrees.map { worktree in
-                    SidebarNodeItem(kind: .worktree(workspace, worktree))
-                }
-            } else {
-                children = []
-            }
-            return SidebarNodeItem(kind: .workspace(workspace), children: children)
+    private func buildNodes(
+        localWorkspaces: [WorkspaceModel],
+        remoteGroups: [(key: String, targets: [WorkspaceModel])]
+    ) -> [SidebarNodeItem] {
+        let hasRemote = !remoteGroups.isEmpty
+
+        if !hasRemote {
+            // No sections — flat list like before
+            return localWorkspaces.map { makeWorkspaceNode($0) }
         }
+
+        // Build sectioned tree
+        var sections: [SidebarNodeItem] = []
+
+        // Local section
+        if !localWorkspaces.isEmpty {
+            let localChildren = localWorkspaces.map { makeWorkspaceNode($0) }
+            sections.append(SidebarNodeItem(
+                kind: .section(.local),
+                children: localChildren
+            ))
+        }
+
+        // Remote sections
+        for group in remoteGroups {
+            let displayTitle: String
+            if let firstTarget = group.targets.first?.sshTarget {
+                displayTitle = WorkspaceStore.remoteGroupDisplayTitle(for: firstTarget)
+            } else {
+                displayTitle = group.key
+            }
+            let remoteChildren = group.targets.map { makeWorkspaceNode($0) }
+            sections.append(SidebarNodeItem(
+                kind: .section(.remote(groupKey: group.key, displayTitle: displayTitle)),
+                children: remoteChildren
+            ))
+        }
+
+        return sections
+    }
+
+    private func makeWorkspaceNode(_ workspace: WorkspaceModel) -> SidebarNodeItem {
+        let children: [SidebarNodeItem]
+        if workspace.worktrees.count > 1 {
+            children = workspace.worktrees.map { worktree in
+                SidebarNodeItem(kind: .worktree(workspace, worktree))
+            }
+        } else {
+            children = []
+        }
+        return SidebarNodeItem(kind: .workspace(workspace), children: children)
     }
 
     // MARK: - Selection Sync
@@ -180,6 +238,8 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
               let node = outlineView.item(atRow: row) as? SidebarNodeItem else { return }
 
         switch node.kind {
+        case .section:
+            break
         case .workspace(let ws):
             store?.selectWorkspace(ws.id)
         case .worktree(_, let wt):
@@ -211,6 +271,9 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         let menu = NSMenu()
 
         switch node.kind {
+        case .section:
+            return nil
+
         case .workspace(let ws):
             // Change Icon
             let iconItem = NSMenuItem(
@@ -308,6 +371,20 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
 
     // MARK: - Drag & Drop (NSOutlineViewDataSource)
 
+    private func findSection(forWorkspaceID id: UUID) -> SidebarSection? {
+        for node in rootNodes {
+            if case .section(let section) = node.kind {
+                if node.children.contains(where: {
+                    if case .workspace(let ws) = $0.kind { return ws.id == id }
+                    return false
+                }) {
+                    return section
+                }
+            }
+        }
+        return nil
+    }
+
     func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> NSPasteboardWriting? {
         guard let node = item as? SidebarNodeItem,
               case .workspace(let ws) = node.kind else { return nil }
@@ -323,9 +400,26 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         proposedItem item: Any?,
         proposedChildIndex index: Int
     ) -> NSDragOperation {
-        // Only allow drop at root level (between workspaces, not into children).
-        guard item == nil else { return [] }
-        return .move
+        guard let payload = info.draggingPasteboard.string(forType: Self.workspaceDragType),
+              let draggedID = UUID(uuidString: payload) else { return [] }
+
+        let hasSections = rootNodes.contains { if case .section = $0.kind { return true }; return false }
+
+        if hasSections {
+            // Must drop into a section node
+            guard let targetNode = item as? SidebarNodeItem,
+                  case .section(let targetSection) = targetNode.kind else { return [] }
+
+            // Find which section the dragged workspace belongs to
+            guard let sourceSection = findSection(forWorkspaceID: draggedID) else { return [] }
+
+            // Only allow drop within the same section
+            return sourceSection.persistenceKey == targetSection.persistenceKey ? .move : []
+        } else {
+            // No sections — flat mode, drop at root level only
+            guard item == nil else { return [] }
+            return .move
+        }
     }
 
     func outlineView(
@@ -334,19 +428,42 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         item: Any?,
         childIndex index: Int
     ) -> Bool {
-        guard item == nil,
-              let payload = info.draggingPasteboard.string(forType: Self.workspaceDragType),
+        guard let payload = info.draggingPasteboard.string(forType: Self.workspaceDragType),
               let draggedID = UUID(uuidString: payload) else { return false }
 
-        // Find the source index in rootNodes.
-        guard let sourceIndex = rootNodes.firstIndex(where: {
-            if case .workspace(let ws) = $0.kind { return ws.id == draggedID }
-            return false
-        }) else { return false }
+        let hasSections = rootNodes.contains { if case .section = $0.kind { return true }; return false }
 
-        let destination = index == -1 ? rootNodes.count : index
-        store?.moveLocalWorkspace(from: IndexSet(integer: sourceIndex), to: destination)
-        return true
+        if hasSections {
+            guard let sectionNode = item as? SidebarNodeItem,
+                  case .section(let section) = sectionNode.kind else { return false }
+
+            let children = sectionNode.children
+            guard let sourceIndex = children.firstIndex(where: {
+                if case .workspace(let ws) = $0.kind { return ws.id == draggedID }
+                return false
+            }) else { return false }
+
+            let destination = index == -1 ? children.count : index
+
+            switch section {
+            case .local:
+                store?.moveLocalWorkspace(from: IndexSet(integer: sourceIndex), to: destination)
+            case .remote(let groupKey, _):
+                store?.moveRemoteWorkspace(groupKey: groupKey, from: IndexSet(integer: sourceIndex), to: destination)
+            }
+            return true
+        } else {
+            // Flat mode — local only
+            guard item == nil else { return false }
+            guard let sourceIndex = rootNodes.firstIndex(where: {
+                if case .workspace(let ws) = $0.kind { return ws.id == draggedID }
+                return false
+            }) else { return false }
+
+            let destination = index == -1 ? rootNodes.count : index
+            store?.moveLocalWorkspace(from: IndexSet(integer: sourceIndex), to: destination)
+            return true
+        }
     }
 
     // MARK: - NSOutlineViewDelegate
@@ -376,9 +493,32 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
     func outlineView(_ outlineView: NSOutlineView, heightOfRowByItem item: Any) -> CGFloat {
         guard let node = item as? SidebarNodeItem else { return 36 }
         switch node.kind {
+        case .section: return 24
         case .workspace: return 36
         case .worktree: return 28
         }
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, shouldSelectItem item: Any) -> Bool {
+        guard let node = item as? SidebarNodeItem else { return false }
+        switch node.kind {
+        case .section: return false
+        case .workspace, .worktree: return true
+        }
+    }
+
+    func outlineViewItemDidCollapse(_ notification: Notification) {
+        guard let node = notification.userInfo?["NSObject"] as? SidebarNodeItem,
+              case .section(let section) = node.kind else { return }
+        store?.collapsedSections.insert(section.persistenceKey)
+        store?.saveWorkspaceState()
+    }
+
+    func outlineViewItemDidExpand(_ notification: Notification) {
+        guard let node = notification.userInfo?["NSObject"] as? SidebarNodeItem,
+              case .section(let section) = node.kind else { return }
+        store?.collapsedSections.remove(section.persistenceKey)
+        store?.saveWorkspaceState()
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
@@ -393,6 +533,8 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         refreshVisibleRows(on: outlineView)
 
         switch node.kind {
+        case .section:
+            break
         case .workspace(let ws):
             store?.selectWorkspace(ws.id)
         case .worktree(_, let wt):
