@@ -111,8 +111,7 @@ final class WorkspaceStore: ObservableObject {
         let remotes = workspaces.filter { !$0.isArchived && $0.kind == .repository && $0.sshTarget != nil }
         let grouped = Dictionary(grouping: remotes) { ws -> String in
             guard let target = ws.sshTarget else { return "unknown" }
-            let user = target.user ?? ""
-            return "\(target.displayName)|\(user)"
+            return Self.remoteGroupKey(for: target)
         }
         return grouped.map { (key: $0.key, targets: $0.value) }
             .sorted { $0.key < $1.key }
@@ -234,6 +233,12 @@ final class WorkspaceStore: ObservableObject {
         saveWorkspaceState()
     }
 
+    /// Group key for a remote SSH target, e.g. "my-server|root".
+    static func remoteGroupKey(for target: SSHTarget) -> String {
+        let user = target.user ?? ""
+        return "\(target.displayName)|\(user)"
+    }
+
     /// Display title for a remote workspace group, e.g. "my-server (root@192.168.1.100)".
     static func remoteGroupDisplayTitle(for target: SSHTarget) -> String {
         if let user = target.user, !user.isEmpty {
@@ -247,8 +252,7 @@ final class WorkspaceStore: ObservableObject {
         let remotes = workspaces.filter { !$0.isArchived && $0.sshTarget != nil }
         var group = remotes.filter { ws in
             guard let target = ws.sshTarget else { return false }
-            let user = target.user ?? ""
-            return "\(target.displayName)|\(user)" == groupKey
+            return Self.remoteGroupKey(for: target) == groupKey
         }
         group.move(fromOffsets: source, toOffset: destination)
         let movedIDs = Set(group.map { $0.id })

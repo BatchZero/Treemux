@@ -14,6 +14,16 @@ enum SidebarSection: Hashable {
         case .remote(let groupKey, _): return groupKey
         }
     }
+
+    // Identity is based on persistenceKey only (groupKey for remote),
+    // not displayTitle which may change if SSH config is edited.
+    static func == (lhs: SidebarSection, rhs: SidebarSection) -> Bool {
+        lhs.persistenceKey == rhs.persistenceKey
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(persistenceKey)
+    }
 }
 
 /// Tree node used by the AppKit NSOutlineView sidebar.
