@@ -345,10 +345,6 @@ private struct UpdateSettingsView: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
     }
 
-    private var buildNumber: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "–"
-    }
-
     var body: some View {
         Form {
             Section {
@@ -364,7 +360,7 @@ private struct UpdateSettingsView: View {
                 HStack {
                     Text("Version")
                     Spacer()
-                    Text("\(appVersion) (\(buildNumber))")
+                    Text(appVersion)
                         .foregroundStyle(.secondary)
                 }
 
