@@ -382,8 +382,16 @@ final class WorkspaceStore: ObservableObject {
             let existingIcons = workspaces
                 .filter { $0.id != workspace.id && !$0.isArchived && $0.kind == .repository }
                 .compactMap { $0.workspaceIcon ?? generatedRepositoryIcon(for: $0) }
+            // For remote workspaces, include remotePath in seed so different
+            // folders on the same host get distinct icons.
+            let iconSeed: String
+            if let remotePath = workspace.sshTarget?.remotePath, !remotePath.isEmpty {
+                iconSeed = (remotePath as NSString).lastPathComponent
+            } else {
+                iconSeed = workspace.repositoryRoot?.lastPathComponent ?? workspace.name
+            }
             return .randomRepository(
-                preferredSeed: workspace.repositoryRoot?.lastPathComponent ?? workspace.name,
+                preferredSeed: iconSeed,
                 avoiding: existingIcons
             )
         }
@@ -391,8 +399,14 @@ final class WorkspaceStore: ObservableObject {
 
     /// Generates a deterministic icon for a repository workspace (without override).
     private func generatedRepositoryIcon(for workspace: WorkspaceModel) -> SidebarItemIcon {
-        .randomRepository(
-            preferredSeed: workspace.repositoryRoot?.lastPathComponent ?? workspace.name,
+        let iconSeed: String
+        if let remotePath = workspace.sshTarget?.remotePath, !remotePath.isEmpty {
+            iconSeed = (remotePath as NSString).lastPathComponent
+        } else {
+            iconSeed = workspace.repositoryRoot?.lastPathComponent ?? workspace.name
+        }
+        return .randomRepository(
+            preferredSeed: iconSeed,
             avoiding: []
         )
     }

@@ -185,7 +185,16 @@ struct OpenProjectSheet: View {
                 displayName: target.displayName,
                 remotePath: trimmedPath.isEmpty ? nil : trimmedPath
             )
-            store.addRemoteWorkspace(target: updatedTarget, name: target.displayName)
+            // Use remote path's last component as name (like local workspaces),
+            // fall back to SSH host display name when no path is specified.
+            let workspaceName: String
+            if let remotePath = updatedTarget.remotePath,
+               !remotePath.isEmpty {
+                workspaceName = (remotePath as NSString).lastPathComponent
+            } else {
+                workspaceName = target.displayName
+            }
+            store.addRemoteWorkspace(target: updatedTarget, name: workspaceName)
         }
     }
 
