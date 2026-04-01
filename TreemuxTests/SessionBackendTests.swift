@@ -76,4 +76,104 @@ final class SessionBackendTests: XCTestCase {
             XCTFail("Expected agent")
         }
     }
+
+    // MARK: - Launch configuration tests
+
+    private func makeSSHTarget(
+        host: String = "server1",
+        port: Int = 22,
+        user: String? = "user1",
+        identityFile: String? = nil
+    ) -> SSHTarget {
+        SSHTarget(
+            host: host,
+            port: port,
+            user: user,
+            identityFile: identityFile,
+            displayName: host,
+            remotePath: nil
+        )
+    }
+
+    func testRemoteTmuxAttachIncludesPTYFlag() {
+        let config = SessionBackendConfiguration.tmuxAttach(TmuxAttachConfig(
+            sessionName: "dev",
+            windowIndex: nil,
+            isRemote: true,
+            sshTarget: makeSSHTarget()
+        ))
+        let launch = config.makeLaunchConfiguration(
+            preferredWorkingDirectory: NSHomeDirectory(),
+            baseEnvironment: [:]
+        )
+        XCTAssertEqual(launch.command.executablePath, "/usr/bin/ssh")
+        XCTAssertTrue(
+            launch.command.arguments.contains("-t"),
+            "Remote tmux attach must include -t for PTY allocation"
+        )
+    }
+
+    func testSSHPlainInjectsSetTitlesAndLoginShell() {
+        let config = SessionBackendConfiguration.ssh(SSHSessionConfig(
+            target: makeSSHTarget(),
+            remoteCommand: nil
+        ))
+        let launch = config.makeLaunchConfiguration(
+            preferredWorkingDirectory: NSHomeDirectory(),
+            baseEnvironment: [:]
+        )
+        let args = launch.command.arguments
+        XCTAssertTrue(args.contains("-t"), "Plain SSH must include -t for PTY allocation")
+        let remoteCmd = args.last!
+        XCTAssertTrue(
+            remoteCmd.contains("tmux set-option -g set-titles on"),
+            "SSH must inject tmux set-titles on"
+        )
+        XCTAssertTrue(
+            remoteCmd.contains("exec $SHELL -l"),
+            "Plain SSH must start a login shell"
+        )
+    }
+
+    func testSSHWithRemoteCommandInjectsSetTitles() {
+        let config = SessionBackendConfiguration.ssh(SSHSessionConfig(
+            target: makeSSHTarget(),
+            remoteCommand: "htop"
+        ))
+        let launch = config.makeLaunchConfiguration(
+            preferredWorkingDirectory: NSHomeDirectory(),
+            baseEnvironment: [:]
+        )
+        let args = launch.command.arguments
+        let remoteCmd = args.last!
+        XCTAssertTrue(
+            remoteCmd.hasPrefix("tmux set-option -g set-titles on 2>/dev/null;"),
+            "Remote command must be prefixed with set-titles injection"
+        )
+        XCTAssertTrue(
+            remoteCmd.contains("htop"),
+            "Original remote command must be preserved"
+        )
+    }
+
+    func testSSHWithWorkingDirectoryInjectsSetTitles() {
+        let config = SessionBackendConfiguration.ssh(SSHSessionConfig(
+            target: makeSSHTarget(),
+            remoteCommand: nil
+        ))
+        let launch = config.makeLaunchConfiguration(
+            preferredWorkingDirectory: "/tmp/test-project",
+            baseEnvironment: [:]
+        )
+        let args = launch.command.arguments
+        let remoteCmd = args.last!
+        XCTAssertTrue(
+            remoteCmd.contains("tmux set-option -g set-titles on"),
+            "SSH with working directory must inject set-titles"
+        )
+        XCTAssertTrue(
+            remoteCmd.contains("cd '/tmp/test-project'"),
+            "Must cd to the preferred working directory"
+        )
+    }
 }
