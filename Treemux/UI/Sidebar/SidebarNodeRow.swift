@@ -15,6 +15,8 @@ struct SidebarNodeRow: View {
 
     var body: some View {
         switch node.kind {
+        case .section(let section):
+            SectionHeaderRow(section: section, theme: theme)
         case .workspace(let ws):
             WorkspaceRowContent(
                 workspace: ws,
@@ -144,5 +146,34 @@ struct WorktreeRowContent: View {
         .onHover { hovering in
             isHovered = hovering
         }
+    }
+}
+
+// MARK: - SectionHeaderRow
+
+/// Displays a section header for grouping local/remote workspaces.
+struct SectionHeaderRow: View {
+    let section: SidebarSection
+    let theme: ThemeManager
+
+    private var title: String {
+        switch section {
+        case .local:
+            return String(localized: "Local")
+        case .remote(_, let displayTitle):
+            return displayTitle
+        }
+    }
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(theme.textSecondary)
+                .lineLimit(1)
+            Spacer()
+        }
+        .padding(.leading, 2)
+        .padding(.vertical, 2)
     }
 }

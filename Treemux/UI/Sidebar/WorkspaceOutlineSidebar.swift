@@ -36,9 +36,8 @@ struct WorkspaceOutlineSidebar: NSViewRepresentable {
         coordinator.requestRename = onRequestRename
         coordinator.requestDelete = onRequestDelete
 
-        let workspaces = store.localWorkspaces + store.remoteWorkspaceGroups.flatMap(\.targets)
         coordinator.apply(
-            workspaces: workspaces,
+            store: store,
             selectedWorkspaceID: store.selectedWorkspaceID,
             theme: theme
         )

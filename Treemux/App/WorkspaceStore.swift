@@ -18,6 +18,8 @@ final class WorkspaceStore: ObservableObject {
         didSet { handleWorktreeSelectionIfNeeded() }
     }
 
+    @Published var collapsedSections: Set<String> = []
+
     @Published var showSettings = false
     @Published var showCommandPalette = false
     @Published var sidebarIconCustomizationRequest: SidebarIconCustomizationRequest?
@@ -109,8 +111,7 @@ final class WorkspaceStore: ObservableObject {
         let remotes = workspaces.filter { !$0.isArchived && $0.kind == .repository && $0.sshTarget != nil }
         let grouped = Dictionary(grouping: remotes) { ws -> String in
             guard let target = ws.sshTarget else { return "unknown" }
-            let user = target.user ?? ""
-            return "\(target.displayName)|\(user)"
+            return Self.remoteGroupKey(for: target)
         }
         return grouped.map { (key: $0.key, targets: $0.value) }
             .sorted { $0.key < $1.key }
@@ -232,6 +233,45 @@ final class WorkspaceStore: ObservableObject {
         saveWorkspaceState()
     }
 
+    /// Group key for a remote SSH target, e.g. "my-server|root".
+    static func remoteGroupKey(for target: SSHTarget) -> String {
+        let user = target.user ?? ""
+        return "\(target.displayName)|\(user)"
+    }
+
+    /// Display title for a remote workspace group, e.g. "my-server (root@192.168.1.100)".
+    static func remoteGroupDisplayTitle(for target: SSHTarget) -> String {
+        if let user = target.user, !user.isEmpty {
+            return "\(target.displayName) (\(user)@\(target.host))"
+        }
+        return "\(target.displayName) (\(target.host))"
+    }
+
+    /// Moves remote workspaces within a specific server group.
+    func moveRemoteWorkspace(groupKey: String, from source: IndexSet, to destination: Int) {
+        let remotes = workspaces.filter { !$0.isArchived && $0.sshTarget != nil }
+        var group = remotes.filter { ws in
+            guard let target = ws.sshTarget else { return false }
+            return Self.remoteGroupKey(for: target) == groupKey
+        }
+        group.move(fromOffsets: source, toOffset: destination)
+        let movedIDs = Set(group.map { $0.id })
+        // Rebuild workspaces: keep everything not in this group in place, replace group items in order
+        var result: [WorkspaceModel] = []
+        var groupIterator = group.makeIterator()
+        for ws in workspaces {
+            if movedIDs.contains(ws.id) {
+                if let next = groupIterator.next() {
+                    result.append(next)
+                }
+            } else {
+                result.append(ws)
+            }
+        }
+        workspaces = result
+        saveWorkspaceState()
+    }
+
     /// Reorders worktrees within a workspace and persists the new order.
     func moveWorktree(in workspace: WorkspaceModel, from source: IndexSet, to destination: Int) {
         workspace.worktrees.move(fromOffsets: source, toOffset: destination)
@@ -345,6 +385,7 @@ final class WorkspaceStore: ObservableObject {
     private func loadWorkspaceState() {
         let state = workspaceStatePersistence.load()
         selectedWorkspaceID = state.selectedWorkspaceID
+        collapsedSections = Set(state.collapsedSections ?? [])
         workspaces = state.workspaces.map { WorkspaceModel(from: $0) }
         startWatchingAll()
 
@@ -373,7 +414,8 @@ final class WorkspaceStore: ObservableObject {
         let state = PersistedWorkspaceState(
             version: 1,
             selectedWorkspaceID: persistedSelectedID,
-            workspaces: workspaces.map { $0.toRecord() }
+            workspaces: workspaces.map { $0.toRecord() },
+            collapsedSections: collapsedSections.isEmpty ? nil : Array(collapsedSections)
         )
         try? workspaceStatePersistence.save(state)
     }

@@ -4,9 +4,32 @@
 
 import Foundation
 
+enum SidebarSection: Hashable {
+    case local
+    case remote(groupKey: String, displayTitle: String)
+
+    var persistenceKey: String {
+        switch self {
+        case .local: return "local"
+        case .remote(let groupKey, _): return groupKey
+        }
+    }
+
+    // Identity is based on persistenceKey only (groupKey for remote),
+    // not displayTitle which may change if SSH config is edited.
+    static func == (lhs: SidebarSection, rhs: SidebarSection) -> Bool {
+        lhs.persistenceKey == rhs.persistenceKey
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(persistenceKey)
+    }
+}
+
 /// Tree node used by the AppKit NSOutlineView sidebar.
 final class SidebarNodeItem: NSObject {
     enum Kind {
+        case section(SidebarSection)
         case workspace(WorkspaceModel)
         case worktree(WorkspaceModel, WorktreeModel)
     }
@@ -21,6 +44,7 @@ final class SidebarNodeItem: NSObject {
 
     var nodeID: String {
         switch kind {
+        case .section(let section): return "section:\(section.persistenceKey)"
         case .workspace(let ws): return ws.id.uuidString
         case .worktree(_, let wt): return wt.id.uuidString
         }
@@ -28,6 +52,7 @@ final class SidebarNodeItem: NSObject {
 
     var workspace: WorkspaceModel? {
         switch kind {
+        case .section: return nil
         case .workspace(let ws): return ws
         case .worktree(let ws, _): return ws
         }
@@ -35,6 +60,7 @@ final class SidebarNodeItem: NSObject {
 
     var worktree: WorktreeModel? {
         switch kind {
+        case .section: return nil
         case .workspace: return nil
         case .worktree(_, let wt): return wt
         }
