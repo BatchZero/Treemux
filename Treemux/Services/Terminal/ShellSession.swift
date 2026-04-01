@@ -382,8 +382,9 @@ final class ShellSession: ObservableObject, Identifiable {
     }
 
     /// Detect if the shell is running inside tmux based on the terminal title.
-    /// Title can be a command string from preexec (e.g. "tmux new -s hello")
-    /// or a tmux status format like "[session-name] ...".
+    /// Title can be a command string from preexec (e.g. "tmux new -s hello"),
+    /// a tmux status format like "[session-name] ...", or a tmux set-titles
+    /// format like "session:0:bash - \"hostname\"".
     private func detectTmux(fromTitle title: String) {
         let lower = title.lowercased()
 
@@ -400,18 +401,32 @@ final class ShellSession: ObservableObject, Identifiable {
 
         // Pattern 2: preexec title showing the tmux command being run
         // e.g. "tmux", "tmux new -s hello", "tmux attach -t mysession"
-        guard lower.hasPrefix("tmux") else { return }
+        if lower.hasPrefix("tmux") {
+            let args = title.split(separator: " ").map(String.init)
+            if args.first?.lowercased() == "tmux" {
+                if let sessionName = Self.parseTmuxSessionName(from: Array(args.dropFirst())) {
+                    detectedTmuxSession = sessionName
+                } else {
+                    // Bare "tmux" or unrecognized args — resolve the session name after tmux starts.
+                    detectedTmuxSession = "tmux"
+                    resolveExactTmuxSession()
+                }
+                return
+            }
+        }
 
-        let args = title.split(separator: " ").map(String.init)
-        guard args.first?.lowercased() == "tmux" else { return }
-
-        // Parse -s (new session name) or -t (target session) from the arguments.
-        if let sessionName = Self.parseTmuxSessionName(from: Array(args.dropFirst())) {
-            detectedTmuxSession = sessionName
-        } else {
-            // Bare "tmux" or unrecognized args — resolve the session name after tmux starts.
-            detectedTmuxSession = "tmux"
-            resolveExactTmuxSession()
+        // Pattern 3: tmux set-titles format "#S:#I:#W - \"#T\""
+        // e.g. "13:0:bash - \"hostname\"", "dev:1:vim - \"file.txt\""
+        // Enabled by injecting `tmux set-option -g set-titles on` on SSH launch.
+        let parts = title.split(separator: ":", maxSplits: 2).map(String.init)
+        if parts.count == 3,
+           let _ = Int(parts[1]),
+           parts[2].contains(" - ") {
+            let sessionName = parts[0]
+            if !sessionName.isEmpty {
+                detectedTmuxSession = sessionName
+                return
+            }
         }
     }
 

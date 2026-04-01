@@ -58,16 +58,32 @@ extension SessionBackendConfiguration {
         case .ssh(let configuration):
             var sshArgs = configuration.sshArguments()
 
-            // When no explicit remote command is set and a remote working
-            // directory is known, start the shell in that directory.
-            if configuration.remoteCommand == nil,
-               !preferredWorkingDirectory.isEmpty,
-               preferredWorkingDirectory != NSHomeDirectory() {
+            // Enable tmux title reporting so remote tmux sessions can be
+            // detected via terminal title changes (Pattern 3 in detectTmux).
+            let tmuxInject = "tmux set-option -g set-titles on 2>/dev/null;"
+
+            let hasRemoteCommand = configuration.remoteCommand.map {
+                !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            } ?? false
+
+            if hasRemoteCommand {
+                // Prefix the user's remote command with tmux set-titles injection.
+                let lastIdx = sshArgs.count - 1
+                sshArgs[lastIdx] = "\(tmuxInject) \(sshArgs[lastIdx])"
+                if !sshArgs.contains("-t") {
+                    sshArgs.insert("-t", at: 0)
+                }
+            } else if !preferredWorkingDirectory.isEmpty,
+                      preferredWorkingDirectory != NSHomeDirectory() {
                 let escaped = preferredWorkingDirectory
                     .replacingOccurrences(of: "'", with: "'\\''")
                 // Force PTY allocation since we're passing a remote command
                 sshArgs.insert("-t", at: 0)
-                sshArgs.append("cd '\(escaped)' && exec $SHELL -l")
+                sshArgs.append("\(tmuxInject) cd '\(escaped)' && exec $SHELL -l")
+            } else {
+                // Plain SSH — inject set-titles before login shell
+                sshArgs.insert("-t", at: 0)
+                sshArgs.append("\(tmuxInject) exec $SHELL -l")
             }
 
             return TerminalLaunchConfiguration(
@@ -122,6 +138,8 @@ extension SessionBackendConfiguration {
                 } else {
                     destination = sshTarget.host
                 }
+                // Force PTY allocation since we're running a remote command
+                sshArgs.insert("-t", at: 0)
                 sshArgs.append(destination)
 
                 var tmuxCmd = "tmux attach-session -t \(configuration.sessionName.shellQuoted)"
