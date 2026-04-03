@@ -11,13 +11,14 @@ import SwiftUI
 struct SplitNodeView: View {
     @ObservedObject var sessionController: WorkspaceSessionController
     let node: SessionLayoutNode
+    var onClosePane: (UUID) -> Void
 
     var body: some View {
         Group {
             if let zoomedID = sessionController.zoomedPaneID {
                 // When zoomed, render only the zoomed pane at full size.
                 let session = sessionController.ensureSession(for: zoomedID)
-                TerminalPaneView(session: session)
+                TerminalPaneView(session: session, onClose: { onClosePane(zoomedID) })
             } else {
                 nodeBody
             }
@@ -29,7 +30,7 @@ struct SplitNodeView: View {
         switch node {
         case .pane(let leaf):
             let session = sessionController.ensureSession(for: leaf.paneID)
-            TerminalPaneView(session: session)
+            TerminalPaneView(session: session, onClose: { onClosePane(leaf.paneID) })
         case .split(let splitNode):
             GeometryReader { geometry in
                 splitBody(splitNode, in: geometry.size)
@@ -49,7 +50,7 @@ struct SplitNodeView: View {
             let secondWidth = max(120, availableWidth - firstWidth)
 
             HStack(spacing: 0) {
-                SplitNodeView(sessionController: sessionController, node: split.first)
+                SplitNodeView(sessionController: sessionController, node: split.first, onClosePane: onClosePane)
                     .frame(width: firstWidth)
 
                 SplitDivider(
@@ -60,7 +61,7 @@ struct SplitNodeView: View {
                     sessionController.updateSplitFraction(splitID: split.id, fraction: fraction)
                 }
 
-                SplitNodeView(sessionController: sessionController, node: split.second)
+                SplitNodeView(sessionController: sessionController, node: split.second, onClosePane: onClosePane)
                     .frame(width: secondWidth)
             }
         } else {
@@ -70,7 +71,7 @@ struct SplitNodeView: View {
             let secondHeight = max(90, availableHeight - firstHeight)
 
             VStack(spacing: 0) {
-                SplitNodeView(sessionController: sessionController, node: split.first)
+                SplitNodeView(sessionController: sessionController, node: split.first, onClosePane: onClosePane)
                     .frame(height: firstHeight)
 
                 SplitDivider(
@@ -81,7 +82,7 @@ struct SplitNodeView: View {
                     sessionController.updateSplitFraction(splitID: split.id, fraction: fraction)
                 }
 
-                SplitNodeView(sessionController: sessionController, node: split.second)
+                SplitNodeView(sessionController: sessionController, node: split.second, onClosePane: onClosePane)
                     .frame(height: secondHeight)
             }
         }
