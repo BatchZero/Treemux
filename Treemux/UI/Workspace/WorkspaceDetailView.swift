@@ -29,12 +29,12 @@ private struct WorkspaceTabContainerView: View {
             }
 
             // Content area
-            if let controller = workspace.sessionController {
+            if let controller = workspace.sessionController, let tabID = workspace.activeTabID {
                 WorkspaceSessionDetailView(
                     controller: controller,
-                    onCloseTab: { workspace.closeTab(workspace.activeTabID!) }
+                    onCloseTab: { workspace.closeTab(tabID) }
                 )
-                    .id(workspace.activeTabID)
+                    .id(tabID)
             } else {
                 EmptyTabStateView {
                     workspace.createTab()
