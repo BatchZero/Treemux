@@ -405,6 +405,31 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
 
         let hasSections = rootNodes.contains { if case .section = $0.kind { return true }; return false }
 
+        // When an expanded workspace is proposed as the drop target,
+        // retarget the drop to its parent (section or root level).
+        if let targetNode = item as? SidebarNodeItem, case .workspace = targetNode.kind {
+            if hasSections {
+                for sectionNode in rootNodes {
+                    if let wsIndex = sectionNode.children.firstIndex(where: { $0 === targetNode }) {
+                        let retargetIndex = index <= 0 ? wsIndex : wsIndex + 1
+                        outlineView.setDropItem(sectionNode, dropChildIndex: retargetIndex)
+                        if case .section(let targetSection) = sectionNode.kind {
+                            guard let sourceSection = findSection(forWorkspaceID: draggedID) else { return [] }
+                            return sourceSection.persistenceKey == targetSection.persistenceKey ? .move : []
+                        }
+                    }
+                }
+                return []
+            } else {
+                if let wsIndex = rootNodes.firstIndex(where: { $0 === targetNode }) {
+                    let retargetIndex = index <= 0 ? wsIndex : wsIndex + 1
+                    outlineView.setDropItem(nil, dropChildIndex: retargetIndex)
+                    return .move
+                }
+                return []
+            }
+        }
+
         if hasSections {
             // Must drop into a section node
             guard let targetNode = item as? SidebarNodeItem,
