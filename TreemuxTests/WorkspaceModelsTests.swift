@@ -537,6 +537,23 @@ final class WorkspaceModelsTests: XCTestCase {
         XCTAssertTrue(wasLast)
     }
 
+    @MainActor
+    func testClosePaneReturnsFalseWhenMultiplePanes() {
+        let ws = WorkspaceModel(name: "test", kind: .localTerminal)
+        let tabID = ws.tabs[0].id
+        ws.selectTab(tabID)
+        guard let controller = ws.sessionController else {
+            XCTFail("Expected session controller")
+            return
+        }
+        let firstPaneID = controller.layout.paneIDs[0]
+        controller.splitPane(firstPaneID, axis: .horizontal)
+        XCTAssertEqual(controller.layout.paneIDs.count, 2)
+
+        let wasLast = controller.closePane(firstPaneID)
+        XCTAssertFalse(wasLast)
+    }
+
     // MARK: - Section Persistence & Remote Group Display Title Tests
 
     func testPersistedWorkspaceStateWithCollapsedSections() throws {
