@@ -140,15 +140,14 @@ final class WorkspaceSessionController: ObservableObject {
     // MARK: - Pane closing
 
     /// Closes the given pane, terminating its session and collapsing the layout.
-    /// Returns `true` if this was the last pane (caller should close the tab).
+    /// Returns `true` if this was the last pane (caller should close the tab
+    /// via `Workspace.closeTab`, which handles session termination).
     @discardableResult
     func closePane(_ paneID: UUID) -> Bool {
         let allIDs = layout.paneIDs
         if allIDs.count <= 1 {
-            // Last pane — terminate session but don't modify layout.
-            // Return true so the caller can close the tab.
-            sessions[paneID]?.terminate()
-            sessions.removeValue(forKey: paneID)
+            // Last pane — signal the caller to close the tab instead.
+            // Don't terminate here; closeTab() handles full cleanup.
             return true
         }
 
