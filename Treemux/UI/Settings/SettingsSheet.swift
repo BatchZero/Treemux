@@ -181,38 +181,31 @@ private struct TerminalSettingsView: View {
     private static let fontSizeRange: ClosedRange<Int> = 6...72
 
     @Binding var settings: AppSettings
-    @State private var fontSizeText: String = ""
-    @FocusState private var isFontSizeFieldFocused: Bool
+
+    private var clampedFontSize: Binding<Int> {
+        Binding(
+            get: { settings.terminal.fontSize },
+            set: {
+                settings.terminal.fontSize = min(max($0, Self.fontSizeRange.lowerBound), Self.fontSizeRange.upperBound)
+            }
+        )
+    }
 
     var body: some View {
         Form {
             TextField("Default Shell", text: $settings.terminal.defaultShell)
 
             Stepper(
-                value: $settings.terminal.fontSize, in: Self.fontSizeRange
+                value: clampedFontSize, in: Self.fontSizeRange
             ) {
                 HStack {
                     Text("Font Size")
                     Spacer()
-                    TextField("", text: $fontSizeText)
-                        .focused($isFontSizeFieldFocused)
+                    TextField("", value: clampedFontSize, format: .number)
                         .frame(width: 40)
                         .multilineTextAlignment(.trailing)
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
-                        .onSubmit {
-                            commitFontSize()
-                        }
-                        .onChange(of: isFontSizeFieldFocused) { _, focused in
-                            if !focused {
-                                commitFontSize()
-                            }
-                        }
-                }
-            }
-            .onChange(of: settings.terminal.fontSize) { _, newValue in
-                if !isFontSizeFieldFocused {
-                    fontSizeText = "\(newValue)"
                 }
             }
 
@@ -223,19 +216,6 @@ private struct TerminalSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .onAppear {
-            fontSizeText = "\(settings.terminal.fontSize)"
-        }
-    }
-
-    private func commitFontSize() {
-        if let value = Int(fontSizeText) {
-            let clamped = min(max(value, Self.fontSizeRange.lowerBound), Self.fontSizeRange.upperBound)
-            settings.terminal.fontSize = clamped
-            fontSizeText = "\(clamped)"
-        } else {
-            fontSizeText = "\(settings.terminal.fontSize)"
-        }
     }
 }
 
