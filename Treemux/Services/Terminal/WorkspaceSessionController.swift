@@ -140,11 +140,16 @@ final class WorkspaceSessionController: ObservableObject {
     // MARK: - Pane closing
 
     /// Closes the given pane, terminating its session and collapsing the layout.
-    func closePane(_ paneID: UUID) {
+    /// Returns `true` if this was the last pane (caller should close the tab).
+    @discardableResult
+    func closePane(_ paneID: UUID) -> Bool {
         let allIDs = layout.paneIDs
         if allIDs.count <= 1 {
-            // Don't close the last pane.
-            return
+            // Last pane — terminate session but don't modify layout.
+            // Return true so the caller can close the tab.
+            sessions[paneID]?.terminate()
+            sessions.removeValue(forKey: paneID)
+            return true
         }
 
         sessions[paneID]?.terminate()
@@ -158,6 +163,7 @@ final class WorkspaceSessionController: ObservableObject {
             zoomedPaneID = nil
         }
         onPaneStateChanged?()
+        return false
     }
 
     // MARK: - Focus navigation
