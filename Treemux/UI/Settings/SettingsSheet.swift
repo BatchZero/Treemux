@@ -179,19 +179,38 @@ private struct GeneralSettingsView: View {
 
 private struct TerminalSettingsView: View {
     @Binding var settings: AppSettings
+    @State private var fontSizeText: String = ""
+    @FocusState private var isFontSizeFieldFocused: Bool
 
     var body: some View {
         Form {
             TextField("Default Shell", text: $settings.terminal.defaultShell)
 
             Stepper(
-                value: $settings.terminal.fontSize, in: 8...32
+                value: $settings.terminal.fontSize, in: 6...72
             ) {
                 HStack {
                     Text("Font Size")
                     Spacer()
-                    Text("\(settings.terminal.fontSize)")
+                    TextField("", text: $fontSizeText)
+                        .focused($isFontSizeFieldFocused)
+                        .frame(width: 40)
+                        .multilineTextAlignment(.trailing)
+                        .monospacedDigit()
                         .foregroundStyle(.secondary)
+                        .onSubmit {
+                            commitFontSize()
+                        }
+                        .onChange(of: isFontSizeFieldFocused) { _, focused in
+                            if !focused {
+                                commitFontSize()
+                            }
+                        }
+                }
+            }
+            .onChange(of: settings.terminal.fontSize) { _, newValue in
+                if !isFontSizeFieldFocused {
+                    fontSizeText = "\(newValue)"
                 }
             }
 
@@ -202,6 +221,19 @@ private struct TerminalSettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear {
+            fontSizeText = "\(settings.terminal.fontSize)"
+        }
+    }
+
+    private func commitFontSize() {
+        if let value = Int(fontSizeText) {
+            let clamped = min(max(value, 6), 72)
+            settings.terminal.fontSize = clamped
+            fontSizeText = "\(clamped)"
+        } else {
+            fontSizeText = "\(settings.terminal.fontSize)"
+        }
     }
 }
 
