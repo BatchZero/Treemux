@@ -178,6 +178,8 @@ private struct GeneralSettingsView: View {
 // MARK: - Terminal Settings
 
 private struct TerminalSettingsView: View {
+    private static let fontSizeRange: ClosedRange<Int> = 6...72
+
     @Binding var settings: AppSettings
     @State private var fontSizeText: String = ""
     @FocusState private var isFontSizeFieldFocused: Bool
@@ -187,7 +189,7 @@ private struct TerminalSettingsView: View {
             TextField("Default Shell", text: $settings.terminal.defaultShell)
 
             Stepper(
-                value: $settings.terminal.fontSize, in: 6...72
+                value: $settings.terminal.fontSize, in: Self.fontSizeRange
             ) {
                 HStack {
                     Text("Font Size")
@@ -228,7 +230,7 @@ private struct TerminalSettingsView: View {
 
     private func commitFontSize() {
         if let value = Int(fontSizeText) {
-            let clamped = min(max(value, 6), 72)
+            let clamped = min(max(value, Self.fontSizeRange.lowerBound), Self.fontSizeRange.upperBound)
             settings.terminal.fontSize = clamped
             fontSizeText = "\(clamped)"
         } else {
