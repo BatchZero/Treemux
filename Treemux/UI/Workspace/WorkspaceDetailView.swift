@@ -30,7 +30,10 @@ private struct WorkspaceTabContainerView: View {
 
             // Content area
             if let controller = workspace.sessionController {
-                WorkspaceSessionDetailView(controller: controller)
+                WorkspaceSessionDetailView(
+                    controller: controller,
+                    onCloseTab: { workspace.closeTab(workspace.activeTabID!) }
+                )
                     .id(workspace.activeTabID)
             } else {
                 EmptyTabStateView {
@@ -45,8 +48,18 @@ private struct WorkspaceTabContainerView: View {
 /// (e.g. splitPane) propagate to SplitNodeView.
 private struct WorkspaceSessionDetailView: View {
     @ObservedObject var controller: WorkspaceSessionController
+    var onCloseTab: () -> Void
 
     var body: some View {
-        SplitNodeView(sessionController: controller, node: controller.layout)
+        SplitNodeView(
+            sessionController: controller,
+            node: controller.layout,
+            onClosePane: { paneID in
+                let wasLast = controller.closePane(paneID)
+                if wasLast {
+                    onCloseTab()
+                }
+            }
+        )
     }
 }

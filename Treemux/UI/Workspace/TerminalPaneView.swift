@@ -10,6 +10,8 @@ import SwiftUI
 struct TerminalPaneView: View {
     @EnvironmentObject private var theme: ThemeManager
     @ObservedObject var session: ShellSession
+    var onClose: () -> Void
+    @State private var isCloseHovered = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -76,6 +78,23 @@ struct TerminalPaneView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+
+            // Close button
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(isCloseHovered ? .primary : .secondary)
+                    .frame(width: 16, height: 16)
+                    .background(
+                        Circle()
+                            .fill(isCloseHovered ? theme.dividerColor : .clear)
+                    )
+            }
+            .buttonStyle(.plain)
+            .onHover { hovering in
+                isCloseHovered = hovering
+            }
+            .help("Close Pane")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
