@@ -68,11 +68,9 @@ final class WorkspaceMetadataWatchServiceTests: XCTestCase {
 
     func testResolveCommonGitDirectory_forMainWorktree_returnsItself() throws {
         let mainGitDir = testRepoURL.appendingPathComponent(".git").path
+        let expected = URL(fileURLWithPath: mainGitDir).standardizedFileURL.path
         let resolved = watchService.resolveCommonGitDirectory(for: mainGitDir)
-        XCTAssertEqual(
-            URL(fileURLWithPath: resolved).standardizedFileURL,
-            URL(fileURLWithPath: mainGitDir).standardizedFileURL
-        )
+        XCTAssertEqual(resolved, expected)
     }
 
     func testResolveCommonGitDirectory_forLinkedWorktree_returnsMainGitDir() async throws {
@@ -87,11 +85,32 @@ final class WorkspaceMetadataWatchServiceTests: XCTestCase {
 
         let mainGitDir = testRepoURL.appendingPathComponent(".git").path
         let linkedGitDir = mainGitDir + "/worktrees/" + linkedURL.lastPathComponent
+        let expected = URL(fileURLWithPath: mainGitDir).standardizedFileURL.path
 
         let resolved = watchService.resolveCommonGitDirectory(for: linkedGitDir)
-        XCTAssertEqual(
-            URL(fileURLWithPath: resolved).standardizedFileURL,
-            URL(fileURLWithPath: mainGitDir).standardizedFileURL
+        XCTAssertEqual(resolved, expected)
+    }
+
+    func testGitMetadataPaths_includesCommonWorktreesDirectory() async throws {
+        // Set up: main repo + 1 linked worktree so the worktrees/ dir actually exists.
+        let linkedURL = testRepoURL.deletingLastPathComponent().appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: linkedURL) }
+
+        _ = try await ShellCommandRunner.shell(
+            "git worktree add \(linkedURL.path) -b test-included",
+            workingDirectory: testRepoURL
+        )
+
+        let mainGitDir = testRepoURL.appendingPathComponent(".git").path
+        let paths = watchService.gitMetadataPaths(in: mainGitDir)
+
+        let expectedWorktreesDir = URL(fileURLWithPath: mainGitDir)
+            .appendingPathComponent("worktrees")
+            .standardizedFileURL.path
+
+        XCTAssertTrue(
+            paths.contains(expectedWorktreesDir),
+            "expected gitMetadataPaths to include the common worktrees directory \(expectedWorktreesDir), got \(paths)"
         )
     }
 }
