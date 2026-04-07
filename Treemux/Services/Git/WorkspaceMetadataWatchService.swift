@@ -148,9 +148,17 @@ final class WorkspaceMetadataWatchService {
         return gitMetadataPaths(in: gitDirectory)
     }
 
-    /// Returns the standard set of git metadata paths to watch within a git directory.
-    private func gitMetadataPaths(in gitDirectory: String) -> [String] {
+    /// Returns the standard set of file-system paths to watch within a git
+    /// directory, including the common gitdir's `worktrees/` sub-directory so
+    /// external `git worktree add`/`remove` operations are detected.
+    ///
+    /// - Note: `internal` (rather than `private`) only so the test target can
+    ///         exercise it via `@testable import Treemux`. Production callers
+    ///         within this file are the only intended consumers.
+    func gitMetadataPaths(in gitDirectory: String) -> [String] {
         let base = URL(fileURLWithPath: gitDirectory)
+        let common = resolveCommonGitDirectory(for: gitDirectory)
+        let commonBase = URL(fileURLWithPath: common)
         return [
             gitDirectory,
             base.appendingPathComponent("HEAD").path,
@@ -159,8 +167,44 @@ final class WorkspaceMetadataWatchService {
             base.appendingPathComponent("refs").path,
             base.appendingPathComponent("refs/heads").path,
             base.appendingPathComponent("refs/remotes").path,
+            // Watch the common gitdir and its worktrees/ subdirectory so that
+            // external `git worktree add`/`remove` operations trigger refresh.
+            common,
+            commonBase.appendingPathComponent("worktrees").path,
         ]
         .filter { fileManager.fileExists(atPath: $0) }
+    }
+
+    /// Resolves the main repository's git directory from any worktree's gitdir.
+    /// Linked worktrees contain a `commondir` file inside their gitdir whose
+    /// contents are a path (typically relative) pointing back to the main gitdir.
+    /// Main worktrees have no `commondir` file, so the input is returned as-is.
+    ///
+    /// All return paths are standardized so that callers can string-compare /
+    /// `Set`-deduplicate them safely (e.g. `/var/...` and `/private/var/...` on
+    /// macOS resolve to the same path).
+    ///
+    /// - Note: `internal` (rather than `private`) only so the test target can
+    ///         exercise it via `@testable import Treemux`. Production callers
+    ///         should not depend on this method directly.
+    func resolveCommonGitDirectory(for gitDirectory: String) -> String {
+        let standardize: (String) -> String = {
+            URL(fileURLWithPath: $0).standardizedFileURL.path
+        }
+        let commondirURL = URL(fileURLWithPath: gitDirectory).appendingPathComponent("commondir")
+        guard let contents = try? String(contentsOf: commondirURL, encoding: .utf8) else {
+            return standardize(gitDirectory)
+        }
+        let raw = contents.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else { return standardize(gitDirectory) }
+
+        let resolvedURL: URL
+        if raw.hasPrefix("/") {
+            resolvedURL = URL(fileURLWithPath: raw)
+        } else {
+            resolvedURL = URL(fileURLWithPath: raw, relativeTo: URL(fileURLWithPath: gitDirectory))
+        }
+        return resolvedURL.standardizedFileURL.path
     }
 
     /// Resolves the actual .git directory, handling both normal repos and worktree links.
