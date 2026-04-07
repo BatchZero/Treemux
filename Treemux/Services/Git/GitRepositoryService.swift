@@ -149,8 +149,14 @@ actor GitRepositoryService {
             default: break
             }
             switch section {
-            case .branch: branch = s.trimmingCharacters(in: .whitespacesAndNewlines)
-            case .head: head = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            case .branch:
+                // Skip empty lines so we don't clobber branch with "" when git fails
+                // halfway through the script and the chain produces only section markers.
+                let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { branch = trimmed }
+            case .head:
+                let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { head = trimmed }
             case .worktree: worktreeOutput += s + "\n"
             case .status: statusOutput += s + "\n"
             case .aheadBehind: aheadBehindOutput += s.trimmingCharacters(in: .whitespacesAndNewlines)

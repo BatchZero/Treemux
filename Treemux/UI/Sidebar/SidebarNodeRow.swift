@@ -76,7 +76,7 @@ struct WorkspaceRowContent: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(theme.sidebarForeground)
                     .lineLimit(1)
-                if workspace.worktrees.count <= 1, let branch = workspace.currentBranch {
+                if workspace.worktrees.count <= 1, let branch = workspace.currentBranch, !branch.isEmpty {
                     Text(branch)
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
                         .foregroundStyle(theme.textSecondary)
