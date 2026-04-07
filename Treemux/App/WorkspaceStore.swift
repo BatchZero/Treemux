@@ -416,14 +416,22 @@ final class WorkspaceStore: ObservableObject {
     /// Sets up the periodic timer and window-focus observer that drive
     /// `refreshAllRemoteWorkspaces`. Called once from `init()`.
     private func startRemoteWorkspaceRefreshScheduler() {
-        remoteRefreshTimer = Timer.scheduledTimer(
-            withTimeInterval: Self.remoteRefreshInterval,
+        // Construct the timer manually and add it to `.common` runloop mode so
+        // it keeps firing during event tracking (e.g. window dragging). The
+        // standard `Timer.scheduledTimer` puts it in `.default` mode which
+        // suspends during user interaction. Tolerance lets macOS coalesce
+        // timer firings for power efficiency — 30s polls do not need precision.
+        let timer = Timer(
+            timeInterval: Self.remoteRefreshInterval,
             repeats: true
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 await self?.refreshAllRemoteWorkspaces()
             }
         }
+        timer.tolerance = 5
+        RunLoop.main.add(timer, forMode: .common)
+        remoteRefreshTimer = timer
 
         remoteWindowObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didBecomeKeyNotification,
@@ -459,9 +467,13 @@ final class WorkspaceStore: ObservableObject {
         workspaces = state.workspaces.map { WorkspaceModel(from: $0) }
         startWatchingAll()
 
-        // Populate worktrees and branch info from git on launch
+        // Populate worktrees and branch info from git on launch.
+        // Skip SSH-backed workspaces — those are owned by the periodic remote
+        // refresh scheduler (timer + window focus), which fires immediately on
+        // app launch via `NSWindow.didBecomeKeyNotification`. This avoids a
+        // redundant SSH round-trip on every launch.
         Task {
-            for workspace in workspaces {
+            for workspace in workspaces where workspace.sshTarget == nil {
                 await refreshWorkspace(workspace)
             }
             // Restart watchers with full worktree paths now available
