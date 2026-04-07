@@ -60,7 +60,7 @@ VStack(alignment: .leading, spacing: 2) {
         Text(branch) ...
     }
 }
-.frame(minHeight: Self.contentMinHeight, alignment: .leading)
+.frame(minHeight: Self.contentMinHeight)
 ```
 
 The constant lives as a `private static let` on `WorkspaceRowContent` so the
@@ -111,5 +111,81 @@ Manual visual verification (no unit tests — pure SwiftUI layout):
 
 - `WorktreeRowContent` layout
 - `SectionHeaderRow` layout
-- Any change to how `currentBranch` is computed or refreshed
 - Any change to font sizes or spacing values
+
+## Addendum (2026-04-07) — Remote non-git root cause
+
+During visual verification, a second bug surfaced that the original scope
+did not anticipate: **remote (SSH) non-git workspaces** still rendered
+the project name "stuck to the top" even after the `minHeight` fix was
+in place. Local non-git workspaces looked correct; remote did not.
+
+### What was actually happening
+
+The sidebar code path is identical for local and remote workspaces
+(`WorkspaceRowContent` is the single renderer for both). The difference
+came from the data: `workspace.currentBranch` was `""` (empty string)
+for remote non-git workspaces, not `nil`.
+
+Swift's `if let branch = workspace.currentBranch` unwraps an empty
+string as a valid value, so the sidebar entered the two-line branch and
+rendered `Text("")` — an invisible 10pt second line. The VStack became
+two-line (24pt) and the project name ended up at the *top-line* position
+of a two-line layout, which visually reads as "stuck to the top".
+
+### Where the empty string came from
+
+Two layers conspired:
+
+1. **Shell script `|| true` placement.** The remote inspection script
+   in `GitRepositoryService.inspectRepository(remotePath:sshTarget:)`
+   ends with `... && git rev-list ... 2>/dev/null || true`. Bash's
+   `&&`/`||` are left-associative, so the whole chain is parsed as
+   `(... && ... && ...) || true` — meaning *any* mid-chain failure
+   (including `git rev-parse --abbrev-ref HEAD` on a non-git directory)
+   still exits 0. The function therefore does **not** throw for
+   non-git remotes; it returns whatever partial stdout it collected.
+
+2. **Parser consuming the trailing empty line.**
+   `parseRemoteInspection` called
+   `output.split(separator: "\n", omittingEmptySubsequences: false)`,
+   which preserves the empty trailing element after the final newline.
+   For a non-git remote, stdout is just `__BRANCH__\n`, which splits
+   into `["__BRANCH__", ""]`. The first element switched the parser
+   into `.branch` mode; the second (empty) element was then assigned:
+   `branch = "".trimmingCharacters(...) = ""`.
+
+The catch block in `WorkspaceStore.refreshWorkspace` was never reached,
+because `inspectRepository` returned successfully. `currentBranch` was
+written as `""` and persisted to disk as such.
+
+### Fix applied in this branch
+
+Two layers of fix, to match the two-layer cause:
+
+1. **Primary (parser):** `parseRemoteInspection` now only assigns
+   `branch` / `head` when the trimmed line is non-empty. Non-git
+   remotes correctly end up with `currentBranch = nil`.
+
+2. **Defense (UI):** `WorkspaceRowContent`'s condition now also checks
+   `!branch.isEmpty`, so any future stray empty-string branch values
+   from elsewhere cannot re-trigger the two-line layout.
+
+### Not fixed in this branch
+
+The shell script's `|| true` placement is the upstream cause and is
+intentionally deferred to a separate follow-up. Fixing it properly
+(wrap only the `git rev-list` in a `( ... ) || true` subshell) changes
+the failure semantics of all the mid-chain commands, which could
+affect workspaces we haven't fully exercised. The parser-level skip +
+UI defense are sufficient to prevent the user-visible symptom.
+
+### Persisted state self-heals
+
+`WorkspaceStore.loadWorkspaceState` calls `WorkspaceModel.init(from:)`
+which calls `restoreTabState`, and `restoreTabState` only copies `tabs`
+and `activeTabID` — it never reads `WorktreeSessionStateRecord.branch`
+back into `currentBranch`. So the stale `branch: ""` currently persisted
+on disk has no effect on a fresh launch (`currentBranch` starts `nil`).
+The next refresh writes the correct `nil` back, and the next save
+cleans the persisted record automatically. No migration needed.
