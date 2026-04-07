@@ -373,6 +373,17 @@ final class WorkspaceStore: ObservableObject {
                 selectedWorkspaceID = workspace.id
             }
 
+            // Re-establish watchers so newly added worktrees get their own
+            // observers and removed worktrees have their stale handles cleaned up.
+            // `watch(workspace:)` is idempotent (stops existing watchers first).
+            metadataWatcher.watch(workspace: workspace) { [weak self] workspaceID in
+                Task { @MainActor [weak self] in
+                    guard let self,
+                          let ws = self.workspaces.first(where: { $0.id == workspaceID }) else { return }
+                    await self.refreshWorkspace(ws)
+                }
+            }
+
             // Notify SwiftUI that child model data changed so the sidebar rebuilds.
             objectWillChange.send()
         } catch {
