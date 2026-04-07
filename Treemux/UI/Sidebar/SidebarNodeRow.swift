@@ -57,6 +57,12 @@ struct WorkspaceRowContent: View {
         return .none
     }
 
+    // Natural height of the two-line case (12pt name + 2pt spacing + 10pt branch).
+    // Pinning the VStack to this minHeight keeps single-line rows (no git, or
+    // multi-worktree) the same overall height as two-line rows so the project
+    // name is vertically centered.
+    private static let contentMinHeight: CGFloat = 24
+
     var body: some View {
         HStack(spacing: 8) {
             SidebarItemIconView(
@@ -70,13 +76,14 @@ struct WorkspaceRowContent: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(theme.sidebarForeground)
                     .lineLimit(1)
-                if workspace.worktrees.count <= 1, let branch = workspace.currentBranch {
+                if workspace.worktrees.count <= 1, let branch = workspace.currentBranch, !branch.isEmpty {
                     Text(branch)
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
                         .foregroundStyle(theme.textSecondary)
                         .lineLimit(1)
                 }
             }
+            .frame(minHeight: Self.contentMinHeight)
             Spacer()
         }
         .padding(.vertical, 4)
