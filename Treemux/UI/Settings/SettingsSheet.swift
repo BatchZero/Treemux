@@ -178,19 +178,33 @@ private struct GeneralSettingsView: View {
 // MARK: - Terminal Settings
 
 private struct TerminalSettingsView: View {
+    private static let fontSizeRange: ClosedRange<Int> = 6...72
+
     @Binding var settings: AppSettings
+
+    private var clampedFontSize: Binding<Int> {
+        Binding(
+            get: { settings.terminal.fontSize },
+            set: {
+                settings.terminal.fontSize = min(max($0, Self.fontSizeRange.lowerBound), Self.fontSizeRange.upperBound)
+            }
+        )
+    }
 
     var body: some View {
         Form {
             TextField("Default Shell", text: $settings.terminal.defaultShell)
 
             Stepper(
-                value: $settings.terminal.fontSize, in: 8...32
+                value: clampedFontSize, in: Self.fontSizeRange
             ) {
                 HStack {
                     Text("Font Size")
                     Spacer()
-                    Text("\(settings.terminal.fontSize)")
+                    TextField("", value: clampedFontSize, format: .number)
+                        .frame(width: 40)
+                        .multilineTextAlignment(.trailing)
+                        .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
             }
