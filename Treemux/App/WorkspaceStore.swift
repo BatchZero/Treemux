@@ -43,6 +43,27 @@ final class WorkspaceStore: ObservableObject {
     private let metadataWatcher = WorkspaceMetadataWatchService()
     private let tmuxService = TmuxService()
 
+    /// How often to poll SSH-backed workspaces for git state changes.
+    /// File system events cannot reach across SSH, so we fall back to a
+    /// generous periodic poll plus an immediate refresh on window focus.
+    private static let remoteRefreshInterval: TimeInterval = 30
+
+    /// Timer that periodically polls SSH-backed workspaces. Created in `init`
+    /// and lives for the entire app lifetime — `WorkspaceStore` is a long-lived
+    /// singleton, so no `deinit` cleanup is required. If `WorkspaceStore` ever
+    /// becomes non-singleton, add a deinit that invalidates this timer and
+    /// removes `remoteWindowObserver`.
+    private var remoteRefreshTimer: Timer?
+
+    /// Notification observer that immediately refreshes SSH-backed workspaces
+    /// when any Treemux window becomes key. See `remoteRefreshTimer` for
+    /// lifetime notes.
+    private var remoteWindowObserver: NSObjectProtocol?
+
+    /// Reentry guard for `refreshAllRemoteWorkspaces`. Drops overlapping
+    /// triggers (e.g. timer firing while a window-focus refresh is in flight).
+    private var isRefreshingRemotes = false
+
     /// Virtual "Terminal" workspace shown when no real projects exist.
     /// This workspace is never persisted to disk.
     private var defaultTerminalWorkspace: WorkspaceModel?
@@ -121,6 +142,7 @@ final class WorkspaceStore: ObservableObject {
         self.settings = settingsPersistence.load()
         loadWorkspaceState()
         ensureDefaultTerminal()
+        startRemoteWorkspaceRefreshScheduler()
     }
 
     /// Creates or shows the default "Terminal" workspace when no real workspaces exist.
@@ -388,6 +410,43 @@ final class WorkspaceStore: ObservableObject {
             objectWillChange.send()
         } catch {
             // Not a git repository or git command failed — that's acceptable.
+        }
+    }
+
+    /// Sets up the periodic timer and window-focus observer that drive
+    /// `refreshAllRemoteWorkspaces`. Called once from `init()`.
+    private func startRemoteWorkspaceRefreshScheduler() {
+        remoteRefreshTimer = Timer.scheduledTimer(
+            withTimeInterval: Self.remoteRefreshInterval,
+            repeats: true
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                await self?.refreshAllRemoteWorkspaces()
+            }
+        }
+
+        remoteWindowObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                await self?.refreshAllRemoteWorkspaces()
+            }
+        }
+    }
+
+    /// Refreshes every SSH-backed workspace serially. No-op for local workspaces.
+    /// Reentry-guarded so overlapping triggers (timer + window focus, or
+    /// back-to-back) don't stack SSH connections.
+    private func refreshAllRemoteWorkspaces() async {
+        guard !isRefreshingRemotes else { return }
+        let remotes = workspaces.filter { $0.sshTarget != nil && !$0.isArchived }
+        guard !remotes.isEmpty else { return }
+        isRefreshingRemotes = true
+        defer { isRefreshingRemotes = false }
+        for workspace in remotes {
+            await refreshWorkspace(workspace)
         }
     }
 
