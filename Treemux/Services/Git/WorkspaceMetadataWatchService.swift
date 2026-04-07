@@ -149,8 +149,12 @@ final class WorkspaceMetadataWatchService {
     }
 
     /// Returns the standard set of git metadata paths to watch within a git directory.
+    /// Also includes the common gitdir's `worktrees/` sub-directory so external
+    /// `git worktree add`/`remove` operations are detected.
     private func gitMetadataPaths(in gitDirectory: String) -> [String] {
         let base = URL(fileURLWithPath: gitDirectory)
+        let common = resolveCommonGitDirectory(for: gitDirectory)
+        let commonBase = URL(fileURLWithPath: common)
         return [
             gitDirectory,
             base.appendingPathComponent("HEAD").path,
@@ -159,8 +163,33 @@ final class WorkspaceMetadataWatchService {
             base.appendingPathComponent("refs").path,
             base.appendingPathComponent("refs/heads").path,
             base.appendingPathComponent("refs/remotes").path,
+            // Watch the common gitdir and its worktrees/ subdirectory so that
+            // external `git worktree add`/`remove` operations trigger refresh.
+            common,
+            commonBase.appendingPathComponent("worktrees").path,
         ]
         .filter { fileManager.fileExists(atPath: $0) }
+    }
+
+    /// Resolves the main repository's git directory from any worktree's gitdir.
+    /// Linked worktrees contain a `commondir` file inside their gitdir whose
+    /// contents are a path (typically relative) pointing back to the main gitdir.
+    /// Main worktrees have no `commondir` file, so the input is returned as-is.
+    func resolveCommonGitDirectory(for gitDirectory: String) -> String {
+        let commondirURL = URL(fileURLWithPath: gitDirectory).appendingPathComponent("commondir")
+        guard let contents = try? String(contentsOf: commondirURL, encoding: .utf8) else {
+            return gitDirectory
+        }
+        let raw = contents.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else { return gitDirectory }
+
+        let resolvedURL: URL
+        if raw.hasPrefix("/") {
+            resolvedURL = URL(fileURLWithPath: raw)
+        } else {
+            resolvedURL = URL(fileURLWithPath: raw, relativeTo: URL(fileURLWithPath: gitDirectory))
+        }
+        return resolvedURL.standardizedFileURL.path
     }
 
     /// Resolves the actual .git directory, handling both normal repos and worktree links.
