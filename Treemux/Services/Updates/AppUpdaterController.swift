@@ -20,7 +20,7 @@ final class AppUpdaterController {
     nonisolated static let repository = "BatchZero/Treemux"
     nonisolated static let feedURLInfoPlistKey = "SUFeedURL"
     nonisolated static let defaultFeedURLString =
-        "https://raw.githubusercontent.com/\(repository)/stable/appcast.xml"
+        "https://raw.githubusercontent.com/\(repository)/stable/sparkle-feed.xml"
 
     private let delegate = SparkleUpdaterDelegate()
     private lazy var controller = SPUStandardUpdaterController(

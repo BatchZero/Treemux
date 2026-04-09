@@ -56,7 +56,7 @@ targets:
         LSApplicationCategoryType: public.app-category.developer-tools
         NSHumanReadableCopyright: "Copyright \u00A9 2026 BatchZero. MIT License."
         NSPrincipalClass: NSApplication
-        SUFeedURL: "https://raw.githubusercontent.com/BatchZero/Treemux/stable/appcast.xml"
+        SUFeedURL: "https://raw.githubusercontent.com/BatchZero/Treemux/stable/sparkle-feed.xml"
         SUPublicEDKey: "bfBuujWR9izxMmCzjuTzRkcvqdLe8c+uaGU/visxZbk="
     settings:
       base:

@@ -25,7 +25,7 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/BatchZero/Treemux/stable/appcast.xml</string>
+	<string>https://raw.githubusercontent.com/BatchZero/Treemux/stable/sparkle-feed.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>bfBuujWR9izxMmCzjuTzRkcvqdLe8c+uaGU/visxZbk=</string>
 </dict>

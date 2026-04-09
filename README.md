@@ -307,7 +307,7 @@ Treemux/
 ├── scripts/                        # 构建 & 发布脚本
 ├── docs/plans/                     # 设计与实现计划文档
 ├── project.yml                     # XcodeGen 项目配置
-├── appcast.xml                     # Sparkle 更新源
+├── sparkle-feed.xml                # Sparkle 更新源
 └── LICENSE                         # MIT 许可证
 ```
 
@@ -330,7 +330,7 @@ Treemux/
 ### 分支管理
 
 - `main` — 主分支，保持稳定
-- `stable` — 发布分支，用于 Sparkle appcast
+- `stable` — 发布分支，托管 Sparkle 更新源 `sparkle-feed.xml`
 - 功能开发请创建独立分支或 Git worktree
 
 ### 构建脚本
@@ -341,7 +341,7 @@ Treemux/
 | `scripts/sign_macos.sh` | 代码签名 |
 | `scripts/deploy.sh` | 完整发布流程 |
 | `scripts/bump_version.sh` | 版本号更新 |
-| `scripts/sparkle_tools.sh` | 生成 Sparkle appcast |
+| `scripts/sparkle_tools.sh` | 生成 Sparkle 更新源 |
 
 ### 代码规范
 
