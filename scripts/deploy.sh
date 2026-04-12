@@ -258,11 +258,12 @@ RELEASE_NOTES_FILE="$(generate_release_notes "$VERSION" "$TAG" "$PREVIOUS_TAG" "
 sparkle_create_app_zip "$OUTPUT_DIR/$APP_NAME.app" "$DIST_ZIP_PATH"
 
 APPCAST_STAGING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/treemux-appcast.XXXXXX")"
+APPCAST_BASENAME="$(basename "$APPCAST_FILE")"
 ZIP_BASENAME="$(basename "$DIST_ZIP_PATH" .zip)"
 cp "$DIST_ZIP_PATH" "$APPCAST_STAGING_DIR/"
 cp "$RELEASE_NOTES_FILE" "$APPCAST_STAGING_DIR/$ZIP_BASENAME.md"
 if [[ -f "$APPCAST_FILE" ]]; then
-  cp "$APPCAST_FILE" "$APPCAST_STAGING_DIR/appcast.xml"
+  cp "$APPCAST_FILE" "$APPCAST_STAGING_DIR/$APPCAST_BASENAME"
 fi
 
 sparkle_generate_appcast \
@@ -277,7 +278,7 @@ sparkle_generate_appcast \
   "$PROJECT_PATH" \
   "$SCHEME"
 
-cp "$APPCAST_STAGING_DIR/appcast.xml" "$APPCAST_FILE"
+cp "$APPCAST_STAGING_DIR/$APPCAST_BASENAME" "$APPCAST_FILE"
 rm -rf "$APPCAST_STAGING_DIR"
 
 # Step 4: Commit, tag, push
