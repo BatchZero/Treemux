@@ -395,6 +395,19 @@ final class WorkspaceStore: ObservableObject {
                 selectedWorkspaceID = workspace.id
             }
 
+            // Clean up stale tab state / sessions for removed worktrees and
+            // reset activeWorktreePath if it pointed to a deleted worktree.
+            let currentWorktreePaths = Set(merged.map { $0.path.path })
+            let fallbackPath = merged.first(where: { $0.isMainWorktree })?.path.path
+                ?? merged.first?.path.path
+                ?? workspace.repositoryRoot?.path
+                ?? workspace.sshTarget?.remotePath
+                ?? ""
+            workspace.cleanupRemovedWorktrees(
+                currentPaths: currentWorktreePaths,
+                fallbackPath: fallbackPath
+            )
+
             // Re-establish watchers so newly added worktrees get their own
             // observers and removed worktrees have their stale handles cleaned up.
             // `watch(workspace:)` is idempotent (stops existing watchers first).

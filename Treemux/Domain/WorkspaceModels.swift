@@ -452,6 +452,30 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         loadActiveWorktreeState()
     }
 
+    /// Cleans up state for worktrees that no longer exist.
+    /// If `activeWorktreePath` pointed to a removed worktree, switches to `fallbackPath`.
+    func cleanupRemovedWorktrees(currentPaths: Set<String>, fallbackPath: String) {
+        let isActiveRemoved = !currentPaths.contains(activeWorktreePath)
+
+        // Terminate sessions and remove cached state for deleted worktrees
+        for path in Array(tabControllers.keys) where !currentPaths.contains(path) {
+            if let controllers = tabControllers.removeValue(forKey: path) {
+                for (_, ctrl) in controllers {
+                    ctrl.terminateAll()
+                }
+            }
+        }
+        for path in Array(worktreeTabStates.keys) where !currentPaths.contains(path) {
+            worktreeTabStates.removeValue(forKey: path)
+        }
+
+        // Switch to fallback if the active worktree was removed
+        if isActiveRemoved {
+            activeWorktreePath = fallbackPath
+            loadActiveWorktreeState()
+        }
+    }
+
     // MARK: - Controller Management
 
     /// Returns or creates a session controller for the given tab and worktree.
