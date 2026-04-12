@@ -12,6 +12,7 @@
 		0D6E9070C727E942960D4BBB /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = B962317687AFEC7E1E5FC75D /* Color+Hex.swift */; };
 		0DA3A254039F1EEA04FB94DB /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8EB47950FCB5E9637572424 /* AppSettings.swift */; };
 		0E5862A0ECFBA02E71850208 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 307BCBA7FBBD837C1D886367 /* Localizable.xcstrings */; };
+		F2E1D0C9B8A7F6E5D4C3B2A1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* Assets.xcassets */; };
 		11799B542DF852B119E2960A /* SettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 719F86B8BC90BA882B83152E /* SettingsSheet.swift */; };
 		14559BCDE89A0A2CA5FD8022 /* ShellCommandRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 443B856819FD330809E0722A /* ShellCommandRunnerTests.swift */; };
 		17F6E36CAD2008C8EA72726A /* Citadel in Frameworks */ = {isa = PBXBuildFile; productRef = 6A0BCC9E620E634555EA4F1E /* Citadel */; };
@@ -112,6 +113,7 @@
 
 /* Begin PBXFileReference section */
 		081CA32DCF94FDC4583766A2 /* ProcessTreeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTreeTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceModelsTests.swift; sourceTree = "<group>"; };
 		16FE9D700089232316516F73 /* TreemuxGhosttyBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyBootstrap.swift; sourceTree = "<group>"; };
 		195EA28E9C93EE6E874ED6ED /* SidebarNodeItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNodeItem.swift; sourceTree = "<group>"; };
@@ -307,6 +309,7 @@
 				CEB4B388C531158F6E5916EB /* AppDelegate.swift */,
 				307BCBA7FBBD837C1D886367 /* Localizable.xcstrings */,
 				73E706B2F099E80FFCC6F47D /* main.swift */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* Assets.xcassets */,
 				052178C8BA6AA32DD708B8B4 /* App */,
 				B15DAD8207459A93A41EE1CB /* Domain */,
 				106B416E1D149A797E5D5030 /* Persistence */,
@@ -600,6 +603,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0E5862A0ECFBA02E71850208 /* Localizable.xcstrings in Resources */,
+				F2E1D0C9B8A7F6E5D4C3B2A1 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
