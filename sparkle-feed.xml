@@ -2,5 +2,15 @@
 <rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>Treemux</title>
+        <item>
+            <title>0.0.6</title>
+            <pubDate>Sun, 12 Apr 2026 16:44:30 +0800</pubDate>
+            <link>https://github.com/BatchZero/Treemux</link>
+            <sparkle:fullReleaseNotesLink>https://github.com/BatchZero/Treemux/releases/tag/v0.0.6</sparkle:fullReleaseNotesLink>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>0.0.6</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/BatchZero/Treemux/releases/download/v0.0.6/Treemux-0.0.6.app.zip" length="24598815" type="application/octet-stream" sparkle:edSignature="9RTpFm+3cB9GOKyxS/r3uoEf4J/Acb7fKwJwK0m369AR6iK5+hUY41UVb/eWBaN7oCClI0prdQDrPjakoam9Dg=="/>
+        </item>
     </channel>
 </rss>
