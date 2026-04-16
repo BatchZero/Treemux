@@ -397,16 +397,22 @@ final class WorkspaceStore: ObservableObject {
 
             // Clean up stale tab state / sessions for removed worktrees and
             // reset activeWorktreePath if it pointed to a deleted worktree.
+            // Skip cleanup when no worktrees were detected (non-git directory) —
+            // an empty worktree list means git failed, not that all worktrees
+            // were removed. Without this guard, every 30-second remote refresh
+            // would terminate and recreate all sessions for non-git workspaces.
             let currentWorktreePaths = Set(merged.map { $0.path.path })
-            let fallbackPath = merged.first(where: { $0.isMainWorktree })?.path.path
-                ?? merged.first?.path.path
-                ?? workspace.repositoryRoot?.path
-                ?? workspace.sshTarget?.remotePath
-                ?? ""
-            workspace.cleanupRemovedWorktrees(
-                currentPaths: currentWorktreePaths,
-                fallbackPath: fallbackPath
-            )
+            if !currentWorktreePaths.isEmpty {
+                let fallbackPath = merged.first(where: { $0.isMainWorktree })?.path.path
+                    ?? merged.first?.path.path
+                    ?? workspace.repositoryRoot?.path
+                    ?? workspace.sshTarget?.remotePath
+                    ?? ""
+                workspace.cleanupRemovedWorktrees(
+                    currentPaths: currentWorktreePaths,
+                    fallbackPath: fallbackPath
+                )
+            }
 
             // Re-establish watchers so newly added worktrees get their own
             // observers and removed worktrees have their stale handles cleaned up.
