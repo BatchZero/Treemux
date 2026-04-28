@@ -164,4 +164,62 @@ final class WorkspaceStoreBuiltInTests: XCTestCase {
         let store = WorkspaceStore()
         XCTAssertEqual(store.selectedWorkspaceID, real.id)
     }
+
+    func testRenameBuiltInIsNoOp() async throws {
+        try writeState(PersistedWorkspaceState(version: 1, selectedWorkspaceID: nil, workspaces: []))
+        let store = WorkspaceStore()
+        let originalName = store.workspaces.first(where: { $0.isBuiltInDefaultTerminal })?.name
+        store.renameWorkspace(WorkspaceModel.builtInDefaultTerminalID, to: "renamed")
+        let after = store.workspaces.first(where: { $0.isBuiltInDefaultTerminal })?.name
+        XCTAssertEqual(after, originalName)
+        XCTAssertEqual(after, "~")
+    }
+
+    func testRemoveBuiltInIsNoOp() async throws {
+        try writeState(PersistedWorkspaceState(version: 1, selectedWorkspaceID: nil, workspaces: []))
+        let store = WorkspaceStore()
+        XCTAssertTrue(store.workspaces.contains { $0.isBuiltInDefaultTerminal })
+        store.removeWorkspace(WorkspaceModel.builtInDefaultTerminalID)
+        XCTAssertTrue(store.workspaces.contains { $0.isBuiltInDefaultTerminal })
+    }
+
+    func testTogglingOffMovesSelectionAwayFromBuiltInWhenRealExists() async throws {
+        let real = WorkspaceRecord(
+            id: UUID(),
+            kind: .repository,
+            name: "real",
+            repositoryPath: "/tmp/real",
+            isPinned: false,
+            isArchived: false,
+            sshTarget: nil,
+            worktreeStates: [],
+            worktreeOrder: nil,
+            workspaceIcon: nil,
+            worktreeIconOverrides: nil,
+            isBuiltInDefaultTerminal: false
+        )
+        try writeState(PersistedWorkspaceState(version: 1, selectedWorkspaceID: nil, workspaces: [real]))
+        let store = WorkspaceStore()
+        store.selectedWorkspaceID = WorkspaceModel.builtInDefaultTerminalID
+
+        var newSettings = store.settings
+        newSettings.showDefaultTerminal = false
+        store.updateSettings(newSettings)
+
+        XCTAssertNotEqual(store.selectedWorkspaceID, WorkspaceModel.builtInDefaultTerminalID)
+        XCTAssertEqual(store.selectedWorkspaceID, real.id)
+    }
+
+    func testTogglingOffKeepsBuiltInSelectionWhenNoRealExists() async throws {
+        try writeState(PersistedWorkspaceState(version: 1, selectedWorkspaceID: nil, workspaces: []))
+        let store = WorkspaceStore()
+        store.selectedWorkspaceID = WorkspaceModel.builtInDefaultTerminalID
+
+        var newSettings = store.settings
+        newSettings.showDefaultTerminal = false
+        store.updateSettings(newSettings)
+
+        // No real workspace → selection unchanged; fallback shows `~` in sidebar.
+        XCTAssertEqual(store.selectedWorkspaceID, WorkspaceModel.builtInDefaultTerminalID)
+    }
 }

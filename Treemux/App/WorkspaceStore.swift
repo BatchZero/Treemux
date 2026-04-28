@@ -31,9 +31,17 @@ final class WorkspaceStore: ObservableObject {
     /// Applies a new settings snapshot (used by SettingsSheet Save).
     func updateSettings(_ newSettings: AppSettings) {
         let terminalChanged = settings.terminal != newSettings.terminal
+        let toggledOff = settings.showDefaultTerminal && !newSettings.showDefaultTerminal
         settings = newSettings
         if terminalChanged {
             NotificationCenter.default.post(name: .treemuxTerminalSettingsDidChange, object: newSettings.terminal)
+        }
+        if toggledOff && selectedWorkspaceID == WorkspaceModel.builtInDefaultTerminalID {
+            // Switch to the first non-builtin workspace if any exists. If none, leave selection alone —
+            // the empty-fallback rule will keep `~` visible in the sidebar so the UI stays consistent.
+            if let firstReal = workspaces.first(where: { !$0.isBuiltInDefaultTerminal && !$0.isArchived }) {
+                selectedWorkspaceID = firstReal.id
+            }
         }
     }
 
@@ -269,6 +277,8 @@ final class WorkspaceStore: ObservableObject {
     // MARK: - Renaming Workspaces
 
     func renameWorkspace(_ id: UUID, to newName: String) {
+        // Defensive: built-in `~` is not renameable. Silent early return.
+        if id == WorkspaceModel.builtInDefaultTerminalID { return }
         guard let workspace = workspaces.first(where: { $0.id == id }),
               !newName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         workspace.name = newName
