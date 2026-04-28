@@ -36,4 +36,19 @@ final class TreemuxTabSizingTests: XCTestCase {
         let longWidth = TreemuxTabSizing.width(for: "My Long Tab Name", paneCount: 1)
         XCTAssertGreaterThan(longWidth, shortWidth)
     }
+
+    func testWidthIncludesDotWhenPresent() {
+        // Use a title long enough to clear the 100pt minimum so the dot delta
+        // is observable (base width with "Tab" alone clamps to the floor).
+        let title = "A Longer Tab Name"
+        let withoutDot = TreemuxTabSizing.width(for: title, paneCount: 1)
+        let withDot    = TreemuxTabSizing.width(for: title, paneCount: 1, hasDot: true)
+        XCTAssertEqual(withDot - withoutDot, 10)
+    }
+
+    func testHasDotDefaultsToFalse() {
+        let explicit = TreemuxTabSizing.width(for: "Tab", paneCount: 1, hasDot: false)
+        let implicit = TreemuxTabSizing.width(for: "Tab", paneCount: 1)
+        XCTAssertEqual(implicit, explicit)
+    }
 }

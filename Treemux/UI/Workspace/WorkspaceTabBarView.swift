@@ -36,6 +36,7 @@ struct WorkspaceTabBarView: View {
                                 isSelected: tab.id == workspace.activeTabID,
                                 isHovered: hoveredTabID == tab.id,
                                 paneCount: paneCount(for: tab),
+                                dotKind: dotKind(for: tab),
                                 onSelect: { workspace.selectTab(tab.id) },
                                 onClose: { workspace.closeTab(tab.id) },
                                 onRename: {
@@ -87,6 +88,17 @@ struct WorkspaceTabBarView: View {
     private func paneCount(for tab: WorkspaceTabStateRecord) -> Int {
         tab.layout?.paneIDs.count ?? 1
     }
+
+    private func dotKind(for tab: WorkspaceTabStateRecord) -> TabActivityDot.Kind? {
+        let path = workspace.activeWorktreePath
+        if workspace.hasAttention(forTabID: tab.id, worktreePath: path) {
+            return .attention
+        }
+        if workspace.hasRunningSessions(forWorktreePath: path) {
+            return .idle
+        }
+        return nil
+    }
 }
 
 // MARK: - Tab Button
@@ -96,6 +108,7 @@ private struct TabButton: View {
     let isSelected: Bool
     let isHovered: Bool
     let paneCount: Int
+    let dotKind: TabActivityDot.Kind?
     let onSelect: () -> Void
     let onClose: () -> Void
     let onRename: () -> Void
@@ -103,6 +116,10 @@ private struct TabButton: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 4) {
+                if let dotKind {
+                    TabActivityDot(kind: dotKind)
+                        .padding(.trailing, 2)
+                }
                 Text(tab.title)
                     .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
                     .lineLimit(1)
@@ -151,11 +168,42 @@ private struct TabButton: View {
             }
         }
         .buttonStyle(.plain)
-        .frame(width: TreemuxTabSizing.width(for: tab.title, paneCount: paneCount))
+        .frame(width: TreemuxTabSizing.width(for: tab.title, paneCount: paneCount, hasDot: dotKind != nil))
         .contextMenu {
             Button("Rename…") { onRename() }
             Divider()
             Button("Close Tab") { onClose() }
+        }
+    }
+}
+
+// MARK: - Activity Dot
+
+/// Small leading-edge dot on a `TabButton` indicating session activity.
+/// Renders nothing for `.none`, a steady dot for `.idle`, a pulsing dot for `.attention`.
+private struct TabActivityDot: View {
+    enum Kind: Equatable { case idle, attention }
+
+    let kind: Kind
+    @State private var isAnimating = false
+
+    var body: some View {
+        Circle()
+            .fill(Color.orange)
+            .frame(width: 6, height: 6)
+            .opacity(kind == .attention ? (isAnimating ? 1 : 0.4) : 0.8)
+            .onAppear { startAnimation() }
+            .onChange(of: kind) { _, _ in startAnimation() }
+    }
+
+    private func startAnimation() {
+        guard kind == .attention else {
+            isAnimating = false
+            return
+        }
+        isAnimating = false
+        withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+            isAnimating = true
         }
     }
 }
@@ -190,7 +238,7 @@ enum TreemuxTabSizing {
     private static let titleFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
     private static let countFont = NSFont.monospacedSystemFont(ofSize: 9, weight: .medium)
 
-    static func width(for title: String, paneCount: Int) -> CGFloat {
+    static func width(for title: String, paneCount: Int, hasDot: Bool = false) -> CGFloat {
         let titleWidth = ceil((title as NSString).size(withAttributes: [.font: titleFont]).width)
         // 12 leading + 4 HStack spacing + 16 close button + 12 trailing
         var totalWidth = titleWidth + 44
@@ -199,6 +247,7 @@ enum TreemuxTabSizing {
             let countWidth = ceil((countText as NSString).size(withAttributes: [.font: countFont]).width)
             totalWidth += countWidth + 12
         }
+        if hasDot { totalWidth += 10 }
         return min(max(totalWidth, 100), 260)
     }
 }
