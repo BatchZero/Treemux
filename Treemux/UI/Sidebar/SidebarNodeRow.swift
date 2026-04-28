@@ -54,9 +54,6 @@ struct WorkspaceRowContent: View {
         if workspace.hasAnyRunningSessions {
             return .working
         }
-        if workspace.activeWorktreePath == workspace.repositoryRoot?.path {
-            return .current
-        }
         return .none
     }
 
@@ -120,9 +117,6 @@ struct WorktreeRowContent: View {
         }
         if workspace.hasRunningSessions(forWorktreePath: worktree.path.path) {
             return .working
-        }
-        if workspace.activeWorktreePath == worktree.path.path {
-            return .current
         }
         return .none
     }

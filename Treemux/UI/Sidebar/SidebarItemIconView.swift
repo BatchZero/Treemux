@@ -105,7 +105,7 @@ struct SidebarIconActivityBadge: View {
     }
 
     private var isAnimatedKind: Bool {
-        kind == .working || kind == .attention
+        kind == .attention
     }
 
     private var pulseLineWidth: CGFloat {
@@ -121,14 +121,8 @@ struct SidebarIconActivityBadge: View {
     }
 
     private var pulseDuration: Double {
-        switch kind {
-        case .attention:
-            return isEmphasized ? 0.55 : 0.7
-        case .working:
-            return isEmphasized ? 0.95 : 1.15
-        default:
-            return 1.0
-        }
+        // Only .attention animates; the duration only matters for it.
+        isEmphasized ? 0.55 : 0.7
     }
 
     private var coreScale: CGFloat {
@@ -140,11 +134,8 @@ struct SidebarIconActivityBadge: View {
     }
 
     private var glowRadius: CGFloat {
-        switch kind {
-        case .attention: return isEmphasized ? 8 : 6
-        case .working:   return isEmphasized ? 6 : 4
-        default:         return 0
-        }
+        guard kind == .attention else { return 0 }
+        return isEmphasized ? 8 : 6
     }
 
     var body: some View {
