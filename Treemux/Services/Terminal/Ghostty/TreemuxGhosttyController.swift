@@ -47,6 +47,7 @@ final class TreemuxGhosttyController: ManagedTerminalSessionSurfaceController {
     var onWorkingDirectoryChange: ((String?) -> Void)?
     var onFocus: (() -> Void)?
     var onStatusChange: ((TerminalSurfaceStatusSnapshot) -> Void)?
+    var onDesktopNotification: ((String, String?) -> Void)?
     var onProcessExit: ((Int32?) -> Void)?
     var onWorkspaceAction: ((TerminalWorkspaceAction) -> Void)?
 

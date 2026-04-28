@@ -52,6 +52,10 @@ protocol TerminalSurfaceController: AnyObject {
     var onWorkingDirectoryChange: ((String?) -> Void)? { get set }
     var onFocus: (() -> Void)? { get set }
     var onStatusChange: ((TerminalSurfaceStatusSnapshot) -> Void)? { get set }
+    /// Fired when the surface receives an OSC 777 desktop-notification escape.
+    /// `title` is the OSC's first field (e.g. "treemux:done"); `body` is the
+    /// optional second field. Always called on the main queue.
+    var onDesktopNotification: ((String, String?) -> Void)? { get set }
     func sendText(_ text: String)
     func focus()
     func setFocused(_ isFocused: Bool)
