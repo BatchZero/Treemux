@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import AppKit
 
 // MARK: - Persistent Records (Codable)
 
@@ -111,30 +112,40 @@ struct WorkspaceTabStateRecord: Codable, Identifiable {
     let id: UUID
     var title: String
     var isManuallyNamed: Bool
+    var kind: WorkspaceTabKind
+
+    // Terminal-tab fields (nil when kind == .fileBrowser)
     let layout: SessionLayoutNode?
     let panes: [PaneSnapshot]
     let focusedPaneID: UUID?
     let zoomedPaneID: UUID?
 
+    // File-browser-tab field (nil when kind == .terminal)
+    var fileBrowserState: FileBrowserTabState?
+
     init(
         id: UUID = UUID(),
         title: String,
         isManuallyNamed: Bool = false,
+        kind: WorkspaceTabKind = .terminal,
         layout: SessionLayoutNode? = nil,
         panes: [PaneSnapshot] = [],
         focusedPaneID: UUID? = nil,
-        zoomedPaneID: UUID? = nil
+        zoomedPaneID: UUID? = nil,
+        fileBrowserState: FileBrowserTabState? = nil
     ) {
         self.id = id
         self.title = title
         self.isManuallyNamed = isManuallyNamed
+        self.kind = kind
         self.layout = layout
         self.panes = panes
         self.focusedPaneID = focusedPaneID
         self.zoomedPaneID = zoomedPaneID
+        self.fileBrowserState = fileBrowserState
     }
 
-    /// Creates a default single-pane tab for the given working directory.
+    /// Creates a default single-pane terminal tab for the given working directory.
     static func makeDefault(workingDirectory: String, sshTarget: SSHTarget? = nil, title: String = "Tab 1") -> WorkspaceTabStateRecord {
         let paneID = UUID()
         let pane = PaneSnapshot(
@@ -144,15 +155,24 @@ struct WorkspaceTabStateRecord: Codable, Identifiable {
         )
         return WorkspaceTabStateRecord(
             title: title,
+            kind: .terminal,
             layout: .pane(PaneLeaf(paneID: paneID)),
             panes: [pane],
             focusedPaneID: paneID
         )
     }
 
-    // Support decoding old data without isManuallyNamed field
+    /// Creates a default file browser tab rooted at `rootPath`.
+    static func makeFileBrowser(rootPath: String, rootKind: FileBrowserRootKind, title: String) -> WorkspaceTabStateRecord {
+        WorkspaceTabStateRecord(
+            title: title,
+            kind: .fileBrowser,
+            fileBrowserState: FileBrowserTabState(rootPath: rootPath, rootKind: rootKind)
+        )
+    }
+
     enum CodingKeys: String, CodingKey {
-        case id, title, isManuallyNamed, layout, panes, focusedPaneID, zoomedPaneID
+        case id, title, isManuallyNamed, kind, layout, panes, focusedPaneID, zoomedPaneID, fileBrowserState
     }
 
     init(from decoder: Decoder) throws {
@@ -160,10 +180,13 @@ struct WorkspaceTabStateRecord: Codable, Identifiable {
         id = try container.decode(UUID.self, forKey: .id)
         title = try container.decode(String.self, forKey: .title)
         isManuallyNamed = try container.decodeIfPresent(Bool.self, forKey: .isManuallyNamed) ?? false
+        // Legacy data: missing `kind` → terminal.
+        kind = try container.decodeIfPresent(WorkspaceTabKind.self, forKey: .kind) ?? .terminal
         layout = try container.decodeIfPresent(SessionLayoutNode.self, forKey: .layout)
         panes = try container.decodeIfPresent([PaneSnapshot].self, forKey: .panes) ?? []
         focusedPaneID = try container.decodeIfPresent(UUID.self, forKey: .focusedPaneID)
         zoomedPaneID = try container.decodeIfPresent(UUID.self, forKey: .zoomedPaneID)
+        fileBrowserState = try container.decodeIfPresent(FileBrowserTabState.self, forKey: .fileBrowserState)
     }
 }
 
@@ -255,6 +278,8 @@ final class WorkspaceModel: ObservableObject, Identifiable {
 
     /// Tab controllers keyed by worktree path → tab ID.
     private var tabControllers: [String: [UUID: WorkspaceSessionController]] = [:]
+    /// File browser controllers keyed by worktree path → tab ID.
+    private var fileBrowserControllers: [String: [UUID: FileBrowserTabController]] = [:]
     /// Saved tab state for inactive worktrees.
     private var worktreeTabStates: [String: (tabs: [WorkspaceTabStateRecord], activeTabID: UUID?)] = [:]
     /// The worktree path currently being displayed.
@@ -355,12 +380,98 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         activeTabID = newTab.id
     }
 
+    /// Creates a new file-browser tab and makes it active.
+    func createFileBrowserTab(rootPath: String, rootKind: FileBrowserRootKind, title: String) {
+        saveActiveTabState()
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let label = trimmed.isEmpty ? URL(fileURLWithPath: rootPath).lastPathComponent : trimmed
+        let newTab = WorkspaceTabStateRecord.makeFileBrowser(rootPath: rootPath, rootKind: rootKind, title: label)
+        tabs.append(newTab)
+        activeTabID = newTab.id
+    }
+
+    /// Returns or creates a file browser controller for the given tab.
+    func fileBrowserController(forTabID tabID: UUID) -> FileBrowserTabController? {
+        guard let tab = tabs.first(where: { $0.id == tabID }),
+              tab.kind == .fileBrowser,
+              let state = tab.fileBrowserState else { return nil }
+        let path = activeWorktreePath
+        if let existing = fileBrowserControllers[path]?[tabID] { return existing }
+
+        let dataSource: any FileBrowserDataSource = makeDataSource()
+        let ctrl = FileBrowserTabController(initial: state, dataSource: dataSource)
+        ctrl.onPersistableStateChanged = { [weak self] in
+            self?.persistFileBrowserState(tabID: tabID)
+        }
+        if fileBrowserControllers[path] == nil { fileBrowserControllers[path] = [:] }
+        fileBrowserControllers[path]?[tabID] = ctrl
+        return ctrl
+    }
+
+    private func makeDataSource() -> any FileBrowserDataSource {
+        if let target = sshTarget {
+            return RemoteFileBrowserDataSource(sshTarget: target)
+        }
+        return LocalFileBrowserDataSource()
+    }
+
+    private func persistFileBrowserState(tabID: UUID) {
+        guard let index = tabs.firstIndex(where: { $0.id == tabID }),
+              let ctrl = fileBrowserControllers[activeWorktreePath]?[tabID] else { return }
+        var record = tabs[index]
+        record.fileBrowserState = ctrl.snapshot()
+        tabs[index] = record
+    }
+
     /// Switches to the specified tab.
     func selectTab(_ tabID: UUID) {
         guard tabID != activeTabID,
               tabs.contains(where: { $0.id == tabID }) else { return }
         saveActiveTabState()
         activeTabID = tabID
+    }
+
+    /// Closes the tab. If it's a dirty file-browser tab, shows a confirmation
+    /// modal first; user can save, discard, or cancel.
+    func requestCloseTab(_ tabID: UUID) {
+        guard let tab = tabs.first(where: { $0.id == tabID }) else { return }
+        if tab.kind == .fileBrowser,
+           let ctrl = fileBrowserControllers[activeWorktreePath]?[tabID],
+           ctrl.isDirty {
+            confirmCloseDirtyFileBrowserTab(tabID: tabID, controller: ctrl)
+            return
+        }
+        closeTab(tabID)
+    }
+
+    private func confirmCloseDirtyFileBrowserTab(tabID: UUID, controller: FileBrowserTabController) {
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Unsaved changes")
+        alert.informativeText = String(localized: "Save changes before closing?")
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: String(localized: "Save"))
+        alert.addButton(withTitle: String(localized: "Discard"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        let response = alert.runModal()
+        switch response {
+        case .alertFirstButtonReturn: // Save
+            Task { @MainActor in
+                do {
+                    try await controller.saveCurrentFile()
+                    self.closeTab(tabID)
+                } catch {
+                    // Saving failed — leave the tab open; user can retry / discard.
+                    let err = NSAlert()
+                    err.messageText = String(localized: "Save failed")
+                    err.informativeText = error.localizedDescription
+                    err.runModal()
+                }
+            }
+        case .alertSecondButtonReturn: // Discard
+            closeTab(tabID)
+        default: // Cancel
+            break
+        }
     }
 
     /// Closes a tab and cleans up its controller. If it was active, selects an adjacent tab.
@@ -373,6 +484,9 @@ final class WorkspaceModel: ObservableObject, Identifiable {
             ctrl.terminateAll()
             tabControllers[path]?.removeValue(forKey: tabID)
         }
+        // File browser controllers don't have terminal sessions to terminate;
+        // just drop the reference so the next open re-creates fresh state.
+        fileBrowserControllers[path]?.removeValue(forKey: tabID)
 
         tabs.remove(at: index)
 

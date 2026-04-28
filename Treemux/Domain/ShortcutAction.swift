@@ -33,6 +33,7 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
     case toggleSidebar
     case openProject
     case newTab
+    case newFileBrowserTab
     case closeTab
     case nextTab
     case previousTab
@@ -49,7 +50,7 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
         switch self {
         case .openSettings, .commandPalette, .toggleSidebar, .openProject:
             return .general
-        case .newTab, .closeTab, .nextTab, .previousTab:
+        case .newTab, .newFileBrowserTab, .closeTab, .nextTab, .previousTab:
             return .tabs
         case .splitHorizontal, .splitVertical, .closePane,
              .focusNextPane, .focusPreviousPane, .zoomPane:
@@ -64,6 +65,7 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
         case .toggleSidebar: return "Toggle Sidebar"
         case .openProject: return "Open Project"
         case .newTab: return "New Tab"
+        case .newFileBrowserTab: return "New File Browser Tab"
         case .closeTab: return "Close Tab"
         case .nextTab: return "Next Tab"
         case .previousTab: return "Previous Tab"
@@ -83,6 +85,7 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
         case .toggleSidebar: return "Show or hide the project sidebar."
         case .openProject: return "Open a directory as a project."
         case .newTab: return "Create a new terminal tab."
+        case .newFileBrowserTab: return "Create a new file browser tab for the selected worktree."
         case .closeTab: return "Close the current tab."
         case .nextTab: return "Switch to the next tab."
         case .previousTab: return "Switch to the previous tab."
@@ -107,6 +110,8 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
             return StoredShortcut(key: "o", command: true, shift: false, option: false, control: false)
         case .newTab:
             return StoredShortcut(key: "t", command: true, shift: false, option: false, control: false)
+        case .newFileBrowserTab:
+            return StoredShortcut(key: "t", command: true, shift: true, option: false, control: false)
         case .closeTab:
             return StoredShortcut(key: "w", command: true, shift: true, option: false, control: false)
         case .nextTab:

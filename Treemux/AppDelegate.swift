@@ -106,6 +106,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
         editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenu.addItem(.separator())
+        let saveFileItem = NSMenuItem(title: "Save", action: #selector(saveCurrentFile), keyEquivalent: "s")
+        saveFileItem.keyEquivalentModifierMask = [.command]
+        saveFileItem.target = self
+        editMenu.addItem(saveFileItem)
         let editMenuItem = NSMenuItem()
         editMenuItem.submenu = editMenu
         mainMenu.addItem(editMenuItem)
@@ -159,6 +164,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         newTabItem.target = self
         applyShortcut(.newTab, to: newTabItem)
         tabMenu.addItem(newTabItem)
+        let newFBTabItem = NSMenuItem(title: "New File Browser Tab", action: #selector(newFileBrowserTab), keyEquivalent: "")
+        newFBTabItem.target = self
+        applyShortcut(.newFileBrowserTab, to: newFBTabItem)
+        tabMenu.addItem(newFBTabItem)
         let closeTabItem = NSMenuItem(title: "Close Tab", action: #selector(closeTab), keyEquivalent: "")
         closeTabItem.target = self
         applyShortcut(.closeTab, to: closeTabItem)
@@ -248,6 +257,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store?.selectedWorkspace?.createTab()
     }
 
+    @objc private func newFileBrowserTab() {
+        guard let workspace = store?.selectedWorkspace else { return }
+        let root: String
+        let kind: FileBrowserRootKind
+        if !workspace.activeWorktreePath.isEmpty {
+            root = workspace.activeWorktreePath
+            kind = .worktree
+        } else if let r = workspace.repositoryRoot?.path {
+            root = r
+            kind = .project
+        } else {
+            return
+        }
+        let title = URL(fileURLWithPath: root).lastPathComponent
+        workspace.createFileBrowserTab(rootPath: root, rootKind: kind, title: title)
+    }
+
     @objc private func closeTab() {
         guard let ws = store?.selectedWorkspace, let tabID = ws.activeTabID else { return }
         ws.closeTab(tabID)
@@ -259,6 +285,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func previousTab() {
         store?.selectedWorkspace?.selectPreviousTab()
+    }
+
+    @objc private func saveCurrentFile() {
+        NotificationCenter.default.post(name: .treemuxSaveCurrentFile, object: nil)
     }
 
     // MARK: - Updates
