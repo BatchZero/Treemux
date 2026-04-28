@@ -12,6 +12,9 @@ struct SidebarNodeRow: View {
     let store: WorkspaceStore
     let theme: ThemeManager
     let isSelected: Bool
+    /// Default to the singleton so callers don't have to thread it through.
+    /// SwiftUI subscribes correctly when `@ObservedObject` has a default value.
+    @ObservedObject var attentionStore: AttentionStore = .shared
 
     var body: some View {
         switch node.kind {
@@ -22,7 +25,8 @@ struct SidebarNodeRow: View {
                 workspace: ws,
                 store: store,
                 theme: theme,
-                isSelected: isSelected
+                isSelected: isSelected,
+                attentionStore: attentionStore
             )
         case .worktree(let ws, let wt):
             WorktreeRowContent(
@@ -30,7 +34,8 @@ struct SidebarNodeRow: View {
                 worktree: wt,
                 store: store,
                 theme: theme,
-                isSelected: isSelected
+                isSelected: isSelected,
+                attentionStore: attentionStore
             )
         }
     }
@@ -44,6 +49,9 @@ struct WorkspaceRowContent: View {
     let store: WorkspaceStore
     let theme: ThemeManager
     let isSelected: Bool
+    /// Observed so attention state changes trigger a re-render. The
+    /// `workspace.hasAttention` computation routes through the store.
+    @ObservedObject var attentionStore: AttentionStore
 
     @State private var isHovered = false
 
@@ -108,6 +116,10 @@ struct WorktreeRowContent: View {
     let store: WorkspaceStore
     let theme: ThemeManager
     let isSelected: Bool
+    /// Observed so attention state changes trigger a re-render. The
+    /// `workspace.hasAttention(forWorktreePath:)` computation routes through
+    /// the store.
+    @ObservedObject var attentionStore: AttentionStore
 
     @State private var isHovered = false
 
