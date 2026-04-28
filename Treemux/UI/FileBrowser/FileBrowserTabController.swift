@@ -114,4 +114,127 @@ final class FileBrowserTabController: ObservableObject {
     private func filtered(_ nodes: [FileNode]) -> [FileNode] {
         showsHiddenFiles ? nodes : nodes.filter { !$0.isHidden }
     }
+
+    // MARK: - File selection
+
+    func selectFile(_ path: String) async {
+        // Dirty guard handled by the UI sheet before calling selectFile.
+        selectedFilePath = path
+        openFile = .loadingMeta(path: path)
+        onPersistableStateChanged?()
+
+        let meta: FileMetadata
+        do {
+            meta = try await dataSource.fileMetadata(path)
+        } catch {
+            openFile = .error(path: path, message: error.localizedDescription)
+            return
+        }
+
+        // Force Quick Look for files larger than the absolute editor cap.
+        if meta.sizeBytes > Self.quickLookOnlyThreshold {
+            await loadQuickLook(path: path)
+            return
+        }
+        // Prompt for files between large threshold and quickLookOnly threshold.
+        if meta.sizeBytes > Self.largeFileThreshold {
+            openFile = .confirmingLargeFile(path: path, sizeBytes: meta.sizeBytes)
+            return
+        }
+
+        await dispatchByType(path: path, meta: meta)
+    }
+
+    /// Called from UI when user confirms the large-file prompt.
+    func confirmLargeFileLoad() async {
+        guard case .confirmingLargeFile(let path, _) = openFile else { return }
+        do {
+            let meta = try await dataSource.fileMetadata(path)
+            await dispatchByType(path: path, meta: meta)
+        } catch {
+            openFile = .error(path: path, message: error.localizedDescription)
+        }
+    }
+
+    /// Called from UI when user cancels the large-file prompt.
+    func cancelLargeFileLoad() {
+        openFile = .empty
+        selectedFilePath = nil
+    }
+
+    private func dispatchByType(path: String, meta: FileMetadata) async {
+        let kind = FileTypeClassifier.classifyByName(path)
+        switch kind {
+        case .text:
+            await loadText(path: path)
+        case .image:
+            await loadImage(path: path)
+        case .quickLook:
+            await loadQuickLook(path: path)
+        case .binary:
+            openFile = .binary(path: path, metadata: meta)
+        case .unknown:
+            // Try a content sniff to upgrade unknowns into text where possible.
+            await loadUnknown(path: path, meta: meta)
+        }
+    }
+
+    private func loadText(path: String) async {
+        openFile = .loadingContent(path: path)
+        do {
+            let data = try await dataSource.readFile(path, maxBytes: Self.textReadLimit)
+            let (content, encoding) = decode(data)
+            openFile = .text(path: path, content: content, encoding: encoding, dirty: false)
+        } catch FileBrowserError.fileTooLarge(_, let size, _) {
+            openFile = .confirmingLargeFile(path: path, sizeBytes: size)
+        } catch {
+            openFile = .error(path: path, message: error.localizedDescription)
+        }
+    }
+
+    private func loadImage(path: String) async {
+        openFile = .loadingContent(path: path)
+        do {
+            let data = try await dataSource.readFile(path, maxBytes: Int(Self.quickLookOnlyThreshold))
+            if let img = NSImage(data: data) {
+                openFile = .image(path: path, image: img)
+            } else {
+                openFile = .error(path: path, message: "Cannot decode image")
+            }
+        } catch {
+            openFile = .error(path: path, message: error.localizedDescription)
+        }
+    }
+
+    private func loadQuickLook(path: String) async {
+        openFile = .loadingContent(path: path)
+        do {
+            let url = try await dataSource.downloadForQuickLook(path) { _ in }
+            openFile = .quickLook(path: path, localFileURL: url)
+        } catch {
+            openFile = .error(path: path, message: error.localizedDescription)
+        }
+    }
+
+    private func loadUnknown(path: String, meta: FileMetadata) async {
+        do {
+            let preview = try await dataSource.readFile(path, maxBytes: 8192)
+            switch FileTypeClassifier.classifyByContent(preview) {
+            case .text:
+                await loadText(path: path)
+            default:
+                openFile = .binary(path: path, metadata: meta)
+            }
+        } catch {
+            openFile = .binary(path: path, metadata: meta)
+        }
+    }
+
+    /// Tries UTF-8 → GBK → Latin-1.
+    private func decode(_ data: Data) -> (String, String.Encoding) {
+        if let s = String(data: data, encoding: .utf8) { return (s, .utf8) }
+        let gbk = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(CFStringEncodings.GB_18030_2000.rawValue)))
+        if let s = String(data: data, encoding: gbk) { return (s, gbk) }
+        return (String(data: data, encoding: .isoLatin1) ?? "", .isoLatin1)
+    }
 }

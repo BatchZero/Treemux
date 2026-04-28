@@ -38,6 +38,45 @@ final class FileBrowserTabControllerTests: XCTestCase {
         XCTAssertTrue(ctrl.expandedDirs.contains("/r/sub"))
         XCTAssertEqual(ctrl.childrenByPath["/r/sub"]?.map(\.name), ["child.txt"])
     }
+
+    func testSelectSmallTextFile() async throws {
+        let mock = MockFileBrowserDataSource()
+        mock.fileMetas["/r/a.txt"] = FileMetadata(path: "/r/a.txt", sizeBytes: 5, modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
+        mock.fileContents["/r/a.txt"] = "hello".data(using: .utf8)!
+        let ctrl = FileBrowserTabController(initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
+        await ctrl.selectFile("/r/a.txt")
+        if case .text(let path, let content, _, let dirty) = ctrl.openFile {
+            XCTAssertEqual(path, "/r/a.txt")
+            XCTAssertEqual(content, "hello")
+            XCTAssertFalse(dirty)
+        } else {
+            XCTFail("expected .text, got \(ctrl.openFile)")
+        }
+    }
+
+    func testSelectLargeFilePromptsConfirmation() async {
+        let mock = MockFileBrowserDataSource()
+        let big: Int64 = 6 * 1024 * 1024
+        mock.fileMetas["/r/big.bin"] = FileMetadata(path: "/r/big.bin", sizeBytes: big, modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
+        let ctrl = FileBrowserTabController(initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
+        await ctrl.selectFile("/r/big.bin")
+        if case .confirmingLargeFile(let path, let size) = ctrl.openFile {
+            XCTAssertEqual(path, "/r/big.bin")
+            XCTAssertEqual(size, big)
+        } else {
+            XCTFail("expected .confirmingLargeFile")
+        }
+    }
+
+    func testSelectBinaryFile() async {
+        let mock = MockFileBrowserDataSource()
+        mock.fileMetas["/r/a.exe"] = FileMetadata(path: "/r/a.exe", sizeBytes: 100, modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
+        let ctrl = FileBrowserTabController(initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
+        await ctrl.selectFile("/r/a.exe")
+        if case .binary = ctrl.openFile {} else {
+            XCTFail("expected .binary, got \(ctrl.openFile)")
+        }
+    }
 }
 
 final class MockFileBrowserDataSource: FileBrowserDataSource {
