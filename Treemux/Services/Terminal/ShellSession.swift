@@ -244,10 +244,9 @@ final class ShellSession: ObservableObject, Identifiable {
     }
 
     func setFocused(_ isFocused: Bool) {
-        let wasFocused = isFocusedInWorkspace
         isFocusedInWorkspace = isFocused
         surfaceController.setFocused(isFocused)
-        if isFocused && !wasFocused {
+        if isFocused {
             clearAIAttention()
         }
     }

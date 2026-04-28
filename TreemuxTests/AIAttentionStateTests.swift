@@ -40,6 +40,25 @@ final class AIAttentionStateTests: XCTestCase {
     }
 
     @MainActor
+    func testFocusClearsAttentionEvenIfAlreadyFocused() {
+        let backend = SessionBackendConfiguration.localShell(
+            LocalShellConfig(shellPath: "/bin/zsh", arguments: [])
+        )
+        let session = ShellSession(
+            id: UUID(),
+            backendConfiguration: backend,
+            preferredWorkingDirectory: NSTemporaryDirectory()
+        )
+        session.setFocused(true)
+        session.applyDesktopNotificationFromTest(title: "treemux:input", body: nil)
+        XCTAssertEqual(session.aiAttention, .input)
+
+        // Calling setFocused(true) again on an already-focused session must clear.
+        session.setFocused(true)
+        XCTAssertEqual(session.aiAttention, .none)
+    }
+
+    @MainActor
     func testClearAIAttentionDirectlyResetsState() {
         let backend = SessionBackendConfiguration.localShell(
             LocalShellConfig(shellPath: "/bin/zsh", arguments: [])
