@@ -119,6 +119,42 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(loadedWS.worktreeStates[0].selectedTabID, tabID)
     }
 
+    func testAppSettingsDefaultsForNewFields() {
+        let settings = AppSettings()
+        XCTAssertTrue(settings.aiActivityHintsEnabled)
+        XCTAssertTrue(settings.aiHookSkippedKeys.isEmpty)
+    }
+
+    func testAppSettingsRoundTripPreservesNewFields() throws {
+        var settings = AppSettings()
+        settings.aiActivityHintsEnabled = false
+        settings.aiHookSkippedKeys = ["workspace-uuid:claude", "workspace-uuid:codex"]
+
+        let encoded = try JSONEncoder().encode(settings)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: encoded)
+
+        XCTAssertEqual(decoded.aiActivityHintsEnabled, false)
+        XCTAssertEqual(decoded.aiHookSkippedKeys.count, 2)
+        XCTAssertEqual(Set(decoded.aiHookSkippedKeys), Set(["workspace-uuid:claude", "workspace-uuid:codex"]))
+    }
+
+    func testAppSettingsBackwardCompatibilityForMissingNewFields() throws {
+        // Older JSON written before T16 lacks the two new keys — decode should
+        // succeed with defaults, NOT throw.
+        let oldJSON = #"""
+        {
+            "version": 1,
+            "language": "system",
+            "activeThemeID": "treemux-dark",
+            "appearance": "system"
+        }
+        """#
+        let data = oldJSON.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+        XCTAssertTrue(decoded.aiActivityHintsEnabled, "Default should kick in")
+        XCTAssertEqual(decoded.aiHookSkippedKeys, [], "Default should kick in")
+    }
+
     func testWorkspaceTabStateMigrationFromEmptyTabs() throws {
         let workspace = WorkspaceRecord(
             id: UUID(),
