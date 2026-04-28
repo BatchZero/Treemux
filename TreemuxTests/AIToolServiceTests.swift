@@ -19,6 +19,11 @@ final class AIToolServiceTests: XCTestCase {
         XCTAssertEqual(AIToolKind.detect(processName: "codex-cli"), .openaiCodex)
     }
 
+    func testDetectOpencode() {
+        XCTAssertEqual(AIToolKind.detect(processName: "opencode"), .opencode)
+        XCTAssertEqual(AIToolKind.detect(processName: "opencode-cli"), .opencode)
+    }
+
     func testDetectUnknown() {
         XCTAssertNil(AIToolKind.detect(processName: "vim"))
         XCTAssertNil(AIToolKind.detect(processName: "zsh"))
@@ -28,12 +33,14 @@ final class AIToolServiceTests: XCTestCase {
     func testAIToolKindDisplayName() {
         XCTAssertEqual(AIToolKind.claudeCode.displayName, "Claude Code")
         XCTAssertEqual(AIToolKind.openaiCodex.displayName, "Codex")
+        XCTAssertEqual(AIToolKind.opencode.displayName, "opencode")
         XCTAssertEqual(AIToolKind.custom.displayName, "AI Agent")
     }
 
     func testAIToolKindIconName() {
         XCTAssertFalse(AIToolKind.claudeCode.iconName.isEmpty)
         XCTAssertFalse(AIToolKind.openaiCodex.iconName.isEmpty)
+        XCTAssertFalse(AIToolKind.opencode.iconName.isEmpty)
         XCTAssertFalse(AIToolKind.custom.iconName.isEmpty)
     }
 

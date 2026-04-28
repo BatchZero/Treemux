@@ -30,6 +30,7 @@ struct SSHSessionConfig: Codable, Hashable {
 enum AIToolKind: String, Codable {
     case claudeCode = "claude"
     case openaiCodex = "codex"
+    case opencode = "opencode"
     case custom
 }
 

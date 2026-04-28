@@ -412,6 +412,66 @@ final class AIHookInstallerTests: XCTestCase {
         }
     }
 
+    // MARK: - OpencodeHookProvider (T13)
+
+    func testOpencodeNotDetectedWithoutConfigDir() async throws {
+        let fs = InMemoryHookFileSystem()
+        let status = try await OpencodeHookProvider().inspect(fs: fs)
+        XCTAssertEqual(status, .notDetected)
+    }
+
+    func testOpencodeDetectedNotInstalledWhenPluginMissing() async throws {
+        let fs = InMemoryHookFileSystem()
+        try await fs.writeText("~/.config/opencode/config.json", "{}")
+        let status = try await OpencodeHookProvider().inspect(fs: fs)
+        XCTAssertEqual(status, .detectedNotInstalled)
+    }
+
+    func testOpencodeInstallWritesPluginAndHelper() async throws {
+        let fs = InMemoryHookFileSystem()
+        try await fs.writeText("~/.config/opencode/config.json", "{}")
+        let bundle = try makeStubBundleURL(helpers: ["notify.sh", "treemux-notify.js"])
+
+        _ = try await OpencodeHookProvider().install(fs: fs, helperBundleURL: bundle)
+
+        let pluginExists = try await fs.exists("~/.config/opencode/plugins/treemux-notify.js")
+        XCTAssertTrue(pluginExists)
+        let helperExists = try await fs.exists("~/.treemux/hooks/notify.sh")
+        XCTAssertTrue(helperExists)
+        let helperExec = try await fs.isExecutable("~/.treemux/hooks/notify.sh")
+        XCTAssertTrue(helperExec)
+    }
+
+    func testOpencodeUninstallKeepsSharedHelper() async throws {
+        let fs = InMemoryHookFileSystem()
+        try await fs.writeText("~/.config/opencode/config.json", "{}")
+        let bundle = try makeStubBundleURL(helpers: ["notify.sh", "treemux-notify.js"])
+        _ = try await OpencodeHookProvider().install(fs: fs, helperBundleURL: bundle)
+
+        try await OpencodeHookProvider().uninstall(fs: fs)
+
+        let pluginGone = try await fs.exists("~/.config/opencode/plugins/treemux-notify.js")
+        XCTAssertFalse(pluginGone)
+        // Shared helper should NOT have been removed:
+        let helperKept = try await fs.exists("~/.treemux/hooks/notify.sh")
+        XCTAssertTrue(helperKept)
+    }
+
+    func testOpencodeInspectAfterInstallReportsInstalled() async throws {
+        let fs = InMemoryHookFileSystem()
+        try await fs.writeText("~/.config/opencode/config.json", "{}")
+        let bundle = try makeStubBundleURL(helpers: ["notify.sh", "treemux-notify.js"])
+        _ = try await OpencodeHookProvider().install(fs: fs, helperBundleURL: bundle)
+
+        let status = try await OpencodeHookProvider().inspect(fs: fs)
+        switch status {
+        case .installed(let v, _):
+            XCTAssertEqual(v, "1")
+        default:
+            XCTFail("Expected .installed, got \(status)")
+        }
+    }
+
     // MARK: - Local JSON helpers (test-only)
 
     private func parseTestJSON(_ raw: String) -> Any? {

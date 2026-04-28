@@ -66,6 +66,7 @@
 		7BAFFB86D4EE2F43992E4808 /* AppSettingsPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48405541E0E22A909B92BA03 /* AppSettingsPersistence.swift */; };
 		7C12CE88C8566299E18BD638 /* AIHookInstallerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB963975F1E068F4C1399CA /* AIHookInstallerTests.swift */; };
 		7C890E7C842699E9E4E18606 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */; };
+		83E42FD933446A846FF70EBE /* OpencodeHookProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1D39E4326F4112B6C6B26D /* OpencodeHookProvider.swift */; };
 		86E976461528AC1A196E4DC6 /* ProcessTreeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 081CA32DCF94FDC4583766A2 /* ProcessTreeTests.swift */; };
 		89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */; };
 		89A2C91A680D947F1C2B176D /* ShortcutRecorderButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A169E6DF74EAE95F932D40F0 /* ShortcutRecorderButton.swift */; };
@@ -130,6 +131,7 @@
 		195EA28E9C93EE6E874ED6ED /* SidebarNodeItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNodeItem.swift; sourceTree = "<group>"; };
 		1B7DBEF3A8FDA651804A6D8A /* TreemuxKeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxKeyboardShortcuts.swift; sourceTree = "<group>"; };
 		1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneLayout.swift; sourceTree = "<group>"; };
+		1D1D39E4326F4112B6C6B26D /* OpencodeHookProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpencodeHookProvider.swift; sourceTree = "<group>"; };
 		20079BE9FA1D7054C79699F2 /* WorkspaceSessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSessionController.swift; sourceTree = "<group>"; };
 		2290B3E587177F8B10B05395 /* ShellSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellSession.swift; sourceTree = "<group>"; };
 		24A323012CE09C4999DF9E08 /* TerminalSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
@@ -271,6 +273,7 @@
 			children = (
 				53E0992E33464CED1F6E39B3 /* ClaudeCodeHookProvider.swift */,
 				36EE10B5910A906BCC327067 /* CodexHookProvider.swift */,
+				1D1D39E4326F4112B6C6B26D /* OpencodeHookProvider.swift */,
 			);
 			path = Providers;
 			sourceTree = "<group>";
@@ -708,6 +711,7 @@
 				B620A3848F1EF7DE7BDC62A2 /* LanguageManager.swift in Sources */,
 				5695944A97F022496C2F055E /* MainWindowView.swift in Sources */,
 				9E3EDA87C6172DCC23C14AFE /* OpenProjectSheet.swift in Sources */,
+				83E42FD933446A846FF70EBE /* OpencodeHookProvider.swift in Sources */,
 				78942DBCD13BA394E9AC92CD /* PaneLayout.swift in Sources */,
 				634F5C15FC031D133DEA6DC1 /* PathFormatting.swift in Sources */,
 				D2D97673DE196B9D5B0B826E /* ProcessTree.swift in Sources */,
