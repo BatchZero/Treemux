@@ -7,11 +7,12 @@ import SwiftUI
 
 // MARK: - Activity Indicator State
 
-/// Three-state activity indicator for sidebar icons.
+/// Four-state activity indicator for sidebar icons.
 enum SidebarIconActivityIndicator {
     case none
     case current   // Static dot — this worktree is the active working directory
     case working   // Animated pulse — terminal sessions are running
+    case attention // Faster, brighter pulse — AI agent needs the user
 }
 
 // MARK: - Icon View
@@ -96,11 +97,15 @@ struct SidebarIconActivityBadge: View {
 
     private var badgeSize: CGFloat {
         switch kind {
-        case .working:
+        case .working, .attention:
             return max(7, size * 0.34)
         case .current, .none:
             return max(6, size * 0.28)
         }
+    }
+
+    private var isAnimatedKind: Bool {
+        kind == .working || kind == .attention
     }
 
     private var pulseLineWidth: CGFloat {
@@ -116,27 +121,35 @@ struct SidebarIconActivityBadge: View {
     }
 
     private var pulseDuration: Double {
-        isEmphasized ? 0.95 : 1.15
+        switch kind {
+        case .attention:
+            return isEmphasized ? 0.55 : 0.7
+        case .working:
+            return isEmphasized ? 0.95 : 1.15
+        default:
+            return 1.0
+        }
     }
 
     private var coreScale: CGFloat {
-        guard kind == .working else { return 1 }
-        return isAnimating ? 1.18 : 0.9
+        isAnimatedKind ? (isAnimating ? 1.18 : 0.9) : 1
     }
 
     private var coreOpacity: Double {
-        guard kind == .working else { return 1 }
-        return isAnimating ? 1 : 0.82
+        isAnimatedKind ? (isAnimating ? 1 : 0.82) : 1
     }
 
     private var glowRadius: CGFloat {
-        guard kind == .working else { return 0 }
-        return isEmphasized ? 6 : 4
+        switch kind {
+        case .attention: return isEmphasized ? 8 : 6
+        case .working:   return isEmphasized ? 6 : 4
+        default:         return 0
+        }
     }
 
     var body: some View {
         ZStack {
-            if kind == .working {
+            if isAnimatedKind {
                 Circle()
                     .fill(activityColor.opacity(isAnimating ? 0.18 : 0.06))
                     .frame(width: badgeSize, height: badgeSize)
@@ -156,7 +169,7 @@ struct SidebarIconActivityBadge: View {
                 .overlay(Circle().stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 1))
                 .scaleEffect(coreScale)
                 .opacity(coreOpacity)
-                .shadow(color: activityColor.opacity(kind == .working ? 0.9 : 0), radius: glowRadius)
+                .shadow(color: activityColor.opacity(isAnimatedKind ? 0.9 : 0), radius: glowRadius)
         }
         .onAppear {
             updateAnimationState()
@@ -167,7 +180,7 @@ struct SidebarIconActivityBadge: View {
     }
 
     private func updateAnimationState() {
-        guard kind == .working else {
+        guard isAnimatedKind else {
             isAnimating = false
             return
         }
