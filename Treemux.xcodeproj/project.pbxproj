@@ -17,6 +17,7 @@
 		17F6E36CAD2008C8EA72726A /* Citadel in Frameworks */ = {isa = PBXBuildFile; productRef = 6A0BCC9E620E634555EA4F1E /* Citadel */; };
 		194928F8929DB9A37A2B9B96 /* TreemuxGhosttyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B99E6A1366954D8A221B273 /* TreemuxGhosttyController.swift */; };
 		1B16436084D3BD1D847EB80F /* AttentionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D3B36585022D9D93567384 /* AttentionStoreTests.swift */; };
+		1BFEDB8E8C6DCE3A228F782B /* AIHooks in Resources */ = {isa = PBXBuildFile; fileRef = FCDABAEAB8A96753452954DD /* AIHooks */; };
 		1C97D7734948943CC82C0690 /* SidebarIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4737DC60E37C9A4390082193 /* SidebarIcon.swift */; };
 		1DB171686B07D923CEF1FD9E /* AttentionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A76A807641575E301D45C1F8 /* AttentionStore.swift */; };
 		1F2D077FE3D8F5CE1D84C25F /* AppUpdaterController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 581FDA0779784EFB231AAF34 /* AppUpdaterController.swift */; };
@@ -211,6 +212,7 @@
 		F2ABC31C96A9F51C865E1FCD /* SFTPDirectoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPDirectoryEntry.swift; sourceTree = "<group>"; };
 		F59B5026A96BF865D41D0890 /* TreemuxGhosttyShellIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyShellIntegration.swift; sourceTree = "<group>"; };
 		FB0ABA0B08B1F2185D6C82B5 /* SSHConfigParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParserTests.swift; sourceTree = "<group>"; };
+		FCDABAEAB8A96753452954DD /* AIHooks */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AIHooks; path = Treemux/Support/AIHooks; sourceTree = SOURCE_ROOT; };
 		FED0327A7E59732F42304316 /* WorkspaceMetadataWatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceMetadataWatchService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -333,6 +335,7 @@
 		4043C724F22F571520359C6A = {
 			isa = PBXGroup;
 			children = (
+				FCDABAEAB8A96753452954DD /* AIHooks */,
 				3A68A8398041C9097733E6F0 /* Treemux */,
 				1A4D936F6345D184BA953D63 /* TreemuxTests */,
 				E71CA3D79F1468B502EBB2AC /* Frameworks */,
@@ -614,6 +617,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1BFEDB8E8C6DCE3A228F782B /* AIHooks in Resources */,
 				9973CC9D3608B568999CCC76 /* Assets.xcassets in Resources */,
 				0E5862A0ECFBA02E71850208 /* Localizable.xcstrings in Resources */,
 			);
