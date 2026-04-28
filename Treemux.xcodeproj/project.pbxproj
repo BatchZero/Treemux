@@ -100,6 +100,7 @@
 		CD969404DE603FC36B6116DA /* TreemuxGhosttyClipboardSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E993B2E72B0AA5FA2CD8F136 /* TreemuxGhosttyClipboardSupport.swift */; };
 		CDB05808B946D402F0D9385D /* SidebarCellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF28F45ACFC8C05BE9BD98A9 /* SidebarCellView.swift */; };
 		CED37FBB27DAA8CBE601AD3C /* EmptyTabStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 383CC60F01FDAD8B71C8EF65 /* EmptyTabStateView.swift */; };
+		D11755A98A0E207932B12B85 /* ClaudeCodeHookProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53E0992E33464CED1F6E39B3 /* ClaudeCodeHookProvider.swift */; };
 		D2D97673DE196B9D5B0B826E /* ProcessTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFCB1FCCBAF466E03F7A8DD8 /* ProcessTree.swift */; };
 		D5D2DCD282AEEBB8C4A6F532 /* ShellCommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */; };
 		D971AE91A6477480A05CC577 /* AIToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C29C7AC42BC16FDDD118A64 /* AIToolModels.swift */; };
@@ -159,6 +160,7 @@
 		4742F4CA09E0C12BCF63C7CD /* PaneLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneLayoutTests.swift; sourceTree = "<group>"; };
 		48405541E0E22A909B92BA03 /* AppSettingsPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsPersistence.swift; sourceTree = "<group>"; };
 		4BBA3AE3C8A5250A068D141D /* AIToolServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolServiceTests.swift; sourceTree = "<group>"; };
+		53E0992E33464CED1F6E39B3 /* ClaudeCodeHookProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCodeHookProvider.swift; sourceTree = "<group>"; };
 		562B8C6A2EC32280F3C88E13 /* SidebarContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarContainerView.swift; sourceTree = "<group>"; };
 		56CFE929900AA3468AB1BA5B /* SSHConfigService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigService.swift; sourceTree = "<group>"; };
 		581FDA0779784EFB231AAF34 /* AppUpdaterController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdaterController.swift; sourceTree = "<group>"; };
@@ -247,6 +249,7 @@
 				66694CAA13481183CE322627 /* AIHookInstaller.swift */,
 				F9224AC3A02E683871BD6507 /* AIHookProvider.swift */,
 				3D0ADD20D44C25E3A40CE443 /* AIToolService.swift */,
+				0ABE4EAF1BAC53690F83FB21 /* Providers */,
 			);
 			path = AITool;
 			sourceTree = "<group>";
@@ -259,6 +262,14 @@
 				A22F2A407A07989DE172DA3A /* WorkspaceStore.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		0ABE4EAF1BAC53690F83FB21 /* Providers */ = {
+			isa = PBXGroup;
+			children = (
+				53E0992E33464CED1F6E39B3 /* ClaudeCodeHookProvider.swift */,
+			);
+			path = Providers;
 			sourceTree = "<group>";
 		};
 		106B416E1D149A797E5D5030 /* Persistence */ = {
@@ -685,6 +696,7 @@
 				7BAFFB86D4EE2F43992E4808 /* AppSettingsPersistence.swift in Sources */,
 				1F2D077FE3D8F5CE1D84C25F /* AppUpdaterController.swift in Sources */,
 				1DB171686B07D923CEF1FD9E /* AttentionStore.swift in Sources */,
+				D11755A98A0E207932B12B85 /* ClaudeCodeHookProvider.swift in Sources */,
 				0D6E9070C727E942960D4BBB /* Color+Hex.swift in Sources */,
 				7C890E7C842699E9E4E18606 /* CommandPaletteView.swift in Sources */,
 				CED37FBB27DAA8CBE601AD3C /* EmptyTabStateView.swift in Sources */,
