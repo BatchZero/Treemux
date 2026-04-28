@@ -164,6 +164,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         newTabItem.target = self
         applyShortcut(.newTab, to: newTabItem)
         tabMenu.addItem(newTabItem)
+        let newFBTabItem = NSMenuItem(title: "New File Browser Tab", action: #selector(newFileBrowserTab), keyEquivalent: "")
+        newFBTabItem.target = self
+        applyShortcut(.newFileBrowserTab, to: newFBTabItem)
+        tabMenu.addItem(newFBTabItem)
         let closeTabItem = NSMenuItem(title: "Close Tab", action: #selector(closeTab), keyEquivalent: "")
         closeTabItem.target = self
         applyShortcut(.closeTab, to: closeTabItem)
@@ -251,6 +255,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func newTab() {
         store?.selectedWorkspace?.createTab()
+    }
+
+    @objc private func newFileBrowserTab() {
+        guard let workspace = store?.selectedWorkspace else { return }
+        let root: String
+        let kind: FileBrowserRootKind
+        if !workspace.activeWorktreePath.isEmpty {
+            root = workspace.activeWorktreePath
+            kind = .worktree
+        } else if let r = workspace.repositoryRoot?.path {
+            root = r
+            kind = .project
+        } else {
+            return
+        }
+        let title = URL(fileURLWithPath: root).lastPathComponent
+        workspace.createFileBrowserTab(rootPath: root, rootKind: kind, title: title)
     }
 
     @objc private func closeTab() {
