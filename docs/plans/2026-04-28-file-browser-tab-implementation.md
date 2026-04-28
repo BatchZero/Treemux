@@ -6,7 +6,7 @@
 
 **Architecture:** Extend `WorkspaceTabStateRecord` with `kind: WorkspaceTabKind` and a sibling `fileBrowserState: FileBrowserTabState?` payload (mutually exclusive with the existing `panes/layout/...` fields). A new `FileBrowserTabController` mirrors the existing `WorkspaceSessionController` shape. `FileBrowserDataSource` protocol abstracts local (`FileManager`) vs remote (extended `SFTPService`). `WorkspaceDetailView` dispatches by `tab.kind`; tab bar visually differentiates kinds. The Runestone editor is added via SwiftPM through `project.yml`.
 
-**Tech Stack:** Swift / SwiftUI / AppKit, Runestone (`https://github.com/simonbs/Runestone`) for the code editor, existing Citadel-based `SFTPService` extended for `readFile`/`writeFile`, XCTest in `TreemuxTests/`.
+**Tech Stack:** Swift / SwiftUI / AppKit, **CodeEditSourceEditor** (`https://github.com/CodeEditApp/CodeEditSourceEditor`) for the code editor (macOS-native, SwiftUI-friendly, tree-sitter syntax highlighting; replaces the originally planned Runestone, which is iOS-only), existing Citadel-based `SFTPService` extended for `readFile`/`writeFile`, XCTest in `TreemuxTests/`.
 
 ---
 
@@ -38,26 +38,28 @@ When a test step says "Run it to make sure it fails," that uses the per-test com
 
 # Phase 0 — Setup
 
-## Task 0.1: Add Runestone via SwiftPM
+## Task 0.1: Add CodeEditSourceEditor via SwiftPM
+
+> **Implementer note:** Runestone (the original choice) is iOS-only. CodeEditSourceEditor is the macOS-native equivalent: SwiftUI-friendly, line numbers, tree-sitter syntax highlighting. If CodeEditSourceEditor itself proves unworkable, fall back to a hand-rolled `NSTextView`-based editor (no external dependency) and update Task 7.5 accordingly — pause and ask before doing so.
 
 **Files:**
 - Modify: `project.yml`
 
-**Step 1: Edit `project.yml` to add the Runestone package**
+**Step 1: Edit `project.yml` to add the package**
 
-Under `packages:`, append:
+Under the existing top-level `packages:` section, append:
 
 ```yaml
-  Runestone:
-    url: https://github.com/simonbs/Runestone
-    from: "0.4.0"
+  CodeEditSourceEditor:
+    url: https://github.com/CodeEditApp/CodeEditSourceEditor
+    from: "0.10.0"
 ```
 
 Under `targets.Treemux.dependencies:`, append:
 
 ```yaml
-      - package: Runestone
-        product: Runestone
+      - package: CodeEditSourceEditor
+        product: CodeEditSourceEditor
 ```
 
 **Step 2: Regenerate the Xcode project**
@@ -65,19 +67,17 @@ Under `targets.Treemux.dependencies:`, append:
 Run: `xcodegen generate`
 Expected: `Updated project at Treemux.xcodeproj` and no errors.
 
-**Step 3: Build to confirm Runestone resolves**
+**Step 3: Build to confirm the package resolves**
 
 Run: `xcodebuild -project Treemux.xcodeproj -scheme Treemux -configuration Debug build`
-Expected: BUILD SUCCEEDED. (First run will fetch the package; this may take a minute.)
+Expected: BUILD SUCCEEDED. (First run will fetch the package and its tree-sitter dependencies; this may take a minute.)
 
 **Step 4: Commit**
 
 ```bash
 git add project.yml Treemux.xcodeproj
-git commit -m "chore: add Runestone package for file browser editor"
+git commit -m "chore: add CodeEditSourceEditor package for file browser editor"
 ```
-
-> If Runestone fails to integrate, fall back to `https://github.com/ZeeZide/CodeEditor` and update later phase tasks accordingly.
 
 ---
 
@@ -2425,16 +2425,18 @@ git add Treemux/UI/FileBrowser/ Treemux.xcodeproj
 git commit -m "feat(ui): file viewer panel + state-specific stubs"
 ```
 
-## Task 7.5: Real `TextEditorView` with Runestone
+## Task 7.5: Real `TextEditorView` with CodeEditSourceEditor
 
 **Files:**
 - Modify: `Treemux/UI/FileBrowser/TextEditorView.swift`
+
+> **Implementer note:** Use the public API of `CodeEditSourceEditor`. The exact API surface evolves; consult its README in the resolved package (or the package source under `~/Library/Developer/Xcode/DerivedData/.../SourcePackages/checkouts/CodeEditSourceEditor/`). The shape below is illustrative — adjust to match the actual `CodeEditSourceEditor.SourceEditor` (or equivalent) initializer parameters. Keep the **public surface of our `TextEditorView`** stable.
 
 **Step 1: Implement**
 
 ```swift
 import SwiftUI
-import Runestone
+import CodeEditSourceEditor
 
 struct TextEditorView: View {
     let path: String
@@ -2443,14 +2445,22 @@ struct TextEditorView: View {
     let dirty: Bool
     @ObservedObject var controller: FileBrowserTabController
 
+    @State private var bufferText: String = ""
+
     var body: some View {
         VStack(spacing: 0) {
-            RunestoneEditor(text: content,
-                            languageName: TextEditorView.languageHint(for: path),
-                            onChange: { controller.updateBuffer(content: $0) },
-                            onSave: { Task { try? await controller.saveCurrentFile() } })
+            CodeEditSourceEditorBridge(
+                text: $bufferText,
+                language: TextEditorView.languageHint(for: path),
+                onChange: { controller.updateBuffer(content: $0) }
+            )
             Divider()
             statusBar
+        }
+        .onAppear { bufferText = content }
+        .onChange(of: content) { _, newValue in
+            // Sync from controller state when a new file loads.
+            if bufferText != newValue { bufferText = newValue }
         }
     }
 
@@ -2477,68 +2487,51 @@ struct TextEditorView: View {
         }
     }
 
+    /// Maps file extensions to the language identifier strings expected by
+    /// CodeEditSourceEditor / tree-sitter. Adjust to match the real API.
     static func languageHint(for path: String) -> String? {
         let ext = (path as NSString).pathExtension.lowercased()
         return ext.isEmpty ? nil : ext
     }
 }
 
-/// AppKit bridge for Runestone's TextView.
-struct RunestoneEditor: NSViewRepresentable {
-    let text: String
-    let languageName: String?
+/// SwiftUI wrapper around CodeEditSourceEditor. The internals here must
+/// match the real API; what matters externally is the binding + onChange.
+struct CodeEditSourceEditorBridge: View {
+    @Binding var text: String
+    let language: String?
     let onChange: (String) -> Void
-    let onSave: () -> Void
 
-    func makeNSView(context: Context) -> TextView {
-        let tv = TextView()
-        tv.text = text
-        tv.showLineNumbers = true
-        tv.editorDelegate = context.coordinator
-        return tv
-    }
-
-    func updateNSView(_ nsView: TextView, context: Context) {
-        if nsView.text != text {
-            nsView.text = text
-        }
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(parent: self)
-    }
-
-    final class Coordinator: NSObject, TextViewDelegate {
-        let parent: RunestoneEditor
-        init(parent: RunestoneEditor) { self.parent = parent }
-
-        func textViewDidChange(_ textView: TextView) {
-            parent.onChange(textView.text)
-        }
-
-        func textView(_ textView: TextView, doCommandBy selector: Selector) -> Bool {
-            // Cmd+S → save
-            if selector == #selector(NSResponder.insertNewline(_:)) { return false }
-            return false
-        }
+    var body: some View {
+        // TODO: replace with the real CodeEditSourceEditor.SourceEditor view.
+        // Example shape (verify against current API):
+        //
+        //     SourceEditor(
+        //         text: $text,
+        //         language: language.flatMap { CodeLanguage.fromExtension($0) }
+        //     )
+        //     .onChange(of: text) { _, new in onChange(new) }
+        //
+        // Until the real API is wired, fall back to TextEditor for build-green:
+        TextEditor(text: $text)
+            .font(.system(.body, design: .monospaced))
+            .onChange(of: text) { _, new in onChange(new) }
     }
 }
 ```
-
-> Real Cmd+S routing: handle via menu command in Phase 8 / SwiftUI focused values, not inside Runestone's selector.
 
 **Step 2: Build**
 
 ```bash
 xcodebuild ... build
 ```
-Expected: BUILD SUCCEEDED. (If Runestone API has shifted, adjust the `TextView`/`TextViewDelegate` calls per their README — keep the public surface of `RunestoneEditor` stable.)
+Expected: BUILD SUCCEEDED. The implementer **must** wire the real `CodeEditSourceEditor` API in place of the `TextEditor` fallback before considering this task complete — the fallback is just a build-green stub; the user-facing requirement is line numbers + syntax highlighting.
 
 **Step 3: Commit**
 
 ```bash
 git add Treemux/UI/FileBrowser/TextEditorView.swift
-git commit -m "feat(ui): Runestone-based text editor"
+git commit -m "feat(ui): CodeEditSourceEditor-based text editor"
 ```
 
 ---
