@@ -197,8 +197,11 @@ final class TreemuxGhosttyController: ManagedTerminalSessionSurfaceController {
             return true
 
         case GHOSTTY_ACTION_DESKTOP_NOTIFICATION:
-            // TODO: Task 15 — deliver desktop notifications
-            NSSound.beep()
+            let title = action.action.desktop_notification.title.map(String.init(cString:)) ?? ""
+            let body  = action.action.desktop_notification.body.map(String.init(cString:))
+            DispatchQueue.main.async { [weak self] in
+                self?.onDesktopNotification?(title, body)
+            }
             return true
 
         case GHOSTTY_ACTION_RING_BELL:

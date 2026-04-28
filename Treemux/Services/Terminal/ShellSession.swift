@@ -132,6 +132,9 @@ final class ShellSession: ObservableObject, Identifiable {
             guard let self else { return }
             self.applyProcessExit(exitCode)
         }
+        surfaceController.onDesktopNotification = { [weak self] title, body in
+            self?.applyDesktopNotification(title: title, body: body)
+        }
         if let ghosttySurface = surfaceController as? TreemuxGhosttyController {
             ghosttySurface.onWorkspaceAction = { [weak self] action in
                 self?.onWorkspaceAction?(action)
