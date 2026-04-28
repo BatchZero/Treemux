@@ -79,6 +79,7 @@
 		9DB5A3B694A7A2D4D0248724 /* TreemuxGhosttyRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8C126FDBE3B3FC26672AF2F /* TreemuxGhosttyRuntime.swift */; };
 		9E3EDA87C6172DCC23C14AFE /* OpenProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BE07A133DAF6C1DB4F89297 /* OpenProjectSheet.swift */; };
 		9FDC3211E658A3C2D037F2DC /* WorkspaceTabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353A1A1130509D2930C26D93 /* WorkspaceTabBarView.swift */; };
+		9FFF93D2ADF09F30126819A1 /* CodexHookProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36EE10B5910A906BCC327067 /* CodexHookProvider.swift */; };
 		A0AD5591657B555F176AEFD8 /* ShellSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2290B3E587177F8B10B05395 /* ShellSession.swift */; };
 		A3A9D3AC7CCAEB6DA3B2D92D /* TreemuxGhosttyControllerRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F2AF4BADCEBABA624578341 /* TreemuxGhosttyControllerRegistry.swift */; };
 		A7746DB757BF4458229659E0 /* SessionBackendLaunch.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E24B640A3303D33931EA85 /* SessionBackendLaunch.swift */; };
@@ -143,6 +144,7 @@
 		3477DE6F674F94B9457073F4 /* TreemuxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxTests.swift; sourceTree = "<group>"; };
 		353A1A1130509D2930C26D93 /* WorkspaceTabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTabBarView.swift; sourceTree = "<group>"; };
 		3579E21F95E49A08C0BE1E5F /* RemoteDirectoryBrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDirectoryBrowserViewModel.swift; sourceTree = "<group>"; };
+		36EE10B5910A906BCC327067 /* CodexHookProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexHookProvider.swift; sourceTree = "<group>"; };
 		3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxServiceTests.swift; sourceTree = "<group>"; };
 		383CC60F01FDAD8B71C8EF65 /* EmptyTabStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyTabStateView.swift; sourceTree = "<group>"; };
 		3B99E6A1366954D8A221B273 /* TreemuxGhosttyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyController.swift; sourceTree = "<group>"; };
@@ -268,6 +270,7 @@
 			isa = PBXGroup;
 			children = (
 				53E0992E33464CED1F6E39B3 /* ClaudeCodeHookProvider.swift */,
+				36EE10B5910A906BCC327067 /* CodexHookProvider.swift */,
 			);
 			path = Providers;
 			sourceTree = "<group>";
@@ -697,6 +700,7 @@
 				1F2D077FE3D8F5CE1D84C25F /* AppUpdaterController.swift in Sources */,
 				1DB171686B07D923CEF1FD9E /* AttentionStore.swift in Sources */,
 				D11755A98A0E207932B12B85 /* ClaudeCodeHookProvider.swift in Sources */,
+				9FFF93D2ADF09F30126819A1 /* CodexHookProvider.swift in Sources */,
 				0D6E9070C727E942960D4BBB /* Color+Hex.swift in Sources */,
 				7C890E7C842699E9E4E18606 /* CommandPaletteView.swift in Sources */,
 				CED37FBB27DAA8CBE601AD3C /* EmptyTabStateView.swift in Sources */,

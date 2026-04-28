@@ -19,14 +19,25 @@ final class AIHookInstallerTests: XCTestCase {
     }
 
     /// Create a temporary directory that masquerades as the app's resource
-    /// bundle for hook helper scripts. Writes a stub `notify.sh` so providers
-    /// can read it during `install`.
-    private func makeStubBundleURL(helperContent: String = "stub-notify-sh") throws -> URL {
+    /// bundle for hook helper scripts. Writes a stub for each helper script
+    /// name so providers can read them during `install`.
+    /// - Parameters:
+    ///   - helpers: list of helper script filenames to stub. Defaults to just
+    ///     `notify.sh` for legacy single-helper providers (Claude).
+    ///   - helperContent: content written for each stubbed script. If `nil`,
+    ///     a per-name placeholder string is used.
+    private func makeStubBundleURL(
+        helpers: [String] = ["notify.sh"],
+        helperContent: String? = nil
+    ) throws -> URL {
         let tempDir = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("treemux-test-bundle-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        let scriptURL = tempDir.appendingPathComponent("notify.sh")
-        try helperContent.write(to: scriptURL, atomically: true, encoding: .utf8)
+        for name in helpers {
+            let url = tempDir.appendingPathComponent(name)
+            let content = helperContent ?? "stub-\(name)"
+            try content.write(to: url, atomically: true, encoding: .utf8)
+        }
         tempBundleDirs.append(tempDir)
         return tempDir
     }
@@ -256,6 +267,141 @@ final class AIHookInstallerTests: XCTestCase {
 
         // Simulate user/system clobbering the helper script.
         try await fs.removeFile("~/.treemux/hooks/notify.sh")
+
+        let status = try await provider.inspect(fs: fs)
+        switch status {
+        case .tampered(let reason):
+            XCTAssertFalse(reason.isEmpty)
+        default:
+            XCTFail("Expected .tampered, got \(status)")
+        }
+    }
+
+    // MARK: - CodexHookProvider (T12)
+
+    func testCodexNotDetectedWithoutConfig() async throws {
+        let fs = InMemoryHookFileSystem()
+        let provider = CodexHookProvider()
+        let status = try await provider.inspect(fs: fs)
+        XCTAssertEqual(status, .notDetected)
+    }
+
+    func testCodexDetectedNotInstalledForEmptyConfig() async throws {
+        let fs = InMemoryHookFileSystem()
+        try await fs.writeText("~/.codex/config.toml", "")
+        let provider = CodexHookProvider()
+        let status = try await provider.inspect(fs: fs)
+        XCTAssertEqual(status, .detectedNotInstalled)
+    }
+
+    func testCodexInstallWritesNotifyBlock() async throws {
+        let fs = InMemoryHookFileSystem()
+        try await fs.writeText("~/.codex/config.toml", "model = \"gpt-5\"\n")
+        let bundleURL = try makeStubBundleURL(helpers: ["notify.sh", "notify-codex.sh"])
+
+        let provider = CodexHookProvider()
+        let receipt = try await provider.install(fs: fs, helperBundleURL: bundleURL)
+        XCTAssertEqual(receipt.version, "1")
+
+        let raw = try await fs.readText("~/.codex/config.toml") ?? ""
+        XCTAssertTrue(raw.contains("# >>> treemux-managed v1 >>>"),
+                      "Expected begin marker in:\n\(raw)")
+        XCTAssertTrue(raw.contains("notify = [\"$HOME/.treemux/hooks/notify-codex.sh\"]"),
+                      "Expected notify line in:\n\(raw)")
+        XCTAssertTrue(raw.contains("model = \"gpt-5\""),
+                      "Expected user content preserved in:\n\(raw)")
+
+        // Both helpers were copied and made executable.
+        let sharedExists = try await fs.exists("~/.treemux/hooks/notify.sh")
+        let codexExists  = try await fs.exists("~/.treemux/hooks/notify-codex.sh")
+        XCTAssertTrue(sharedExists)
+        XCTAssertTrue(codexExists)
+        let sharedExec = try await fs.isExecutable("~/.treemux/hooks/notify.sh")
+        let codexExec  = try await fs.isExecutable("~/.treemux/hooks/notify-codex.sh")
+        XCTAssertTrue(sharedExec)
+        XCTAssertTrue(codexExec)
+    }
+
+    func testCodexInstallFailsOnUserNotifyConflict() async throws {
+        let fs = InMemoryHookFileSystem()
+        try await fs.writeText("~/.codex/config.toml", "notify = [\"my-program\"]\n")
+        let bundleURL = try makeStubBundleURL(helpers: ["notify.sh", "notify-codex.sh"])
+
+        let provider = CodexHookProvider()
+
+        do {
+            _ = try await provider.install(fs: fs, helperBundleURL: bundleURL)
+            XCTFail("Expected userConfigConflict, got success")
+        } catch {
+            switch error {
+            case HookInstallError.userConfigConflict(let message):
+                XCTAssertTrue(message.contains("notify"))
+            default:
+                XCTFail("Expected userConfigConflict, got \(error)")
+            }
+        }
+
+        // Helpers must NOT have been copied — install should fail before any
+        // filesystem side effect.
+        let sharedExists = try await fs.exists("~/.treemux/hooks/notify.sh")
+        let codexExists  = try await fs.exists("~/.treemux/hooks/notify-codex.sh")
+        XCTAssertFalse(sharedExists)
+        XCTAssertFalse(codexExists)
+    }
+
+    func testCodexUninstallRemovesOnlyManagedBlock() async throws {
+        let fs = InMemoryHookFileSystem()
+        try await fs.writeText("~/.codex/config.toml", "model = \"gpt-5\"\n")
+        let bundleURL = try makeStubBundleURL(helpers: ["notify.sh", "notify-codex.sh"])
+
+        let provider = CodexHookProvider()
+        _ = try await provider.install(fs: fs, helperBundleURL: bundleURL)
+
+        try await provider.uninstall(fs: fs)
+
+        let raw = try await fs.readText("~/.codex/config.toml") ?? ""
+        XCTAssertFalse(raw.contains("# >>> treemux-managed v1 >>>"),
+                       "Managed block should be gone, got:\n\(raw)")
+        XCTAssertFalse(raw.contains("notify-codex.sh"),
+                       "Managed notify line should be gone, got:\n\(raw)")
+        XCTAssertTrue(raw.contains("model = \"gpt-5\""),
+                      "User content should be preserved, got:\n\(raw)")
+
+        // Codex-specific helper removed; shared notify.sh must remain so that
+        // a still-installed Claude provider keeps working.
+        let codexExists  = try await fs.exists("~/.treemux/hooks/notify-codex.sh")
+        let sharedExists = try await fs.exists("~/.treemux/hooks/notify.sh")
+        XCTAssertFalse(codexExists)
+        XCTAssertTrue(sharedExists)
+    }
+
+    func testCodexInspectAfterInstallReportsInstalled() async throws {
+        let fs = InMemoryHookFileSystem()
+        try await fs.writeText("~/.codex/config.toml", "")
+        let bundleURL = try makeStubBundleURL(helpers: ["notify.sh", "notify-codex.sh"])
+
+        let provider = CodexHookProvider()
+        _ = try await provider.install(fs: fs, helperBundleURL: bundleURL)
+
+        let status = try await provider.inspect(fs: fs)
+        switch status {
+        case .installed(let version, _):
+            XCTAssertEqual(version, "1")
+        default:
+            XCTFail("Expected .installed, got \(status)")
+        }
+    }
+
+    func testCodexTamperedWhenHelperMissing() async throws {
+        let fs = InMemoryHookFileSystem()
+        try await fs.writeText("~/.codex/config.toml", "")
+        let bundleURL = try makeStubBundleURL(helpers: ["notify.sh", "notify-codex.sh"])
+
+        let provider = CodexHookProvider()
+        _ = try await provider.install(fs: fs, helperBundleURL: bundleURL)
+
+        // Simulate user/system clobbering one of the helper scripts.
+        try await fs.removeFile("~/.treemux/hooks/notify-codex.sh")
 
         let status = try await provider.inspect(fs: fs)
         switch status {
