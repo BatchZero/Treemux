@@ -137,4 +137,27 @@ final class PersistenceTests: XCTestCase {
         let decoded = try JSONDecoder().decode(WorkspaceRecord.self, from: data)
         XCTAssertTrue(decoded.worktreeStates.isEmpty)
     }
+
+    func testAppSettingsShowDefaultTerminalDefaultsTrue() {
+        let settings = AppSettings()
+        XCTAssertTrue(settings.showDefaultTerminal)
+    }
+
+    func testAppSettingsShowDefaultTerminalLegacyJSONDefaultsTrue() throws {
+        // Old settings JSON without showDefaultTerminal must decode with showDefaultTerminal == true.
+        // Build "legacy" JSON by encoding default AppSettings, parsing to a dictionary,
+        // removing the new key, then re-encoding. This is robust to the on-disk shape of
+        // nested types like SidebarItemIcon.
+        let defaults = AppSettings()
+        let encoded = try JSONEncoder().encode(defaults)
+        guard var dict = try JSONSerialization.jsonObject(with: encoded) as? [String: Any] else {
+            XCTFail("Encoded AppSettings was not a JSON object")
+            return
+        }
+        dict.removeValue(forKey: "showDefaultTerminal")
+        XCTAssertNil(dict["showDefaultTerminal"], "Legacy JSON must not contain showDefaultTerminal")
+        let legacyData = try JSONSerialization.data(withJSONObject: dict)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: legacyData)
+        XCTAssertTrue(decoded.showDefaultTerminal)
+    }
 }
