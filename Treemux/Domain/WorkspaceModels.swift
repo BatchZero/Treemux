@@ -43,6 +43,59 @@ struct WorkspaceRecord: Codable {
     let workspaceIcon: SidebarItemIcon?
     /// Per-worktree icon overrides, keyed by worktree path.
     let worktreeIconOverrides: [String: SidebarItemIcon]?
+    /// True for the single built-in home-directory terminal entry. Defaults to false for
+    /// every user-created workspace and decodes as false when absent in legacy JSON.
+    let isBuiltInDefaultTerminal: Bool
+
+    init(
+        id: UUID,
+        kind: WorkspaceKindRecord,
+        name: String,
+        repositoryPath: String?,
+        isPinned: Bool,
+        isArchived: Bool,
+        sshTarget: SSHTarget?,
+        worktreeStates: [WorktreeSessionStateRecord],
+        worktreeOrder: [String]?,
+        workspaceIcon: SidebarItemIcon?,
+        worktreeIconOverrides: [String: SidebarItemIcon]?,
+        isBuiltInDefaultTerminal: Bool = false
+    ) {
+        self.id = id
+        self.kind = kind
+        self.name = name
+        self.repositoryPath = repositoryPath
+        self.isPinned = isPinned
+        self.isArchived = isArchived
+        self.sshTarget = sshTarget
+        self.worktreeStates = worktreeStates
+        self.worktreeOrder = worktreeOrder
+        self.workspaceIcon = workspaceIcon
+        self.worktreeIconOverrides = worktreeIconOverrides
+        self.isBuiltInDefaultTerminal = isBuiltInDefaultTerminal
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, kind, name, repositoryPath, isPinned, isArchived, sshTarget,
+             worktreeStates, worktreeOrder, workspaceIcon, worktreeIconOverrides,
+             isBuiltInDefaultTerminal
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        kind = try c.decode(WorkspaceKindRecord.self, forKey: .kind)
+        name = try c.decode(String.self, forKey: .name)
+        repositoryPath = try c.decodeIfPresent(String.self, forKey: .repositoryPath)
+        isPinned = try c.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+        isArchived = try c.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+        sshTarget = try c.decodeIfPresent(SSHTarget.self, forKey: .sshTarget)
+        worktreeStates = try c.decodeIfPresent([WorktreeSessionStateRecord].self, forKey: .worktreeStates) ?? []
+        worktreeOrder = try c.decodeIfPresent([String].self, forKey: .worktreeOrder)
+        workspaceIcon = try c.decodeIfPresent(SidebarItemIcon.self, forKey: .workspaceIcon)
+        worktreeIconOverrides = try c.decodeIfPresent([String: SidebarItemIcon].self, forKey: .worktreeIconOverrides)
+        isBuiltInDefaultTerminal = try c.decodeIfPresent(Bool.self, forKey: .isBuiltInDefaultTerminal) ?? false
+    }
 }
 
 /// Persisted state for a single worktree session within a workspace.
@@ -171,6 +224,10 @@ struct RepositoryStatusSnapshot {
 /// Created from a `WorkspaceRecord` and serialized back via `toRecord()`.
 @MainActor
 final class WorkspaceModel: ObservableObject, Identifiable {
+    /// Stable UUID for the single built-in `~` (home directory) terminal entry.
+    /// Persisted alongside user-created workspaces so its sidebar order survives launches.
+    static let builtInDefaultTerminalID = UUID(uuidString: "00000000-0000-0000-0000-00000000007E")!
+
     let id: UUID
     let kind: WorkspaceKindRecord
 
@@ -188,6 +245,8 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     @Published var workspaceIcon: SidebarItemIcon?
     /// Per-worktree icon overrides, keyed by worktree path.
     @Published var worktreeIconOverrides: [String: SidebarItemIcon] = [:]
+    /// True for the single built-in home-directory terminal entry. Read-only at runtime — set during init.
+    let isBuiltInDefaultTerminal: Bool
 
     // MARK: - Tab State
 
@@ -240,7 +299,8 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         sshTarget: SSHTarget? = nil,
         worktreeOrder: [String] = [],
         workspaceIcon: SidebarItemIcon? = nil,
-        worktreeIconOverrides: [String: SidebarItemIcon] = [:]
+        worktreeIconOverrides: [String: SidebarItemIcon] = [:],
+        isBuiltInDefaultTerminal: Bool = false
     ) {
         self.id = id
         self.kind = kind
@@ -252,6 +312,7 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         self.worktreeOrder = worktreeOrder
         self.workspaceIcon = workspaceIcon
         self.worktreeIconOverrides = worktreeIconOverrides
+        self.isBuiltInDefaultTerminal = isBuiltInDefaultTerminal
 
         let workingDirectory = repositoryRoot?.path ?? sshTarget?.remotePath ?? NSHomeDirectory()
         self.activeWorktreePath = workingDirectory
@@ -273,7 +334,8 @@ final class WorkspaceModel: ObservableObject, Identifiable {
             sshTarget: record.sshTarget,
             worktreeOrder: record.worktreeOrder ?? [],
             workspaceIcon: record.workspaceIcon,
-            worktreeIconOverrides: record.worktreeIconOverrides ?? [:]
+            worktreeIconOverrides: record.worktreeIconOverrides ?? [:],
+            isBuiltInDefaultTerminal: record.isBuiltInDefaultTerminal
         )
         restoreTabState(from: record.worktreeStates)
     }
@@ -556,7 +618,8 @@ final class WorkspaceModel: ObservableObject, Identifiable {
             worktreeStates: allWorktreeStates,
             worktreeOrder: worktreeOrder.isEmpty ? nil : worktreeOrder,
             workspaceIcon: workspaceIcon,
-            worktreeIconOverrides: worktreeIconOverrides.isEmpty ? nil : worktreeIconOverrides
+            worktreeIconOverrides: worktreeIconOverrides.isEmpty ? nil : worktreeIconOverrides,
+            isBuiltInDefaultTerminal: isBuiltInDefaultTerminal
         )
     }
 }

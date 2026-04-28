@@ -617,4 +617,36 @@ final class WorkspaceModelsTests: XCTestCase {
             "my-server (192.168.1.100)"
         )
     }
+
+    // MARK: - Built-in Default Terminal Tests
+
+    func testWorkspaceRecordBuiltInFlagRoundTrip() throws {
+        let record = WorkspaceRecord(
+            id: WorkspaceModel.builtInDefaultTerminalID,
+            kind: .localTerminal,
+            name: "~",
+            repositoryPath: NSHomeDirectory(),
+            isPinned: false,
+            isArchived: false,
+            sshTarget: nil,
+            worktreeStates: [],
+            worktreeOrder: nil,
+            workspaceIcon: nil,
+            worktreeIconOverrides: nil,
+            isBuiltInDefaultTerminal: true
+        )
+        let data = try JSONEncoder().encode(record)
+        let decoded = try JSONDecoder().decode(WorkspaceRecord.self, from: data)
+        XCTAssertTrue(decoded.isBuiltInDefaultTerminal)
+        XCTAssertEqual(decoded.id, WorkspaceModel.builtInDefaultTerminalID)
+    }
+
+    func testWorkspaceRecordLegacyDecodingDefaultsBuiltInFalse() throws {
+        let json = """
+        {"id":"00000000-0000-0000-0000-000000000099","kind":"repository","name":"proj","isPinned":false,"isArchived":false,"worktreeStates":[]}
+        """
+        let data = json.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(WorkspaceRecord.self, from: data)
+        XCTAssertFalse(decoded.isBuiltInDefaultTerminal)
+    }
 }
