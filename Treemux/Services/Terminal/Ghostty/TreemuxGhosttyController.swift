@@ -48,6 +48,7 @@ final class TreemuxGhosttyController: ManagedTerminalSessionSurfaceController {
     var onFocus: (() -> Void)?
     var onStatusChange: ((TerminalSurfaceStatusSnapshot) -> Void)?
     var onDesktopNotification: ((String, String?) -> Void)?
+    var onUserInput: (() -> Void)?
     var onProcessExit: ((Int32?) -> Void)?
     var onWorkspaceAction: ((TerminalWorkspaceAction) -> Void)?
 
@@ -813,6 +814,9 @@ private final class TreemuxGhosttySurfaceView: NSView {
     // MARK: - Key events
 
     override func keyDown(with event: NSEvent) {
+        DispatchQueue.main.async { [weak self] in
+            self?.controller?.onUserInput?()
+        }
         guard let surface else {
             super.keyDown(with: event)
             return

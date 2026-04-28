@@ -56,6 +56,10 @@ protocol TerminalSurfaceController: AnyObject {
     /// `title` is the OSC's first field (e.g. "treemux:done"); `body` is the
     /// optional second field. Always called on the main queue.
     var onDesktopNotification: ((String, String?) -> Void)? { get set }
+    /// Fired the first time the user produces input (key press) into the
+    /// surface. Used by ShellSession to clear AI attention state. Always
+    /// called on the main queue.
+    var onUserInput: (() -> Void)? { get set }
     func sendText(_ text: String)
     func focus()
     func setFocused(_ isFocused: Bool)

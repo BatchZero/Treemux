@@ -21,4 +21,38 @@ final class AIAttentionStateTests: XCTestCase {
     func testCaseInsensitivePrefixIsNotAccepted() {
         XCTAssertNil(AIAttentionState.parse(notificationTitle: "TREEMUX:done"))
     }
+
+    @MainActor
+    func testShellSessionFocusTransitionClearsAttention() {
+        let backend = SessionBackendConfiguration.localShell(
+            LocalShellConfig(shellPath: "/bin/zsh", arguments: [])
+        )
+        let session = ShellSession(
+            id: UUID(),
+            backendConfiguration: backend,
+            preferredWorkingDirectory: NSTemporaryDirectory()
+        )
+        session.applyDesktopNotificationFromTest(title: "treemux:input", body: nil)
+        XCTAssertEqual(session.aiAttention, .input)
+
+        session.setFocused(true)
+        XCTAssertEqual(session.aiAttention, .none)
+    }
+
+    @MainActor
+    func testClearAIAttentionDirectlyResetsState() {
+        let backend = SessionBackendConfiguration.localShell(
+            LocalShellConfig(shellPath: "/bin/zsh", arguments: [])
+        )
+        let session = ShellSession(
+            id: UUID(),
+            backendConfiguration: backend,
+            preferredWorkingDirectory: NSTemporaryDirectory()
+        )
+        session.applyDesktopNotificationFromTest(title: "treemux:done", body: nil)
+        XCTAssertEqual(session.aiAttention, .done)
+
+        session.clearAIAttention()
+        XCTAssertEqual(session.aiAttention, .none)
+    }
 }

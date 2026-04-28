@@ -135,6 +135,9 @@ final class ShellSession: ObservableObject, Identifiable {
         surfaceController.onDesktopNotification = { [weak self] title, body in
             self?.applyDesktopNotification(title: title, body: body)
         }
+        surfaceController.onUserInput = { [weak self] in
+            self?.clearAIAttention()
+        }
         if let ghosttySurface = surfaceController as? TreemuxGhosttyController {
             ghosttySurface.onWorkspaceAction = { [weak self] action in
                 self?.onWorkspaceAction?(action)
@@ -241,8 +244,12 @@ final class ShellSession: ObservableObject, Identifiable {
     }
 
     func setFocused(_ isFocused: Bool) {
+        let wasFocused = isFocusedInWorkspace
         isFocusedInWorkspace = isFocused
         surfaceController.setFocused(isFocused)
+        if isFocused && !wasFocused {
+            clearAIAttention()
+        }
     }
 
     // MARK: - Terminal interaction
