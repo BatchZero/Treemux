@@ -77,6 +77,48 @@ final class FileBrowserTabControllerTests: XCTestCase {
             XCTFail("expected .binary, got \(ctrl.openFile)")
         }
     }
+
+    func testEditMarksDirty() async {
+        let mock = MockFileBrowserDataSource()
+        mock.fileMetas["/r/a.txt"] = FileMetadata(path: "/r/a.txt", sizeBytes: 1, modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
+        mock.fileContents["/r/a.txt"] = "x".data(using: .utf8)!
+        let ctrl = FileBrowserTabController(initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
+        await ctrl.selectFile("/r/a.txt")
+        ctrl.updateBuffer(content: "edited")
+        if case .text(_, let content, _, let dirty) = ctrl.openFile {
+            XCTAssertEqual(content, "edited")
+            XCTAssertTrue(dirty)
+        } else {
+            XCTFail()
+        }
+    }
+
+    func testSaveWritesAndClearsDirty() async throws {
+        let mock = MockFileBrowserDataSource()
+        mock.fileMetas["/r/a.txt"] = FileMetadata(path: "/r/a.txt", sizeBytes: 1, modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
+        mock.fileContents["/r/a.txt"] = "x".data(using: .utf8)!
+        let ctrl = FileBrowserTabController(initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
+        await ctrl.selectFile("/r/a.txt")
+        ctrl.updateBuffer(content: "edited")
+        try await ctrl.saveCurrentFile()
+        XCTAssertEqual(mock.writes.count, 1)
+        XCTAssertEqual(String(data: mock.writes[0].data, encoding: .utf8), "edited")
+        if case .text(_, _, _, let dirty) = ctrl.openFile {
+            XCTAssertFalse(dirty)
+        } else { XCTFail() }
+    }
+
+    func testIsDirty() async {
+        let mock = MockFileBrowserDataSource()
+        mock.fileMetas["/r/a.txt"] = FileMetadata(path: "/r/a.txt", sizeBytes: 1, modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
+        mock.fileContents["/r/a.txt"] = "x".data(using: .utf8)!
+        let ctrl = FileBrowserTabController(initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
+        XCTAssertFalse(ctrl.isDirty)
+        await ctrl.selectFile("/r/a.txt")
+        XCTAssertFalse(ctrl.isDirty)
+        ctrl.updateBuffer(content: "edited")
+        XCTAssertTrue(ctrl.isDirty)
+    }
 }
 
 final class MockFileBrowserDataSource: FileBrowserDataSource {

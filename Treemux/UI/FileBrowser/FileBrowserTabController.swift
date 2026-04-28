@@ -237,4 +237,27 @@ final class FileBrowserTabController: ObservableObject {
         if let s = String(data: data, encoding: gbk) { return (s, gbk) }
         return (String(data: data, encoding: .isoLatin1) ?? "", .isoLatin1)
     }
+
+    // MARK: - Edit / save
+
+    var isDirty: Bool {
+        if case .text(_, _, _, let dirty) = openFile { return dirty }
+        return false
+    }
+
+    /// Updates the in-memory buffer for the currently open text file.
+    func updateBuffer(content: String) {
+        guard case .text(let path, _, let encoding, _) = openFile else { return }
+        openFile = .text(path: path, content: content, encoding: encoding, dirty: true)
+    }
+
+    /// Saves the current buffer back to disk via the data source.
+    func saveCurrentFile() async throws {
+        guard case .text(let path, let content, let encoding, _) = openFile else {
+            return
+        }
+        let data = content.data(using: encoding) ?? Data()
+        try await dataSource.writeFile(path, data: data)
+        openFile = .text(path: path, content: content, encoding: encoding, dirty: false)
+    }
 }
