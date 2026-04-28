@@ -192,4 +192,15 @@ final class PersistenceTests: XCTestCase {
         let decoded = try JSONDecoder().decode(TerminalSettings.self, from: json)
         XCTAssertEqual(decoded.fontSizeOffset, 1)
     }
+
+    func testTerminalSettings_legacyMigration_isIdempotentAcrossReencode() throws {
+        let legacyJSON = #"{"defaultShell":"/bin/zsh","fontSize":18,"cursorStyle":"bar"}"#.data(using: .utf8)!
+        let migrated = try JSONDecoder().decode(TerminalSettings.self, from: legacyJSON)
+        let reEncoded = try JSONEncoder().encode(migrated)
+        let reDecoded = try JSONDecoder().decode(TerminalSettings.self, from: reEncoded)
+        XCTAssertEqual(reDecoded.fontSizeOffset, 4)
+        XCTAssertEqual(reDecoded, migrated)
+        let reEncodedString = String(data: reEncoded, encoding: .utf8) ?? ""
+        XCTAssertFalse(reEncodedString.contains("\"fontSize\""), "re-encoded JSON should not reintroduce the legacy fontSize key")
+    }
 }

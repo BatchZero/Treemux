@@ -30,6 +30,9 @@ struct AppSettings: Codable, Equatable {
 /// `fontSizeOffset` on first decode and never re-encoded.
 struct TerminalSettings: Equatable {
     var defaultShell: String
+    /// User-facing terminal font offset. Always within
+    /// `AdaptiveFontSizeCalculator.offsetRange` (-8 ... +12); enforced on
+    /// construction and on every Codable decode.
     var fontSizeOffset: Int
     var cursorStyle: String
 
@@ -43,11 +46,10 @@ struct TerminalSettings: Equatable {
         self.cursorStyle = cursorStyle
     }
 
+    /// Clamps a candidate offset into the valid range. Delegates to the
+    /// calculator so the bounds have a single source of truth.
     static func clamp(_ value: Int) -> Int {
-        min(
-            max(value, AdaptiveFontSizeCalculator.offsetRange.lowerBound),
-            AdaptiveFontSizeCalculator.offsetRange.upperBound
-        )
+        AdaptiveFontSizeCalculator.clampOffset(value)
     }
 }
 

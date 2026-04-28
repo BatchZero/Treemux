@@ -1109,6 +1109,10 @@ private final class TreemuxGhosttySurfaceView: NSView {
         configuration.userdata = userdata
         configuration.scale_factor = Double(window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2)
         let terminalSettings = AppSettingsPersistence().load().terminal
+        // TODO(Task 5): `window?.screen` is often nil during view setup, so
+        // the first surface frame may be sized for `NSScreen.main` instead of
+        // the actual display the workspace opens on. Task 5 corrects this on
+        // the first `viewDidMoveToWindow` / `didChangeScreenNotification`.
         let initialScreen = window?.screen ?? NSScreen.main
         configuration.font_size = Float(
             AdaptiveFontSizeCalculator.fontSize(
