@@ -606,16 +606,20 @@ private final class TreemuxGhosttySurfaceView: NSView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         syncSurfaceMetrics()
+        applyAdaptiveFontSize()
     }
 
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         syncSurfaceMetrics()
+        applyAdaptiveFontSize()
     }
 
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
         syncSurfaceMetrics()
+        // No applyAdaptiveFontSize() here — frame changes are not screen
+        // changes; calling per-frame would thrash ghostty unnecessarily.
     }
 
     // MARK: - Mouse events
@@ -652,6 +656,16 @@ private final class TreemuxGhosttySurfaceView: NSView {
 
         let size = ghostty_surface_size(surface)
         controller?.handleSurfaceResize(cols: Int(size.columns), rows: Int(size.rows))
+    }
+
+    /// Pushes the per-display font size to ghostty for this surface. Idempotent
+    /// and cheap — safe to call from every screen / backing / settings change.
+    func applyAdaptiveFontSize() {
+        guard surface != nil else { return }
+        let offset = AppSettingsPersistence().load().terminal.fontSizeOffset
+        let screen = window?.screen ?? NSScreen.main
+        let pt = AdaptiveFontSizeCalculator.fontSize(for: screen, offset: offset)
+        _ = performBindingAction("set_font_size:\(pt)")
     }
 
     func setCursorShape(_ shape: ghostty_action_mouse_shape_e) {
