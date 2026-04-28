@@ -34,13 +34,31 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
     }
 
     func readFile(_ path: String, maxBytes: Int) async throws -> Data {
-        // Implemented in Task 2.4.
-        fatalError("not yet implemented")
+        try await runOnQueue {
+            let url = URL(fileURLWithPath: path)
+            let attrs = try FileManager.default.attributesOfItem(atPath: path)
+            let size: Int64
+            if let n = attrs[.size] as? NSNumber {
+                size = n.int64Value
+            } else if let i = attrs[.size] as? Int64 {
+                size = i
+            } else if let i = attrs[.size] as? Int {
+                size = Int64(i)
+            } else {
+                size = 0
+            }
+            if size > Int64(maxBytes) {
+                throw FileBrowserError.fileTooLarge(path: path, sizeBytes: size, limit: Int64(maxBytes))
+            }
+            return try Data(contentsOf: url)
+        }
     }
 
     func writeFile(_ path: String, data: Data) async throws {
-        // Implemented in Task 2.4.
-        fatalError("not yet implemented")
+        try await runOnQueue {
+            let url = URL(fileURLWithPath: path)
+            try data.write(to: url, options: .atomic)
+        }
     }
 
     func downloadForQuickLook(_ path: String, progress: @escaping (Double) -> Void) async throws -> URL {

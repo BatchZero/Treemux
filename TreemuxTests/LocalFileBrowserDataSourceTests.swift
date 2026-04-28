@@ -45,4 +45,34 @@ final class LocalFileBrowserDataSourceTests: XCTestCase {
         XCTAssertEqual(meta.sizeBytes, 1024)
         XCTAssertFalse(meta.isDirectory)
     }
+
+    func testReadFileSmall() async throws {
+        let file = tmpDir.appendingPathComponent("hello.txt")
+        try "hello world".write(to: file, atomically: true, encoding: .utf8)
+        let ds = LocalFileBrowserDataSource()
+        let data = try await ds.readFile(file.path, maxBytes: 1024)
+        XCTAssertEqual(String(data: data, encoding: .utf8), "hello world")
+    }
+
+    func testReadFileTooLargeThrows() async throws {
+        let file = tmpDir.appendingPathComponent("big.bin")
+        try Data(repeating: 1, count: 5000).write(to: file)
+        let ds = LocalFileBrowserDataSource()
+        do {
+            _ = try await ds.readFile(file.path, maxBytes: 1024)
+            XCTFail("expected fileTooLarge")
+        } catch FileBrowserError.fileTooLarge {
+            // expected
+        }
+    }
+
+    func testWriteFileAtomic() async throws {
+        let file = tmpDir.appendingPathComponent("out.txt")
+        let ds = LocalFileBrowserDataSource()
+        try await ds.writeFile(file.path, data: "alpha".data(using: .utf8)!)
+        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), "alpha")
+        // Overwrite
+        try await ds.writeFile(file.path, data: "beta".data(using: .utf8)!)
+        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), "beta")
+    }
 }
