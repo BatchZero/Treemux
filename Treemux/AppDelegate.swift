@@ -16,9 +16,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         configureUpdater(checkInBackground: true)
 
         if let store = treemuxApp?.store {
+            // Debounce so key-repeat hotkeys (e.g. holding ⌘= to crank the
+            // terminal font) don't rebuild the entire main menu and reconfigure
+            // the updater on every press. 150ms collapses bursts without making
+            // genuine settings edits feel sluggish.
             settingsCancellable = store.$settings
                 .dropFirst()
-                .receive(on: RunLoop.main)
+                .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
                 .sink { [weak self] _ in
                     self?.buildMainMenu()
                     self?.configureUpdater(checkInBackground: false)
