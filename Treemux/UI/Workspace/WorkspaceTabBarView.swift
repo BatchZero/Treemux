@@ -36,6 +36,7 @@ struct WorkspaceTabBarView: View {
                                 isSelected: tab.id == workspace.activeTabID,
                                 isHovered: hoveredTabID == tab.id,
                                 paneCount: paneCount(for: tab),
+                                isDirty: dirtyState(for: tab),
                                 onSelect: { workspace.selectTab(tab.id) },
                                 onClose: { workspace.requestCloseTab(tab.id) },
                                 onRename: {
@@ -87,6 +88,11 @@ struct WorkspaceTabBarView: View {
     private func paneCount(for tab: WorkspaceTabStateRecord) -> Int {
         tab.layout?.paneIDs.count ?? 1
     }
+
+    private func dirtyState(for tab: WorkspaceTabStateRecord) -> Bool {
+        guard tab.kind == .fileBrowser else { return false }
+        return workspace.fileBrowserController(forTabID: tab.id)?.isDirty ?? false
+    }
 }
 
 // MARK: - Tab Button
@@ -96,6 +102,7 @@ private struct TabButton: View {
     let isSelected: Bool
     let isHovered: Bool
     let paneCount: Int
+    let isDirty: Bool
     let onSelect: () -> Void
     let onClose: () -> Void
     let onRename: () -> Void
@@ -103,6 +110,14 @@ private struct TabButton: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 4) {
+                Image(systemName: tab.kind == .fileBrowser ? "folder" : "terminal")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(isSelected ? .primary : .tertiary)
+                if isDirty {
+                    Circle()
+                        .fill(Color.accentColor)
+                        .frame(width: 5, height: 5)
+                }
                 Text(tab.title)
                     .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
                     .lineLimit(1)
@@ -192,8 +207,8 @@ enum TreemuxTabSizing {
 
     static func width(for title: String, paneCount: Int) -> CGFloat {
         let titleWidth = ceil((title as NSString).size(withAttributes: [.font: titleFont]).width)
-        // 12 leading + 4 HStack spacing + 16 close button + 12 trailing
-        var totalWidth = titleWidth + 44
+        // 12 leading + icon ~14 + 4 HStack spacing + 16 close button + 12 trailing
+        var totalWidth = titleWidth + 60
         if paneCount > 1 {
             let countText = "\(paneCount)"
             let countWidth = ceil((countText as NSString).size(withAttributes: [.font: countFont]).width)
