@@ -126,6 +126,28 @@ struct CommandPaletteView: View {
                 action: { store.selectedWorkspace?.createTab() }
             ),
             PaletteCommand(
+                title: "New File Browser Tab",
+                subtitle: "Open the active worktree as a file browser",
+                icon: "folder.badge.plus",
+                shortcut: "⌘⇧T",
+                action: {
+                    guard let ws = store.selectedWorkspace else { return }
+                    let root: String
+                    let kind: FileBrowserRootKind
+                    if !ws.activeWorktreePath.isEmpty {
+                        root = ws.activeWorktreePath
+                        kind = .worktree
+                    } else if let r = ws.repositoryRoot?.path {
+                        root = r
+                        kind = .project
+                    } else {
+                        return
+                    }
+                    let title = URL(fileURLWithPath: root).lastPathComponent
+                    ws.createFileBrowserTab(rootPath: root, rootKind: kind, title: title)
+                }
+            ),
+            PaletteCommand(
                 title: "Close Tab",
                 subtitle: nil, icon: "xmark.rectangle",
                 shortcut: "⌘⇧W",
