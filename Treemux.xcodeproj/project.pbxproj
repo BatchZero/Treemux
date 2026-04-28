@@ -65,6 +65,7 @@
 		8B1F02071634EF5A0330144B /* TmuxServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */; };
 		8D26A31A9A417D3D41DA60C6 /* WorkspaceOutlineSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5FB45C7299B44CB5A534F28 /* WorkspaceOutlineSidebar.swift */; };
 		8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */; };
+		7E5B11A001A33F0001000003 /* WorkspaceStoreBuiltInTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E5B11A001A33F0001000002 /* WorkspaceStoreBuiltInTests.swift */; };
 		9522E1F5358CF0C642D88DD6 /* SidebarRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74852C7BACA536876045BD7A /* SidebarRowView.swift */; };
 		955F5B8946B3F80A7AACDC6D /* SidebarCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62EB76FEF501CC1380FB2607 /* SidebarCoordinator.swift */; };
 		9C689BD0883C82F0D099878B /* GitRepositoryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C328A5FB842A00D096906EE3 /* GitRepositoryServiceTests.swift */; };
@@ -115,6 +116,7 @@
 		081CA32DCF94FDC4583766A2 /* ProcessTreeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTreeTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceModelsTests.swift; sourceTree = "<group>"; };
+		7E5B11A001A33F0001000002 /* WorkspaceStoreBuiltInTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStoreBuiltInTests.swift; sourceTree = "<group>"; };
 		16FE9D700089232316516F73 /* TreemuxGhosttyBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyBootstrap.swift; sourceTree = "<group>"; };
 		195EA28E9C93EE6E874ED6ED /* SidebarNodeItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNodeItem.swift; sourceTree = "<group>"; };
 		1B7DBEF3A8FDA651804A6D8A /* TreemuxKeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxKeyboardShortcuts.swift; sourceTree = "<group>"; };
@@ -263,6 +265,7 @@
 				E9B87785B633D3E01905E33E /* TreemuxTabSizingTests.swift */,
 				3477DE6F674F94B9457073F4 /* TreemuxTests.swift */,
 				146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */,
+				7E5B11A001A33F0001000002 /* WorkspaceStoreBuiltInTests.swift */,
 			);
 			path = TreemuxTests;
 			sourceTree = "<group>";
@@ -729,6 +732,7 @@
 				FC0884EBD132C797A61FC4A1 /* TreemuxTabSizingTests.swift in Sources */,
 				CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */,
 				8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */,
+				7E5B11A001A33F0001000003 /* WorkspaceStoreBuiltInTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

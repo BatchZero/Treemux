@@ -64,13 +64,8 @@ final class WorkspaceStore: ObservableObject {
     /// triggers (e.g. timer firing while a window-focus refresh is in flight).
     private var isRefreshingRemotes = false
 
-    /// Virtual "Terminal" workspace shown when no real projects exist.
-    /// This workspace is never persisted to disk.
-    private var defaultTerminalWorkspace: WorkspaceModel?
-
     /// The currently selected workspace, if any.
     /// Resolves both workspace-level and worktree-level selection.
-    /// Falls back to the default terminal workspace when applicable.
     var selectedWorkspace: WorkspaceModel? {
         if let ws = workspaces.first(where: { $0.id == selectedWorkspaceID }) {
             return ws
@@ -80,9 +75,6 @@ final class WorkspaceStore: ObservableObject {
             ws.worktrees.contains { $0.id == self.selectedWorkspaceID }
         }) {
             return ws
-        }
-        if selectedWorkspaceID == defaultTerminalWorkspace?.id {
-            return defaultTerminalWorkspace
         }
         return nil
     }
@@ -110,21 +102,27 @@ final class WorkspaceStore: ObservableObject {
     }
 
     /// Workspaces visible in the sidebar (non-archived).
+    /// Honors `settings.showDefaultTerminal`. When the toggle is off and at least
+    /// one non-builtin workspace exists, the built-in `~` is hidden. When the toggle
+    /// is off and no other workspace exists, the toggle is overridden so the sidebar
+    /// is never empty.
     var sidebarWorkspaces: [WorkspaceModel] {
         let real = workspaces.filter { !$0.isArchived }
-        if real.isEmpty, let terminal = defaultTerminalWorkspace {
-            return [terminal]
-        }
-        return real
+        return applyDefaultTerminalFilter(to: real)
     }
 
     /// Local workspaces (repositories and local terminals, non-archived).
+    /// Same filtering rules as `sidebarWorkspaces`.
     var localWorkspaces: [WorkspaceModel] {
         let real = workspaces.filter { !$0.isArchived && $0.sshTarget == nil }
-        if real.isEmpty, let terminal = defaultTerminalWorkspace {
-            return [terminal]
-        }
-        return real
+        return applyDefaultTerminalFilter(to: real)
+    }
+
+    /// Applies the `showDefaultTerminal` filter with empty-fallback override.
+    private func applyDefaultTerminalFilter(to list: [WorkspaceModel]) -> [WorkspaceModel] {
+        if settings.showDefaultTerminal { return list }
+        let withoutBuiltin = list.filter { !$0.isBuiltInDefaultTerminal }
+        return withoutBuiltin.isEmpty ? list : withoutBuiltin
     }
 
     /// Remote workspaces grouped by server+user combination.
@@ -141,27 +139,53 @@ final class WorkspaceStore: ObservableObject {
     init() {
         self.settings = settingsPersistence.load()
         loadWorkspaceState()
-        ensureDefaultTerminal()
+        ensureBuiltInDefaultTerminal()
         startRemoteWorkspaceRefreshScheduler()
     }
 
-    /// Creates or shows the default "Terminal" workspace when no real workspaces exist.
-    /// Hides it automatically when real projects are present.
-    private func ensureDefaultTerminal() {
-        let hasRealWorkspaces = workspaces.contains { !$0.isArchived }
-        if !hasRealWorkspaces {
-            if defaultTerminalWorkspace == nil {
-                defaultTerminalWorkspace = WorkspaceModel(
-                    id: UUID(),
-                    name: "~",
-                    kind: .localTerminal,
-                    repositoryRoot: URL(fileURLWithPath: NSHomeDirectory())
-                )
+    /// Ensures exactly one built-in `~` workspace exists in `workspaces`. Inserts one if absent,
+    /// deduplicates if multiple exist (keeping the first), and resets defensive state
+    /// (archived flag, repositoryRoot) on the surviving entry. Persists if any mutation occurred.
+    private func ensureBuiltInDefaultTerminal() {
+        let homeURL = URL(fileURLWithPath: NSHomeDirectory())
+        let builtins = workspaces.filter { $0.isBuiltInDefaultTerminal }
+        var mutated = false
+
+        if builtins.isEmpty {
+            let builtin = WorkspaceModel(
+                id: WorkspaceModel.builtInDefaultTerminalID,
+                name: "~",
+                kind: .localTerminal,
+                repositoryRoot: homeURL,
+                isBuiltInDefaultTerminal: true
+            )
+            workspaces.append(builtin)
+            mutated = true
+        } else if builtins.count > 1 {
+            // Keep the first; drop the rest.
+            let firstBuiltinID = builtins[0].id
+            workspaces.removeAll { $0.isBuiltInDefaultTerminal && $0.id != firstBuiltinID }
+            mutated = true
+        }
+
+        // Defensive state reset on the surviving built-in.
+        if let builtin = workspaces.first(where: { $0.isBuiltInDefaultTerminal }) {
+            if builtin.isArchived {
+                builtin.isArchived = false
+                mutated = true
             }
-            // Auto-select the default terminal if nothing is selected
-            if selectedWorkspaceID == nil {
-                selectedWorkspaceID = defaultTerminalWorkspace?.id
+            if builtin.repositoryRoot != homeURL {
+                builtin.repositoryRoot = homeURL
+                mutated = true
             }
+            if builtin.name != "~" {
+                builtin.name = "~"
+                mutated = true
+            }
+        }
+
+        if mutated {
+            saveWorkspaceState()
         }
     }
 
@@ -304,6 +328,9 @@ final class WorkspaceStore: ObservableObject {
     // MARK: - Removing Workspaces
 
     func removeWorkspace(_ id: UUID) {
+        // Defensive: never remove the built-in. Silent early return.
+        if id == WorkspaceModel.builtInDefaultTerminalID { return }
+
         metadataWatcher.stopWatching(workspaceID: id)
         // Clear selection if it points to a worktree within this workspace
         if let ws = workspaces.first(where: { $0.id == id }),
@@ -315,11 +342,6 @@ final class WorkspaceStore: ObservableObject {
             selectedWorkspaceID = workspaces.first?.id
         }
         saveWorkspaceState()
-        // Re-show the default terminal if all real workspaces have been removed
-        ensureDefaultTerminal()
-        if selectedWorkspaceID == nil {
-            selectedWorkspaceID = defaultTerminalWorkspace?.id
-        }
     }
 
     // MARK: - File System Watching
@@ -510,8 +532,7 @@ final class WorkspaceStore: ObservableObject {
             }
             return nil
         }()
-        // Exclude the default terminal workspace from persistence — it is virtual.
-        let persistedSelectedID = resolvedID == defaultTerminalWorkspace?.id ? nil : resolvedID
+        let persistedSelectedID = resolvedID
         let state = PersistedWorkspaceState(
             version: 1,
             selectedWorkspaceID: persistedSelectedID,
