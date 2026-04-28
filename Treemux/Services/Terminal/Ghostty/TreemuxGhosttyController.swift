@@ -1108,7 +1108,14 @@ private final class TreemuxGhosttySurfaceView: NSView {
         )
         configuration.userdata = userdata
         configuration.scale_factor = Double(window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2)
-        configuration.font_size = Float(AppSettingsPersistence().load().terminal.fontSize)
+        let terminalSettings = AppSettingsPersistence().load().terminal
+        let initialScreen = window?.screen ?? NSScreen.main
+        configuration.font_size = Float(
+            AdaptiveFontSizeCalculator.fontSize(
+                for: initialScreen,
+                offset: terminalSettings.fontSizeOffset
+            )
+        )
         configuration.context = GHOSTTY_SURFACE_CONTEXT_SPLIT
         configuration.wait_after_command = false
 

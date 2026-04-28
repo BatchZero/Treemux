@@ -178,15 +178,15 @@ private struct GeneralSettingsView: View {
 // MARK: - Terminal Settings
 
 private struct TerminalSettingsView: View {
-    private static let fontSizeRange: ClosedRange<Int> = 6...72
+    private static let fontSizeRange: ClosedRange<Int> = AdaptiveFontSizeCalculator.offsetRange
 
     @Binding var settings: AppSettings
 
     private var clampedFontSize: Binding<Int> {
         Binding(
-            get: { settings.terminal.fontSize },
+            get: { settings.terminal.fontSizeOffset },
             set: {
-                settings.terminal.fontSize = min(max($0, Self.fontSizeRange.lowerBound), Self.fontSizeRange.upperBound)
+                settings.terminal.fontSizeOffset = min(max($0, Self.fontSizeRange.lowerBound), Self.fontSizeRange.upperBound)
             }
         )
     }

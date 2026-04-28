@@ -137,4 +137,59 @@ final class PersistenceTests: XCTestCase {
         let decoded = try JSONDecoder().decode(WorkspaceRecord.self, from: data)
         XCTAssertTrue(decoded.worktreeStates.isEmpty)
     }
+
+    // MARK: - TerminalSettings migration
+
+    func testTerminalSettings_decodesNewFontSizeOffset() throws {
+        let json = #"{"defaultShell":"/bin/zsh","fontSizeOffset":3,"cursorStyle":"bar"}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(TerminalSettings.self, from: json)
+        XCTAssertEqual(decoded.fontSizeOffset, 3)
+        XCTAssertEqual(decoded.defaultShell, "/bin/zsh")
+        XCTAssertEqual(decoded.cursorStyle, "bar")
+    }
+
+    func testTerminalSettings_decodesLegacyFontSize_18_toOffset4() throws {
+        let json = #"{"defaultShell":"/bin/zsh","fontSize":18,"cursorStyle":"bar"}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(TerminalSettings.self, from: json)
+        XCTAssertEqual(decoded.fontSizeOffset, 4)
+    }
+
+    func testTerminalSettings_decodesLegacyFontSize_8_toOffsetMinus6() throws {
+        let json = #"{"fontSize":8}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(TerminalSettings.self, from: json)
+        XCTAssertEqual(decoded.fontSizeOffset, -6)
+    }
+
+    func testTerminalSettings_decodesLegacyFontSize_99_clampsToUpperBound() throws {
+        let json = #"{"fontSize":99}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(TerminalSettings.self, from: json)
+        XCTAssertEqual(decoded.fontSizeOffset, 12)
+    }
+
+    func testTerminalSettings_decodesLegacyFontSize_0_clampsToLowerBound() throws {
+        let json = #"{"fontSize":0}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(TerminalSettings.self, from: json)
+        XCTAssertEqual(decoded.fontSizeOffset, -8)
+    }
+
+    func testTerminalSettings_missingBoth_defaultsToZero() throws {
+        let json = "{}".data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(TerminalSettings.self, from: json)
+        XCTAssertEqual(decoded.fontSizeOffset, 0)
+    }
+
+    func testTerminalSettings_encode_doesNotWriteLegacyFontSize() throws {
+        var settings = TerminalSettings()
+        settings.fontSizeOffset = 2
+        let data = try JSONEncoder().encode(settings)
+        let json = String(data: data, encoding: .utf8) ?? ""
+        XCTAssertTrue(json.contains("fontSizeOffset"), "encoded JSON missing fontSizeOffset")
+        XCTAssertFalse(json.contains("\"fontSize\""), "encoded JSON should not contain legacy fontSize key")
+    }
+
+    func testTerminalSettings_newOffsetTakesPrecedenceOverLegacyFontSize() throws {
+        let json = #"{"fontSize":20,"fontSizeOffset":1}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(TerminalSettings.self, from: json)
+        XCTAssertEqual(decoded.fontSizeOffset, 1)
+    }
 }
