@@ -8,6 +8,10 @@ import SwiftUI
 /// Shows tab buttons with title, pane count badge, close button, and drag-to-reorder.
 struct WorkspaceTabBarView: View {
     @ObservedObject var workspace: WorkspaceModel
+    /// Observed so attention state changes trigger a re-render. The
+    /// `dotKind(for:)` computation calls `workspace.hasAttention(...)`, which
+    /// routes through `AttentionStore`.
+    @ObservedObject var attentionStore: AttentionStore = .shared
     @State private var renamingTabID: UUID?
     @State private var renameText: String = ""
     @State private var hoveredTabID: UUID?
