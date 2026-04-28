@@ -135,4 +135,33 @@ final class WorkspaceStoreBuiltInTests: XCTestCase {
         store.settings.showDefaultTerminal = false
         XCTAssertTrue(store.localWorkspaces.contains { $0.isBuiltInDefaultTerminal })
     }
+
+    func testFreshLaunchAutoSelectsBuiltIn() async throws {
+        // No state on disk → init must auto-select the built-in.
+        try clearState()
+        let store = WorkspaceStore()
+        XCTAssertEqual(store.selectedWorkspaceID, WorkspaceModel.builtInDefaultTerminalID)
+        XCTAssertNotNil(store.selectedWorkspace)
+    }
+
+    func testInitPreservesExistingSelection() async throws {
+        // If state already has a valid selection, init must NOT overwrite it.
+        let real = WorkspaceRecord(
+            id: UUID(),
+            kind: .repository,
+            name: "real",
+            repositoryPath: "/tmp/real",
+            isPinned: false,
+            isArchived: false,
+            sshTarget: nil,
+            worktreeStates: [],
+            worktreeOrder: nil,
+            workspaceIcon: nil,
+            worktreeIconOverrides: nil,
+            isBuiltInDefaultTerminal: false
+        )
+        try writeState(PersistedWorkspaceState(version: 1, selectedWorkspaceID: real.id, workspaces: [real]))
+        let store = WorkspaceStore()
+        XCTAssertEqual(store.selectedWorkspaceID, real.id)
+    }
 }

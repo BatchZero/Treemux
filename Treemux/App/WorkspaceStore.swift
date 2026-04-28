@@ -162,9 +162,10 @@ final class WorkspaceStore: ObservableObject {
             workspaces.append(builtin)
             mutated = true
         } else if builtins.count > 1 {
-            // Keep the first; drop the rest.
-            let firstBuiltinID = builtins[0].id
-            workspaces.removeAll { $0.isBuiltInDefaultTerminal && $0.id != firstBuiltinID }
+            // Prefer the canonical-UUID entry; otherwise keep the first by position.
+            let preferredID = builtins.first(where: { $0.id == WorkspaceModel.builtInDefaultTerminalID })?.id
+                ?? builtins[0].id
+            workspaces.removeAll { $0.isBuiltInDefaultTerminal && $0.id != preferredID }
             mutated = true
         }
 
@@ -182,6 +183,13 @@ final class WorkspaceStore: ObservableObject {
                 builtin.name = "~"
                 mutated = true
             }
+        }
+
+        if selectedWorkspaceID == nil {
+            // Match prior behavior: when launching with no prior selection, open on the
+            // built-in terminal so the detail pane is never empty.
+            selectedWorkspaceID = WorkspaceModel.builtInDefaultTerminalID
+            mutated = true
         }
 
         if mutated {
