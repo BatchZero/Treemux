@@ -297,17 +297,19 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
                 menu.addItem(renameItem)
             }
 
-            menu.addItem(.separator())
+            // Delete (skip for the built-in default terminal)
+            if ws.id != WorkspaceModel.builtInDefaultTerminalID {
+                menu.addItem(.separator())
 
-            // Delete
-            let deleteItem = NSMenuItem(
-                title: String(localized: "Delete"),
-                action: #selector(deleteWorkspace(_:)),
-                keyEquivalent: ""
-            )
-            deleteItem.target = self
-            deleteItem.representedObject = ws.id
-            menu.addItem(deleteItem)
+                let deleteItem = NSMenuItem(
+                    title: String(localized: "Delete"),
+                    action: #selector(deleteWorkspace(_:)),
+                    keyEquivalent: ""
+                )
+                deleteItem.target = self
+                deleteItem.representedObject = ws.id
+                menu.addItem(deleteItem)
+            }
 
         case .worktree(let ws, let wt):
             // Change Icon for worktree

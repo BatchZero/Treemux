@@ -222,4 +222,57 @@ final class WorkspaceStoreBuiltInTests: XCTestCase {
         // No real workspace → selection unchanged; fallback shows `~` in sidebar.
         XCTAssertEqual(store.selectedWorkspaceID, WorkspaceModel.builtInDefaultTerminalID)
     }
+
+    func testMoveLocalWorkspacePersistsBuiltInPosition() async throws {
+        // Two real workspaces; the built-in starts at the end (appended by ensureBuiltInDefaultTerminal).
+        let real1 = WorkspaceRecord(
+            id: UUID(),
+            kind: .repository,
+            name: "alpha",
+            repositoryPath: "/tmp/alpha",
+            isPinned: false,
+            isArchived: false,
+            sshTarget: nil,
+            worktreeStates: [],
+            worktreeOrder: nil,
+            workspaceIcon: nil,
+            worktreeIconOverrides: nil,
+            isBuiltInDefaultTerminal: false
+        )
+        let real2 = WorkspaceRecord(
+            id: UUID(),
+            kind: .repository,
+            name: "beta",
+            repositoryPath: "/tmp/beta",
+            isPinned: false,
+            isArchived: false,
+            sshTarget: nil,
+            worktreeStates: [],
+            worktreeOrder: nil,
+            workspaceIcon: nil,
+            worktreeIconOverrides: nil,
+            isBuiltInDefaultTerminal: false
+        )
+        try writeState(PersistedWorkspaceState(version: 1, selectedWorkspaceID: nil, workspaces: [real1, real2]))
+
+        let store = WorkspaceStore()
+        // After init: localWorkspaces is [alpha, beta, ~]. Move ~ to the front.
+        XCTAssertTrue(store.settings.showDefaultTerminal)
+        let local = store.localWorkspaces
+        XCTAssertEqual(local.count, 3)
+        let builtinIndex = local.firstIndex(where: { $0.isBuiltInDefaultTerminal })
+        XCTAssertEqual(builtinIndex, 2)
+
+        store.moveLocalWorkspace(from: IndexSet(integer: 2), to: 0)
+
+        let afterMove = store.localWorkspaces
+        XCTAssertTrue(afterMove.first?.isBuiltInDefaultTerminal ?? false, "Built-in should now be first after move")
+        XCTAssertEqual(afterMove.map { $0.name }, ["~", "alpha", "beta"])
+
+        // Verify position survives a re-init (encode → decode round-trip via disk).
+        let store2 = WorkspaceStore()
+        let restored = store2.localWorkspaces
+        XCTAssertTrue(restored.first?.isBuiltInDefaultTerminal ?? false, "Built-in position must persist across restart")
+        XCTAssertEqual(restored.map { $0.name }, ["~", "alpha", "beta"])
+    }
 }
