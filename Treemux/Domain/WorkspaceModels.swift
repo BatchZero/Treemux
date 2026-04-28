@@ -58,30 +58,40 @@ struct WorkspaceTabStateRecord: Codable, Identifiable {
     let id: UUID
     var title: String
     var isManuallyNamed: Bool
+    var kind: WorkspaceTabKind
+
+    // Terminal-tab fields (nil when kind == .fileBrowser)
     let layout: SessionLayoutNode?
     let panes: [PaneSnapshot]
     let focusedPaneID: UUID?
     let zoomedPaneID: UUID?
 
+    // File-browser-tab field (nil when kind == .terminal)
+    var fileBrowserState: FileBrowserTabState?
+
     init(
         id: UUID = UUID(),
         title: String,
         isManuallyNamed: Bool = false,
+        kind: WorkspaceTabKind = .terminal,
         layout: SessionLayoutNode? = nil,
         panes: [PaneSnapshot] = [],
         focusedPaneID: UUID? = nil,
-        zoomedPaneID: UUID? = nil
+        zoomedPaneID: UUID? = nil,
+        fileBrowserState: FileBrowserTabState? = nil
     ) {
         self.id = id
         self.title = title
         self.isManuallyNamed = isManuallyNamed
+        self.kind = kind
         self.layout = layout
         self.panes = panes
         self.focusedPaneID = focusedPaneID
         self.zoomedPaneID = zoomedPaneID
+        self.fileBrowserState = fileBrowserState
     }
 
-    /// Creates a default single-pane tab for the given working directory.
+    /// Creates a default single-pane terminal tab for the given working directory.
     static func makeDefault(workingDirectory: String, sshTarget: SSHTarget? = nil, title: String = "Tab 1") -> WorkspaceTabStateRecord {
         let paneID = UUID()
         let pane = PaneSnapshot(
@@ -91,15 +101,24 @@ struct WorkspaceTabStateRecord: Codable, Identifiable {
         )
         return WorkspaceTabStateRecord(
             title: title,
+            kind: .terminal,
             layout: .pane(PaneLeaf(paneID: paneID)),
             panes: [pane],
             focusedPaneID: paneID
         )
     }
 
-    // Support decoding old data without isManuallyNamed field
+    /// Creates a default file browser tab rooted at `rootPath`.
+    static func makeFileBrowser(rootPath: String, rootKind: FileBrowserRootKind, title: String) -> WorkspaceTabStateRecord {
+        WorkspaceTabStateRecord(
+            title: title,
+            kind: .fileBrowser,
+            fileBrowserState: FileBrowserTabState(rootPath: rootPath, rootKind: rootKind)
+        )
+    }
+
     enum CodingKeys: String, CodingKey {
-        case id, title, isManuallyNamed, layout, panes, focusedPaneID, zoomedPaneID
+        case id, title, isManuallyNamed, kind, layout, panes, focusedPaneID, zoomedPaneID, fileBrowserState
     }
 
     init(from decoder: Decoder) throws {
@@ -107,10 +126,13 @@ struct WorkspaceTabStateRecord: Codable, Identifiable {
         id = try container.decode(UUID.self, forKey: .id)
         title = try container.decode(String.self, forKey: .title)
         isManuallyNamed = try container.decodeIfPresent(Bool.self, forKey: .isManuallyNamed) ?? false
+        // Legacy data: missing `kind` → terminal.
+        kind = try container.decodeIfPresent(WorkspaceTabKind.self, forKey: .kind) ?? .terminal
         layout = try container.decodeIfPresent(SessionLayoutNode.self, forKey: .layout)
         panes = try container.decodeIfPresent([PaneSnapshot].self, forKey: .panes) ?? []
         focusedPaneID = try container.decodeIfPresent(UUID.self, forKey: .focusedPaneID)
         zoomedPaneID = try container.decodeIfPresent(UUID.self, forKey: .zoomedPaneID)
+        fileBrowserState = try container.decodeIfPresent(FileBrowserTabState.self, forKey: .fileBrowserState)
     }
 }
 
