@@ -16,9 +16,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         configureUpdater(checkInBackground: true)
 
         if let store = treemuxApp?.store {
+            // Debounce so key-repeat hotkeys (e.g. holding ⌘= to crank the
+            // terminal font) don't rebuild the entire main menu and reconfigure
+            // the updater on every press. 150ms collapses bursts without making
+            // genuine settings edits feel sluggish.
             settingsCancellable = store.$settings
                 .dropFirst()
-                .receive(on: RunLoop.main)
+                .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
                 .sink { [weak self] _ in
                     self?.buildMainMenu()
                     self?.configureUpdater(checkInBackground: false)
@@ -126,6 +130,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         commandPaletteItem.target = self
         applyShortcut(.commandPalette, to: commandPaletteItem)
         viewMenu.addItem(commandPaletteItem)
+        viewMenu.addItem(.separator())
+        let fontIncreaseItem = NSMenuItem(title: String(localized: "Increase Terminal Font Size"), action: #selector(terminalFontSizeIncrease), keyEquivalent: "")
+        fontIncreaseItem.target = self
+        applyShortcut(.terminalFontSizeIncrease, to: fontIncreaseItem)
+        viewMenu.addItem(fontIncreaseItem)
+        let fontDecreaseItem = NSMenuItem(title: String(localized: "Decrease Terminal Font Size"), action: #selector(terminalFontSizeDecrease), keyEquivalent: "")
+        fontDecreaseItem.target = self
+        applyShortcut(.terminalFontSizeDecrease, to: fontDecreaseItem)
+        viewMenu.addItem(fontDecreaseItem)
+        let fontResetItem = NSMenuItem(title: String(localized: "Reset Terminal Font Size"), action: #selector(terminalFontSizeReset), keyEquivalent: "")
+        fontResetItem.target = self
+        applyShortcut(.terminalFontSizeReset, to: fontResetItem)
+        viewMenu.addItem(fontResetItem)
         let viewMenuItem = NSMenuItem()
         viewMenuItem.submenu = viewMenu
         mainMenu.addItem(viewMenuItem)
@@ -289,6 +306,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func saveCurrentFile() {
         NotificationCenter.default.post(name: .treemuxSaveCurrentFile, object: nil)
+    }
+
+    @objc private func terminalFontSizeIncrease() {
+        adjustTerminalFontSizeOffset(by: +1)
+    }
+
+    @objc private func terminalFontSizeDecrease() {
+        adjustTerminalFontSizeOffset(by: -1)
+    }
+
+    @objc private func terminalFontSizeReset() {
+        applyTerminalFontSizeOffset(0)
+    }
+
+    private func adjustTerminalFontSizeOffset(by delta: Int) {
+        guard let store else { return }
+        let next = store.settings.terminal.fontSizeOffset + delta
+        applyTerminalFontSizeOffset(next)
+    }
+
+    private func applyTerminalFontSizeOffset(_ value: Int) {
+        guard let store else { return }
+        var draft = store.settings
+        draft.terminal.fontSizeOffset = TerminalSettings.clamp(value)
+        guard draft.terminal != store.settings.terminal else { return }
+        store.updateSettings(draft)
     }
 
     // MARK: - Updates

@@ -48,10 +48,67 @@ struct AppSettings: Codable, Equatable {
 }
 
 /// Terminal emulator appearance and behavior settings.
-struct TerminalSettings: Codable, Equatable {
-    var defaultShell: String = "/bin/zsh"
-    var fontSize: Int = 14
-    var cursorStyle: String = "bar"
+///
+/// Note: the user-facing font size is expressed as `fontSizeOffset` — an
+/// integer relative to a hidden base. The actual point size used by Ghostty
+/// is computed at render time from the active display's PPI via
+/// `AdaptiveFontSizeCalculator`. The legacy `fontSize` JSON key is migrated to
+/// `fontSizeOffset` on first decode and never re-encoded.
+struct TerminalSettings: Equatable {
+    var defaultShell: String
+    /// User-facing terminal font offset. Always within
+    /// `AdaptiveFontSizeCalculator.offsetRange` (-8 ... +12); enforced on
+    /// construction and on every Codable decode.
+    var fontSizeOffset: Int
+    var cursorStyle: String
+
+    init(
+        defaultShell: String = "/bin/zsh",
+        fontSizeOffset: Int = 0,
+        cursorStyle: String = "bar"
+    ) {
+        self.defaultShell = defaultShell
+        self.fontSizeOffset = TerminalSettings.clamp(fontSizeOffset)
+        self.cursorStyle = cursorStyle
+    }
+
+    /// Clamps a candidate offset into the valid range. Delegates to the
+    /// calculator so the bounds have a single source of truth.
+    static func clamp(_ value: Int) -> Int {
+        AdaptiveFontSizeCalculator.clampOffset(value)
+    }
+}
+
+extension TerminalSettings: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case defaultShell
+        case fontSizeOffset
+        case cursorStyle
+        case fontSize  // legacy, decode-only
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let shell = try container.decodeIfPresent(String.self, forKey: .defaultShell) ?? "/bin/zsh"
+        let cursor = try container.decodeIfPresent(String.self, forKey: .cursorStyle) ?? "bar"
+
+        let offset: Int
+        if let stored = try container.decodeIfPresent(Int.self, forKey: .fontSizeOffset) {
+            offset = stored
+        } else if let legacy = try container.decodeIfPresent(Int.self, forKey: .fontSize) {
+            offset = legacy - 14
+        } else {
+            offset = 0
+        }
+        self.init(defaultShell: shell, fontSizeOffset: offset, cursorStyle: cursor)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(defaultShell, forKey: .defaultShell)
+        try container.encode(fontSizeOffset, forKey: .fontSizeOffset)
+        try container.encode(cursorStyle, forKey: .cursorStyle)
+    }
 }
 
 /// Settings controlling application startup behavior.

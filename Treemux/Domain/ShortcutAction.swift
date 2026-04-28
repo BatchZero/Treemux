@@ -27,6 +27,9 @@ enum ShortcutCategory: String, CaseIterable, Hashable, Identifiable {
 
 // MARK: - Shortcut Action
 
+/// Note: rawValues are persisted in `AppSettings.shortcutOverrides` keys.
+/// Renaming a case orphans existing user overrides — never rename without
+/// a migration.
 enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
     case openSettings
     case commandPalette
@@ -43,6 +46,9 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
     case focusNextPane
     case focusPreviousPane
     case zoomPane
+    case terminalFontSizeIncrease
+    case terminalFontSizeDecrease
+    case terminalFontSizeReset
 
     var id: String { rawValue }
 
@@ -55,6 +61,10 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
         case .splitHorizontal, .splitVertical, .closePane,
              .focusNextPane, .focusPreviousPane, .zoomPane:
             return .panes
+        case .terminalFontSizeIncrease,
+             .terminalFontSizeDecrease,
+             .terminalFontSizeReset:
+            return .window
         }
     }
 
@@ -75,6 +85,9 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
         case .focusNextPane: return "Next Pane"
         case .focusPreviousPane: return "Previous Pane"
         case .zoomPane: return "Zoom Pane"
+        case .terminalFontSizeIncrease: return "Increase Terminal Font Size"
+        case .terminalFontSizeDecrease: return "Decrease Terminal Font Size"
+        case .terminalFontSizeReset: return "Reset Terminal Font Size"
         }
     }
 
@@ -95,6 +108,9 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
         case .focusNextPane: return "Move focus to the next pane."
         case .focusPreviousPane: return "Move focus to the previous pane."
         case .zoomPane: return "Zoom or unzoom the focused pane."
+        case .terminalFontSizeIncrease: return "Make terminal text larger across all displays."
+        case .terminalFontSizeDecrease: return "Make terminal text smaller across all displays."
+        case .terminalFontSizeReset: return "Restore terminal font size to the default offset."
         }
     }
 
@@ -130,6 +146,12 @@ enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
             return StoredShortcut(key: "[", command: true, shift: false, option: false, control: false)
         case .zoomPane:
             return StoredShortcut(key: "\r", command: true, shift: true, option: false, control: false)
+        case .terminalFontSizeIncrease:
+            return StoredShortcut(key: "=", command: true, shift: false, option: false, control: false)
+        case .terminalFontSizeDecrease:
+            return StoredShortcut(key: "-", command: true, shift: false, option: false, control: false)
+        case .terminalFontSizeReset:
+            return StoredShortcut(key: "0", command: true, shift: false, option: false, control: false)
         }
     }
 }

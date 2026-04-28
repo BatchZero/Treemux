@@ -60,10 +60,14 @@ final class TreemuxGhosttyRuntime: NSObject {
 
     /// Writes Treemux terminal settings as a temporary Ghostty config file.
     /// Caller must delete the returned URL after use.
+    ///
+    /// Note: `font-size` is intentionally omitted. Each surface picks its own
+    /// `font_size` at creation and on every screen change, derived from the
+    /// active display's PPI via `AdaptiveFontSizeCalculator`. Pushing a single
+    /// global `font-size` would fight with the per-surface override.
     private func writeTemporaryGhosttyConfig(for terminal: TerminalSettings) -> URL? {
         let lines = [
-            "cursor-style = \(terminal.cursorStyle)",
-            "font-size = \(terminal.fontSize)",
+            "cursor-style = \(terminal.cursorStyle)"
         ]
         let content = lines.joined(separator: "\n") + "\n"
         let url = URL(fileURLWithPath: NSTemporaryDirectory())

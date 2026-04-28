@@ -499,6 +499,11 @@ private final class TreemuxGhosttySurfaceView: NSView {
     private var handledTextInputCommand = false
     private var lastPerformKeyEvent: TimeInterval?
     private var markedSelectionRange = NSRange(location: NSNotFound, length: 0)
+    private var adaptiveFontObservers: [NSObjectProtocol] = []
+    /// Initial value loaded from disk during view construction; afterwards
+    /// refreshed by `.treemuxTerminalSettingsDidChange` notifications inside
+    /// `registerAdaptiveFontObservers()`. Never read disk on the hot path.
+    private var cachedFontSizeOffset: Int = AppSettingsPersistence().load().terminal.fontSizeOffset
 
     override var acceptsFirstResponder: Bool { true }
 
@@ -510,6 +515,15 @@ private final class TreemuxGhosttySurfaceView: NSView {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        // Inline tear-down: deinit is non-isolated under Swift 6 strict
+        // concurrency, but `NotificationCenter.default.removeObserver(_:)`
+        // is thread-safe so it's safe to call from any context.
+        for token in adaptiveFontObservers {
+            NotificationCenter.default.removeObserver(token)
+        }
     }
 
     override func insertText(_ insertString: Any) {
@@ -606,16 +620,21 @@ private final class TreemuxGhosttySurfaceView: NSView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         syncSurfaceMetrics()
+        registerAdaptiveFontObservers()
+        applyAdaptiveFontSize()
     }
 
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         syncSurfaceMetrics()
+        applyAdaptiveFontSize()
     }
 
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
         syncSurfaceMetrics()
+        // No applyAdaptiveFontSize() here — frame changes are not screen
+        // changes; calling per-frame would thrash ghostty unnecessarily.
     }
 
     // MARK: - Mouse events
@@ -652,6 +671,64 @@ private final class TreemuxGhosttySurfaceView: NSView {
 
         let size = ghostty_surface_size(surface)
         controller?.handleSurfaceResize(cols: Int(size.columns), rows: Int(size.rows))
+    }
+
+    /// Pushes the per-display font size to ghostty for this surface. Idempotent
+    /// and cheap — safe to call from every screen / backing / settings change.
+    func applyAdaptiveFontSize() {
+        guard surface != nil else { return }
+        let screen = window?.screen ?? NSScreen.main
+        let pt = AdaptiveFontSizeCalculator.fontSize(for: screen, offset: cachedFontSizeOffset)
+        let pushed = performBindingAction("set_font_size:\(pt)")
+        #if DEBUG
+        if !pushed {
+            print("treemux.adaptive-font: set_font_size:\(pt) push failed (surface may not be ready)")
+        }
+        #endif
+    }
+
+    private func registerAdaptiveFontObservers() {
+        // Tear down any prior registrations (window may change over view's lifetime).
+        tearDownAdaptiveFontObservers()
+
+        // Per-window: window dragged to a different screen at the same backing scale.
+        if let window {
+            let screenToken = NotificationCenter.default.addObserver(
+                forName: NSWindow.didChangeScreenNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated { self?.applyAdaptiveFontSize() }
+            }
+            adaptiveFontObservers.append(screenToken)
+        }
+
+        // Global: user changed fontSizeOffset (or any TerminalSettings field).
+        let settingsToken = NotificationCenter.default.addObserver(
+            forName: .treemuxTerminalSettingsDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if let terminal = notification.object as? TerminalSettings {
+                    self.cachedFontSizeOffset = terminal.fontSizeOffset
+                } else {
+                    // Defensive fallback — re-read from disk if the payload
+                    // is not what we expect.
+                    self.cachedFontSizeOffset = AppSettingsPersistence().load().terminal.fontSizeOffset
+                }
+                self.applyAdaptiveFontSize()
+            }
+        }
+        adaptiveFontObservers.append(settingsToken)
+    }
+
+    private func tearDownAdaptiveFontObservers() {
+        for token in adaptiveFontObservers {
+            NotificationCenter.default.removeObserver(token)
+        }
+        adaptiveFontObservers.removeAll()
     }
 
     func setCursorShape(_ shape: ghostty_action_mouse_shape_e) {
@@ -1108,7 +1185,18 @@ private final class TreemuxGhosttySurfaceView: NSView {
         )
         configuration.userdata = userdata
         configuration.scale_factor = Double(window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2)
-        configuration.font_size = Float(AppSettingsPersistence().load().terminal.fontSize)
+        let terminalSettings = AppSettingsPersistence().load().terminal
+        // TODO(Task 5): `window?.screen` is often nil during view setup, so
+        // the first surface frame may be sized for `NSScreen.main` instead of
+        // the actual display the workspace opens on. Task 5 corrects this on
+        // the first `viewDidMoveToWindow` / `didChangeScreenNotification`.
+        let initialScreen = window?.screen ?? NSScreen.main
+        configuration.font_size = Float(
+            AdaptiveFontSizeCalculator.fontSize(
+                for: initialScreen,
+                offset: terminalSettings.fontSizeOffset
+            )
+        )
         configuration.context = GHOSTTY_SURFACE_CONTEXT_SPLIT
         configuration.wait_after_command = false
 

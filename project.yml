@@ -18,8 +18,8 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5"
-    MARKETING_VERSION: "0.0.1"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.0.8"
+    CURRENT_PROJECT_VERSION: "8"
 
 targets:
   Treemux:
