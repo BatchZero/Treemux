@@ -48,6 +48,10 @@ final class ShellSession: ObservableObject, Identifiable {
     /// Detected AI tool running in this pane.
     @Published var detectedAITool: AIToolDetection?
 
+    /// AI agent attention state, set by OSC 777 `treemux:done` / `treemux:input`
+    /// notifications, cleared on focus or user keystroke.
+    @Published private(set) var aiAttention: AIAttentionState = .none
+
     var onWorkspaceAction: ((TerminalWorkspaceAction) -> Void)?
     var onFocus: (() -> Void)?
 
@@ -365,6 +369,29 @@ final class ShellSession: ObservableObject, Identifiable {
         lifecycle = .exited
         pid = nil
     }
+
+    /// Apply an OSC 777 desktop notification. Sets `aiAttention` only when the
+    /// title carries the treemux protocol prefix.
+    fileprivate func applyDesktopNotification(title: String, body: String?) {
+        if let state = AIAttentionState.parse(notificationTitle: title) {
+            aiAttention = state
+        }
+    }
+
+    /// Clear the AI attention state. Called on focus and on user keystroke.
+    func clearAIAttention() {
+        if aiAttention != .none {
+            aiAttention = .none
+        }
+    }
+
+#if DEBUG
+    /// Test seam allowing unit tests to drive `aiAttention` without instantiating
+    /// a real ghostty surface.
+    func applyDesktopNotificationFromTest(title: String, body: String?) {
+        applyDesktopNotification(title: title, body: body)
+    }
+#endif
 
     /// Detect if an AI tool is running based on the terminal title.
     private func detectAITool(fromTitle title: String) {
