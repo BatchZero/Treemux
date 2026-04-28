@@ -151,12 +151,112 @@
         }
       }
     },
-    "Font Size" : {
+    "Increase Terminal Font Size" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "字体大小"
+            "value" : "增大终端字号"
+          }
+        }
+      }
+    },
+    "Decrease Terminal Font Size" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "减小终端字号"
+          }
+        }
+      }
+    },
+    "Reset Terminal Font Size" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置终端字号"
+          }
+        }
+      }
+    },
+    "Make terminal text larger across all displays." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在所有显示器上放大终端文字。"
+          }
+        }
+      }
+    },
+    "Make terminal text smaller across all displays." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在所有显示器上缩小终端文字。"
+          }
+        }
+      }
+    },
+    "Restore terminal font size to the default offset." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将终端字号恢复为默认。"
+          }
+        }
+      }
+    },
+    "Smaller" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缩小"
+          }
+        }
+      }
+    },
+    "Larger" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放大"
+          }
+        }
+      }
+    },
+    "Terminal Font Size" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "终端字号"
+          }
+        }
+      }
+    },
+    "Currently %lld pt — auto-scaled for the active display." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前 %lld pt — 已根据当前显示器自动适配。"
+          }
+        }
+      }
+    },
+    "The font size adjusts automatically per display so physical size stays consistent. Use ⌘= / ⌘- / ⌘0 to adjust quickly." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字号会按显示器密度自动调整，使物理大小一致。使用 ⌘= / ⌘- / ⌘0 可以快速微调。"
           }
         }
       }
