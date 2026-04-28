@@ -1311,6 +1311,16 @@
         }
       }
     },
+    "Unknown: %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未知：%@"
+          }
+        }
+      }
+    },
     "Install" : {
       "localizations" : {
         "zh-Hans" : {
