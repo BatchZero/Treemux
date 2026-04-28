@@ -28,13 +28,25 @@ private struct WorkspaceTabContainerView: View {
                 WorkspaceTabBarView(workspace: workspace)
             }
 
-            // Content area
-            if let controller = workspace.sessionController, let tabID = workspace.activeTabID {
-                WorkspaceSessionDetailView(
-                    controller: controller,
-                    onCloseTab: { workspace.closeTab(tabID) }
-                )
-                    .id(tabID)
+            // Content area: dispatch by tab kind
+            if let tabID = workspace.activeTabID,
+               let tab = workspace.tabs.first(where: { $0.id == tabID }) {
+                Group {
+                    switch tab.kind {
+                    case .terminal:
+                        if let controller = workspace.sessionController {
+                            WorkspaceSessionDetailView(
+                                controller: controller,
+                                onCloseTab: { workspace.closeTab(tabID) }
+                            )
+                        }
+                    case .fileBrowser:
+                        if let controller = workspace.fileBrowserController(forTabID: tabID) {
+                            FileBrowserTabContentView(controller: controller)
+                        }
+                    }
+                }
+                .id(tabID)
             } else {
                 EmptyTabStateView {
                     workspace.createTab()
