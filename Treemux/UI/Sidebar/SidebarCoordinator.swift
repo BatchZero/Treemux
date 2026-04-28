@@ -3,6 +3,7 @@
 //  Treemux
 
 import AppKit
+import Combine
 import SwiftUI
 
 /// Coordinator that serves as NSOutlineView data source and delegate,
@@ -24,6 +25,13 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
     private var isApplyingSelection = false
     private var lastDataFingerprint: String = ""
 
+    /// Subscribes to `AttentionStore.shared.objectWillChange` and force-rebuilds
+    /// visible cell content. Sidebar rows are hosted in `NSHostingView<AnyView>`,
+    /// where `@ObservedObject` subscriptions are unreliable, so the indicator
+    /// is precomputed in `makeCellContent` and passed by value into
+    /// `SidebarNodeRow`. This sink is what drives recompute on store changes.
+    private var attentionCancellable: AnyCancellable?
+
     // MARK: - Attach
 
     /// Wires the coordinator as data source and delegate on the container's outline view.
@@ -44,6 +52,15 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         outlineView.toggleExpansionForSelection = { [weak self] in
             self?.toggleExpansionForSelection()
         }
+
+        // Subscribe to AttentionStore changes and force-refresh visible rows.
+        // Throttled so a burst of updates doesn't tax the main thread.
+        attentionCancellable = AttentionStore.shared.objectWillChange
+            .throttle(for: .milliseconds(100), scheduler: DispatchQueue.main, latest: true)
+            .sink { [weak self, weak outlineView] in
+                guard let self, let outlineView else { return }
+                self.refreshVisibleRows(on: outlineView)
+            }
     }
 
     // MARK: - Apply (Diff + Rebuild)
@@ -219,14 +236,36 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         guard let store, let theme else {
             return AnyView(EmptyView())
         }
+        let activity = activityIndicator(for: node)
         return AnyView(
             SidebarNodeRow(
                 node: node,
                 store: store,
                 theme: theme,
-                isSelected: isSelected
+                isSelected: isSelected,
+                activityIndicator: activity
             )
         )
+    }
+
+    /// Computes the activity indicator for a sidebar node by reading
+    /// `AttentionStore.shared` (via `WorkspaceModel.hasAttention*`) and the
+    /// workspace's running-session counts. Called fresh on every cell
+    /// rebuild — including when the Combine sink fires after an attention
+    /// store mutation — so the row always reflects current state.
+    private func activityIndicator(for node: SidebarNodeItem) -> SidebarIconActivityIndicator {
+        switch node.kind {
+        case .section:
+            return .none
+        case .workspace(let ws):
+            if ws.hasAttention { return .attention }
+            if ws.hasAnyRunningSessions { return .working }
+            return .none
+        case .worktree(let ws, let wt):
+            if ws.hasAttention(forWorktreePath: wt.path.path) { return .attention }
+            if ws.hasRunningSessions(forWorktreePath: wt.path.path) { return .working }
+            return .none
+        }
     }
 
     // MARK: - Keyboard

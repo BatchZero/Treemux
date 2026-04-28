@@ -32,6 +32,9 @@ targets:
           - Vendor
           - ghostty
           - terminfo
+          - Support/AIHooks
+      - path: Treemux/Support/AIHooks
+        type: folder
     dependencies:
       - framework: Treemux/Vendor/GhosttyKit.xcframework
         embed: false

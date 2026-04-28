@@ -21,7 +21,7 @@ struct SettingsSheet: View {
     }
 
     enum SettingsSection: String, CaseIterable, Identifiable {
-        case general, terminal, theme, sidebarIcons, ssh, shortcuts, updates
+        case general, terminal, theme, sidebarIcons, ssh, shortcuts, aiHooks, updates
 
         var id: String { rawValue }
 
@@ -33,6 +33,7 @@ struct SettingsSheet: View {
             case .sidebarIcons: return "Sidebar Icons"
             case .ssh: return "SSH"
             case .shortcuts: return "Shortcuts"
+            case .aiHooks: return "AI Activity Hints"
             case .updates: return "Updates"
             }
         }
@@ -45,6 +46,7 @@ struct SettingsSheet: View {
             case .sidebarIcons: return "Customize icons for workspaces and worktrees"
             case .ssh: return "SSH config file paths"
             case .shortcuts: return "Customize keyboard shortcuts"
+            case .aiHooks: return "Hook installation status for Claude Code, Codex, opencode"
             case .updates: return "Software update preferences"
             }
         }
@@ -57,6 +59,7 @@ struct SettingsSheet: View {
             case .sidebarIcons: return "paintpalette"
             case .ssh: return "network"
             case .shortcuts: return "keyboard"
+            case .aiHooks: return "bell.badge"
             case .updates: return "arrow.triangle.2.circlepath"
             }
         }
@@ -147,6 +150,8 @@ struct SettingsSheet: View {
             SSHSettingsView(settings: $draft)
         case .shortcuts:
             ShortcutsSettingsView(settings: $draft)
+        case .aiHooks:
+            AIActivityHintsSettingsView(settings: $draft, store: store)
         case .updates:
             UpdateSettingsView(settings: $draft)
         }

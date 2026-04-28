@@ -47,6 +47,8 @@ final class TreemuxGhosttyController: ManagedTerminalSessionSurfaceController {
     var onWorkingDirectoryChange: ((String?) -> Void)?
     var onFocus: (() -> Void)?
     var onStatusChange: ((TerminalSurfaceStatusSnapshot) -> Void)?
+    var onDesktopNotification: ((String, String?) -> Void)?
+    var onUserInput: (() -> Void)?
     var onProcessExit: ((Int32?) -> Void)?
     var onWorkspaceAction: ((TerminalWorkspaceAction) -> Void)?
 
@@ -196,8 +198,11 @@ final class TreemuxGhosttyController: ManagedTerminalSessionSurfaceController {
             return true
 
         case GHOSTTY_ACTION_DESKTOP_NOTIFICATION:
-            // TODO: Task 15 — deliver desktop notifications
-            NSSound.beep()
+            let title = action.action.desktop_notification.title.map(String.init(cString:)) ?? ""
+            let body  = action.action.desktop_notification.body.map(String.init(cString:))
+            DispatchQueue.main.async { [weak self] in
+                self?.onDesktopNotification?(title, body)
+            }
             return true
 
         case GHOSTTY_ACTION_RING_BELL:
@@ -783,6 +788,9 @@ private final class TreemuxGhosttySurfaceView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
+        DispatchQueue.main.async { [weak self] in
+            self?.controller?.onUserInput?()
+        }
         guard let surface else { return }
         let mods = ghosttyMods(event.modifierFlags)
         ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_PRESS, GHOSTTY_MOUSE_LEFT, mods)
@@ -886,6 +894,9 @@ private final class TreemuxGhosttySurfaceView: NSView {
     // MARK: - Key events
 
     override func keyDown(with event: NSEvent) {
+        DispatchQueue.main.async { [weak self] in
+            self?.controller?.onUserInput?()
+        }
         guard let surface else {
             super.keyDown(with: event)
             return

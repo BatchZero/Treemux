@@ -8,6 +8,10 @@ import SwiftUI
 /// Shows tab buttons with title, pane count badge, close button, and drag-to-reorder.
 struct WorkspaceTabBarView: View {
     @ObservedObject var workspace: WorkspaceModel
+    /// Observed so attention state changes trigger a re-render. The
+    /// `dotKind(for:)` computation calls `workspace.hasAttention(...)`, which
+    /// routes through `AttentionStore`.
+    @ObservedObject var attentionStore: AttentionStore = .shared
     @State private var renamingTabID: UUID?
     @State private var renameText: String = ""
     @State private var hoveredTabID: UUID?
@@ -37,6 +41,7 @@ struct WorkspaceTabBarView: View {
                                 isHovered: hoveredTabID == tab.id,
                                 paneCount: paneCount(for: tab),
                                 isDirty: dirtyState(for: tab),
+                                dotKind: dotKind(for: tab),
                                 onSelect: { workspace.selectTab(tab.id) },
                                 onClose: { workspace.requestCloseTab(tab.id) },
                                 onRename: {
@@ -93,6 +98,17 @@ struct WorkspaceTabBarView: View {
         guard tab.kind == .fileBrowser else { return false }
         return workspace.fileBrowserController(forTabID: tab.id)?.isDirty ?? false
     }
+
+    private func dotKind(for tab: WorkspaceTabStateRecord) -> TabActivityDot.Kind? {
+        let path = workspace.activeWorktreePath
+        if workspace.hasAttention(forTabID: tab.id, worktreePath: path) {
+            return .attention
+        }
+        if workspace.hasRunningSessions(forWorktreePath: path) {
+            return .idle
+        }
+        return nil
+    }
 }
 
 // MARK: - Tab Button
@@ -103,6 +119,7 @@ private struct TabButton: View {
     let isHovered: Bool
     let paneCount: Int
     let isDirty: Bool
+    let dotKind: TabActivityDot.Kind?
     let onSelect: () -> Void
     let onClose: () -> Void
     let onRename: () -> Void
@@ -110,9 +127,16 @@ private struct TabButton: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 4) {
+                // Tab kind icon (folder for file browser, terminal for shell tabs).
                 Image(systemName: tab.kind == .fileBrowser ? "folder" : "terminal")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(isSelected ? .primary : .tertiary)
+                // AI activity dot (idle/attention) appears between kind icon and title.
+                if let dotKind {
+                    TabActivityDot(kind: dotKind)
+                        .padding(.trailing, 2)
+                }
+                // Dirty marker for unsaved file-browser edits.
                 if isDirty {
                     Circle()
                         .fill(Color.accentColor)
@@ -166,11 +190,42 @@ private struct TabButton: View {
             }
         }
         .buttonStyle(.plain)
-        .frame(width: TreemuxTabSizing.width(for: tab.title, paneCount: paneCount))
+        .frame(width: TreemuxTabSizing.width(for: tab.title, paneCount: paneCount, hasDot: dotKind != nil))
         .contextMenu {
             Button("Rename…") { onRename() }
             Divider()
             Button("Close Tab") { onClose() }
+        }
+    }
+}
+
+// MARK: - Activity Dot
+
+/// Small leading-edge dot on a `TabButton` indicating session activity.
+/// Renders nothing for `.none`, a steady dot for `.idle`, a pulsing dot for `.attention`.
+private struct TabActivityDot: View {
+    enum Kind: Equatable { case idle, attention }
+
+    let kind: Kind
+    @State private var isAnimating = false
+
+    var body: some View {
+        Circle()
+            .fill(Color.orange)
+            .frame(width: 6, height: 6)
+            .opacity(kind == .attention ? (isAnimating ? 1 : 0.4) : 0.8)
+            .onAppear { startAnimation() }
+            .onChange(of: kind) { _, _ in startAnimation() }
+    }
+
+    private func startAnimation() {
+        guard kind == .attention else {
+            isAnimating = false
+            return
+        }
+        isAnimating = false
+        withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+            isAnimating = true
         }
     }
 }
@@ -205,7 +260,7 @@ enum TreemuxTabSizing {
     private static let titleFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
     private static let countFont = NSFont.monospacedSystemFont(ofSize: 9, weight: .medium)
 
-    static func width(for title: String, paneCount: Int) -> CGFloat {
+    static func width(for title: String, paneCount: Int, hasDot: Bool = false) -> CGFloat {
         let titleWidth = ceil((title as NSString).size(withAttributes: [.font: titleFont]).width)
         // 12 leading + icon ~14 + 4 HStack spacing + 16 close button + 12 trailing
         var totalWidth = titleWidth + 60
@@ -214,6 +269,7 @@ enum TreemuxTabSizing {
             let countWidth = ceil((countText as NSString).size(withAttributes: [.font: countFont]).width)
             totalWidth += countWidth + 12
         }
+        if hasDot { totalWidth += 10 }
         return min(max(totalWidth, 100), 260)
     }
 }

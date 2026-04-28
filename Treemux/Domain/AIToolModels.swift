@@ -25,6 +25,7 @@ extension AIToolKind {
         switch self {
         case .claudeCode: return "Claude Code"
         case .openaiCodex: return "Codex"
+        case .opencode: return "opencode"
         case .custom: return "AI Agent"
         }
     }
@@ -34,6 +35,7 @@ extension AIToolKind {
         switch self {
         case .claudeCode: return "brain.head.profile"
         case .openaiCodex: return "wand.and.stars"
+        case .opencode: return "chevron.left.forwardslash.chevron.right"
         case .custom: return "cpu"
         }
     }
@@ -46,6 +48,9 @@ extension AIToolKind {
         }
         if lower == "codex" || lower.hasPrefix("codex-") {
             return .openaiCodex
+        }
+        if lower == "opencode" || lower.hasPrefix("opencode-") {
+            return .opencode
         }
         return nil
     }

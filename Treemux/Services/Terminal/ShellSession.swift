@@ -48,6 +48,14 @@ final class ShellSession: ObservableObject, Identifiable {
     /// Detected AI tool running in this pane.
     @Published var detectedAITool: AIToolDetection?
 
+    /// AI agent attention state, set by OSC 777 `treemux:done` / `treemux:input`
+    /// notifications, cleared on focus or user keystroke. Reads live from
+    /// `AttentionStore`, the single observable source of truth that views
+    /// subscribe to directly.
+    var aiAttention: AIAttentionState {
+        AttentionStore.shared.state(for: id)
+    }
+
     var onWorkspaceAction: ((TerminalWorkspaceAction) -> Void)?
     var onFocus: (() -> Void)?
 
@@ -127,6 +135,12 @@ final class ShellSession: ObservableObject, Identifiable {
         surfaceController.onProcessExit = { [weak self] exitCode in
             guard let self else { return }
             self.applyProcessExit(exitCode)
+        }
+        surfaceController.onDesktopNotification = { [weak self] title, body in
+            self?.applyDesktopNotification(title: title, body: body)
+        }
+        surfaceController.onUserInput = { [weak self] in
+            self?.clearAIAttention()
         }
         if let ghosttySurface = surfaceController as? TreemuxGhosttyController {
             ghosttySurface.onWorkspaceAction = { [weak self] action in
@@ -236,6 +250,9 @@ final class ShellSession: ObservableObject, Identifiable {
     func setFocused(_ isFocused: Bool) {
         isFocusedInWorkspace = isFocused
         surfaceController.setFocused(isFocused)
+        if isFocused {
+            clearAIAttention()
+        }
     }
 
     // MARK: - Terminal interaction
@@ -365,6 +382,27 @@ final class ShellSession: ObservableObject, Identifiable {
         lifecycle = .exited
         pid = nil
     }
+
+    /// Apply an OSC 777 desktop notification. Sets `aiAttention` only when the
+    /// title carries the treemux protocol prefix.
+    fileprivate func applyDesktopNotification(title: String, body: String?) {
+        if let state = AIAttentionState.parse(notificationTitle: title) {
+            AttentionStore.shared.setAttention(paneID: id, state: state)
+        }
+    }
+
+    /// Clear the AI attention state. Called on focus and on user keystroke.
+    func clearAIAttention() {
+        AttentionStore.shared.clear(paneID: id)
+    }
+
+#if DEBUG
+    /// Test seam allowing unit tests to drive `aiAttention` without instantiating
+    /// a real ghostty surface.
+    func applyDesktopNotificationFromTest(title: String, body: String?) {
+        applyDesktopNotification(title: title, body: body)
+    }
+#endif
 
     /// Detect if an AI tool is running based on the terminal title.
     private func detectAITool(fromTitle title: String) {
