@@ -27,6 +27,9 @@ enum ShortcutCategory: String, CaseIterable, Hashable, Identifiable {
 
 // MARK: - Shortcut Action
 
+/// Note: rawValues are persisted in `AppSettings.shortcutOverrides` keys.
+/// Renaming a case orphans existing user overrides — never rename without
+/// a migration.
 enum ShortcutAction: String, CaseIterable, Hashable, Identifiable {
     case openSettings
     case commandPalette

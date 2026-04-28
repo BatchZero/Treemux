@@ -35,6 +35,12 @@ final class AdaptiveFontShortcutTests: XCTestCase {
         XCTAssertFalse(ShortcutAction.terminalFontSizeReset.title.isEmpty)
     }
 
+    func testAllThreeActions_haveSubtitles() {
+        XCTAssertFalse(ShortcutAction.terminalFontSizeIncrease.subtitle.isEmpty)
+        XCTAssertFalse(ShortcutAction.terminalFontSizeDecrease.subtitle.isEmpty)
+        XCTAssertFalse(ShortcutAction.terminalFontSizeReset.subtitle.isEmpty)
+    }
+
     func testActions_areInAllCases() {
         XCTAssertTrue(ShortcutAction.allCases.contains(.terminalFontSizeIncrease))
         XCTAssertTrue(ShortcutAction.allCases.contains(.terminalFontSizeDecrease))
