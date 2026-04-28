@@ -178,16 +178,25 @@ private struct GeneralSettingsView: View {
 // MARK: - Terminal Settings
 
 private struct TerminalSettingsView: View {
-    private static let fontSizeRange: ClosedRange<Int> = AdaptiveFontSizeCalculator.offsetRange
-
     @Binding var settings: AppSettings
 
-    private var clampedFontSize: Binding<Int> {
-        Binding(
-            get: { settings.terminal.fontSizeOffset },
-            set: {
-                settings.terminal.fontSizeOffset = min(max($0, Self.fontSizeRange.lowerBound), Self.fontSizeRange.upperBound)
-            }
+    private var offsetLabel: String {
+        let offset = settings.terminal.fontSizeOffset
+        return offset >= 0 ? "+\(offset)" : "\(offset)"
+    }
+
+    private var canDecrease: Bool {
+        settings.terminal.fontSizeOffset > AdaptiveFontSizeCalculator.offsetRange.lowerBound
+    }
+
+    private var canIncrease: Bool {
+        settings.terminal.fontSizeOffset < AdaptiveFontSizeCalculator.offsetRange.upperBound
+    }
+
+    private var currentDisplayPointSize: Int {
+        AdaptiveFontSizeCalculator.fontSize(
+            for: NSScreen.main,
+            offset: settings.terminal.fontSizeOffset
         )
     }
 
@@ -195,18 +204,43 @@ private struct TerminalSettingsView: View {
         Form {
             TextField("Default Shell", text: $settings.terminal.defaultShell)
 
-            Stepper(
-                value: clampedFontSize, in: Self.fontSizeRange
-            ) {
-                HStack {
-                    Text("Font Size")
-                    Spacer()
-                    TextField("", value: clampedFontSize, format: .number)
-                        .frame(width: 40)
-                        .multilineTextAlignment(.trailing)
+            Section {
+                HStack(spacing: 8) {
+                    Button {
+                        settings.terminal.fontSizeOffset = TerminalSettings.clamp(settings.terminal.fontSizeOffset - 1)
+                    } label: {
+                        Label("Smaller", systemImage: "textformat.size.smaller")
+                    }
+                    .disabled(!canDecrease)
+
+                    Text(offsetLabel)
                         .monospacedDigit()
+                        .frame(minWidth: 32)
+                        .multilineTextAlignment(.center)
+
+                    Button {
+                        settings.terminal.fontSizeOffset = TerminalSettings.clamp(settings.terminal.fontSizeOffset + 1)
+                    } label: {
+                        Label("Larger", systemImage: "textformat.size.larger")
+                    }
+                    .disabled(!canIncrease)
+
+                    Spacer()
+
+                    Button("Reset") {
+                        settings.terminal.fontSizeOffset = 0
+                    }
+                    .disabled(settings.terminal.fontSizeOffset == 0)
+                }
+            } header: {
+                Text("Terminal Font Size")
+            } footer: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Currently \(currentDisplayPointSize) pt — auto-scaled for the active display.")
+                    Text("The font size adjusts automatically per display so physical size stays consistent. Use ⌘= / ⌘- / ⌘0 to adjust quickly.")
                         .foregroundStyle(.secondary)
                 }
+                .font(.system(size: 11))
             }
 
             Picker("Cursor Style", selection: $settings.terminal.cursorStyle) {
