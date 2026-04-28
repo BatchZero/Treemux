@@ -831,6 +831,26 @@
         }
       }
     },
+    "Show Default Terminal (~)" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示默认终端 (~)"
+          }
+        }
+      }
+    },
+    "Always shown when no other workspace exists." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当不存在其他 workspace 时始终显示。"
+          }
+        }
+      }
+    },
     "Language and startup behavior" : {
       "localizations" : {
         "zh-Hans" : {

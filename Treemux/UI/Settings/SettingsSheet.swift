@@ -170,6 +170,14 @@ private struct GeneralSettingsView: View {
                 Text("Restore Last Session").tag(true)
                 Text("Blank Window").tag(false)
             }
+
+            Section {
+                Toggle("Show Default Terminal (~)", isOn: $settings.showDefaultTerminal)
+            } footer: {
+                Text("Always shown when no other workspace exists.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
     }
