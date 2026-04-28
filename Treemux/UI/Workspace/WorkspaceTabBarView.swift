@@ -37,7 +37,7 @@ struct WorkspaceTabBarView: View {
                                 isHovered: hoveredTabID == tab.id,
                                 paneCount: paneCount(for: tab),
                                 onSelect: { workspace.selectTab(tab.id) },
-                                onClose: { workspace.closeTab(tab.id) },
+                                onClose: { workspace.requestCloseTab(tab.id) },
                                 onRename: {
                                     renameText = tab.title
                                     renamingTabID = tab.id

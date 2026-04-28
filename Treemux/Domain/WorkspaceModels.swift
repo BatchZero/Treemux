@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import AppKit
 
 // MARK: - Persistent Records (Codable)
 
@@ -366,6 +367,49 @@ final class WorkspaceModel: ObservableObject, Identifiable {
               tabs.contains(where: { $0.id == tabID }) else { return }
         saveActiveTabState()
         activeTabID = tabID
+    }
+
+    /// Closes the tab. If it's a dirty file-browser tab, shows a confirmation
+    /// modal first; user can save, discard, or cancel.
+    func requestCloseTab(_ tabID: UUID) {
+        guard let tab = tabs.first(where: { $0.id == tabID }) else { return }
+        if tab.kind == .fileBrowser,
+           let ctrl = fileBrowserControllers[activeWorktreePath]?[tabID],
+           ctrl.isDirty {
+            confirmCloseDirtyFileBrowserTab(tabID: tabID, controller: ctrl)
+            return
+        }
+        closeTab(tabID)
+    }
+
+    private func confirmCloseDirtyFileBrowserTab(tabID: UUID, controller: FileBrowserTabController) {
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Unsaved changes")
+        alert.informativeText = String(localized: "Save changes before closing?")
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: String(localized: "Save"))
+        alert.addButton(withTitle: String(localized: "Discard"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        let response = alert.runModal()
+        switch response {
+        case .alertFirstButtonReturn: // Save
+            Task { @MainActor in
+                do {
+                    try await controller.saveCurrentFile()
+                    self.closeTab(tabID)
+                } catch {
+                    // Saving failed — leave the tab open; user can retry / discard.
+                    let err = NSAlert()
+                    err.messageText = String(localized: "Save failed")
+                    err.informativeText = error.localizedDescription
+                    err.runModal()
+                }
+            }
+        case .alertSecondButtonReturn: // Discard
+            closeTab(tabID)
+        default: // Cancel
+            break
+        }
     }
 
     /// Closes a tab and cleans up its controller. If it was active, selects an adjacent tab.
