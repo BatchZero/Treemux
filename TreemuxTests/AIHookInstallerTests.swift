@@ -44,11 +44,11 @@ final class AIHookInstallerTests: XCTestCase {
 
     // MARK: - T10 baseline tests
 
-    func testRegistryStartsEmpty() {
-        // Providers are registered in T11/T12/T13. This test guards against the
-        // registry initializer doing something unexpected before then.
+    func testRegistryHasThreeBuiltinProviders() {
         let providers = AIHookProviderRegistry.providers()
-        XCTAssertEqual(providers.count, 0)
+        XCTAssertEqual(providers.count, 3)
+        let kinds = Set(providers.map(\.kind))
+        XCTAssertEqual(kinds, Set([.claudeCode, .openaiCodex, .opencode]))
     }
 
     func testHookTargetIDForLocal() {
@@ -469,6 +469,52 @@ final class AIHookInstallerTests: XCTestCase {
             XCTAssertEqual(v, "1")
         default:
             XCTFail("Expected .installed, got \(status)")
+        }
+    }
+
+    // MARK: - AIHookInstaller orchestrator (T15)
+
+    func testOrchestratorInspectAllCoversThreeProviders() async {
+        let fs = InMemoryHookFileSystem()
+        let installer = AIHookInstaller()
+        let results = await installer.inspectAll(fs: fs)
+        XCTAssertEqual(results.count, 3)
+        // All three should be .notDetected on a fresh in-memory fs:
+        for (_, status) in results {
+            XCTAssertEqual(status, .notDetected)
+        }
+    }
+
+    func testOrchestratorProviderLookup() {
+        let installer = AIHookInstaller()
+        XCTAssertNotNil(installer.provider(for: .claudeCode))
+        XCTAssertNotNil(installer.provider(for: .openaiCodex))
+        XCTAssertNotNil(installer.provider(for: .opencode))
+        XCTAssertNil(installer.provider(for: .custom))
+    }
+
+    func testOrchestratorInspectUnknownKindReturnsUnknown() async throws {
+        let fs = InMemoryHookFileSystem()
+        let installer = AIHookInstaller()
+        let status = try await installer.inspect(.custom, fs: fs)
+        switch status {
+        case .unknown:
+            break
+        default:
+            XCTFail("Expected .unknown, got \(status)")
+        }
+    }
+
+    func testOrchestratorInstallUnknownKindThrows() async throws {
+        let fs = InMemoryHookFileSystem()
+        let installer = AIHookInstaller()
+        do {
+            _ = try await installer.install(.custom, fs: fs)
+            XCTFail("Expected unsupported error")
+        } catch let HookInstallError.unsupported(msg) {
+            XCTAssertTrue(msg.contains("custom"))
+        } catch {
+            XCTFail("Expected HookInstallError.unsupported, got \(error)")
         }
     }
 

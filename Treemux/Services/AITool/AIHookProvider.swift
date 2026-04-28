@@ -27,8 +27,11 @@ protocol AIHookProvider {
 
 /// Built-in registry. Future agents are added here.
 enum AIHookProviderRegistry {
-    /// Returns the providers shipping with treemux today. Empty until T11/12/13.
     static func providers() -> [AIHookProvider] {
-        []
+        [
+            ClaudeCodeHookProvider(),
+            CodexHookProvider(),
+            OpencodeHookProvider(),
+        ]
     }
 }
