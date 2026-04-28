@@ -500,7 +500,9 @@ private final class TreemuxGhosttySurfaceView: NSView {
     private var lastPerformKeyEvent: TimeInterval?
     private var markedSelectionRange = NSRange(location: NSNotFound, length: 0)
     private var adaptiveFontObservers: [NSObjectProtocol] = []
-    private weak var observedWindow: NSWindow?
+    /// Initial value loaded from disk during view construction; afterwards
+    /// refreshed by `.treemuxTerminalSettingsDidChange` notifications inside
+    /// `registerAdaptiveFontObservers()`. Never read disk on the hot path.
     private var cachedFontSizeOffset: Int = AppSettingsPersistence().load().terminal.fontSizeOffset
 
     override var acceptsFirstResponder: Bool { true }
@@ -699,7 +701,6 @@ private final class TreemuxGhosttySurfaceView: NSView {
                 MainActor.assumeIsolated { self?.applyAdaptiveFontSize() }
             }
             adaptiveFontObservers.append(screenToken)
-            observedWindow = window
         }
 
         // Global: user changed fontSizeOffset (or any TerminalSettings field).
@@ -728,7 +729,6 @@ private final class TreemuxGhosttySurfaceView: NSView {
             NotificationCenter.default.removeObserver(token)
         }
         adaptiveFontObservers.removeAll()
-        observedWindow = nil
     }
 
     func setCursorShape(_ shape: ghostty_action_mouse_shape_e) {
