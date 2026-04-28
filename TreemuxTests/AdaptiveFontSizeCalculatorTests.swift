@@ -66,13 +66,15 @@ final class AdaptiveFontSizeCalculatorTests: XCTestCase {
     // MARK: - Final clamp [6, 72]
 
     func testExtremeUpward_clampsTo72() {
+        // (14 + 12) × 600 / 109 = 143.1 → 143 → clamp 72
         let result = AdaptiveFontSizeCalculator.fontSize(forPPI: 600, offset: 12)
-        XCTAssertLessThanOrEqual(result, 72)
+        XCTAssertEqual(result, 72)
     }
 
     func testExtremeDownward_clampsTo6() {
+        // (14 - 8) × 30 / 109 = 1.65 → 2 → clamp 6
         let result = AdaptiveFontSizeCalculator.fontSize(forPPI: 30, offset: -8)
-        XCTAssertGreaterThanOrEqual(result, 6)
+        XCTAssertEqual(result, 6)
     }
 
     // MARK: - Constants
@@ -87,5 +89,18 @@ final class AdaptiveFontSizeCalculatorTests: XCTestCase {
 
     func testOffsetRange_isMinus8To12() {
         XCTAssertEqual(AdaptiveFontSizeCalculator.offsetRange, -8 ... 12)
+    }
+
+    // MARK: - NSScreen helpers (nil paths)
+
+    func testEffectivePPI_nilScreen_returnsNil() {
+        XCTAssertNil(AdaptiveFontSizeCalculator.effectivePPI(for: nil))
+    }
+
+    func testFontSizeForScreen_nilScreen_usesReferencePPI() {
+        // (14 + 0) × 109 / 109 = 14
+        XCTAssertEqual(AdaptiveFontSizeCalculator.fontSize(for: nil, offset: 0), 14)
+        // (14 + 3) × 109 / 109 = 17
+        XCTAssertEqual(AdaptiveFontSizeCalculator.fontSize(for: nil, offset: 3), 17)
     }
 }

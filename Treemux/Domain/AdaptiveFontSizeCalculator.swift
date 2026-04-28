@@ -56,10 +56,10 @@ enum AdaptiveFontSizeCalculator {
     }
 }
 
-extension NSScreen {
-    /// The Core Graphics display id, or 0 when the screen has none. Distinct
-    /// from the private `displayID` extension in
-    /// `TreemuxGhosttyController.swift` so the two coexist without collision.
+private extension NSScreen {
+    /// The Core Graphics display id, or 0 when the screen has none. Scoped to
+    /// this file so it does not collide with the existing private `displayID`
+    /// extension in `TreemuxGhosttyController.swift`.
     var adaptiveDisplayID: CGDirectDisplayID {
         (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)
             .map { CGDirectDisplayID(truncating: $0) } ?? 0
