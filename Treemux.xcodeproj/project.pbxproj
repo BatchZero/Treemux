@@ -112,6 +112,7 @@
 		DDB379227505CCDD96BB62C1 /* TreemuxKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7DBEF3A8FDA651804A6D8A /* TreemuxKeyboardShortcuts.swift */; };
 		E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8629D2D5813F897F85840289 /* SSHTarget.swift */; };
 		EDB4207DA8056D870E9EA844 /* TreemuxGhosttyInputSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755FE81839DE8C99362EBC0E /* TreemuxGhosttyInputSupport.swift */; };
+		F4E43A35676226D73F962606 /* HookPreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5AECA3E1BAF9EB250F508C /* HookPreviewSheet.swift */; };
 		F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */; };
 		FBA39534A25C607A48314803 /* GhosttyKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = AC606574E1DF3045291D300B /* GhosttyKit.xcframework */; };
 		FC0884EBD132C797A61FC4A1 /* TreemuxTabSizingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9B87785B633D3E01905E33E /* TreemuxTabSizingTests.swift */; };
@@ -233,6 +234,7 @@
 		F59B5026A96BF865D41D0890 /* TreemuxGhosttyShellIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyShellIntegration.swift; sourceTree = "<group>"; };
 		F9224AC3A02E683871BD6507 /* AIHookProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIHookProvider.swift; sourceTree = "<group>"; };
 		FB0ABA0B08B1F2185D6C82B5 /* SSHConfigParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParserTests.swift; sourceTree = "<group>"; };
+		FB5AECA3E1BAF9EB250F508C /* HookPreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookPreviewSheet.swift; sourceTree = "<group>"; };
 		FCDABAEAB8A96753452954DD /* AIHooks */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AIHooks; path = Treemux/Support/AIHooks; sourceTree = SOURCE_ROOT; };
 		FED0327A7E59732F42304316 /* WorkspaceMetadataWatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceMetadataWatchService.swift; sourceTree = "<group>"; };
 		FF0C127CC4C110A2B9F9ADF2 /* AIHookFileSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIHookFileSystem.swift; sourceTree = "<group>"; };
@@ -394,6 +396,7 @@
 		47EF60B043AF58645C61BA38 /* Sheets */ = {
 			isa = PBXGroup;
 			children = (
+				FB5AECA3E1BAF9EB250F508C /* HookPreviewSheet.swift */,
 				7BE07A133DAF6C1DB4F89297 /* OpenProjectSheet.swift */,
 				9250C83EF14A84383E73002A /* RemoteDirectoryBrowser.swift */,
 				3579E21F95E49A08C0BE1E5F /* RemoteDirectoryBrowserViewModel.swift */,
@@ -718,6 +721,7 @@
 				7C890E7C842699E9E4E18606 /* CommandPaletteView.swift in Sources */,
 				CED37FBB27DAA8CBE601AD3C /* EmptyTabStateView.swift in Sources */,
 				89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */,
+				F4E43A35676226D73F962606 /* HookPreviewSheet.swift in Sources */,
 				B620A3848F1EF7DE7BDC62A2 /* LanguageManager.swift in Sources */,
 				5695944A97F022496C2F055E /* MainWindowView.swift in Sources */,
 				9E3EDA87C6172DCC23C14AFE /* OpenProjectSheet.swift in Sources */,

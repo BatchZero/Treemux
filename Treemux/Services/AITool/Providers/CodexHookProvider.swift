@@ -53,14 +53,37 @@ struct CodexHookProvider: AIHookProvider {
 
     // MARK: - Install
 
-    func install(fs: AIHookFileSystem, helperBundleURL: URL) async throws -> HookInstallReceipt {
-        // Read existing config (default to empty) so we can fail early on a
-        // user-defined `notify` BEFORE touching the filesystem.
+    /// Compute the planned file changes (config.toml + both helpers) without
+    /// writing. Performs the user-conflict check first so callers see the
+    /// `userConfigConflict` error before any filesystem effect.
+    private func computeChanges(fs: AIHookFileSystem, helperBundleURL: URL) async throws -> [HookInstallChange] {
+        // Fail-fast on a user-defined `notify` outside our managed block.
         let raw = (try await fs.readText(configFile)) ?? ""
         try checkUserNotifyConflict(raw)
 
-        // 1) Copy both helper scripts from bundle URL to ~/.treemux/hooks/.
-        try await fs.makeDirectory(helperDir)
+        var changes: [HookInstallChange] = []
+
+        // 1) Compute proposed config.toml contents.
+        let stripped = stripManagedBlock(raw)
+        let block = """
+        \(beginMarker)
+        notify = ["$HOME/.treemux/hooks/notify-codex.sh"]
+        \(endMarker)
+        """
+        let proposedConfig: String
+        if stripped.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            proposedConfig = block + "\n"
+        } else {
+            proposedConfig = stripped.trimmingCharacters(in: .whitespacesAndNewlines) + "\n\n" + block + "\n"
+        }
+        let currentConfig = try await fs.readText(configFile)
+        changes.append(HookInstallChange(
+            path: configFile,
+            proposed: proposedConfig,
+            current: currentConfig
+        ))
+
+        // 2) Compute proposed helper script contents (one entry per helper).
         for name in helperResources {
             let src = helperBundleURL.appendingPathComponent(name)
             let content: String
@@ -72,28 +95,34 @@ struct CodexHookProvider: AIHookProvider {
                 )
             }
             let dest = "~/.treemux/hooks/\(name)"
-            try await fs.writeText(dest, content)
-            try await fs.makeExecutable(dest)
+            let current = try await fs.readText(dest)
+            changes.append(HookInstallChange(
+                path: dest,
+                proposed: content,
+                current: current
+            ))
         }
 
-        // 2) Strip any previous treemux-managed block (idempotent reinstall),
-        //    then append a fresh one.
-        let stripped = stripManagedBlock(raw)
-        let block = """
-        \(beginMarker)
-        notify = ["$HOME/.treemux/hooks/notify-codex.sh"]
-        \(endMarker)
-        """
+        return changes
+    }
 
-        let final: String
-        if stripped.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            final = block + "\n"
-        } else {
-            final = stripped.trimmingCharacters(in: .whitespacesAndNewlines) + "\n\n" + block + "\n"
+    func install(fs: AIHookFileSystem, helperBundleURL: URL) async throws -> HookInstallReceipt {
+        let changes = try await computeChanges(fs: fs, helperBundleURL: helperBundleURL)
+
+        // Apply: helpers first (need directory + chmod), then config.
+        try await fs.makeDirectory(helperDir)
+        // changes[0] is the config.toml; changes[1...] are helpers under ~/.treemux/hooks/.
+        for change in changes.dropFirst() {
+            try await fs.writeText(change.path, change.proposed)
+            try await fs.makeExecutable(change.path)
         }
-        try await fs.writeText(configFile, final)
+        try await fs.writeText(configFile, changes[0].proposed)
 
         return HookInstallReceipt(version: version, installedAt: Date())
+    }
+
+    func dryRunInstall(fs: AIHookFileSystem, helperBundleURL: URL) async throws -> [HookInstallChange] {
+        try await computeChanges(fs: fs, helperBundleURL: helperBundleURL)
     }
 
     // MARK: - Uninstall

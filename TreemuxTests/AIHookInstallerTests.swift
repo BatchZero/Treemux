@@ -518,6 +518,49 @@ final class AIHookInstallerTests: XCTestCase {
         }
     }
 
+    // MARK: - dryRunInstall (T18)
+
+    func testClaudeCodeDryRunReturnsChangesWithoutWriting() async throws {
+        let fs = InMemoryHookFileSystem()
+        try await fs.writeText("~/.claude/settings.json", "{}")
+        let bundle = try makeStubBundleURL(helpers: ["notify.sh"])
+
+        let p = ClaudeCodeHookProvider()
+        let changes = try await p.dryRunInstall(fs: fs, helperBundleURL: bundle)
+        XCTAssertEqual(changes.count, 2)
+        XCTAssertEqual(changes[0].path, "~/.claude/settings.json")
+        XCTAssertTrue(changes[0].proposed.contains("_treemuxManaged"))
+        XCTAssertEqual(changes[0].current, "{}")
+
+        // Confirm no actual writes happened (file content unchanged):
+        let after = try await fs.readText("~/.claude/settings.json")
+        XCTAssertEqual(after, "{}")
+    }
+
+    func testCodexDryRunSurfacesUserConflictError() async throws {
+        let fs = InMemoryHookFileSystem()
+        try await fs.writeText("~/.codex/config.toml", "notify = [\"my-program\"]\n")
+        let bundle = try makeStubBundleURL(helpers: ["notify.sh", "notify-codex.sh"])
+
+        do {
+            _ = try await CodexHookProvider().dryRunInstall(fs: fs, helperBundleURL: bundle)
+            XCTFail("Expected userConfigConflict")
+        } catch HookInstallError.userConfigConflict {
+            // expected
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testOpencodeDryRunReturnsTwoChanges() async throws {
+        let fs = InMemoryHookFileSystem()
+        try await fs.writeText("~/.config/opencode/config.json", "{}")
+        let bundle = try makeStubBundleURL(helpers: ["notify.sh", "treemux-notify.js"])
+
+        let changes = try await OpencodeHookProvider().dryRunInstall(fs: fs, helperBundleURL: bundle)
+        XCTAssertEqual(changes.count, 2)
+    }
+
     // MARK: - Local JSON helpers (test-only)
 
     private func parseTestJSON(_ raw: String) -> Any? {

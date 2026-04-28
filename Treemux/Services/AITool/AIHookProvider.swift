@@ -23,6 +23,20 @@ protocol AIHookProvider {
     func inspect(fs: AIHookFileSystem) async throws -> HookStatus
     func install(fs: AIHookFileSystem, helperBundleURL: URL) async throws -> HookInstallReceipt
     func uninstall(fs: AIHookFileSystem) async throws
+
+    /// Compute the file changes that `install` would make, without writing.
+    /// Returns an array of (path, contents) pairs. The first entry is always
+    /// the primary config file (matching `configFile`); subsequent entries
+    /// are helper scripts.
+    func dryRunInstall(fs: AIHookFileSystem, helperBundleURL: URL) async throws -> [HookInstallChange]
+}
+
+/// One file's planned write, used by `dryRunInstall` to surface a diff to the user.
+struct HookInstallChange: Equatable {
+    let path: String
+    let proposed: String
+    /// Existing file contents at `path`, or nil if the file doesn't exist yet.
+    let current: String?
 }
 
 /// Built-in registry. Future agents are added here.

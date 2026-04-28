@@ -35,22 +35,13 @@ struct OpencodeHookProvider: AIHookProvider {
         return .tampered(reason: "Shared helper script missing at ~/.treemux/hooks/notify.sh")
     }
 
-    func install(fs: AIHookFileSystem, helperBundleURL: URL) async throws -> HookInstallReceipt {
-        // Shared notify.sh
-        let helperContent: String
-        do {
-            helperContent = try String(
-                contentsOf: helperBundleURL.appendingPathComponent("notify.sh"),
-                encoding: .utf8
-            )
-        } catch {
-            throw HookInstallError.ioError("Cannot read bundled notify.sh: \(error.localizedDescription)")
-        }
-        try await fs.makeDirectory("~/.treemux/hooks")
-        try await fs.writeText("~/.treemux/hooks/notify.sh", helperContent)
-        try await fs.makeExecutable("~/.treemux/hooks/notify.sh")
+    /// Compute the planned file changes (plugin + helper) without writing.
+    /// The first entry is always the plugin file (which equals `configFile`);
+    /// the second entry is the shared `notify.sh` helper.
+    private func computeChanges(fs: AIHookFileSystem, helperBundleURL: URL) async throws -> [HookInstallChange] {
+        var changes: [HookInstallChange] = []
 
-        // Plugin
+        // 1) Plugin file (configFile).
         let pluginContent: String
         do {
             pluginContent = try String(
@@ -60,10 +51,49 @@ struct OpencodeHookProvider: AIHookProvider {
         } catch {
             throw HookInstallError.ioError("Cannot read bundled treemux-notify.js: \(error.localizedDescription)")
         }
+        let currentPlugin = try await fs.readText(configFile)
+        changes.append(HookInstallChange(
+            path: configFile,
+            proposed: pluginContent,
+            current: currentPlugin
+        ))
+
+        // 2) Shared notify.sh helper.
+        let helperContent: String
+        do {
+            helperContent = try String(
+                contentsOf: helperBundleURL.appendingPathComponent("notify.sh"),
+                encoding: .utf8
+            )
+        } catch {
+            throw HookInstallError.ioError("Cannot read bundled notify.sh: \(error.localizedDescription)")
+        }
+        let currentHelper = try await fs.readText("~/.treemux/hooks/notify.sh")
+        changes.append(HookInstallChange(
+            path: "~/.treemux/hooks/notify.sh",
+            proposed: helperContent,
+            current: currentHelper
+        ))
+
+        return changes
+    }
+
+    func install(fs: AIHookFileSystem, helperBundleURL: URL) async throws -> HookInstallReceipt {
+        let changes = try await computeChanges(fs: fs, helperBundleURL: helperBundleURL)
+
+        // Apply. Helper first (needs directory + chmod), then plugin.
+        try await fs.makeDirectory("~/.treemux/hooks")
+        // changes[1] is the helper, changes[0] is the plugin.
+        try await fs.writeText(changes[1].path, changes[1].proposed)
+        try await fs.makeExecutable(changes[1].path)
         try await fs.makeDirectory("~/.config/opencode/plugins")
-        try await fs.writeText(configFile, pluginContent)
+        try await fs.writeText(changes[0].path, changes[0].proposed)
 
         return HookInstallReceipt(version: version, installedAt: Date())
+    }
+
+    func dryRunInstall(fs: AIHookFileSystem, helperBundleURL: URL) async throws -> [HookInstallChange] {
+        try await computeChanges(fs: fs, helperBundleURL: helperBundleURL)
     }
 
     func uninstall(fs: AIHookFileSystem) async throws {

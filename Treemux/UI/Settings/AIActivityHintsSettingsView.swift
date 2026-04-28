@@ -11,6 +11,7 @@ struct AIActivityHintsSettingsView: View {
     @State private var rows: [HintRow] = []
     @State private var isLoading = true
     @State private var lastError: String?
+    @State private var pendingPreview: HookPreviewModel?
 
     struct HintRow: Identifiable {
         let id: String   // "<targetID>:<kind>"
@@ -54,6 +55,9 @@ struct AIActivityHintsSettingsView: View {
         .padding(.vertical, 16)
         .task {
             await refresh()
+        }
+        .sheet(item: $pendingPreview) { model in
+            HookPreviewSheet(model: model)
         }
     }
 
@@ -165,11 +169,7 @@ struct AIActivityHintsSettingsView: View {
         let installer = AIHookInstaller()
         var newRows: [HintRow] = []
         for target in targets {
-            let fs: AIHookFileSystem
-            switch target {
-            case .local: fs = LocalHookFileSystem()
-            case .remote(let t): fs = RemoteHookFileSystem(target: t)
-            }
+            let fs = makeFS(for: target)
             let results = await installer.inspectAll(fs: fs)
             for (provider, status) in results {
                 // Hide rows for which the agent isn't even detected.
@@ -204,34 +204,54 @@ struct AIActivityHintsSettingsView: View {
     private func install(_ row: HintRow) async {
         lastError = nil
         let installer = AIHookInstaller()
-        let fs: AIHookFileSystem = {
-            switch row.target {
-            case .local: return LocalHookFileSystem()
-            case .remote(let t): return RemoteHookFileSystem(target: t)
-            }
-        }()
+        guard let bundleURL = installer.helperBundleURL else {
+            lastError = String(localized: "Helper bundle missing in app Resources.")
+            return
+        }
+        let fs: AIHookFileSystem = makeFS(for: row.target)
+
+        // Compute the diff first; if it errors (e.g. user-conflict for Codex),
+        // surface the message inline instead of opening the sheet.
+        let changes: [HookInstallChange]
         do {
-            _ = try await installer.install(row.provider.kind, fs: fs)
+            changes = try await row.provider.dryRunInstall(fs: fs, helperBundleURL: bundleURL)
+        } catch {
+            lastError = error.localizedDescription
+            return
+        }
+
+        pendingPreview = HookPreviewModel(
+            kind: row.provider.kind,
+            target: row.target,
+            displayName: row.provider.displayName,
+            changes: changes,
+            onApply: {
+                do {
+                    _ = try await installer.install(row.provider.kind, fs: fs)
+                    await refresh()
+                } catch {
+                    lastError = error.localizedDescription
+                }
+            }
+        )
+    }
+
+    private func uninstall(_ row: HintRow) async {
+        lastError = nil
+        let installer = AIHookInstaller()
+        let fs: AIHookFileSystem = makeFS(for: row.target)
+        do {
+            try await installer.uninstall(row.provider.kind, fs: fs)
             await refresh()
         } catch {
             lastError = error.localizedDescription
         }
     }
 
-    private func uninstall(_ row: HintRow) async {
-        lastError = nil
-        let installer = AIHookInstaller()
-        let fs: AIHookFileSystem = {
-            switch row.target {
-            case .local: return LocalHookFileSystem()
-            case .remote(let t): return RemoteHookFileSystem(target: t)
-            }
-        }()
-        do {
-            try await installer.uninstall(row.provider.kind, fs: fs)
-            await refresh()
-        } catch {
-            lastError = error.localizedDescription
+    private func makeFS(for target: HookTarget) -> AIHookFileSystem {
+        switch target {
+        case .local: return LocalHookFileSystem()
+        case .remote(let t): return RemoteHookFileSystem(target: t)
         }
     }
 }

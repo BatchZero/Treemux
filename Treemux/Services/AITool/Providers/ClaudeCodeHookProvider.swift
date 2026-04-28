@@ -59,28 +59,17 @@ struct ClaudeCodeHookProvider: AIHookProvider {
 
     // MARK: - Install
 
-    func install(fs: AIHookFileSystem, helperBundleURL: URL) async throws -> HookInstallReceipt {
-        // 1) Copy helper script from bundle URL to ~/.treemux/hooks/notify.sh.
-        let src = helperBundleURL.appendingPathComponent("notify.sh")
-        let helperContent: String
-        do {
-            helperContent = try String(contentsOf: src, encoding: .utf8)
-        } catch {
-            throw HookInstallError.ioError(
-                "Cannot read bundled notify.sh at \(src.path): \(error.localizedDescription)"
-            )
-        }
-        try await fs.makeDirectory(helperDir)
-        try await fs.writeText(helperPath, helperContent)
-        try await fs.makeExecutable(helperPath)
+    /// Compute the planned file changes (config + helper) without writing.
+    /// Both `install` and `dryRunInstall` go through this helper to ensure the
+    /// preview shown to the user matches what `install` will actually write.
+    private func computeChanges(fs: AIHookFileSystem, helperBundleURL: URL) async throws -> [HookInstallChange] {
+        var changes: [HookInstallChange] = []
 
-        // 2) Load existing settings.json (or seed an empty object).
+        // 1) Compute proposed settings.json contents.
         let raw = (try await fs.readText(configFile)) ?? "{}"
         guard var json = parseJSON(raw) as? [String: Any] else {
             throw HookInstallError.parseError("settings.json: not valid JSON")
         }
-
-        // 3) Merge managed entries under hooks.Notification / hooks.Stop.
         var hooks = json["hooks"] as? [String: Any] ?? [:]
 
         let notifEntry: [String: Any] = [
@@ -101,9 +90,49 @@ struct ClaudeCodeHookProvider: AIHookProvider {
         hooks["Stop"]         = appendOrReplaceManaged(in: hooks["Stop"], with: stopEntry)
         json["hooks"] = hooks
 
-        // 4) Re-serialize and write back.
-        try await fs.writeText(configFile, try serializeJSON(json))
+        let proposedConfig = try serializeJSON(json)
+        let currentConfig = try await fs.readText(configFile)
+        changes.append(HookInstallChange(
+            path: configFile,
+            proposed: proposedConfig,
+            current: currentConfig
+        ))
+
+        // 2) Compute proposed helper script contents.
+        let src = helperBundleURL.appendingPathComponent("notify.sh")
+        let helperContent: String
+        do {
+            helperContent = try String(contentsOf: src, encoding: .utf8)
+        } catch {
+            throw HookInstallError.ioError(
+                "Cannot read bundled notify.sh at \(src.path): \(error.localizedDescription)"
+            )
+        }
+        let currentHelper = try await fs.readText(helperPath)
+        changes.append(HookInstallChange(
+            path: helperPath,
+            proposed: helperContent,
+            current: currentHelper
+        ))
+
+        return changes
+    }
+
+    func install(fs: AIHookFileSystem, helperBundleURL: URL) async throws -> HookInstallReceipt {
+        let changes = try await computeChanges(fs: fs, helperBundleURL: helperBundleURL)
+
+        // Apply changes. Helper directory must exist before writing the helper.
+        try await fs.makeDirectory(helperDir)
+        for change in changes {
+            try await fs.writeText(change.path, change.proposed)
+        }
+        try await fs.makeExecutable(helperPath)
+
         return HookInstallReceipt(version: version, installedAt: Date())
+    }
+
+    func dryRunInstall(fs: AIHookFileSystem, helperBundleURL: URL) async throws -> [HookInstallChange] {
+        try await computeChanges(fs: fs, helperBundleURL: helperBundleURL)
     }
 
     // MARK: - Uninstall
