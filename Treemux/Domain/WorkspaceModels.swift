@@ -218,6 +218,8 @@ final class WorkspaceModel: ObservableObject, Identifiable {
 
     /// Tab controllers keyed by worktree path → tab ID.
     private var tabControllers: [String: [UUID: WorkspaceSessionController]] = [:]
+    /// File browser controllers keyed by worktree path → tab ID.
+    private var fileBrowserControllers: [String: [UUID: FileBrowserTabController]] = [:]
     /// Saved tab state for inactive worktrees.
     private var worktreeTabStates: [String: (tabs: [WorkspaceTabStateRecord], activeTabID: UUID?)] = [:]
     /// The worktree path currently being displayed.
@@ -315,6 +317,49 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         activeTabID = newTab.id
     }
 
+    /// Creates a new file-browser tab and makes it active.
+    func createFileBrowserTab(rootPath: String, rootKind: FileBrowserRootKind, title: String) {
+        saveActiveTabState()
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let label = trimmed.isEmpty ? URL(fileURLWithPath: rootPath).lastPathComponent : trimmed
+        let newTab = WorkspaceTabStateRecord.makeFileBrowser(rootPath: rootPath, rootKind: rootKind, title: label)
+        tabs.append(newTab)
+        activeTabID = newTab.id
+    }
+
+    /// Returns or creates a file browser controller for the given tab.
+    func fileBrowserController(forTabID tabID: UUID) -> FileBrowserTabController? {
+        guard let tab = tabs.first(where: { $0.id == tabID }),
+              tab.kind == .fileBrowser,
+              let state = tab.fileBrowserState else { return nil }
+        let path = activeWorktreePath
+        if let existing = fileBrowserControllers[path]?[tabID] { return existing }
+
+        let dataSource: any FileBrowserDataSource = makeDataSource()
+        let ctrl = FileBrowserTabController(initial: state, dataSource: dataSource)
+        ctrl.onPersistableStateChanged = { [weak self] in
+            self?.persistFileBrowserState(tabID: tabID)
+        }
+        if fileBrowserControllers[path] == nil { fileBrowserControllers[path] = [:] }
+        fileBrowserControllers[path]?[tabID] = ctrl
+        return ctrl
+    }
+
+    private func makeDataSource() -> any FileBrowserDataSource {
+        if let target = sshTarget {
+            return RemoteFileBrowserDataSource(sshTarget: target)
+        }
+        return LocalFileBrowserDataSource()
+    }
+
+    private func persistFileBrowserState(tabID: UUID) {
+        guard let index = tabs.firstIndex(where: { $0.id == tabID }),
+              let ctrl = fileBrowserControllers[activeWorktreePath]?[tabID] else { return }
+        var record = tabs[index]
+        record.fileBrowserState = ctrl.snapshot()
+        tabs[index] = record
+    }
+
     /// Switches to the specified tab.
     func selectTab(_ tabID: UUID) {
         guard tabID != activeTabID,
@@ -333,6 +378,9 @@ final class WorkspaceModel: ObservableObject, Identifiable {
             ctrl.terminateAll()
             tabControllers[path]?.removeValue(forKey: tabID)
         }
+        // File browser controllers don't have terminal sessions to terminate;
+        // just drop the reference so the next open re-creates fresh state.
+        fileBrowserControllers[path]?.removeValue(forKey: tabID)
 
         tabs.remove(at: index)
 

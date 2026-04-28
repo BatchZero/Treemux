@@ -11,6 +11,7 @@
 		075D3FA510B8DE84C58CFB5E /* WorkspaceTabKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2054644AE5A8CE04F07FCF2 /* WorkspaceTabKind.swift */; };
 		093FE0959D31BD1AE6676D1A /* RemoteDirectoryBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9250C83EF14A84383E73002A /* RemoteDirectoryBrowser.swift */; };
 		0A139D0EB15791E8C4BB4DE3 /* FileBrowserTabControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC45A45117E3662286FF3B32 /* FileBrowserTabControllerTests.swift */; };
+		0C68CEEF81EFE9218656CC3F /* RemoteFileBrowserDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5BF7BC81FDCAFBAA50DAB5A /* RemoteFileBrowserDataSource.swift */; };
 		0D6E9070C727E942960D4BBB /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = B962317687AFEC7E1E5FC75D /* Color+Hex.swift */; };
 		0DA3A254039F1EEA04FB94DB /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8EB47950FCB5E9637572424 /* AppSettings.swift */; };
 		0E5862A0ECFBA02E71850208 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 307BCBA7FBBD837C1D886367 /* Localizable.xcstrings */; };
@@ -82,6 +83,7 @@
 		9DB5A3B694A7A2D4D0248724 /* TreemuxGhosttyRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8C126FDBE3B3FC26672AF2F /* TreemuxGhosttyRuntime.swift */; };
 		9E3EDA87C6172DCC23C14AFE /* OpenProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BE07A133DAF6C1DB4F89297 /* OpenProjectSheet.swift */; };
 		9FDC3211E658A3C2D037F2DC /* WorkspaceTabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353A1A1130509D2930C26D93 /* WorkspaceTabBarView.swift */; };
+		A04CA84B2C50B4E52EC8B119 /* WorkspaceModelTabKindTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39ADDF2DEBC6DA37E13F759D /* WorkspaceModelTabKindTests.swift */; };
 		A0AD5591657B555F176AEFD8 /* ShellSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2290B3E587177F8B10B05395 /* ShellSession.swift */; };
 		A3A9D3AC7CCAEB6DA3B2D92D /* TreemuxGhosttyControllerRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F2AF4BADCEBABA624578341 /* TreemuxGhosttyControllerRegistry.swift */; };
 		A7746DB757BF4458229659E0 /* SessionBackendLaunch.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E24B640A3303D33931EA85 /* SessionBackendLaunch.swift */; };
@@ -152,6 +154,7 @@
 		3579E21F95E49A08C0BE1E5F /* RemoteDirectoryBrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDirectoryBrowserViewModel.swift; sourceTree = "<group>"; };
 		3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxServiceTests.swift; sourceTree = "<group>"; };
 		383CC60F01FDAD8B71C8EF65 /* EmptyTabStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyTabStateView.swift; sourceTree = "<group>"; };
+		39ADDF2DEBC6DA37E13F759D /* WorkspaceModelTabKindTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceModelTabKindTests.swift; sourceTree = "<group>"; };
 		3B99E6A1366954D8A221B273 /* TreemuxGhosttyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyController.swift; sourceTree = "<group>"; };
 		3D0ADD20D44C25E3A40CE443 /* AIToolService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolService.swift; sourceTree = "<group>"; };
 		3E4EF6D7547B58727542BA5A /* StoredShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoredShortcut.swift; sourceTree = "<group>"; };
@@ -224,6 +227,7 @@
 		DC45A45117E3662286FF3B32 /* FileBrowserTabControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTabControllerTests.swift; sourceTree = "<group>"; };
 		DE6931E2152155F3F99223FC /* SessionBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackendTests.swift; sourceTree = "<group>"; };
 		E45B70C0F236F9F0FA025A53 /* WorkspaceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDetailView.swift; sourceTree = "<group>"; };
+		E5BF7BC81FDCAFBAA50DAB5A /* RemoteFileBrowserDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteFileBrowserDataSource.swift; sourceTree = "<group>"; };
 		E8354D57B9898A0C0ADBD959 /* WorkspaceSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSidebarView.swift; sourceTree = "<group>"; };
 		E993B2E72B0AA5FA2CD8F136 /* TreemuxGhosttyClipboardSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyClipboardSupport.swift; sourceTree = "<group>"; };
 		E9B87785B633D3E01905E33E /* TreemuxTabSizingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxTabSizingTests.swift; sourceTree = "<group>"; };
@@ -295,6 +299,7 @@
 				E9B87785B633D3E01905E33E /* TreemuxTabSizingTests.swift */,
 				3477DE6F674F94B9457073F4 /* TreemuxTests.swift */,
 				146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */,
+				39ADDF2DEBC6DA37E13F759D /* WorkspaceModelTabKindTests.swift */,
 				71FCB95357127BEE31A3AC96 /* WorkspaceTabKindCodingTests.swift */,
 				A3863AB5298AAC0C830363DD /* WorkspaceTabRecordMigrationTests.swift */,
 			);
@@ -401,6 +406,7 @@
 				B8D1D61D212EB4DF71705EEB /* FileBrowserDataSource.swift */,
 				C1B6DBBA1F639835029C0B28 /* FileTypeClassifier.swift */,
 				1E3AB47E2F0BA80F74F955AD /* LocalFileBrowserDataSource.swift */,
+				E5BF7BC81FDCAFBAA50DAB5A /* RemoteFileBrowserDataSource.swift */,
 			);
 			path = FileBrowser;
 			sourceTree = "<group>";
@@ -718,6 +724,7 @@
 				D2D97673DE196B9D5B0B826E /* ProcessTree.swift in Sources */,
 				093FE0959D31BD1AE6676D1A /* RemoteDirectoryBrowser.swift in Sources */,
 				2E5F9E3972854C00535CA4D0 /* RemoteDirectoryBrowserViewModel.swift in Sources */,
+				0C68CEEF81EFE9218656CC3F /* RemoteFileBrowserDataSource.swift in Sources */,
 				6633C6D74ADB9DFDA3DA98B6 /* SFTPDirectoryEntry.swift in Sources */,
 				AC0D68343F5882A238D02833 /* SFTPService.swift in Sources */,
 				72AAF9CD646BD3A52B8927C5 /* SSHConfigParser.swift in Sources */,
@@ -798,6 +805,7 @@
 				8B1F02071634EF5A0330144B /* TmuxServiceTests.swift in Sources */,
 				FC0884EBD132C797A61FC4A1 /* TreemuxTabSizingTests.swift in Sources */,
 				CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */,
+				A04CA84B2C50B4E52EC8B119 /* WorkspaceModelTabKindTests.swift in Sources */,
 				8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */,
 				8549BFC4F8F972BE26BEC4F3 /* WorkspaceTabKindCodingTests.swift in Sources */,
 				29042CD4DE15469FE716957A /* WorkspaceTabRecordMigrationTests.swift in Sources */,
