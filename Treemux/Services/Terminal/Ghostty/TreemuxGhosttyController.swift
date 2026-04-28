@@ -711,6 +711,9 @@ private final class TreemuxGhosttySurfaceView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
+        DispatchQueue.main.async { [weak self] in
+            self?.controller?.onUserInput?()
+        }
         guard let surface else { return }
         let mods = ghosttyMods(event.modifierFlags)
         ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_PRESS, GHOSTTY_MOUSE_LEFT, mods)
