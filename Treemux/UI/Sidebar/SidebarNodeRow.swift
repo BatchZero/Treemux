@@ -7,14 +7,19 @@ import SwiftUI
 /// Dispatches rendering to workspace or worktree row content
 /// based on the SidebarNodeItem kind.
 /// All dependencies are passed as parameters — no @EnvironmentObject usage.
+///
+/// `activityIndicator` is precomputed by the coordinator (from `AttentionStore`
+/// + workspace running-session state) and passed in by value. We avoid
+/// observing `AttentionStore` directly here because this row is hosted inside
+/// `NSHostingView<AnyView>`, where SwiftUI's diffing of the wrapped view can
+/// suppress `@ObservedObject` re-evaluation. Plain-value props always force a
+/// fresh view struct, so the body re-runs whenever the indicator changes.
 struct SidebarNodeRow: View {
     let node: SidebarNodeItem
     let store: WorkspaceStore
     let theme: ThemeManager
     let isSelected: Bool
-    /// Default to the singleton so callers don't have to thread it through.
-    /// SwiftUI subscribes correctly when `@ObservedObject` has a default value.
-    @ObservedObject var attentionStore: AttentionStore = .shared
+    let activityIndicator: SidebarIconActivityIndicator
 
     var body: some View {
         switch node.kind {
@@ -26,7 +31,7 @@ struct SidebarNodeRow: View {
                 store: store,
                 theme: theme,
                 isSelected: isSelected,
-                attentionStore: attentionStore
+                activityIndicator: activityIndicator
             )
         case .worktree(let ws, let wt):
             WorktreeRowContent(
@@ -35,7 +40,7 @@ struct SidebarNodeRow: View {
                 store: store,
                 theme: theme,
                 isSelected: isSelected,
-                attentionStore: attentionStore
+                activityIndicator: activityIndicator
             )
         }
     }
@@ -49,21 +54,11 @@ struct WorkspaceRowContent: View {
     let store: WorkspaceStore
     let theme: ThemeManager
     let isSelected: Bool
-    /// Observed so attention state changes trigger a re-render. The
-    /// `workspace.hasAttention` computation routes through the store.
-    @ObservedObject var attentionStore: AttentionStore
+    /// Precomputed by the coordinator. See `SidebarNodeRow` for why we don't
+    /// observe `AttentionStore` directly inside this row.
+    let activityIndicator: SidebarIconActivityIndicator
 
     @State private var isHovered = false
-
-    private var activityIndicator: SidebarIconActivityIndicator {
-        if workspace.hasAttention {
-            return .attention
-        }
-        if workspace.hasAnyRunningSessions {
-            return .working
-        }
-        return .none
-    }
 
     // Natural height of the two-line case (12pt name + 2pt spacing + 10pt branch).
     // Pinning the VStack to this minHeight keeps single-line rows (no git, or
@@ -116,22 +111,11 @@ struct WorktreeRowContent: View {
     let store: WorkspaceStore
     let theme: ThemeManager
     let isSelected: Bool
-    /// Observed so attention state changes trigger a re-render. The
-    /// `workspace.hasAttention(forWorktreePath:)` computation routes through
-    /// the store.
-    @ObservedObject var attentionStore: AttentionStore
+    /// Precomputed by the coordinator. See `SidebarNodeRow` for why we don't
+    /// observe `AttentionStore` directly inside this row.
+    let activityIndicator: SidebarIconActivityIndicator
 
     @State private var isHovered = false
-
-    private var activityIndicator: SidebarIconActivityIndicator {
-        if workspace.hasAttention(forWorktreePath: worktree.path.path) {
-            return .attention
-        }
-        if workspace.hasRunningSessions(forWorktreePath: worktree.path.path) {
-            return .working
-        }
-        return .none
-    }
 
     var body: some View {
         HStack(spacing: 8) {

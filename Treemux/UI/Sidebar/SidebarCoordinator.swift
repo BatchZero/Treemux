@@ -25,11 +25,11 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
     private var isApplyingSelection = false
     private var lastDataFingerprint: String = ""
 
-    /// Belt-and-suspenders: even though SidebarNodeRow's `@ObservedObject
-    /// attentionStore` should drive re-renders inside each NSHostingView, we
-    /// also force-refresh the visible rows on store changes. This guards
-    /// against any case where the @ObservedObject chain through NSHostingView
-    /// fails to propagate (e.g. cell recycling edge cases).
+    /// Subscribes to `AttentionStore.shared.objectWillChange` and force-rebuilds
+    /// visible cell content. Sidebar rows are hosted in `NSHostingView<AnyView>`,
+    /// where `@ObservedObject` subscriptions are unreliable, so the indicator
+    /// is precomputed in `makeCellContent` and passed by value into
+    /// `SidebarNodeRow`. This sink is what drives recompute on store changes.
     private var attentionCancellable: AnyCancellable?
 
     // MARK: - Attach
@@ -236,14 +236,36 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         guard let store, let theme else {
             return AnyView(EmptyView())
         }
+        let activity = activityIndicator(for: node)
         return AnyView(
             SidebarNodeRow(
                 node: node,
                 store: store,
                 theme: theme,
-                isSelected: isSelected
+                isSelected: isSelected,
+                activityIndicator: activity
             )
         )
+    }
+
+    /// Computes the activity indicator for a sidebar node by reading
+    /// `AttentionStore.shared` (via `WorkspaceModel.hasAttention*`) and the
+    /// workspace's running-session counts. Called fresh on every cell
+    /// rebuild — including when the Combine sink fires after an attention
+    /// store mutation — so the row always reflects current state.
+    private func activityIndicator(for node: SidebarNodeItem) -> SidebarIconActivityIndicator {
+        switch node.kind {
+        case .section:
+            return .none
+        case .workspace(let ws):
+            if ws.hasAttention { return .attention }
+            if ws.hasAnyRunningSessions { return .working }
+            return .none
+        case .worktree(let ws, let wt):
+            if ws.hasAttention(forWorktreePath: wt.path.path) { return .attention }
+            if ws.hasRunningSessions(forWorktreePath: wt.path.path) { return .working }
+            return .none
+        }
     }
 
     // MARK: - Keyboard
