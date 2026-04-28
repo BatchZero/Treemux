@@ -85,6 +85,20 @@ struct WorkspaceRowContent: View {
             }
             .frame(minHeight: Self.contentMinHeight)
             Spacer()
+            if isHovered {
+                Button {
+                    let root = workspace.repositoryRoot?.path ?? workspace.activeWorktreePath
+                    workspace.createFileBrowserTab(rootPath: root, rootKind: .project,
+                                                  title: workspace.name)
+                } label: {
+                    Image(systemName: "folder.badge.plus")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(theme.textSecondary)
+                }
+                .buttonStyle(.plain)
+                .help(LocalizedStringKey("Open File Browser"))
+                .padding(.trailing, 2)
+            }
         }
         .padding(.vertical, 4)
         .padding(.leading, 2)
@@ -140,6 +154,19 @@ struct WorktreeRowContent: View {
             // so it remains visible even when terminal sessions are running.
             if workspace.activeWorktreePath == worktree.path.path {
                 SidebarInfoBadge(text: "current", tone: .subtleSuccess)
+            }
+            if isHovered {
+                Button {
+                    workspace.createFileBrowserTab(rootPath: worktree.path.path, rootKind: .worktree,
+                                                  title: worktree.path.lastPathComponent)
+                } label: {
+                    Image(systemName: "folder.badge.plus")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(theme.textSecondary)
+                }
+                .buttonStyle(.plain)
+                .help(LocalizedStringKey("Open File Browser"))
+                .padding(.trailing, 2)
             }
         }
         .padding(.vertical, 1)
