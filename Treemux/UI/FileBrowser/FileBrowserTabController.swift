@@ -53,4 +53,65 @@ final class FileBrowserTabController: ObservableObject {
             showsHiddenFiles: showsHiddenFiles
         )
     }
+
+    // MARK: - Tree loading
+
+    func loadRoot() async {
+        do {
+            let children = try await dataSource.listDirectory(rootPath)
+            self.rootChildren = filtered(children)
+            self.childrenByPath[rootPath] = self.rootChildren
+            // Restore previously-expanded dirs (best effort; missing dirs are silently skipped).
+            for path in expandedDirs where path != rootPath {
+                if let kids = try? await dataSource.listDirectory(path) {
+                    self.childrenByPath[path] = filtered(kids)
+                }
+            }
+        } catch {
+            self.rootChildren = []
+        }
+    }
+
+    func toggleExpand(_ path: String) async {
+        if expandedDirs.contains(path) {
+            expandedDirs.remove(path)
+            childrenByPath[path] = nil
+        } else {
+            loadingPaths.insert(path)
+            defer { loadingPaths.remove(path) }
+            do {
+                let kids = try await dataSource.listDirectory(path)
+                childrenByPath[path] = filtered(kids)
+                expandedDirs.insert(path)
+            } catch {
+                // Leave collapsed on error; caller may surface a toast.
+            }
+        }
+        onPersistableStateChanged?()
+    }
+
+    func setShowsHiddenFiles(_ show: Bool) {
+        guard showsHiddenFiles != show else { return }
+        showsHiddenFiles = show
+        // Re-filter cached listings without re-fetching.
+        for (key, value) in childrenByPath {
+            childrenByPath[key] = filtered(value)
+        }
+        rootChildren = childrenByPath[rootPath] ?? []
+        onPersistableStateChanged?()
+    }
+
+    func refresh(_ path: String) async {
+        do {
+            let kids = try await dataSource.listDirectory(path)
+            childrenByPath[path] = filtered(kids)
+            if path == rootPath { rootChildren = childrenByPath[path] ?? [] }
+        } catch {
+            // Silent on error; caller can surface UI.
+        }
+    }
+
+    private func filtered(_ nodes: [FileNode]) -> [FileNode] {
+        showsHiddenFiles ? nodes : nodes.filter { !$0.isHidden }
+    }
 }
