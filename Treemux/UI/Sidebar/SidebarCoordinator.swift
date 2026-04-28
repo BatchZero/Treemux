@@ -275,40 +275,8 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
             return nil
 
         case .workspace(let ws):
-            // Change Icon
-            let iconItem = NSMenuItem(
-                title: String(localized: "Change Icon…"),
-                action: #selector(changeWorkspaceIcon(_:)),
-                keyEquivalent: ""
-            )
-            iconItem.target = self
-            iconItem.representedObject = ws.id
-            menu.addItem(iconItem)
-
-            // Rename (only for repositories)
-            if ws.kind == .repository {
-                let renameItem = NSMenuItem(
-                    title: String(localized: "Rename…"),
-                    action: #selector(renameWorkspace(_:)),
-                    keyEquivalent: ""
-                )
-                renameItem.target = self
-                renameItem.representedObject = ["id": ws.id, "name": ws.name] as [String: Any]
-                menu.addItem(renameItem)
-            }
-
-            // Delete (skip for the built-in default terminal)
-            if ws.id != WorkspaceModel.builtInDefaultTerminalID {
-                menu.addItem(.separator())
-
-                let deleteItem = NSMenuItem(
-                    title: String(localized: "Delete"),
-                    action: #selector(deleteWorkspace(_:)),
-                    keyEquivalent: ""
-                )
-                deleteItem.target = self
-                deleteItem.representedObject = ws.id
-                menu.addItem(deleteItem)
+            for item in workspaceContextMenuItems(for: ws) {
+                menu.addItem(item)
             }
 
         case .worktree(let ws, let wt):
@@ -324,6 +292,51 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         }
 
         return menu
+    }
+
+    /// Builds the workspace-case context menu items for a given workspace.
+    /// Exposed (internal access, not private) so unit tests can verify menu shape
+    /// without driving the outline view.
+    func workspaceContextMenuItems(for ws: WorkspaceModel) -> [NSMenuItem] {
+        var items: [NSMenuItem] = []
+
+        // Change Icon
+        let iconItem = NSMenuItem(
+            title: String(localized: "Change Icon…"),
+            action: #selector(changeWorkspaceIcon(_:)),
+            keyEquivalent: ""
+        )
+        iconItem.target = self
+        iconItem.representedObject = ws.id
+        items.append(iconItem)
+
+        // Rename (only for repositories)
+        if ws.kind == .repository {
+            let renameItem = NSMenuItem(
+                title: String(localized: "Rename…"),
+                action: #selector(renameWorkspace(_:)),
+                keyEquivalent: ""
+            )
+            renameItem.target = self
+            renameItem.representedObject = ["id": ws.id, "name": ws.name] as [String: Any]
+            items.append(renameItem)
+        }
+
+        // Delete (skip for the built-in default terminal)
+        if ws.id != WorkspaceModel.builtInDefaultTerminalID {
+            items.append(.separator())
+
+            let deleteItem = NSMenuItem(
+                title: String(localized: "Delete"),
+                action: #selector(deleteWorkspace(_:)),
+                keyEquivalent: ""
+            )
+            deleteItem.target = self
+            deleteItem.representedObject = ws.id
+            items.append(deleteItem)
+        }
+
+        return items
     }
 
     // MARK: - Context Menu Actions
