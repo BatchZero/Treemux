@@ -48,6 +48,9 @@ struct WorkspaceRowContent: View {
     @State private var isHovered = false
 
     private var activityIndicator: SidebarIconActivityIndicator {
+        if workspace.hasAttention {
+            return .attention
+        }
         if workspace.hasAnyRunningSessions {
             return .working
         }
@@ -112,6 +115,9 @@ struct WorktreeRowContent: View {
     @State private var isHovered = false
 
     private var activityIndicator: SidebarIconActivityIndicator {
+        if workspace.hasAttention(forWorktreePath: worktree.path.path) {
+            return .attention
+        }
         if workspace.hasRunningSessions(forWorktreePath: worktree.path.path) {
             return .working
         }
