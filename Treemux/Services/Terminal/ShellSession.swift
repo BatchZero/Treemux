@@ -49,8 +49,12 @@ final class ShellSession: ObservableObject, Identifiable {
     @Published var detectedAITool: AIToolDetection?
 
     /// AI agent attention state, set by OSC 777 `treemux:done` / `treemux:input`
-    /// notifications, cleared on focus or user keystroke.
-    @Published private(set) var aiAttention: AIAttentionState = .none
+    /// notifications, cleared on focus or user keystroke. Reads live from
+    /// `AttentionStore`, the single observable source of truth that views
+    /// subscribe to directly.
+    var aiAttention: AIAttentionState {
+        AttentionStore.shared.state(for: id)
+    }
 
     var onWorkspaceAction: ((TerminalWorkspaceAction) -> Void)?
     var onFocus: (() -> Void)?
@@ -383,15 +387,13 @@ final class ShellSession: ObservableObject, Identifiable {
     /// title carries the treemux protocol prefix.
     fileprivate func applyDesktopNotification(title: String, body: String?) {
         if let state = AIAttentionState.parse(notificationTitle: title) {
-            aiAttention = state
+            AttentionStore.shared.setAttention(paneID: id, state: state)
         }
     }
 
     /// Clear the AI attention state. Called on focus and on user keystroke.
     func clearAIAttention() {
-        if aiAttention != .none {
-            aiAttention = .none
-        }
+        AttentionStore.shared.clear(paneID: id)
     }
 
 #if DEBUG

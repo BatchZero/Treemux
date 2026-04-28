@@ -3,6 +3,12 @@ import XCTest
 
 final class AIAttentionStateTests: XCTestCase {
 
+    @MainActor
+    override func setUp() {
+        super.setUp()
+        AttentionStore.shared.resetForTest()
+    }
+
     func testParseDoneTitle() {
         XCTAssertEqual(AIAttentionState.parse(notificationTitle: "treemux:done"), .done)
     }
@@ -72,6 +78,26 @@ final class AIAttentionStateTests: XCTestCase {
         XCTAssertEqual(session.aiAttention, .done)
 
         session.clearAIAttention()
+        XCTAssertEqual(session.aiAttention, .none)
+    }
+
+    @MainActor
+    func testAttentionFlowsThroughStore() {
+        let backend = SessionBackendConfiguration.localShell(
+            LocalShellConfig(shellPath: "/bin/zsh", arguments: [])
+        )
+        let session = ShellSession(
+            id: UUID(),
+            backendConfiguration: backend,
+            preferredWorkingDirectory: NSTemporaryDirectory()
+        )
+        XCTAssertEqual(session.aiAttention, .none)
+
+        AttentionStore.shared.setAttention(paneID: session.id, state: .done)
+        XCTAssertEqual(session.aiAttention, .done,
+                       "ShellSession.aiAttention must read live from AttentionStore")
+
+        AttentionStore.shared.clear(paneID: session.id)
         XCTAssertEqual(session.aiAttention, .none)
     }
 }
