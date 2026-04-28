@@ -241,12 +241,12 @@
         }
       }
     },
-    "Currently %lld pt — auto-scaled for the active display." : {
+    "Currently %lld pt on this display." : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "当前 %lld pt — 已根据当前显示器自动适配。"
+            "value" : "本显示器上当前 %lld pt。"
           }
         }
       }

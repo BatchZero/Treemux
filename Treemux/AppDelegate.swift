@@ -126,15 +126,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         applyShortcut(.commandPalette, to: commandPaletteItem)
         viewMenu.addItem(commandPaletteItem)
         viewMenu.addItem(.separator())
-        let fontIncreaseItem = NSMenuItem(title: "Increase Terminal Font Size", action: #selector(terminalFontSizeIncrease), keyEquivalent: "")
+        let fontIncreaseItem = NSMenuItem(title: String(localized: "Increase Terminal Font Size"), action: #selector(terminalFontSizeIncrease), keyEquivalent: "")
         fontIncreaseItem.target = self
         applyShortcut(.terminalFontSizeIncrease, to: fontIncreaseItem)
         viewMenu.addItem(fontIncreaseItem)
-        let fontDecreaseItem = NSMenuItem(title: "Decrease Terminal Font Size", action: #selector(terminalFontSizeDecrease), keyEquivalent: "")
+        let fontDecreaseItem = NSMenuItem(title: String(localized: "Decrease Terminal Font Size"), action: #selector(terminalFontSizeDecrease), keyEquivalent: "")
         fontDecreaseItem.target = self
         applyShortcut(.terminalFontSizeDecrease, to: fontDecreaseItem)
         viewMenu.addItem(fontDecreaseItem)
-        let fontResetItem = NSMenuItem(title: "Reset Terminal Font Size", action: #selector(terminalFontSizeReset), keyEquivalent: "")
+        let fontResetItem = NSMenuItem(title: String(localized: "Reset Terminal Font Size"), action: #selector(terminalFontSizeReset), keyEquivalent: "")
         fontResetItem.target = self
         applyShortcut(.terminalFontSizeReset, to: fontResetItem)
         viewMenu.addItem(fontResetItem)

@@ -236,7 +236,7 @@ private struct TerminalSettingsView: View {
                 Text("Terminal Font Size")
             } footer: {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Currently \(currentDisplayPointSize) pt — auto-scaled for the active display.")
+                    Text("Currently \(currentDisplayPointSize) pt on this display.")
                     Text("The font size adjusts automatically per display so physical size stays consistent. Use ⌘= / ⌘- / ⌘0 to adjust quickly.")
                         .foregroundStyle(.secondary)
                 }
