@@ -100,6 +100,7 @@
 		D971AE91A6477480A05CC577 /* AIToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C29C7AC42BC16FDDD118A64 /* AIToolModels.swift */; };
 		DDB379227505CCDD96BB62C1 /* TreemuxKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7DBEF3A8FDA651804A6D8A /* TreemuxKeyboardShortcuts.swift */; };
 		E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8629D2D5813F897F85840289 /* SSHTarget.swift */; };
+		E9F945BAB814E46DB9FB34C9 /* FileBrowserDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8D1D61D212EB4DF71705EEB /* FileBrowserDataSource.swift */; };
 		EDB4207DA8056D870E9EA844 /* TreemuxGhosttyInputSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755FE81839DE8C99362EBC0E /* TreemuxGhosttyInputSupport.swift */; };
 		F456345A8C56133D248B5234 /* FileNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03F44873E99A802B3C59BE39 /* FileNode.swift */; };
 		F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */; };
@@ -190,6 +191,7 @@
 		A9B01277529CEA9D185C95B0 /* TerminalPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPaneView.swift; sourceTree = "<group>"; };
 		AC606574E1DF3045291D300B /* GhosttyKit.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = GhosttyKit.xcframework; path = Treemux/Vendor/GhosttyKit.xcframework; sourceTree = "<group>"; };
 		B54286475B6DAD0B729F4A46 /* SidebarNodeRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNodeRow.swift; sourceTree = "<group>"; };
+		B8D1D61D212EB4DF71705EEB /* FileBrowserDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserDataSource.swift; sourceTree = "<group>"; };
 		B962317687AFEC7E1E5FC75D /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceModels.swift; sourceTree = "<group>"; };
 		BB01B85899C7236D215CECDD /* TreemuxGhosttyResourcePaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyResourcePaths.swift; sourceTree = "<group>"; };
@@ -376,6 +378,14 @@
 			path = Updates;
 			sourceTree = "<group>";
 		};
+		5642F701A432810E2CF1F5F6 /* FileBrowser */ = {
+			isa = PBXGroup;
+			children = (
+				B8D1D61D212EB4DF71705EEB /* FileBrowserDataSource.swift */,
+			);
+			path = FileBrowser;
+			sourceTree = "<group>";
+		};
 		7733A5BF2FFBC78041E8298D /* Workspace */ = {
 			isa = PBXGroup;
 			children = (
@@ -525,6 +535,7 @@
 			isa = PBXGroup;
 			children = (
 				00BDD3A331D12D95A7B20B1F /* AITool */,
+				5642F701A432810E2CF1F5F6 /* FileBrowser */,
 				9C12B30F7DEBED747DCEF00C /* Git */,
 				C43D9DD04BC56E98D500E75B /* Process */,
 				AF43C481DF88960E43386FEF /* SFTP */,
@@ -662,6 +673,7 @@
 				0D6E9070C727E942960D4BBB /* Color+Hex.swift in Sources */,
 				7C890E7C842699E9E4E18606 /* CommandPaletteView.swift in Sources */,
 				CED37FBB27DAA8CBE601AD3C /* EmptyTabStateView.swift in Sources */,
+				E9F945BAB814E46DB9FB34C9 /* FileBrowserDataSource.swift in Sources */,
 				3A0BC95345BB95AAA1641DDB /* FileBrowserTabState.swift in Sources */,
 				F456345A8C56133D248B5234 /* FileNode.swift in Sources */,
 				89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */,
