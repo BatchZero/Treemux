@@ -6,7 +6,7 @@
 
 **Architecture:** Extend `WorkspaceTabStateRecord` with `kind: WorkspaceTabKind` and a sibling `fileBrowserState: FileBrowserTabState?` payload (mutually exclusive with the existing `panes/layout/...` fields). A new `FileBrowserTabController` mirrors the existing `WorkspaceSessionController` shape. `FileBrowserDataSource` protocol abstracts local (`FileManager`) vs remote (extended `SFTPService`). `WorkspaceDetailView` dispatches by `tab.kind`; tab bar visually differentiates kinds. The Runestone editor is added via SwiftPM through `project.yml`.
 
-**Tech Stack:** Swift / SwiftUI / AppKit, **CodeEditSourceEditor** (`https://github.com/CodeEditApp/CodeEditSourceEditor`) for the code editor (macOS-native, SwiftUI-friendly, tree-sitter syntax highlighting; replaces the originally planned Runestone, which is iOS-only), existing Citadel-based `SFTPService` extended for `readFile`/`writeFile`, XCTest in `TreemuxTests/`.
+**Tech Stack:** Swift / SwiftUI / AppKit, **`NSTextView` with a homebrew line-number ruler** for the code editor (no external dependency — Runestone is iOS-only and CodeEditSourceEditor's transitive tree-sitter language packs cause SwiftPM resolution to hang in this environment). Syntax highlighting is **deferred** to a later increment; Phase 1 ships a monospaced text editor with line numbers, Cmd+S save, find (NSTextView built-in), and undo/redo. Existing Citadel-based `SFTPService` extended for `readFile`/`writeFile`. XCTest in `TreemuxTests/`.
 
 ---
 
@@ -38,46 +38,11 @@ When a test step says "Run it to make sure it fails," that uses the per-test com
 
 # Phase 0 — Setup
 
-## Task 0.1: Add CodeEditSourceEditor via SwiftPM
+## Task 0.1: Editor library decision (no SwiftPM change required)
 
-> **Implementer note:** Runestone (the original choice) is iOS-only. CodeEditSourceEditor is the macOS-native equivalent: SwiftUI-friendly, line numbers, tree-sitter syntax highlighting. If CodeEditSourceEditor itself proves unworkable, fall back to a hand-rolled `NSTextView`-based editor (no external dependency) and update Task 7.5 accordingly — pause and ask before doing so.
-
-**Files:**
-- Modify: `project.yml`
-
-**Step 1: Edit `project.yml` to add the package**
-
-Under the existing top-level `packages:` section, append:
-
-```yaml
-  CodeEditSourceEditor:
-    url: https://github.com/CodeEditApp/CodeEditSourceEditor
-    from: "0.10.0"
-```
-
-Under `targets.Treemux.dependencies:`, append:
-
-```yaml
-      - package: CodeEditSourceEditor
-        product: CodeEditSourceEditor
-```
-
-**Step 2: Regenerate the Xcode project**
-
-Run: `xcodegen generate`
-Expected: `Updated project at Treemux.xcodeproj` and no errors.
-
-**Step 3: Build to confirm the package resolves**
-
-Run: `xcodebuild -project Treemux.xcodeproj -scheme Treemux -configuration Debug build`
-Expected: BUILD SUCCEEDED. (First run will fetch the package and its tree-sitter dependencies; this may take a minute.)
-
-**Step 4: Commit**
-
-```bash
-git add project.yml Treemux.xcodeproj
-git commit -m "chore: add CodeEditSourceEditor package for file browser editor"
-```
+> **Decision:** No new SwiftPM package is added. The text editor in Task 7.5 uses `NSTextView` with a homebrew line-number ruler. Rationale: Runestone is iOS-only, and CodeEditSourceEditor's transitive tree-sitter language pack dependencies caused SwiftPM resolution to hang for >25 minutes in this environment. `NSTextView` ships with macOS, integrates cleanly with SwiftUI via `NSViewRepresentable`, supports Cmd+F/Cmd+G, undo/redo, and standard text editing — sufficient for the "mid-tier" target. Syntax highlighting is deferred to a follow-up increment (e.g. via `Highlightr` or a later CodeEditSourceEditor retry once SPM resolution stabilises).
+>
+> This task has **no code or commit** — it is recorded as a design decision only. Proceed directly to Task 1.1.
 
 ---
 
@@ -2425,18 +2390,100 @@ git add Treemux/UI/FileBrowser/ Treemux.xcodeproj
 git commit -m "feat(ui): file viewer panel + state-specific stubs"
 ```
 
-## Task 7.5: Real `TextEditorView` with CodeEditSourceEditor
+## Task 7.5: Real `TextEditorView` with `NSTextView` + line-number ruler
 
 **Files:**
 - Modify: `Treemux/UI/FileBrowser/TextEditorView.swift`
+- Create: `Treemux/UI/FileBrowser/LineNumberRulerView.swift`
 
-> **Implementer note:** Use the public API of `CodeEditSourceEditor`. The exact API surface evolves; consult its README in the resolved package (or the package source under `~/Library/Developer/Xcode/DerivedData/.../SourcePackages/checkouts/CodeEditSourceEditor/`). The shape below is illustrative — adjust to match the actual `CodeEditSourceEditor.SourceEditor` (or equivalent) initializer parameters. Keep the **public surface of our `TextEditorView`** stable.
-
-**Step 1: Implement**
+**Step 1: Implement the line-number ruler view**
 
 ```swift
+// Treemux/UI/FileBrowser/LineNumberRulerView.swift
+import AppKit
+
+/// Draws line numbers in the gutter alongside an NSTextView. Recomputes
+/// line ranges on geometry/text changes and pads the gutter to fit the
+/// largest expected line number (avoids reflow churn on small edits).
+final class LineNumberRulerView: NSRulerView {
+    weak var sourceTextView: NSTextView?
+    private var lineStartCharacterIndices: [Int] = [0]
+
+    init(textView: NSTextView) {
+        self.sourceTextView = textView
+        super.init(scrollView: textView.enclosingScrollView, orientation: .verticalRuler)
+        self.clientView = textView
+        self.ruleThickness = 36
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(textDidChange(_:)),
+            name: NSText.didChangeNotification,
+            object: textView
+        )
+    }
+
+    @available(*, unavailable) required init(coder: NSCoder) { fatalError() }
+
+    @objc private func textDidChange(_ note: Notification) {
+        recomputeLineStarts()
+        needsDisplay = true
+    }
+
+    func recomputeLineStarts() {
+        guard let tv = sourceTextView else { return }
+        let s = tv.string as NSString
+        var starts: [Int] = [0]
+        var i = 0
+        while i < s.length {
+            let r = s.range(of: "\n", options: [], range: NSRange(location: i, length: s.length - i))
+            if r.location == NSNotFound { break }
+            starts.append(r.location + r.length)
+            i = r.location + r.length
+        }
+        lineStartCharacterIndices = starts
+    }
+
+    override func drawHashMarksAndLabels(in rect: NSRect) {
+        guard let tv = sourceTextView,
+              let layoutManager = tv.layoutManager,
+              let textContainer = tv.textContainer else { return }
+
+        if lineStartCharacterIndices.count == 1 { recomputeLineStarts() }
+
+        let visibleGlyphRange = layoutManager.glyphRange(forBoundingRect: tv.visibleRect, in: textContainer)
+        let visibleCharRange = layoutManager.characterRange(forGlyphRange: visibleGlyphRange, actualCharacterRange: nil)
+
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
+            .foregroundColor: NSColor.tertiaryLabelColor,
+        ]
+
+        for (idx, charStart) in lineStartCharacterIndices.enumerated() {
+            guard charStart >= visibleCharRange.location,
+                  charStart < visibleCharRange.location + visibleCharRange.length + 1 else { continue }
+            let glyphIndex = layoutManager.glyphIndexForCharacter(at: charStart)
+            var glyphRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: nil)
+            glyphRect.origin.y -= tv.visibleRect.origin.y
+            let label = "\(idx + 1)" as NSString
+            let labelSize = label.size(withAttributes: attrs)
+            let drawRect = NSRect(
+                x: ruleThickness - labelSize.width - 4,
+                y: glyphRect.minY + (glyphRect.height - labelSize.height) / 2,
+                width: labelSize.width,
+                height: labelSize.height
+            )
+            label.draw(in: drawRect, withAttributes: attrs)
+        }
+    }
+}
+```
+
+**Step 2: Implement `TextEditorView` SwiftUI bridge**
+
+```swift
+// Treemux/UI/FileBrowser/TextEditorView.swift
+import AppKit
 import SwiftUI
-import CodeEditSourceEditor
 
 struct TextEditorView: View {
     let path: String
@@ -2445,22 +2492,12 @@ struct TextEditorView: View {
     let dirty: Bool
     @ObservedObject var controller: FileBrowserTabController
 
-    @State private var bufferText: String = ""
-
     var body: some View {
         VStack(spacing: 0) {
-            CodeEditSourceEditorBridge(
-                text: $bufferText,
-                language: TextEditorView.languageHint(for: path),
-                onChange: { controller.updateBuffer(content: $0) }
-            )
+            NSTextEditorView(content: content,
+                             onChange: { controller.updateBuffer(content: $0) })
             Divider()
             statusBar
-        }
-        .onAppear { bufferText = content }
-        .onChange(of: content) { _, newValue in
-            // Sync from controller state when a new file loads.
-            if bufferText != newValue { bufferText = newValue }
         }
     }
 
@@ -2486,53 +2523,70 @@ struct TextEditorView: View {
         default: return "Encoding"
         }
     }
-
-    /// Maps file extensions to the language identifier strings expected by
-    /// CodeEditSourceEditor / tree-sitter. Adjust to match the real API.
-    static func languageHint(for path: String) -> String? {
-        let ext = (path as NSString).pathExtension.lowercased()
-        return ext.isEmpty ? nil : ext
-    }
 }
 
-/// SwiftUI wrapper around CodeEditSourceEditor. The internals here must
-/// match the real API; what matters externally is the binding + onChange.
-struct CodeEditSourceEditorBridge: View {
-    @Binding var text: String
-    let language: String?
+private struct NSTextEditorView: NSViewRepresentable {
+    let content: String
     let onChange: (String) -> Void
 
-    var body: some View {
-        // TODO: replace with the real CodeEditSourceEditor.SourceEditor view.
-        // Example shape (verify against current API):
-        //
-        //     SourceEditor(
-        //         text: $text,
-        //         language: language.flatMap { CodeLanguage.fromExtension($0) }
-        //     )
-        //     .onChange(of: text) { _, new in onChange(new) }
-        //
-        // Until the real API is wired, fall back to TextEditor for build-green:
-        TextEditor(text: $text)
-            .font(.system(.body, design: .monospaced))
-            .onChange(of: text) { _, new in onChange(new) }
+    func makeNSView(context: Context) -> NSScrollView {
+        let scroll = NSTextView.scrollableTextView()
+        let tv = scroll.documentView as! NSTextView
+        tv.isEditable = true
+        tv.isRichText = false
+        tv.allowsUndo = true
+        tv.usesFindBar = true
+        tv.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
+        tv.textContainerInset = NSSize(width: 6, height: 8)
+        tv.string = content
+        tv.delegate = context.coordinator
+
+        scroll.hasVerticalRuler = true
+        scroll.rulersVisible = true
+        let ruler = LineNumberRulerView(textView: tv)
+        scroll.verticalRulerView = ruler
+        ruler.recomputeLineStarts()
+
+        return scroll
+    }
+
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        guard let tv = scroll.documentView as? NSTextView else { return }
+        if tv.string != content {
+            tv.string = content
+            (scroll.verticalRulerView as? LineNumberRulerView)?.recomputeLineStarts()
+            scroll.verticalRulerView?.needsDisplay = true
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(onChange: onChange) }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        let onChange: (String) -> Void
+        init(onChange: @escaping (String) -> Void) { self.onChange = onChange }
+        func textDidChange(_ notification: Notification) {
+            guard let tv = notification.object as? NSTextView else { return }
+            onChange(tv.string)
+        }
     }
 }
 ```
 
-**Step 2: Build**
+**Step 3: Build**
 
 ```bash
 xcodebuild ... build
 ```
-Expected: BUILD SUCCEEDED. The implementer **must** wire the real `CodeEditSourceEditor` API in place of the `TextEditor` fallback before considering this task complete — the fallback is just a build-green stub; the user-facing requirement is line numbers + syntax highlighting.
+Expected: BUILD SUCCEEDED.
 
-**Step 3: Commit**
+**Step 4: Commit**
 
 ```bash
-git add Treemux/UI/FileBrowser/TextEditorView.swift
-git commit -m "feat(ui): CodeEditSourceEditor-based text editor"
+git add Treemux/UI/FileBrowser/TextEditorView.swift Treemux/UI/FileBrowser/LineNumberRulerView.swift
+git commit -m "feat(ui): NSTextView-based text editor with line-number ruler"
 ```
+
+> **Future increment:** Add syntax highlighting via `Highlightr` (single-package, JS-based) or retry CodeEditSourceEditor when SPM resolution is faster. Keep the public surface of `TextEditorView` stable so this is a drop-in replacement.
 
 ---
 
