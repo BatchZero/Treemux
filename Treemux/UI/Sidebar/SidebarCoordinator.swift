@@ -3,6 +3,7 @@
 //  Treemux
 
 import AppKit
+import Combine
 import SwiftUI
 
 /// Coordinator that serves as NSOutlineView data source and delegate,
@@ -24,6 +25,13 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
     private var isApplyingSelection = false
     private var lastDataFingerprint: String = ""
 
+    /// Belt-and-suspenders: even though SidebarNodeRow's `@ObservedObject
+    /// attentionStore` should drive re-renders inside each NSHostingView, we
+    /// also force-refresh the visible rows on store changes. This guards
+    /// against any case where the @ObservedObject chain through NSHostingView
+    /// fails to propagate (e.g. cell recycling edge cases).
+    private var attentionCancellable: AnyCancellable?
+
     // MARK: - Attach
 
     /// Wires the coordinator as data source and delegate on the container's outline view.
@@ -44,6 +52,15 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         outlineView.toggleExpansionForSelection = { [weak self] in
             self?.toggleExpansionForSelection()
         }
+
+        // Subscribe to AttentionStore changes and force-refresh visible rows.
+        // Throttled so a burst of updates doesn't tax the main thread.
+        attentionCancellable = AttentionStore.shared.objectWillChange
+            .throttle(for: .milliseconds(100), scheduler: DispatchQueue.main, latest: true)
+            .sink { [weak self, weak outlineView] in
+                guard let self, let outlineView else { return }
+                self.refreshVisibleRows(on: outlineView)
+            }
     }
 
     // MARK: - Apply (Diff + Rebuild)
