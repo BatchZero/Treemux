@@ -106,6 +106,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
         editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenu.addItem(.separator())
+        let saveFileItem = NSMenuItem(title: "Save", action: #selector(saveCurrentFile), keyEquivalent: "s")
+        saveFileItem.keyEquivalentModifierMask = [.command]
+        saveFileItem.target = self
+        editMenu.addItem(saveFileItem)
         let editMenuItem = NSMenuItem()
         editMenuItem.submenu = editMenu
         mainMenu.addItem(editMenuItem)
@@ -259,6 +264,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func previousTab() {
         store?.selectedWorkspace?.selectPreviousTab()
+    }
+
+    @objc private func saveCurrentFile() {
+        NotificationCenter.default.post(name: .treemuxSaveCurrentFile, object: nil)
     }
 
     // MARK: - Updates

@@ -17,5 +17,8 @@ struct FileBrowserTabContentView: View {
         .task {
             await controller.loadRoot()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .treemuxSaveCurrentFile)) { _ in
+            Task { try? await controller.saveCurrentFile() }
+        }
     }
 }
