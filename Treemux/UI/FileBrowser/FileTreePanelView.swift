@@ -173,6 +173,15 @@ private struct NodeRow: View {
                 Task { await controller.selectFile(node.path) }
             }
         }
+        .contextMenu {
+            Button(LocalizedStringKey("Copy Absolute Path")) {
+                controller.copyPath(node.path, mode: .absolute)
+            }
+            Button(LocalizedStringKey("Copy Relative Path")) {
+                controller.copyPath(node.path, mode: .relative)
+            }
+            .disabled(node.path == controller.rootPath)
+        }
     }
 
     private var iconName: String {

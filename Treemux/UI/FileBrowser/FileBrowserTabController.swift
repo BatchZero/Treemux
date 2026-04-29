@@ -6,6 +6,10 @@ import AppKit
 import Combine
 import Foundation
 
+/// Selects which form of a file path is written to the pasteboard
+/// by ``FileBrowserTabController/copyPath(_:mode:)``.
+enum CopyPathMode { case absolute, relative }
+
 @MainActor
 final class FileBrowserTabController: ObservableObject {
     /// Surfaced load failure for the file tree. UI binds this to a banner
@@ -315,5 +319,25 @@ final class FileBrowserTabController: ObservableObject {
         } catch {
             loadError = mapError(error)
         }
+    }
+
+    // MARK: - Copy path
+
+    /// Writes either the absolute or root-relative form of `path` to the system
+    /// pasteboard. Backs the file-tree right-click "Copy Absolute / Relative
+    /// Path" menu items.
+    func copyPath(_ path: String, mode: CopyPathMode) {
+        let value = (mode == .absolute) ? path : relativePath(path)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
+    }
+
+    /// Strips the tab's `rootPath` prefix from `path`. If `path` does not live
+    /// under the root (or equals the root with no trailing component), the
+    /// absolute path is returned unchanged. Internal (not private) so unit
+    /// tests can verify the prefix logic without touching the pasteboard.
+    func relativePath(_ path: String) -> String {
+        let prefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
+        return path.hasPrefix(prefix) ? String(path.dropFirst(prefix.count)) : path
     }
 }

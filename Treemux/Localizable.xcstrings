@@ -1811,6 +1811,26 @@
         }
       }
     },
+    "Copy Absolute Path": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制绝对路径"
+          }
+        }
+      }
+    },
+    "Copy Relative Path": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制相对路径"
+          }
+        }
+      }
+    },
     "Cannot connect to %@": {
       "localizations": {
         "zh-Hans": {
