@@ -45,24 +45,38 @@ final class FileBrowserTabController: ObservableObject {
     @Published private(set) var loadingPaths: Set<String> = []
     @Published private(set) var loadError: LoadError?
 
+    // Git diff/status caches. `diffHunksByPath` keyed by absolute path of the
+    // active sub-tab; `fileStatusByPath` keyed by absolute path under `repoRoot`.
+    @Published private(set) var diffHunksByPath: [String: [DiffHunk]] = [:]
+    @Published private(set) var fileStatusByPath: [String: FileStatus] = [:]
+
     // Configuration.
     static let textReadLimit: Int = 5 * 1024 * 1024       // 5 MB
     static let largeFileThreshold: Int64 = 5 * 1024 * 1024 // 5 MB
     static let quickLookOnlyThreshold: Int64 = 100 * 1024 * 1024 // 100 MB
 
     let dataSource: any FileBrowserDataSource
+    let gitDiffService: GitDiffService?
+    let repoRoot: String?
 
     /// Called when the persistent state should be written back into
     /// `WorkspaceTabStateRecord.fileBrowserState` (debounced by caller).
     var onPersistableStateChanged: (() -> Void)?
 
-    init(initial state: FileBrowserTabState, dataSource: any FileBrowserDataSource) {
+    init(
+        initial state: FileBrowserTabState,
+        dataSource: any FileBrowserDataSource,
+        gitDiffService: GitDiffService? = nil,
+        repoRoot: String? = nil
+    ) {
         self.rootPath = state.rootPath
         self.rootKind = state.rootKind
         self.splitRatio = state.splitRatio
         self.expandedDirs = Set(state.expandedDirs)
         self.showsHiddenFiles = state.showsHiddenFiles
         self.dataSource = dataSource
+        self.gitDiffService = gitDiffService
+        self.repoRoot = repoRoot
         self.subTabs = state.subTabs.map {
             SubTabRuntime(id: $0.id, path: $0.path, isPinned: $0.isPinned, openFile: .empty)
         }
@@ -144,6 +158,9 @@ final class FileBrowserTabController: ObservableObject {
                     childrenByPath[path] = filtered(kids)
                 }
             }
+            // One-shot status refresh after the listing settles. Failures are
+            // swallowed inside `refreshGitStatus` so the tree still renders.
+            await refreshGitStatus()
         } catch {
             rootChildren = []
             loadError = mapError(error)
@@ -200,6 +217,34 @@ final class FileBrowserTabController: ObservableObject {
 
     private func filtered(_ nodes: [FileNode]) -> [FileNode] {
         showsHiddenFiles ? nodes : nodes.filter { !$0.isHidden }
+    }
+
+    // MARK: - Git diff / status
+
+    /// Re-pulls `git status --porcelain` for the workspace root. Keys in the
+    /// resulting map are absolute paths so the file-tree can look them up by
+    /// `node.path` directly. No-op when no `GitDiffService`/`repoRoot` is wired.
+    func refreshGitStatus() async {
+        guard let svc = gitDiffService, let root = repoRoot else { return }
+        let result = (try? await svc.fileStatus(in: root)) ?? [:]
+        let prefix = root.hasSuffix("/") ? root : root + "/"
+        var byPath: [String: FileStatus] = [:]
+        for (rel, st) in result {
+            // Renames are already keyed under the new (post-rename) path by
+            // the porcelain parser, so a simple prefix join is sufficient.
+            byPath[prefix + rel] = st
+        }
+        fileStatusByPath = byPath
+    }
+
+    /// Re-pulls hunks for the active sub-tab's file. No-op when no service /
+    /// repo root is wired or there is no active sub-tab.
+    func refreshDiffForActive() async {
+        guard let svc = gitDiffService, let root = repoRoot,
+              let path = activeSubTab?.path else { return }
+        if let h = try? await svc.diffHunks(forFile: path, repoRoot: root) {
+            diffHunksByPath[path] = h
+        }
     }
 
     // MARK: - Sub-tab API
@@ -262,6 +307,9 @@ final class FileBrowserTabController: ObservableObject {
         guard subTabs.contains(where: { $0.id == id }) else { return }
         activeSubTabID = id
         onPersistableStateChanged?()
+        // Schedule a diff refresh for the new active file. Fire-and-forget so
+        // synchronous UI handlers calling `activateSubTab` don't have to await.
+        Task { await self.refreshDiffForActive() }
     }
 
     /// Unconditionally close the sub-tab with the given id. Bypasses any dirty
@@ -485,6 +533,8 @@ final class FileBrowserTabController: ObservableObject {
         let data = content.data(using: encoding) ?? Data()
         try await dataSource.writeFile(path, data: data)
         setActiveOpenFile(.text(path: path, content: content, encoding: encoding, dirty: false))
+        await refreshDiffForActive()
+        await refreshGitStatus()
     }
 
     // MARK: - Error mapping & password retry

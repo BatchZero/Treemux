@@ -36,7 +36,10 @@ private struct FileTreeToolbar: View {
                 .truncationMode(.middle)
             Spacer()
             Button {
-                Task { await controller.refresh(controller.rootPath) }
+                Task {
+                    await controller.refresh(controller.rootPath)
+                    await controller.refreshGitStatus()
+                }
             } label: {
                 Image(systemName: "arrow.clockwise")
             }
@@ -147,6 +150,15 @@ private struct NodeRow: View {
             } else {
                 Spacer().frame(width: 12)
             }
+            // 4×4 git-status dot. A clear-color placeholder of the same size
+            // keeps name alignment stable while status loads asynchronously.
+            if let status = controller.fileStatusByPath[node.path] {
+                Circle()
+                    .fill(color(for: status))
+                    .frame(width: 4, height: 4)
+            } else {
+                Color.clear.frame(width: 4, height: 4)
+            }
             Image(systemName: iconName)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
@@ -210,6 +222,15 @@ private struct NodeRow: View {
             case .binary: return "doc"
             case .unknown: return "doc"
             }
+        }
+    }
+
+    private func color(for status: FileStatus) -> Color {
+        switch status {
+        case .untracked: return .gray
+        case .modified, .renamed(_): return .orange
+        case .added: return .green
+        case .deleted: return .red
         }
     }
 }

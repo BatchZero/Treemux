@@ -464,7 +464,22 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         if let existing = fileBrowserControllers[path]?[tabID] { return existing }
 
         let dataSource: any FileBrowserDataSource = makeDataSource()
-        let ctrl = FileBrowserTabController(initial: state, dataSource: dataSource)
+        // Inject a GitDiffService matching the workspace's transport (Local
+        // for on-disk worktrees, Remote SSH-backed for repository tabs with
+        // an `sshTarget`). The injected `repoRoot` is the file-browser tab's
+        // root path, which equals the project / worktree root in our model.
+        let gitService: GitDiffService = {
+            if sshTarget != nil {
+                return RemoteGitDiffService(service: ensureSharedSFTPService())
+            }
+            return LocalGitDiffService()
+        }()
+        let ctrl = FileBrowserTabController(
+            initial: state,
+            dataSource: dataSource,
+            gitDiffService: gitService,
+            repoRoot: state.rootPath
+        )
         ctrl.onPersistableStateChanged = { [weak self] in
             self?.persistFileBrowserState(tabID: tabID)
         }
