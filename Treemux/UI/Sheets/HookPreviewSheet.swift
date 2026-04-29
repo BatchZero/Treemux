@@ -204,5 +204,13 @@ struct HookPreviewSheet: View {
     }
 
     @ViewBuilder
-    private func failureMessage(for change: HookInstallChange) -> some View { EmptyView() }
+    private func failureMessage(for change: HookInstallChange) -> some View {
+        if case .failure(let msg) = backupStates[change.path] ?? .idle {
+            Text("Backup failed: \(msg)")
+                .font(.system(size: 11))
+                .foregroundStyle(.red)
+        } else {
+            EmptyView()
+        }
+    }
 }
