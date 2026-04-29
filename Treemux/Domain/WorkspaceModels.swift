@@ -472,6 +472,22 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         activeTabID = tabID
     }
 
+    /// Cmd+W cascade: if the active outer tab is a file-browser with at least
+    /// one open sub-tab, close the active sub-tab and consume the shortcut.
+    /// Returns `false` (no-op) when the active tab is not a file-browser, when
+    /// the controller has not been instantiated yet, or when there are no
+    /// sub-tabs — in which case the caller should fall through to the existing
+    /// outer-tab close path.
+    func handleCloseShortcut() -> Bool {
+        guard let tabID = activeTabID,
+              let tab = tabs.first(where: { $0.id == tabID }),
+              tab.kind == .fileBrowser,
+              let ctrl = fileBrowserControllers[activeWorktreePath]?[tabID] else {
+            return false
+        }
+        return ctrl.handleCloseShortcut()
+    }
+
     /// Closes the tab. If it's a dirty file-browser tab, shows a confirmation
     /// modal first; user can save, discard, or cancel.
     func requestCloseTab(_ tabID: UUID) {
