@@ -133,7 +133,6 @@
 		C009122F97AB2808837169E1 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DBD7F6E96DFD37B6863693 /* ThemeTests.swift */; };
 		C4F36751F92FBAB7CB76B329 /* BatchUnsavedChangesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62A28ABD1501991FC6757F16 /* BatchUnsavedChangesSheet.swift */; };
 		C8CF939E271138CC0721952C /* SidebarIconCustomizationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2596BF207C9F981D9A0FE02D /* SidebarIconCustomizationSheet.swift */; };
-		C8E8CD774D6CD15B7A9A6583 /* LineNumberRulerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E9BC641FE391FB8E90DF0D8 /* LineNumberRulerView.swift */; };
 		C932ED5A8C19385027F0691D /* SSHConfigService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56CFE929900AA3468AB1BA5B /* SSHConfigService.swift */; };
 		CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3477DE6F674F94B9457073F4 /* TreemuxTests.swift */; };
 		CD969404DE603FC36B6116DA /* TreemuxGhosttyClipboardSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E993B2E72B0AA5FA2CD8F136 /* TreemuxGhosttyClipboardSupport.swift */; };
@@ -207,7 +206,6 @@
 		3B99E6A1366954D8A221B273 /* TreemuxGhosttyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyController.swift; sourceTree = "<group>"; };
 		3D0ADD20D44C25E3A40CE443 /* AIToolService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolService.swift; sourceTree = "<group>"; };
 		3E4EF6D7547B58727542BA5A /* StoredShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoredShortcut.swift; sourceTree = "<group>"; };
-		3E9BC641FE391FB8E90DF0D8 /* LineNumberRulerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineNumberRulerView.swift; sourceTree = "<group>"; };
 		3F2AF4BADCEBABA624578341 /* TreemuxGhosttyControllerRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyControllerRegistry.swift; sourceTree = "<group>"; };
 		3FA0085E209334A614D18291 /* FileSubTabRecordCodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSubTabRecordCodingTests.swift; sourceTree = "<group>"; };
 		41730B3CCAF114169789A087 /* TmuxService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxService.swift; sourceTree = "<group>"; };
@@ -647,7 +645,6 @@
 				597C1CF15FDBE05E8C17339E /* FileViewerPanelView.swift */,
 				88B420B3E15F447FDA5E8053 /* ImagePreviewView.swift */,
 				EBEED7D7270F7B9253C166D3 /* LargeFileConfirmView.swift */,
-				3E9BC641FE391FB8E90DF0D8 /* LineNumberRulerView.swift */,
 				33DD9FC5B9123331053A340B /* OpenFileState.swift */,
 				09B0AB9E9ADD916200DE62AE /* QuickLookViewerView.swift */,
 				EE1BF453E226988F6BC668C8 /* TextEditorView.swift */,
@@ -880,7 +877,6 @@
 				850CC38A621639ECDA370B07 /* ImagePreviewView.swift in Sources */,
 				B620A3848F1EF7DE7BDC62A2 /* LanguageManager.swift in Sources */,
 				20430C6F6AB6D9783DC5FABD /* LargeFileConfirmView.swift in Sources */,
-				C8E8CD774D6CD15B7A9A6583 /* LineNumberRulerView.swift in Sources */,
 				F8644091777403C59611547D /* LocalFileBrowserDataSource.swift in Sources */,
 				5695944A97F022496C2F055E /* MainWindowView.swift in Sources */,
 				8D1CEE3F5DC9DCD02F0BD4F6 /* Notifications.swift in Sources */,

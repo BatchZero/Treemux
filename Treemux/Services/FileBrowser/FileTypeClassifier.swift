@@ -56,4 +56,32 @@ enum FileTypeClassifier {
         if String(data: sample, encoding: .utf8) != nil { return .text }
         return .binary
     }
+
+    /// Returns a `SupportedLanguage` for the file at `path` based on its
+    /// extension, or `nil` for files we don't have a tree-sitter grammar for.
+    static func language(forPath path: String) -> SupportedLanguage? {
+        let ext = (path as NSString).pathExtension.lowercased()
+        switch ext {
+        case "swift": return .swift
+        case "js", "mjs", "cjs": return .javascript
+        case "ts": return .typescript
+        case "tsx", "jsx": return .tsx
+        case "py": return .python
+        case "go": return .go
+        case "rs": return .rust
+        case "json": return .json
+        case "yml", "yaml": return .yaml
+        case "md", "markdown": return .markdown
+        case "html", "htm": return .html
+        case "css", "scss", "less": return .css
+        case "sh", "bash", "zsh": return .bash
+        default: return nil
+        }
+    }
+}
+
+/// Subset of languages the in-app editor highlights via tree-sitter. Maps to
+/// `CodeLanguage` cases in the editor representable.
+enum SupportedLanguage: String {
+    case swift, javascript, typescript, tsx, python, go, rust, json, yaml, markdown, html, css, bash
 }
