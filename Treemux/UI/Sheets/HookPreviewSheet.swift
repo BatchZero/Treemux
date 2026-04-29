@@ -26,6 +26,16 @@ struct HookPreviewSheet: View {
     @State private var isApplying = false
     @State private var applyError: String?
 
+    private enum BackupState: Equatable {
+        case idle
+        case inProgress
+        case success(URL)
+        case failure(String)
+    }
+
+    @State private var backupStates: [String: BackupState] = [:]
+    private let backupService = HookBackupService()
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Install \(model.displayName)")
@@ -143,7 +153,55 @@ struct HookPreviewSheet: View {
     }
 
     @ViewBuilder
-    private func backupControl(for change: HookInstallChange) -> some View { EmptyView() }
+    private func backupControl(for change: HookInstallChange) -> some View {
+        let state = backupStates[change.path] ?? .idle
+        switch state {
+        case .idle:
+            Button("Backup") { triggerBackup(change) }
+                .disabled(change.current == nil)
+                .help(change.current == nil
+                      ? Text("Nothing to back up (new file)")
+                      : Text("Save the current file to ~/.treemux/backups/"))
+        case .inProgress:
+            HStack(spacing: 4) {
+                ProgressView().controlSize(.small)
+                Text("Backing up…").font(.caption)
+            }
+        case .success(let url):
+            HStack(spacing: 6) {
+                Text("Backed up ✓").font(.caption).foregroundStyle(.secondary)
+                Button("Show in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                }
+                .buttonStyle(.link)
+                .font(.caption)
+            }
+        case .failure:
+            // Failure restores the Backup button; the message renders below
+            // the diff in `failureMessage(for:)`.
+            Button("Backup") { triggerBackup(change) }
+        }
+    }
+
+    private func triggerBackup(_ change: HookInstallChange) {
+        backupStates[change.path] = .inProgress
+        Task { @MainActor in
+            do {
+                let result = try await backupService.backup(
+                    change: change,
+                    target: model.target,
+                    provider: providerForCurrentChange(change) ?? ClaudeCodeHookProvider()
+                )
+                backupStates[change.path] = .success(result.localPath)
+            } catch {
+                backupStates[change.path] = .failure(error.localizedDescription)
+            }
+        }
+    }
+
+    private func providerForCurrentChange(_ change: HookInstallChange) -> AIHookProvider? {
+        AIHookProviderRegistry.providers().first { $0.kind == model.kind }
+    }
 
     @ViewBuilder
     private func failureMessage(for change: HookInstallChange) -> some View { EmptyView() }
