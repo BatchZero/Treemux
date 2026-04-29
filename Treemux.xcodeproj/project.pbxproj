@@ -90,6 +90,7 @@
 		7C12CE88C8566299E18BD638 /* AIHookInstallerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB963975F1E068F4C1399CA /* AIHookInstallerTests.swift */; };
 		7C890E7C842699E9E4E18606 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */; };
 		7DAFA3057CBB618258D561C4 /* FileViewerPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 597C1CF15FDBE05E8C17339E /* FileViewerPanelView.swift */; };
+		094C2FA595F502E4E865F807 /* FileSubTabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A021667B151C0C9D8F818433 /* FileSubTabBarView.swift */; };
 		8262776FD8ABAF5153996F07 /* RemoteHookFileSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1AE94CCF5B94C876FC4EF13 /* RemoteHookFileSystem.swift */; };
 		83E42FD933446A846FF70EBE /* OpencodeHookProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1D39E4326F4112B6C6B26D /* OpencodeHookProvider.swift */; };
 		84C7FE542B06B599E916B1A4 /* RemoteHookFileSystemTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69120FFFCCD4EA3E9B92D386 /* RemoteHookFileSystemTests.swift */; };
@@ -223,6 +224,7 @@
 		56CFE929900AA3468AB1BA5B /* SSHConfigService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigService.swift; sourceTree = "<group>"; };
 		581FDA0779784EFB231AAF34 /* AppUpdaterController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdaterController.swift; sourceTree = "<group>"; };
 		597C1CF15FDBE05E8C17339E /* FileViewerPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileViewerPanelView.swift; sourceTree = "<group>"; };
+		A021667B151C0C9D8F818433 /* FileSubTabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSubTabBarView.swift; sourceTree = "<group>"; };
 		5B9AE08FA5946D5877DE676C /* AIAttentionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAttentionState.swift; sourceTree = "<group>"; };
 		5C2110A46976203DDBF9D707 /* TerminalHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalHostView.swift; sourceTree = "<group>"; };
 		5C4F64E16954A106E36D7073 /* SidebarContextMenuTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarContextMenuTests.swift; sourceTree = "<group>"; };
@@ -635,6 +637,7 @@
 				3A646F19B6F1E577EC25ED47 /* BinaryInfoView.swift */,
 				DE041DEC968A6F2C064FFDC3 /* FileBrowserTabContentView.swift */,
 				559FB2C5F6FB9562E55C31AB /* FileBrowserTabController.swift */,
+				A021667B151C0C9D8F818433 /* FileSubTabBarView.swift */,
 				68300DAD2E46A8B3E6E11839 /* FileTreePanelView.swift */,
 				597C1CF15FDBE05E8C17339E /* FileViewerPanelView.swift */,
 				88B420B3E15F447FDA5E8053 /* ImagePreviewView.swift */,
@@ -859,6 +862,7 @@
 				3A0BC95345BB95AAA1641DDB /* FileBrowserTabState.swift in Sources */,
 				62E228C89783F0F8414BE734 /* FileSubTabRecord.swift in Sources */,
 				F456345A8C56133D248B5234 /* FileNode.swift in Sources */,
+				094C2FA595F502E4E865F807 /* FileSubTabBarView.swift in Sources */,
 				61D6EB6E02C98ADB788DBEA3 /* FileTreePanelView.swift in Sources */,
 				5ACC14D2306154601EC15D70 /* FileTypeClassifier.swift in Sources */,
 				7DAFA3057CBB618258D561C4 /* FileViewerPanelView.swift in Sources */,

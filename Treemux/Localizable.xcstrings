@@ -1831,6 +1831,36 @@
         }
       }
     },
+    "Pin Tab": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "固定标签页"
+          }
+        }
+      }
+    },
+    "Close Other Tabs": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭其他标签页"
+          }
+        }
+      }
+    },
+    "Close All Tabs": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭所有标签页"
+          }
+        }
+      }
+    },
     "Cannot connect to %@": {
       "localizations": {
         "zh-Hans": {
