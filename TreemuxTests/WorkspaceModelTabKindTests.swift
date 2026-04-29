@@ -35,4 +35,33 @@ final class WorkspaceModelTabKindTests: XCTestCase {
         XCTAssertNotNil(fbTab)
         XCTAssertEqual(fbTab?.fileBrowserState?.rootPath, "/x")
     }
+
+    /// Regression: AIHookBannerController.evaluate touches `workspace.sessionController`
+    /// on every objectWillChange. With a file-browser tab active, the previous
+    /// implementation lazily created a terminal controller for the FB tab id and
+    /// stored it in tabControllers. The next saveActiveTabState() then overwrote
+    /// the FB tab record with a default WorkspaceTabStateRecord (kind defaults to
+    /// .terminal, fileBrowserState nil) — corrupting the FB tab into a terminal tab.
+    func test_saveActiveTabState_doesNotCorruptFileBrowserTab() {
+        let ws = WorkspaceModel(
+            name: "tmp",
+            kind: .repository,
+            repositoryRoot: URL(fileURLWithPath: NSTemporaryDirectory())
+        )
+        ws.createFileBrowserTab(rootPath: "/tmp", rootKind: .project, title: "tmp")
+        let fbID = ws.activeTabID!
+        XCTAssertEqual(ws.tabs.first(where: { $0.id == fbID })?.kind, .fileBrowser)
+
+        // Simulate the AIHookBannerController path: external code touches
+        // sessionController while a file-browser tab is active. With the bug,
+        // this lazy-creates a terminal controller for the FB tab id.
+        _ = ws.sessionController
+
+        // saveActiveTabState used to overwrite the FB tab as a terminal tab.
+        ws.saveActiveTabState()
+
+        let after = ws.tabs.first(where: { $0.id == fbID })
+        XCTAssertEqual(after?.kind, .fileBrowser, "FB tab kind must survive sessionController access + save")
+        XCTAssertNotNil(after?.fileBrowserState, "fileBrowserState must survive")
+    }
 }

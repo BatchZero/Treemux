@@ -287,9 +287,14 @@ final class WorkspaceModel: ObservableObject, Identifiable {
 
     // MARK: - Active Controller
 
-    /// Returns the session controller for the currently active tab, or nil if no tab is active.
+    /// Returns the session controller for the currently active tab, or nil if no tab
+    /// is active or the active tab is not a terminal tab. File-browser tabs have no
+    /// session controller; callers (e.g. AIHookBannerController.evaluate) must tolerate
+    /// nil here so we don't lazy-create a phantom terminal controller for an FB tab.
     var sessionController: WorkspaceSessionController? {
-        guard let tabID = activeTabID else { return nil }
+        guard let tabID = activeTabID,
+              let tab = tabs.first(where: { $0.id == tabID }),
+              tab.kind == .terminal else { return nil }
         return controller(forTabID: tabID, worktreePath: activeWorktreePath)
     }
 
@@ -584,22 +589,27 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     // MARK: - State Save/Load
 
     /// Saves the current active tab's layout and pane state from its controller.
+    /// Only applies to terminal tabs — file-browser tabs persist their state via
+    /// `persistFileBrowserState` and must not be rewritten here.
     func saveActiveTabState() {
         guard let tabID = activeTabID,
-              let index = tabs.firstIndex(where: { $0.id == tabID }),
+              let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
+        let existingTab = tabs[index]
+        guard existingTab.kind == .terminal,
               let ctrl = tabControllers[activeWorktreePath]?[tabID] else { return }
 
-        let existingTab = tabs[index]
         let preferredTitle = suggestedTitle(for: ctrl, existingTab: existingTab)
 
         tabs[index] = WorkspaceTabStateRecord(
             id: tabID,
             title: preferredTitle,
             isManuallyNamed: existingTab.isManuallyNamed,
+            kind: .terminal,
             layout: ctrl.layout,
             panes: ctrl.sessionSnapshots(),
             focusedPaneID: ctrl.focusedPaneID,
-            zoomedPaneID: ctrl.zoomedPaneID
+            zoomedPaneID: ctrl.zoomedPaneID,
+            fileBrowserState: nil
         )
     }
 
@@ -682,6 +692,13 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     private func controller(forTabID tabID: UUID, worktreePath: String) -> WorkspaceSessionController {
         if let existing = tabControllers[worktreePath]?[tabID] {
             return existing
+        }
+
+        // Defensive: this factory should only be reached for terminal tabs.
+        // sessionController already gates on tab.kind == .terminal; this assertion
+        // catches future regressions where a caller bypasses that guard.
+        if let tab = tabs.first(where: { $0.id == tabID }), tab.kind != .terminal {
+            assertionFailure("controller(forTabID:) called for non-terminal tab \(tabID)")
         }
 
         // Look up the saved tab state to restore layout and panes
