@@ -90,23 +90,21 @@ struct HookPreviewSheet: View {
                 backupControl(for: change)
             }
             HStack(alignment: .top, spacing: 8) {
-                diffColumn(title: "Before", lines: diff.before, side: .before)
-                diffColumn(title: "After",  lines: diff.after,  side: .after)
+                diffColumn(title: "Before", lines: diff.before)
+                diffColumn(title: "After",  lines: diff.after)
             }
             .frame(minHeight: 180, idealHeight: 220)
             failureMessage(for: change)
         }
     }
 
-    private enum DiffSide { case before, after }
-
-    private func diffColumn(title: LocalizedStringKey, lines: [DiffLine], side: DiffSide) -> some View {
+    private func diffColumn(title: LocalizedStringKey, lines: [DiffLine]) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.headline)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(lines) { line in
-                        diffLineRow(line, side: side)
+                        diffLineRow(line)
                     }
                 }
                 .padding(.vertical, 4)
@@ -120,7 +118,7 @@ struct HookPreviewSheet: View {
     }
 
     @ViewBuilder
-    private func diffLineRow(_ line: DiffLine, side: DiffSide) -> some View {
+    private func diffLineRow(_ line: DiffLine) -> some View {
         let prefix: String = {
             switch line.mark {
             case .unchanged: return "  "
@@ -138,8 +136,8 @@ struct HookPreviewSheet: View {
         let fg: Color = {
             switch line.mark {
             case .unchanged: return .primary
-            case .removed:   return .red
-            case .added:     return .green
+            case .removed:   return Color(nsColor: .systemRed)
+            case .added:     return Color(nsColor: .systemGreen)
             }
         }()
         Text(prefix + line.text)
@@ -184,13 +182,19 @@ struct HookPreviewSheet: View {
     }
 
     private func triggerBackup(_ change: HookInstallChange) {
+        guard let provider = providerForCurrentChange(change) else {
+            backupStates[change.path] = .failure(
+                String(localized: "No provider registered for this agent")
+            )
+            return
+        }
         backupStates[change.path] = .inProgress
         Task { @MainActor in
             do {
                 let result = try await backupService.backup(
                     change: change,
                     target: model.target,
-                    provider: providerForCurrentChange(change) ?? ClaudeCodeHookProvider()
+                    provider: provider
                 )
                 backupStates[change.path] = .success(result.localPath)
             } catch {
@@ -209,8 +213,6 @@ struct HookPreviewSheet: View {
             Text("Backup failed: \(msg)")
                 .font(.system(size: 11))
                 .foregroundStyle(.red)
-        } else {
-            EmptyView()
         }
     }
 }
