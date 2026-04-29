@@ -8,30 +8,39 @@ struct FileViewerPanelView: View {
     @ObservedObject var controller: FileBrowserTabController
 
     var body: some View {
-        Group {
-            switch controller.openFile {
-            case .empty:
-                EmptyViewerState(rootPath: controller.rootPath)
-            case .loadingMeta(let p), .loadingContent(let p):
-                LoadingViewerState(path: p)
-            case .confirmingLargeFile(let path, let size):
-                LargeFileConfirmView(path: path, sizeBytes: size,
-                                     onConfirm: { Task { await controller.confirmLargeFileLoad() } },
-                                     onCancel: { controller.cancelLargeFileLoad() })
-            case .text(let path, let content, let encoding, let dirty):
-                TextEditorView(path: path, content: content, encoding: encoding, dirty: dirty, controller: controller)
-            case .image(let path, let img):
-                ImagePreviewView(path: path, image: img)
-            case .quickLook(let path, let url):
-                QuickLookViewerView(path: path, url: url)
-            case .binary(let path, let meta):
-                BinaryInfoView(path: path, metadata: meta)
-            case .error(let path, let msg):
-                ErrorViewerState(path: path, message: msg)
+        VStack(spacing: 0) {
+            if !controller.subTabs.isEmpty {
+                FileSubTabBarView(controller: controller)
+                Divider()
             }
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .textBackgroundColor))
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch controller.openFile {
+        case .empty:
+            EmptyViewerState(rootPath: controller.rootPath)
+        case .loadingMeta(let p), .loadingContent(let p):
+            LoadingViewerState(path: p)
+        case .confirmingLargeFile(let path, let size):
+            LargeFileConfirmView(path: path, sizeBytes: size,
+                                 onConfirm: { Task { await controller.confirmLargeFileLoad() } },
+                                 onCancel: { controller.cancelLargeFileLoad() })
+        case .text(let path, let content, let encoding, let dirty):
+            TextEditorView(path: path, content: content, encoding: encoding, dirty: dirty, controller: controller)
+        case .image(let path, let img):
+            ImagePreviewView(path: path, image: img)
+        case .quickLook(let path, let url):
+            QuickLookViewerView(path: path, url: url)
+        case .binary(let path, let meta):
+            BinaryInfoView(path: path, metadata: meta)
+        case .error(let path, let msg):
+            ErrorViewerState(path: path, message: msg)
+        }
     }
 }
 
