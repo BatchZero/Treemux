@@ -215,23 +215,34 @@ private struct CodeEditorRepresentable: View {
 private enum TreemuxEditorTheme {
     static var system: EditorTheme {
         EditorTheme(
-            text: .init(color: .labelColor),
-            insertionPoint: .labelColor,
-            invisibles: .init(color: .quaternaryLabelColor),
-            background: .textBackgroundColor,
-            lineHighlight: .selectedTextBackgroundColor.withSystemEffect(.disabled),
-            selection: .selectedTextBackgroundColor,
-            keywords: .init(color: .systemPink, bold: true),
-            commands: .init(color: .systemBlue),
-            types: .init(color: .systemTeal),
-            attributes: .init(color: .systemTeal),
-            variables: .init(color: .labelColor),
-            values: .init(color: .systemOrange),
-            numbers: .init(color: .systemOrange),
-            strings: .init(color: .systemRed),
-            characters: .init(color: .systemRed),
-            comments: .init(color: .secondaryLabelColor, italic: true)
+            text: .init(color: NSColor.labelColor.editorThemeColor),
+            insertionPoint: NSColor.labelColor.editorThemeColor,
+            invisibles: .init(color: NSColor.quaternaryLabelColor.editorThemeColor),
+            background: NSColor.textBackgroundColor.editorThemeColor,
+            lineHighlight: NSColor.selectedTextBackgroundColor.withSystemEffect(.disabled).editorThemeColor,
+            selection: NSColor.selectedTextBackgroundColor.editorThemeColor,
+            keywords: .init(color: NSColor.systemPink.editorThemeColor, bold: true),
+            commands: .init(color: NSColor.systemBlue.editorThemeColor),
+            types: .init(color: NSColor.systemTeal.editorThemeColor),
+            attributes: .init(color: NSColor.systemTeal.editorThemeColor),
+            variables: .init(color: NSColor.labelColor.editorThemeColor),
+            values: .init(color: NSColor.systemOrange.editorThemeColor),
+            numbers: .init(color: NSColor.systemOrange.editorThemeColor),
+            strings: .init(color: NSColor.systemRed.editorThemeColor),
+            characters: .init(color: NSColor.systemRed.editorThemeColor),
+            comments: .init(color: NSColor.secondaryLabelColor.editorThemeColor, italic: true)
         )
+    }
+}
+
+private extension NSColor {
+    /// CodeEditSourceEditor's MinimapView calls `-brightnessComponent` on
+    /// theme colors, which throws `NSInvalidArgumentException` for NSColor
+    /// catalog (dynamic) values like `.textBackgroundColor`. Resolve to sRGB
+    /// before handing the color off so the third-party component sees a
+    /// concrete component-bearing color.
+    var editorThemeColor: NSColor {
+        usingColorSpace(.sRGB) ?? self
     }
 }
 
