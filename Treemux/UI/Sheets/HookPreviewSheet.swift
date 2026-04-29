@@ -70,27 +70,36 @@ struct HookPreviewSheet: View {
     }
 
     private func changeView(_ change: HookInstallChange) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(change.path)
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(.secondary)
+        let diff = HookDiff.compute(current: change.current, proposed: change.proposed)
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(change.path)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                backupControl(for: change)
+            }
             HStack(alignment: .top, spacing: 8) {
-                column(title: "Before", text: change.current ?? String(localized: "(file does not exist)"))
-                column(title: "After", text: change.proposed)
+                diffColumn(title: "Before", lines: diff.before, side: .before)
+                diffColumn(title: "After",  lines: diff.after,  side: .after)
             }
             .frame(minHeight: 180, idealHeight: 220)
+            failureMessage(for: change)
         }
     }
 
-    private func column(title: LocalizedStringKey, text: String) -> some View {
+    private enum DiffSide { case before, after }
+
+    private func diffColumn(title: LocalizedStringKey, lines: [DiffLine], side: DiffSide) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.headline)
             ScrollView {
-                Text(text)
-                    .font(.system(.caption, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-                    .padding(8)
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(lines) { line in
+                        diffLineRow(line, side: side)
+                    }
+                }
+                .padding(.vertical, 4)
             }
             .background(Color(nsColor: .textBackgroundColor),
                         in: RoundedRectangle(cornerRadius: 6))
@@ -99,4 +108,43 @@ struct HookPreviewSheet: View {
             )
         }
     }
+
+    @ViewBuilder
+    private func diffLineRow(_ line: DiffLine, side: DiffSide) -> some View {
+        let prefix: String = {
+            switch line.mark {
+            case .unchanged: return "  "
+            case .removed:   return "- "
+            case .added:     return "+ "
+            }
+        }()
+        let bg: Color = {
+            switch line.mark {
+            case .unchanged: return .clear
+            case .removed:   return Color.red.opacity(0.18)
+            case .added:     return Color.green.opacity(0.18)
+            }
+        }()
+        let fg: Color = {
+            switch line.mark {
+            case .unchanged: return .primary
+            case .removed:   return .red
+            case .added:     return .green
+            }
+        }()
+        Text(prefix + line.text)
+            .font(.system(.caption, design: .monospaced))
+            .foregroundStyle(fg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 1)
+            .background(bg)
+            .textSelection(.enabled)
+    }
+
+    @ViewBuilder
+    private func backupControl(for change: HookInstallChange) -> some View { EmptyView() }
+
+    @ViewBuilder
+    private func failureMessage(for change: HookInstallChange) -> some View { EmptyView() }
 }
