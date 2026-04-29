@@ -283,12 +283,49 @@ final class FileBrowserTabController: ObservableObject {
         onPersistableStateChanged?()
     }
 
-    /// Close a sub-tab by id. Stage F1 will redefine this to first show an
-    /// NSAlert if the sub-tab is dirty. For Stage D this just delegates to
-    /// `closeSubTabImmediate(_:)` — keep the call sites stable now so F1 only
-    /// has to change one method body.
+    /// Close a sub-tab by id. If the sub-tab has unsaved text edits, this shows
+    /// a Save / Don't Save / Cancel modal first; otherwise it delegates straight
+    /// to `closeSubTabImmediate(_:)`. Tests bypass the modal by calling
+    /// `closeSubTabImmediate(_:)` directly.
     func closeSubTab(_ id: UUID) {
-        closeSubTabImmediate(id)
+        guard let tab = subTabs.first(where: { $0.id == id }) else { return }
+        if case .text(let path, _, _, true) = tab.openFile {
+            confirmCloseDirtySubTab(id: id, path: path)
+        } else {
+            closeSubTabImmediate(id)
+        }
+    }
+
+    private func confirmCloseDirtySubTab(id: UUID, path: String) {
+        let alert = NSAlert()
+        let name = URL(fileURLWithPath: path).lastPathComponent
+        alert.messageText = String.localizedStringWithFormat(
+            String(localized: "%@ has unsaved changes."), name)
+        alert.informativeText = String(localized: "Save changes before closing?")
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: String(localized: "Save"))
+        alert.addButton(withTitle: String(localized: "Don't Save"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        let response = alert.runModal()
+        switch response {
+        case .alertFirstButtonReturn: // Save
+            Task { @MainActor in
+                do {
+                    activateSubTab(id)
+                    try await saveCurrentFile()
+                    closeSubTabImmediate(id)
+                } catch {
+                    let err = NSAlert()
+                    err.messageText = String(localized: "Save failed")
+                    err.informativeText = error.localizedDescription
+                    err.runModal()
+                }
+            }
+        case .alertSecondButtonReturn: // Don't Save
+            closeSubTabImmediate(id)
+        default:
+            break
+        }
     }
 
     /// Drag-reorder sub-tabs. Mirrors `Array.move(fromOffsets:toOffset:)`.
