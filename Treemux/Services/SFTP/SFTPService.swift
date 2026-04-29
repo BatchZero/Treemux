@@ -185,6 +185,33 @@ actor SFTPService {
         }
     }
 
+    // MARK: - Arbitrary command (used by RemoteGitDiffService)
+
+    /// Runs an arbitrary shell command on the remote, returning its stdout.
+    /// In `.ssh` mode, executes via the existing system-ssh path.
+    /// In `.citadel` mode, throws — Citadel's API for arbitrary command exec
+    /// isn't wired and is not needed by file-browser flows in P1.
+    func runCommand(_ command: String, in cwd: String? = nil) async throws -> String {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let full: String
+            if let cwd { full = "cd \(Self.shellQuote(cwd)) && \(command)" }
+            else { full = command }
+            let result = try await runSSH(target: target, command: full)
+            guard result.exitCode == 0 else {
+                throw SFTPServiceError.commandFailed("exit \(result.exitCode): \(result.output)")
+            }
+            return result.output
+        case .citadel:
+            throw SFTPServiceError.commandFailed("runCommand not supported in Citadel password-auth mode")
+        }
+    }
+
+    private static func shellQuote(_ s: String) -> String {
+        "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
     // MARK: - Disconnection
 
     func disconnect() async {

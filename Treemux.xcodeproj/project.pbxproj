@@ -72,6 +72,7 @@
 		606C2C95D482C8D3CBB6503F /* AIToolServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BBA3AE3C8A5250A068D141D /* AIToolServiceTests.swift */; };
 		60D39715EBEB63DCE8383660 /* FileBrowserTabControllerSubTabTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734F67CDFA2343E303D8CE74 /* FileBrowserTabControllerSubTabTests.swift */; };
 		61D6EB6E02C98ADB788DBEA3 /* FileTreePanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68300DAD2E46A8B3E6E11839 /* FileTreePanelView.swift */; };
+		61FA29FB5FBEF18055F8163D /* LocalGitDiffService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07F078C6D132852EC60F4A72 /* LocalGitDiffService.swift */; };
 		634F5C15FC031D133DEA6DC1 /* PathFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10AD81F3E792C490B4656A1 /* PathFormatting.swift */; };
 		6633C6D74ADB9DFDA3DA98B6 /* SFTPDirectoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ABC31C96A9F51C865E1FCD /* SFTPDirectoryEntry.swift */; };
 		6A73145E56939BE721F72B5F /* AIHookProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9224AC3A02E683871BD6507 /* AIHookProvider.swift */; };
@@ -117,6 +118,7 @@
 		A0AD5591657B555F176AEFD8 /* ShellSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2290B3E587177F8B10B05395 /* ShellSession.swift */; };
 		A3A9D3AC7CCAEB6DA3B2D92D /* TreemuxGhosttyControllerRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F2AF4BADCEBABA624578341 /* TreemuxGhosttyControllerRegistry.swift */; };
 		A4E4E36C7436B4F6552F2942 /* AdaptiveFontShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30CC2AAEA217BA6CC93B9774 /* AdaptiveFontShortcutTests.swift */; };
+		A57061F2AD4AB75070122AAB /* GitDiffService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14ADC8D3C7F4C8CE9F1A25F /* GitDiffService.swift */; };
 		A7746DB757BF4458229659E0 /* SessionBackendLaunch.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E24B640A3303D33931EA85 /* SessionBackendLaunch.swift */; };
 		A9E5418401517BC5CBD9EC92 /* WorkspaceStatePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A99410553280ED6CCCDFEA85 /* WorkspaceStatePersistence.swift */; };
 		AC0D68343F5882A238D02833 /* SFTPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 827594A3628098FC39EC59E0 /* SFTPService.swift */; };
@@ -140,6 +142,7 @@
 		CED37FBB27DAA8CBE601AD3C /* EmptyTabStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 383CC60F01FDAD8B71C8EF65 /* EmptyTabStateView.swift */; };
 		CF064B4D51B08CEFA12296A2 /* FileBrowserTabControllerCopyPathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A8FDDA8554C79E902629B64 /* FileBrowserTabControllerCopyPathTests.swift */; };
 		D11755A98A0E207932B12B85 /* ClaudeCodeHookProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53E0992E33464CED1F6E39B3 /* ClaudeCodeHookProvider.swift */; };
+		D29712364C194E7F95DCD544 /* GitDiffServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E586BC73709B3E51989859 /* GitDiffServiceTests.swift */; };
 		D2D97673DE196B9D5B0B826E /* ProcessTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFCB1FCCBAF466E03F7A8DD8 /* ProcessTree.swift */; };
 		D5D2DCD282AEEBB8C4A6F532 /* ShellCommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */; };
 		D971AE91A6477480A05CC577 /* AIToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C29C7AC42BC16FDDD118A64 /* AIToolModels.swift */; };
@@ -148,6 +151,7 @@
 		E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8629D2D5813F897F85840289 /* SSHTarget.swift */; };
 		E9F945BAB814E46DB9FB34C9 /* FileBrowserDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8D1D61D212EB4DF71705EEB /* FileBrowserDataSource.swift */; };
 		EDB4207DA8056D870E9EA844 /* TreemuxGhosttyInputSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755FE81839DE8C99362EBC0E /* TreemuxGhosttyInputSupport.swift */; };
+		EEB23B61392CE692436572BB /* RemoteGitDiffService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D14699E82B55E457BE264CE1 /* RemoteGitDiffService.swift */; };
 		F13DEBE0000ABD5FA8DC4A16 /* FileSubTabRecordCodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FA0085E209334A614D18291 /* FileSubTabRecordCodingTests.swift */; };
 		F456345A8C56133D248B5234 /* FileNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03F44873E99A802B3C59BE39 /* FileNode.swift */; };
 		F4E43A35676226D73F962606 /* HookPreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5AECA3E1BAF9EB250F508C /* HookPreviewSheet.swift */; };
@@ -171,6 +175,7 @@
 /* Begin PBXFileReference section */
 		013F880772F0D64DBCEC5CC7 /* LocalFileBrowserDataSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFileBrowserDataSourceTests.swift; sourceTree = "<group>"; };
 		03F44873E99A802B3C59BE39 /* FileNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileNode.swift; sourceTree = "<group>"; };
+		07F078C6D132852EC60F4A72 /* LocalGitDiffService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalGitDiffService.swift; sourceTree = "<group>"; };
 		081CA32DCF94FDC4583766A2 /* ProcessTreeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTreeTests.swift; sourceTree = "<group>"; };
 		09B0AB9E9ADD916200DE62AE /* QuickLookViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLookViewerView.swift; sourceTree = "<group>"; };
 		0B6EF0CD7420B8D15E621ADB /* FileTypeClassifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTypeClassifierTests.swift; sourceTree = "<group>"; };
@@ -253,6 +258,7 @@
 		8206D34E299F05BBB7F6B8C9 /* InMemoryHookFileSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InMemoryHookFileSystem.swift; sourceTree = "<group>"; };
 		827594A3628098FC39EC59E0 /* SFTPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPService.swift; sourceTree = "<group>"; };
 		84FF18E9726EDA37A4D07CB5 /* SSHConfigParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParser.swift; sourceTree = "<group>"; };
+		85E586BC73709B3E51989859 /* GitDiffServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitDiffServiceTests.swift; sourceTree = "<group>"; };
 		8629D2D5813F897F85840289 /* SSHTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHTarget.swift; sourceTree = "<group>"; };
 		88B420B3E15F447FDA5E8053 /* ImagePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePreviewView.swift; sourceTree = "<group>"; };
 		91BA7E378ED30529B19BEACF /* AIAttentionStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAttentionStateTests.swift; sourceTree = "<group>"; };
@@ -289,6 +295,7 @@
 		CD8D68F5A6F0ED9F5EFE5FE0 /* SidebarOutlineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarOutlineView.swift; sourceTree = "<group>"; };
 		CEB4B388C531158F6E5916EB /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		D10AD81F3E792C490B4656A1 /* PathFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathFormatting.swift; sourceTree = "<group>"; };
+		D14699E82B55E457BE264CE1 /* RemoteGitDiffService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteGitDiffService.swift; sourceTree = "<group>"; };
 		D1E24B640A3303D33931EA85 /* SessionBackendLaunch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackendLaunch.swift; sourceTree = "<group>"; };
 		D2054644AE5A8CE04F07FCF2 /* WorkspaceTabKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTabKind.swift; sourceTree = "<group>"; };
 		D3C9EABA8F49976F4327BA6D /* FileBrowserTabStateCodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTabStateCodingTests.swift; sourceTree = "<group>"; };
@@ -297,6 +304,7 @@
 		DC45A45117E3662286FF3B32 /* FileBrowserTabControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTabControllerTests.swift; sourceTree = "<group>"; };
 		DE041DEC968A6F2C064FFDC3 /* FileBrowserTabContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTabContentView.swift; sourceTree = "<group>"; };
 		DE6931E2152155F3F99223FC /* SessionBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackendTests.swift; sourceTree = "<group>"; };
+		E14ADC8D3C7F4C8CE9F1A25F /* GitDiffService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitDiffService.swift; sourceTree = "<group>"; };
 		E1AE94CCF5B94C876FC4EF13 /* RemoteHookFileSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteHookFileSystem.swift; sourceTree = "<group>"; };
 		E2036C4C917DE175BEEF342C /* WorkspaceStoreBuiltInTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStoreBuiltInTests.swift; sourceTree = "<group>"; };
 		E45B70C0F236F9F0FA025A53 /* WorkspaceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDetailView.swift; sourceTree = "<group>"; };
@@ -399,6 +407,7 @@
 				D3C9EABA8F49976F4327BA6D /* FileBrowserTabStateCodingTests.swift */,
 				3FA0085E209334A614D18291 /* FileSubTabRecordCodingTests.swift */,
 				0B6EF0CD7420B8D15E621ADB /* FileTypeClassifierTests.swift */,
+				85E586BC73709B3E51989859 /* GitDiffServiceTests.swift */,
 				C328A5FB842A00D096906EE3 /* GitRepositoryServiceTests.swift */,
 				013F880772F0D64DBCEC5CC7 /* LocalFileBrowserDataSourceTests.swift */,
 				4742F4CA09E0C12BCF63C7CD /* PaneLayoutTests.swift */,
@@ -549,7 +558,10 @@
 		9C12B30F7DEBED747DCEF00C /* Git */ = {
 			isa = PBXGroup;
 			children = (
+				E14ADC8D3C7F4C8CE9F1A25F /* GitDiffService.swift */,
 				927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */,
+				07F078C6D132852EC60F4A72 /* LocalGitDiffService.swift */,
+				D14699E82B55E457BE264CE1 /* RemoteGitDiffService.swift */,
 				FED0327A7E59732F42304316 /* WorkspaceMetadataWatchService.swift */,
 			);
 			path = Git;
@@ -872,12 +884,14 @@
 				61D6EB6E02C98ADB788DBEA3 /* FileTreePanelView.swift in Sources */,
 				5ACC14D2306154601EC15D70 /* FileTypeClassifier.swift in Sources */,
 				7DAFA3057CBB618258D561C4 /* FileViewerPanelView.swift in Sources */,
+				A57061F2AD4AB75070122AAB /* GitDiffService.swift in Sources */,
 				89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */,
 				F4E43A35676226D73F962606 /* HookPreviewSheet.swift in Sources */,
 				850CC38A621639ECDA370B07 /* ImagePreviewView.swift in Sources */,
 				B620A3848F1EF7DE7BDC62A2 /* LanguageManager.swift in Sources */,
 				20430C6F6AB6D9783DC5FABD /* LargeFileConfirmView.swift in Sources */,
 				F8644091777403C59611547D /* LocalFileBrowserDataSource.swift in Sources */,
+				61FA29FB5FBEF18055F8163D /* LocalGitDiffService.swift in Sources */,
 				5695944A97F022496C2F055E /* MainWindowView.swift in Sources */,
 				8D1CEE3F5DC9DCD02F0BD4F6 /* Notifications.swift in Sources */,
 				9CC625081A128EFB6A04BD6D /* OpenFileState.swift in Sources */,
@@ -890,6 +904,7 @@
 				093FE0959D31BD1AE6676D1A /* RemoteDirectoryBrowser.swift in Sources */,
 				2E5F9E3972854C00535CA4D0 /* RemoteDirectoryBrowserViewModel.swift in Sources */,
 				0C68CEEF81EFE9218656CC3F /* RemoteFileBrowserDataSource.swift in Sources */,
+				EEB23B61392CE692436572BB /* RemoteGitDiffService.swift in Sources */,
 				8262776FD8ABAF5153996F07 /* RemoteHookFileSystem.swift in Sources */,
 				6633C6D74ADB9DFDA3DA98B6 /* SFTPDirectoryEntry.swift in Sources */,
 				AC0D68343F5882A238D02833 /* SFTPService.swift in Sources */,
@@ -968,6 +983,7 @@
 				98BBB295D98A3BC13A807E63 /* FileBrowserTabStateCodingTests.swift in Sources */,
 				F13DEBE0000ABD5FA8DC4A16 /* FileSubTabRecordCodingTests.swift in Sources */,
 				264259A0E6E918DF5ACF68F9 /* FileTypeClassifierTests.swift in Sources */,
+				D29712364C194E7F95DCD544 /* GitDiffServiceTests.swift in Sources */,
 				9C689BD0883C82F0D099878B /* GitRepositoryServiceTests.swift in Sources */,
 				AC65694A8859EB0B52A43FB1 /* InMemoryHookFileSystem.swift in Sources */,
 				4603CCA2E939A7EE37183995 /* LocalFileBrowserDataSourceTests.swift in Sources */,
