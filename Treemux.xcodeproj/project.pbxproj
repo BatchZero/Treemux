@@ -144,6 +144,8 @@
 		EDB4207DA8056D870E9EA844 /* TreemuxGhosttyInputSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755FE81839DE8C99362EBC0E /* TreemuxGhosttyInputSupport.swift */; };
 		F456345A8C56133D248B5234 /* FileNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03F44873E99A802B3C59BE39 /* FileNode.swift */; };
 		F4E43A35676226D73F962606 /* HookPreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5AECA3E1BAF9EB250F508C /* HookPreviewSheet.swift */; };
+		317A2FF806A94A9DA05E2AA6 /* HookDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = C201D4D7CC7245F8BDCBC44A /* HookDiff.swift */; };
+		5AADA7F125DF495CA7E71065 /* HookDiffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A99D70249E4DF69977EE94 /* HookDiffTests.swift */; };
 		F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */; };
 		F8644091777403C59611547D /* LocalFileBrowserDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E3AB47E2F0BA80F74F955AD /* LocalFileBrowserDataSource.swift */; };
 		FBA39534A25C607A48314803 /* GhosttyKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = AC606574E1DF3045291D300B /* GhosttyKit.xcframework */; };
@@ -301,6 +303,8 @@
 		F9224AC3A02E683871BD6507 /* AIHookProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIHookProvider.swift; sourceTree = "<group>"; };
 		FB0ABA0B08B1F2185D6C82B5 /* SSHConfigParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParserTests.swift; sourceTree = "<group>"; };
 		FB5AECA3E1BAF9EB250F508C /* HookPreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookPreviewSheet.swift; sourceTree = "<group>"; };
+		C201D4D7CC7245F8BDCBC44A /* HookDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookDiff.swift; sourceTree = "<group>"; };
+		D4A99D70249E4DF69977EE94 /* HookDiffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookDiffTests.swift; sourceTree = "<group>"; };
 		FCDABAEAB8A96753452954DD /* AIHooks */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AIHooks; path = Treemux/Support/AIHooks; sourceTree = SOURCE_ROOT; };
 		FED0327A7E59732F42304316 /* WorkspaceMetadataWatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceMetadataWatchService.swift; sourceTree = "<group>"; };
 		FF0C127CC4C110A2B9F9ADF2 /* AIHookFileSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIHookFileSystem.swift; sourceTree = "<group>"; };
@@ -377,6 +381,7 @@
 				E663E6BCCD39B232086BBA79 /* AdaptiveFontSizeCalculatorTests.swift */,
 				91BA7E378ED30529B19BEACF /* AIAttentionStateTests.swift */,
 				2AB963975F1E068F4C1399CA /* AIHookInstallerTests.swift */,
+				D4A99D70249E4DF69977EE94 /* HookDiffTests.swift */,
 				4BBA3AE3C8A5250A068D141D /* AIToolServiceTests.swift */,
 				73D3B36585022D9D93567384 /* AttentionStoreTests.swift */,
 				DC45A45117E3662286FF3B32 /* FileBrowserTabControllerTests.swift */,
@@ -475,6 +480,7 @@
 		47EF60B043AF58645C61BA38 /* Sheets */ = {
 			isa = PBXGroup;
 			children = (
+				C201D4D7CC7245F8BDCBC44A /* HookDiff.swift */,
 				FB5AECA3E1BAF9EB250F508C /* HookPreviewSheet.swift */,
 				7BE07A133DAF6C1DB4F89297 /* OpenProjectSheet.swift */,
 				9250C83EF14A84383E73002A /* RemoteDirectoryBrowser.swift */,
@@ -847,6 +853,7 @@
 				5ACC14D2306154601EC15D70 /* FileTypeClassifier.swift in Sources */,
 				7DAFA3057CBB618258D561C4 /* FileViewerPanelView.swift in Sources */,
 				89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */,
+				317A2FF806A94A9DA05E2AA6 /* HookDiff.swift in Sources */,
 				F4E43A35676226D73F962606 /* HookPreviewSheet.swift in Sources */,
 				850CC38A621639ECDA370B07 /* ImagePreviewView.swift in Sources */,
 				B620A3848F1EF7DE7BDC62A2 /* LanguageManager.swift in Sources */,
@@ -933,6 +940,7 @@
 			files = (
 				26F51AB2A428B155979EAFD0 /* AIAttentionStateTests.swift in Sources */,
 				7C12CE88C8566299E18BD638 /* AIHookInstallerTests.swift in Sources */,
+				5AADA7F125DF495CA7E71065 /* HookDiffTests.swift in Sources */,
 				606C2C95D482C8D3CBB6503F /* AIToolServiceTests.swift in Sources */,
 				A4E4E36C7436B4F6552F2942 /* AdaptiveFontShortcutTests.swift in Sources */,
 				0DAB709EEE832E5898E7F570 /* AdaptiveFontSizeCalculatorTests.swift in Sources */,
