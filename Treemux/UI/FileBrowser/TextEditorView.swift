@@ -16,6 +16,7 @@ struct TextEditorView: View {
     let dirty: Bool
     @ObservedObject var controller: FileBrowserTabController
     @EnvironmentObject private var store: WorkspaceStore
+    @EnvironmentObject private var themeManager: ThemeManager
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,6 +27,7 @@ struct TextEditorView: View {
                 bufferID: controller.activeSubTabID ?? Self.fallbackBufferID,
                 wordIndex: controller.wordIndex,
                 isCompletionEnabled: { store.settings.enableCodeCompletion },
+                editorTheme: TreemuxEditorTheme.from(uiColors: themeManager.activeTheme.ui),
                 onChange: { controller.updateBuffer(content: $0) }
             )
             Divider()
@@ -75,6 +77,7 @@ private struct CodeEditorRepresentable: View {
     let bufferID: UUID
     let wordIndex: BufferWordIndex
     let isCompletionEnabled: () -> Bool
+    let editorTheme: EditorTheme
     let onChange: (String) -> Void
 
     @State private var text: String
@@ -94,6 +97,7 @@ private struct CodeEditorRepresentable: View {
         bufferID: UUID,
         wordIndex: BufferWordIndex,
         isCompletionEnabled: @escaping () -> Bool,
+        editorTheme: EditorTheme,
         onChange: @escaping (String) -> Void
     ) {
         self.path = path
@@ -102,6 +106,7 @@ private struct CodeEditorRepresentable: View {
         self.bufferID = bufferID
         self.wordIndex = wordIndex
         self.isCompletionEnabled = isCompletionEnabled
+        self.editorTheme = editorTheme
         self.onChange = onChange
         self._text = State(initialValue: content)
         let delegate = WordCompletionDelegate(wordIndex: wordIndex, isEnabled: isCompletionEnabled)
@@ -187,7 +192,7 @@ private struct CodeEditorRepresentable: View {
     private var configuration: SourceEditorConfiguration {
         SourceEditorConfiguration(
             appearance: .init(
-                theme: TreemuxEditorTheme.system,
+                theme: editorTheme,
                 useThemeBackground: true,
                 font: .monospacedSystemFont(ofSize: 13, weight: .regular),
                 wrapLines: false,
@@ -209,28 +214,44 @@ private struct CodeEditorRepresentable: View {
     }
 }
 
-/// A neutral editor theme that reads adequately in both light and dark mode.
-/// Treemux doesn't yet ship a theme system; the colors lean on
-/// `NSColor` semantics so they auto-adapt to the system appearance.
+/// Builds the syntax-highlighting `EditorTheme` from Treemux's in-app theme.
+///
+/// Why this exists instead of leaning on `NSColor.textBackgroundColor` etc.:
+/// CodeEditSourceEditor pushes `theme.background` into layer-backed
+/// `NSScrollView`/`NSTextView` `backgroundColor`. macOS converts that NSColor
+/// into a CGColor for the layer using whatever `NSAppearance.current` is
+/// effective at assignment time, then *caches* it on the layer — so dynamic
+/// system colors freeze on first paint and never follow the window's
+/// `effectiveAppearance`. By feeding concrete RGB colors derived from the
+/// active `ThemeDefinition`, the editor background tracks the in-app theme
+/// directly and re-renders correctly when the user switches themes (the
+/// editor's `Equatable` config diff fires because the NSColor values differ).
 private enum TreemuxEditorTheme {
-    static var system: EditorTheme {
-        EditorTheme(
-            text: .init(color: NSColor.labelColor.editorThemeColor),
-            insertionPoint: NSColor.labelColor.editorThemeColor,
-            invisibles: .init(color: NSColor.quaternaryLabelColor.editorThemeColor),
-            background: NSColor.textBackgroundColor.editorThemeColor,
-            lineHighlight: NSColor.selectedTextBackgroundColor.withSystemEffect(.disabled).editorThemeColor,
-            selection: NSColor.selectedTextBackgroundColor.editorThemeColor,
+    static func from(uiColors ui: UIColors) -> EditorTheme {
+        let textPrimary = NSColor(Color(hex: ui.textPrimary)).editorThemeColor
+        let textSecondary = NSColor(Color(hex: ui.textSecondary)).editorThemeColor
+        let textMuted = NSColor(Color(hex: ui.textMuted)).editorThemeColor
+        let background = NSColor(Color(hex: ui.paneBackground)).editorThemeColor
+        let lineHighlight = NSColor(Color(hex: ui.paneHeaderBackground)).editorThemeColor
+        let selection = NSColor(Color(hex: ui.accentColor)).withAlphaComponent(0.3).editorThemeColor
+
+        return EditorTheme(
+            text: .init(color: textPrimary),
+            insertionPoint: textPrimary,
+            invisibles: .init(color: textMuted),
+            background: background,
+            lineHighlight: lineHighlight,
+            selection: selection,
             keywords: .init(color: NSColor.systemPink.editorThemeColor, bold: true),
             commands: .init(color: NSColor.systemBlue.editorThemeColor),
             types: .init(color: NSColor.systemTeal.editorThemeColor),
             attributes: .init(color: NSColor.systemTeal.editorThemeColor),
-            variables: .init(color: NSColor.labelColor.editorThemeColor),
+            variables: .init(color: textPrimary),
             values: .init(color: NSColor.systemOrange.editorThemeColor),
             numbers: .init(color: NSColor.systemOrange.editorThemeColor),
             strings: .init(color: NSColor.systemRed.editorThemeColor),
             characters: .init(color: NSColor.systemRed.editorThemeColor),
-            comments: .init(color: NSColor.secondaryLabelColor.editorThemeColor, italic: true)
+            comments: .init(color: textSecondary, italic: true)
         )
     }
 }
