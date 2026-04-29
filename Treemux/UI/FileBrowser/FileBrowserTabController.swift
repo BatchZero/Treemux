@@ -57,14 +57,19 @@ final class FileBrowserTabController: ObservableObject {
     }
 
     func snapshot() -> FileBrowserTabState {
-        FileBrowserTabState(
+        // TODO: remove after D3+D4 sub-tab refactor. Build a single pinned
+        // sub-tab from the controller's transient `selectedFilePath` so the
+        // persisted state stays roughly equivalent to the pre-D2 behavior.
+        // D3+D4 will replace this with the real sub-tab state machine.
+        var state = FileBrowserTabState(
             rootPath: rootPath,
             rootKind: rootKind,
-            selectedFilePath: selectedFilePath,
             splitRatio: splitRatio,
             expandedDirs: Array(expandedDirs),
             showsHiddenFiles: showsHiddenFiles
         )
+        state.selectedFilePath = selectedFilePath
+        return state
     }
 
     // MARK: - Tree loading

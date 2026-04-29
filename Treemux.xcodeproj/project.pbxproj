@@ -49,6 +49,8 @@
 		3476B188F05FD8A0ACADEE52 /* AIHookInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66694CAA13481183CE322627 /* AIHookInstaller.swift */; };
 		385A3EF810559BD598E183D9 /* StoredShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E4EF6D7547B58727542BA5A /* StoredShortcut.swift */; };
 		3A0BC95345BB95AAA1641DDB /* FileBrowserTabState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0703E37A59EB4315587BCEC /* FileBrowserTabState.swift */; };
+		62E228C89783F0F8414BE734 /* FileSubTabRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4538D4212FA5ED45CFB728A9 /* FileSubTabRecord.swift */; };
+		08BFCE7A0417BFCA1C8F28B2 /* FileSubTabRecordCodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A184976A16CD776AF09E3104 /* FileSubTabRecordCodingTests.swift */; };
 		3AEFD19DA77CAC18BB8B842B /* WorkspaceSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20079BE9FA1D7054C79699F2 /* WorkspaceSessionController.swift */; };
 		3C1BD4702DECC75E0A4ABD1A /* WorkspaceSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8354D57B9898A0C0ADBD959 /* WorkspaceSidebarView.swift */; };
 		3C1F3562DE4FA89E8C580B30 /* TreemuxGhosttyBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16FE9D700089232316516F73 /* TreemuxGhosttyBootstrap.swift */; };
@@ -256,6 +258,8 @@
 		9D8662706F495A0DA4CCB1F0 /* WindowContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowContext.swift; sourceTree = "<group>"; };
 		9F23062A273124B6BBE28B71 /* SplitDivider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitDivider.swift; sourceTree = "<group>"; };
 		A0703E37A59EB4315587BCEC /* FileBrowserTabState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTabState.swift; sourceTree = "<group>"; };
+		4538D4212FA5ED45CFB728A9 /* FileSubTabRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSubTabRecord.swift; sourceTree = "<group>"; };
+		A184976A16CD776AF09E3104 /* FileSubTabRecordCodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSubTabRecordCodingTests.swift; sourceTree = "<group>"; };
 		A169E6DF74EAE95F932D40F0 /* ShortcutRecorderButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderButton.swift; sourceTree = "<group>"; };
 		A22F2A407A07989DE172DA3A /* WorkspaceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStore.swift; sourceTree = "<group>"; };
 		A3863AB5298AAC0C830363DD /* WorkspaceTabRecordMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTabRecordMigrationTests.swift; sourceTree = "<group>"; };
@@ -386,6 +390,7 @@
 				DC45A45117E3662286FF3B32 /* FileBrowserTabControllerTests.swift */,
 				E69022F8AB1A07F1B09A2539 /* FileBrowserTabControllerCopyPathTests.swift */,
 				D3C9EABA8F49976F4327BA6D /* FileBrowserTabStateCodingTests.swift */,
+				A184976A16CD776AF09E3104 /* FileSubTabRecordCodingTests.swift */,
 				0B6EF0CD7420B8D15E621ADB /* FileTypeClassifierTests.swift */,
 				C328A5FB842A00D096906EE3 /* GitRepositoryServiceTests.swift */,
 				013F880772F0D64DBCEC5CC7 /* LocalFileBrowserDataSourceTests.swift */,
@@ -577,6 +582,7 @@
 				D8EB47950FCB5E9637572424 /* AppSettings.swift */,
 				A76A807641575E301D45C1F8 /* AttentionStore.swift */,
 				A0703E37A59EB4315587BCEC /* FileBrowserTabState.swift */,
+				4538D4212FA5ED45CFB728A9 /* FileSubTabRecord.swift */,
 				03F44873E99A802B3C59BE39 /* FileNode.swift */,
 				1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */,
 				BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */,
@@ -848,6 +854,7 @@
 				77ACAAA4E29C26D85D9FFDC6 /* FileBrowserTabContentView.swift in Sources */,
 				319EB7B854941B9C8219C7AE /* FileBrowserTabController.swift in Sources */,
 				3A0BC95345BB95AAA1641DDB /* FileBrowserTabState.swift in Sources */,
+				62E228C89783F0F8414BE734 /* FileSubTabRecord.swift in Sources */,
 				F456345A8C56133D248B5234 /* FileNode.swift in Sources */,
 				61D6EB6E02C98ADB788DBEA3 /* FileTreePanelView.swift in Sources */,
 				5ACC14D2306154601EC15D70 /* FileTypeClassifier.swift in Sources */,
@@ -946,6 +953,7 @@
 				0A139D0EB15791E8C4BB4DE3 /* FileBrowserTabControllerTests.swift in Sources */,
 				0CEF839A2FF71B6B8D042712 /* FileBrowserTabControllerCopyPathTests.swift in Sources */,
 				98BBB295D98A3BC13A807E63 /* FileBrowserTabStateCodingTests.swift in Sources */,
+				08BFCE7A0417BFCA1C8F28B2 /* FileSubTabRecordCodingTests.swift in Sources */,
 				264259A0E6E918DF5ACF68F9 /* FileTypeClassifierTests.swift in Sources */,
 				9C689BD0883C82F0D099878B /* GitRepositoryServiceTests.swift in Sources */,
 				AC65694A8859EB0B52A43FB1 /* InMemoryHookFileSystem.swift in Sources */,
