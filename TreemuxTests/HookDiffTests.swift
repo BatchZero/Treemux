@@ -50,7 +50,7 @@ final class HookDiffTests: XCTestCase {
         let result = HookDiff.compute(current: nil, proposed: "first\nsecond")
 
         XCTAssertEqual(result.before.count, 1)
-        XCTAssertEqual(result.before[0].text, "(file does not exist)")
+        XCTAssertEqual(result.before[0].text, String(localized: "(file does not exist)"))
         XCTAssertEqual(result.before[0].mark, .unchanged)
 
         XCTAssertEqual(result.after.map(\.text), ["first", "second"])
@@ -62,5 +62,17 @@ final class HookDiffTests: XCTestCase {
         XCTAssertEqual(result.before.map(\.text), ["a", "b", ""])
         XCTAssertEqual(result.after.map(\.text),  ["a", "b", ""])
         XCTAssertTrue(result.before.allSatisfy { $0.mark == .unchanged })
+        XCTAssertTrue(result.after.allSatisfy  { $0.mark == .unchanged })
+    }
+
+    func testCRLFNormalizedAsUnchanged() {
+        // A CRLF current vs LF proposed of the same content must diff
+        // to all-unchanged, not all-changed.
+        let result = HookDiff.compute(current: "a\r\nb\r\n", proposed: "a\nb\n")
+
+        XCTAssertEqual(result.before.map(\.text), ["a", "b", ""])
+        XCTAssertEqual(result.after.map(\.text),  ["a", "b", ""])
+        XCTAssertTrue(result.before.allSatisfy { $0.mark == .unchanged })
+        XCTAssertTrue(result.after.allSatisfy  { $0.mark == .unchanged })
     }
 }

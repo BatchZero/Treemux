@@ -28,7 +28,11 @@ enum HookDiff {
         let newLines = splitLines(proposed)
 
         if current == nil {
-            let placeholder = [DiffLine(id: 0, text: "(file does not exist)", mark: .unchanged)]
+            let placeholder = [DiffLine(
+                id: 0,
+                text: String(localized: "(file does not exist)"),
+                mark: .unchanged
+            )]
             let after = newLines.enumerated().map { DiffLine(id: $0.offset, text: $0.element, mark: .added) }
             return (placeholder, after)
         }
@@ -53,6 +57,9 @@ enum HookDiff {
     }
 
     private static func splitLines(_ s: String) -> [String] {
-        s.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        let normalized = s
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+        return normalized.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
     }
 }
