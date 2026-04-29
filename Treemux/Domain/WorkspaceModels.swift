@@ -285,6 +285,18 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     /// The worktree path currently being displayed.
     private(set) var activeWorktreePath: String = ""
 
+    /// Shared SFTP service for this workspace; lazily created the first time
+    /// a remote file-browser tab needs it. Sharing one service across tabs
+    /// means a successful password prompt on the first tab unlocks the rest.
+    private var sharedSFTPService_: SFTPService?
+
+    func ensureSharedSFTPService() -> SFTPService {
+        if let s = sharedSFTPService_ { return s }
+        let s = SFTPService()
+        sharedSFTPService_ = s
+        return s
+    }
+
     // MARK: - Active Controller
 
     /// Returns the session controller for the currently active tab, or nil if no tab
@@ -439,7 +451,7 @@ final class WorkspaceModel: ObservableObject, Identifiable {
 
     private func makeDataSource() -> any FileBrowserDataSource {
         if let target = sshTarget {
-            return RemoteFileBrowserDataSource(sshTarget: target)
+            return RemoteFileBrowserDataSource(sshTarget: target, service: ensureSharedSFTPService())
         }
         return LocalFileBrowserDataSource()
     }
