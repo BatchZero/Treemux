@@ -45,4 +45,22 @@ final class HookDiffTests: XCTestCase {
         XCTAssertEqual(result.after.map(\.mark),
                        [.unchanged, .added, .unchanged, .added])
     }
+
+    func testCurrentNilUsesPlaceholderBefore() {
+        let result = HookDiff.compute(current: nil, proposed: "first\nsecond")
+
+        XCTAssertEqual(result.before.count, 1)
+        XCTAssertEqual(result.before[0].text, "(file does not exist)")
+        XCTAssertEqual(result.before[0].mark, .unchanged)
+
+        XCTAssertEqual(result.after.map(\.text), ["first", "second"])
+        XCTAssertTrue(result.after.allSatisfy { $0.mark == .added })
+    }
+
+    func testTrailingNewlinePreservedAsEmptyLine() {
+        let result = HookDiff.compute(current: "a\nb\n", proposed: "a\nb\n")
+        XCTAssertEqual(result.before.map(\.text), ["a", "b", ""])
+        XCTAssertEqual(result.after.map(\.text),  ["a", "b", ""])
+        XCTAssertTrue(result.before.allSatisfy { $0.mark == .unchanged })
+    }
 }
