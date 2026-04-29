@@ -7,31 +7,13 @@ import XCTest
 
 @MainActor
 final class FileBrowserTabControllerTests: XCTestCase {
-    final class FakeDataSource: FileBrowserDataSource {
-        let supportsWrite = true
-        var entries: [String: [FileNode]] = [:]
-        func listDirectory(_ path: String) async throws -> [FileNode] {
-            entries[path] ?? []
-        }
-        func fileMetadata(_ path: String) async throws -> FileMetadata {
-            FileMetadata(path: path, sizeBytes: 0, modifiedAt: nil,
-                         isDirectory: false, isSymbolicLink: false)
-        }
-        func readFile(_ path: String, maxBytes: Int) async throws -> Data { Data() }
-        func writeFile(_ path: String, data: Data) async throws {}
-        func downloadForQuickLook(_ path: String,
-                                  progress: @escaping (Double) -> Void) async throws -> URL {
-            URL(fileURLWithPath: "/tmp/x")
-        }
-    }
-
     func test_setShowsHiddenFiles_recoversHiddenAfterToggleOff() async {
-        let ds = FakeDataSource()
+        let mock = MockFileBrowserDataSource()
         let visible = FileNode(id: "/r/a", name: "a", path: "/r/a", kind: .file, sizeBytes: 0, modifiedAt: nil)
         let hidden  = FileNode(id: "/r/.b", name: ".b", path: "/r/.b", kind: .file, sizeBytes: 0, modifiedAt: nil)
-        ds.entries["/r"] = [visible, hidden]
+        mock.directoryListings["/r"] = [visible, hidden]
         let state = FileBrowserTabState(rootPath: "/r", rootKind: .project, showsHiddenFiles: true)
-        let ctrl = FileBrowserTabController(initial: state, dataSource: ds)
+        let ctrl = FileBrowserTabController(initial: state, dataSource: mock)
         await ctrl.loadRoot()
         XCTAssertEqual(ctrl.rootChildren.count, 2)
 
