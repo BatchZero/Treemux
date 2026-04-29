@@ -4,7 +4,9 @@
 
 import AppKit
 import CodeEditSourceEditor
+import CodeEditTextView
 import CodeEditLanguages
+import Combine
 import SwiftUI
 
 struct TextEditorView: View {
@@ -16,9 +18,12 @@ struct TextEditorView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            CodeEditorRepresentable(path: path,
-                                    content: content,
-                                    onChange: { controller.updateBuffer(content: $0) })
+            CodeEditorRepresentable(
+                path: path,
+                content: content,
+                hunks: controller.diffHunksByPath[path] ?? [],
+                onChange: { controller.updateBuffer(content: $0) }
+            )
             Divider()
             statusBar
         }
@@ -58,14 +63,19 @@ struct TextEditorView: View {
 private struct CodeEditorRepresentable: View {
     let path: String
     let content: String
+    let hunks: [DiffHunk]
     let onChange: (String) -> Void
 
     @State private var text: String
     @State private var editorState: SourceEditorState = .init()
+    /// Persisted across view updates so we can push fresh hunks into the
+    /// existing overlay without forcing CodeEditSourceEditor to rebuild.
+    @StateObject private var stripeCoordinator = DiffStripeCoordinator()
 
-    init(path: String, content: String, onChange: @escaping (String) -> Void) {
+    init(path: String, content: String, hunks: [DiffHunk], onChange: @escaping (String) -> Void) {
         self.path = path
         self.content = content
+        self.hunks = hunks
         self.onChange = onChange
         self._text = State(initialValue: content)
     }
@@ -81,7 +91,8 @@ private struct CodeEditorRepresentable: View {
             ),
             language: language,
             configuration: configuration,
-            state: $editorState
+            state: $editorState,
+            coordinators: [stripeCoordinator]
         )
         // When the sub-tab swaps the underlying file or content (e.g. activating
         // a different sub-tab, or saving / reloading), refresh the editor's
@@ -91,6 +102,12 @@ private struct CodeEditorRepresentable: View {
         }
         .onChange(of: content) { _, newValue in
             if text != newValue { text = newValue }
+        }
+        .onChange(of: hunks) { _, newValue in
+            stripeCoordinator.updateHunks(newValue)
+        }
+        .onAppear {
+            stripeCoordinator.updateHunks(hunks)
         }
     }
 
@@ -175,5 +192,185 @@ private enum TreemuxEditorTheme {
             characters: .init(color: .systemRed),
             comments: .init(color: .secondaryLabelColor, italic: true)
         )
+    }
+}
+
+// MARK: - Git diff stripe overlay
+
+/// Coordinator that installs a thin overlay alongside the gutter to render
+/// 2pt-wide stripes for lines covered by a `DiffHunk`. CodeEditSourceEditor
+/// 0.15.x doesn't expose a public hook on its `GutterView`, so we piggy-back
+/// on `TextViewCoordinator` to grab the controller and inject our own
+/// floating subview using only the public `textView`/`scrollView` surface.
+private final class DiffStripeCoordinator: ObservableObject, TextViewCoordinator {
+    private weak var controller: TextViewController?
+    private weak var stripeView: DiffStripeView?
+    private var hunks: [DiffHunk] = []
+
+    func prepareCoordinator(controller: TextViewController) {
+        self.controller = controller
+        installStripeView(into: controller)
+    }
+
+    func controllerDidAppear(controller: TextViewController) {
+        // Re-install if the view tree was torn down between appearances.
+        if stripeView?.window == nil {
+            installStripeView(into: controller)
+        }
+        stripeView?.setHunks(hunks)
+        stripeView?.repositionToMatchGutter()
+    }
+
+    func destroy() {
+        stripeView?.removeFromSuperview()
+        stripeView = nil
+        controller = nil
+    }
+
+    /// Push fresh hunks down to the overlay; safe to call from SwiftUI's
+    /// `onChange` callback before the editor has finished loading (it will
+    /// pick up the cached value in `controllerDidAppear`).
+    func updateHunks(_ newHunks: [DiffHunk]) {
+        hunks = newHunks
+        stripeView?.setHunks(newHunks)
+    }
+
+    private func installStripeView(into controller: TextViewController) {
+        guard let scrollView = controller.scrollView,
+              let textView = controller.textView,
+              stripeView?.superview !== scrollView else { return }
+
+        let stripe = DiffStripeView(textView: textView, scrollView: scrollView)
+        stripe.setHunks(hunks)
+        // Add as a floating subview pinned to the horizontal axis so the
+        // stripe stays put when the user scrolls horizontally and rides
+        // along with the document on vertical scroll (matching the gutter).
+        scrollView.addFloatingSubview(stripe, for: .horizontal)
+        stripe.repositionToMatchGutter()
+        stripeView = stripe
+    }
+}
+
+/// Thin floating view that lives alongside CodeEditSourceEditor's gutter and
+/// paints orange stripes for the lines covered by `[DiffHunk]`.
+///
+/// Y-positioning mirrors the technique used by CodeEditSourceEditor's own
+/// `GutterView`: the view is flipped, and its `frame.origin.y` tracks
+/// `textView.frame.origin.y - scrollView.contentInsets.top` so that
+/// document-y values returned by `textLineForIndex` map directly to local
+/// drawing coordinates.
+private final class DiffStripeView: NSView {
+    private weak var textView: TextView?
+    private weak var scrollView: NSScrollView?
+    private var hunks: [DiffHunk] = []
+
+    /// Width of the stripe in points. Sized to be obvious without crowding
+    /// the line numbers; matches the visual weight used in similar editors.
+    private static let stripeWidth: CGFloat = 2.0
+
+    init(textView: TextView, scrollView: NSScrollView) {
+        self.textView = textView
+        self.scrollView = scrollView
+        super.init(frame: .zero)
+        wantsLayer = true
+        layerContentsRedrawPolicy = .onSetNeedsDisplay
+        translatesAutoresizingMaskIntoConstraints = true
+        autoresizingMask = []
+
+        // Stay in sync with the document scroll/layout the same way the
+        // gutter does — see TextViewController+Lifecycle.swift.
+        NotificationCenter.default.addObserver(
+            forName: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView,
+            queue: .main
+        ) { [weak self] _ in
+            self?.needsDisplay = true
+        }
+        NotificationCenter.default.addObserver(
+            forName: NSView.frameDidChangeNotification,
+            object: textView,
+            queue: .main
+        ) { [weak self] _ in
+            self?.repositionToMatchGutter()
+        }
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    override var isFlipped: Bool { true }
+
+    func setHunks(_ newHunks: [DiffHunk]) {
+        guard hunks != newHunks else { return }
+        hunks = newHunks
+        needsDisplay = true
+    }
+
+    /// Aligns the stripe view's frame to the gutter geometry. Width matches
+    /// `stripeWidth` (we sit at the very leading edge of the gutter); height
+    /// tracks the textView the same way the gutter does.
+    func repositionToMatchGutter() {
+        guard let textView, let scrollView else { return }
+        let topInset = scrollView.contentInsets.top
+        let height = textView.frame.height + 10
+        // Pin x=0 (leading edge of the scroll view) and width to our stripe.
+        // The gutter's leading edge is also at x=0, so we share the same
+        // column; floating subviews added later draw above earlier ones, so
+        // our stripe ends up in front of the gutter's background fill.
+        frame = NSRect(
+            x: 0,
+            y: textView.frame.origin.y - topInset,
+            width: Self.stripeWidth,
+            height: height
+        )
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard !hunks.isEmpty,
+              let textView,
+              let layoutManager = textView.layoutManager else {
+            return
+        }
+        guard let context = NSGraphicsContext.current?.cgContext else { return }
+
+        // Convert local (gutter-aligned) y to document y. The stripe view's
+        // frame.origin.y mirrors gutterView.frame.origin.y, so dirtyRect.minY
+        // already lines up with the document's y axis after we account for
+        // the contentInsets.top offset baked into our own frame placement.
+        // i.e. our local y == textLine.yPos directly.
+
+        context.saveGState()
+        context.setFillColor(NSColor.systemOrange.cgColor)
+
+        for hunk in hunks {
+            // DiffHunk.newLineRange is 1-based (matching the `+a,b` field of
+            // a unified diff hunk header). textLineForIndex is 0-based.
+            for lineNumber in hunk.newLineRange {
+                let zeroBasedIndex = lineNumber - 1
+                guard zeroBasedIndex >= 0,
+                      let position = layoutManager.textLineForIndex(zeroBasedIndex) else {
+                    continue
+                }
+                let rect = NSRect(
+                    x: 0,
+                    y: position.yPos,
+                    width: Self.stripeWidth,
+                    height: position.height
+                )
+                // Skip rows that are entirely outside the dirty region —
+                // big diffs would otherwise hammer the layout manager.
+                guard rect.intersects(dirtyRect) else { continue }
+                context.fill(rect)
+            }
+        }
+
+        context.restoreGState()
     }
 }
