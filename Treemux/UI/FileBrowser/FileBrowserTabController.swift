@@ -18,6 +18,7 @@ final class FileBrowserTabController: ObservableObject {
     // Runtime state.
     @Published private(set) var rootChildren: [FileNode] = []
     @Published private(set) var childrenByPath: [String: [FileNode]] = [:]
+    private var rawChildrenByPath: [String: [FileNode]] = [:]
     @Published private(set) var selectedFilePath: String?
     @Published private(set) var openFile: OpenFileState = .empty
     @Published private(set) var loadingPaths: Set<String> = []
@@ -59,28 +60,32 @@ final class FileBrowserTabController: ObservableObject {
     func loadRoot() async {
         do {
             let children = try await dataSource.listDirectory(rootPath)
-            self.rootChildren = filtered(children)
-            self.childrenByPath[rootPath] = self.rootChildren
+            rawChildrenByPath[rootPath] = children
+            childrenByPath[rootPath] = filtered(children)
+            rootChildren = childrenByPath[rootPath] ?? []
             // Restore previously-expanded dirs (best effort; missing dirs are silently skipped).
             for path in expandedDirs where path != rootPath {
                 if let kids = try? await dataSource.listDirectory(path) {
-                    self.childrenByPath[path] = filtered(kids)
+                    rawChildrenByPath[path] = kids
+                    childrenByPath[path] = filtered(kids)
                 }
             }
         } catch {
-            self.rootChildren = []
+            rootChildren = []
         }
     }
 
     func toggleExpand(_ path: String) async {
         if expandedDirs.contains(path) {
             expandedDirs.remove(path)
+            rawChildrenByPath[path] = nil
             childrenByPath[path] = nil
         } else {
             loadingPaths.insert(path)
             defer { loadingPaths.remove(path) }
             do {
                 let kids = try await dataSource.listDirectory(path)
+                rawChildrenByPath[path] = kids
                 childrenByPath[path] = filtered(kids)
                 expandedDirs.insert(path)
             } catch {
@@ -93,10 +98,13 @@ final class FileBrowserTabController: ObservableObject {
     func setShowsHiddenFiles(_ show: Bool) {
         guard showsHiddenFiles != show else { return }
         showsHiddenFiles = show
-        // Re-filter cached listings without re-fetching.
-        for (key, value) in childrenByPath {
-            childrenByPath[key] = filtered(value)
+        // Re-derive filtered listings from the unfiltered cache, so toggling
+        // hidden→visible doesn't require a re-fetch.
+        var derived: [String: [FileNode]] = [:]
+        for (key, value) in rawChildrenByPath {
+            derived[key] = filtered(value)
         }
+        childrenByPath = derived
         rootChildren = childrenByPath[rootPath] ?? []
         onPersistableStateChanged?()
     }
@@ -104,6 +112,7 @@ final class FileBrowserTabController: ObservableObject {
     func refresh(_ path: String) async {
         do {
             let kids = try await dataSource.listDirectory(path)
+            rawChildrenByPath[path] = kids
             childrenByPath[path] = filtered(kids)
             if path == rootPath { rootChildren = childrenByPath[path] ?? [] }
         } catch {
