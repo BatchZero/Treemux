@@ -1800,6 +1800,46 @@
           }
         }
       }
+    },
+    "Retry": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重试"
+          }
+        }
+      }
+    },
+    "Cannot connect to %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法连接到 %@"
+          }
+        }
+      }
+    },
+    "Enter Password": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入密码"
+          }
+        }
+      }
+    },
+    "Connect": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

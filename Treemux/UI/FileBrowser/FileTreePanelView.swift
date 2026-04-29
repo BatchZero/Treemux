@@ -9,6 +9,7 @@ struct FileTreePanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            FileTreeErrorBanner(controller: controller)
             FileTreeToolbar(controller: controller)
             Divider()
             ScrollView {
@@ -52,6 +53,61 @@ private struct FileTreeToolbar: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
+    }
+}
+
+private struct FileTreeErrorBanner: View {
+    @ObservedObject var controller: FileBrowserTabController
+    @State private var password: String = ""
+
+    var body: some View {
+        Group {
+            switch controller.loadError {
+            case .generic(let message):
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                    Text(message)
+                        .font(.system(size: 11))
+                        .lineLimit(2)
+                    Spacer()
+                    Button(LocalizedStringKey("Retry")) {
+                        Task { await controller.loadRoot() }
+                    }
+                    .controlSize(.small)
+                }
+                .padding(8)
+                .background(.thickMaterial)
+
+            case .needsPassword(let host):
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "lock")
+                            .foregroundStyle(.orange)
+                        Text(String.localizedStringWithFormat(
+                            String(localized: "Cannot connect to %@"), host))
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    HStack(spacing: 6) {
+                        SecureField(LocalizedStringKey("Enter Password"), text: $password)
+                            .textFieldStyle(.roundedBorder)
+                            .controlSize(.small)
+                        Button(LocalizedStringKey("Connect")) {
+                            let pw = password
+                            password = ""
+                            Task { await controller.retryWithPassword(pw) }
+                        }
+                        .controlSize(.small)
+                        .disabled(password.isEmpty)
+                    }
+                }
+                .padding(8)
+                .background(.thickMaterial)
+
+            case .none:
+                EmptyView()
+            }
+        }
     }
 }
 

@@ -289,9 +289,14 @@ final class FileBrowserTabController: ObservableObject {
     /// failures become `.needsPassword` so the UI can prompt for a password
     /// instead of silently returning an empty tree.
     private func mapError(_ error: Error) -> LoadError {
-        if case SFTPServiceError.authenticationFailed = error {
-            let host = (dataSource as? RemoteFileBrowserDataSource)?.sshTarget.host ?? ""
-            return .needsPassword(host: host)
+        if let svcErr = error as? SFTPServiceError {
+            switch svcErr {
+            case .authenticationFailed, .noAuthMethodAvailable:
+                let host = (dataSource as? RemoteFileBrowserDataSource)?.sshTarget.host ?? ""
+                return .needsPassword(host: host)
+            default:
+                break
+            }
         }
         if let localized = error as? LocalizedError, let msg = localized.errorDescription {
             return .generic(msg)

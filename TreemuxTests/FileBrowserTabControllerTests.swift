@@ -153,6 +153,20 @@ final class FileBrowserTabControllerTests: XCTestCase {
         }
     }
 
+    func test_loadRoot_noAuthMethodAvailable_setsNeedsPasswordError() async {
+        let mock = MockFileBrowserDataSource()
+        mock.listError = SFTPServiceError.noAuthMethodAvailable
+        let ctrl = FileBrowserTabController(
+            initial: .init(rootPath: "/r", rootKind: .project),
+            dataSource: mock)
+        await ctrl.loadRoot()
+        if case .needsPassword = ctrl.loadError {
+            // ok
+        } else {
+            XCTFail("expected .needsPassword, got \(String(describing: ctrl.loadError))")
+        }
+    }
+
     func test_loadRoot_genericError_setsGenericError() async {
         struct Boom: Error, LocalizedError { var errorDescription: String? { "boom" } }
         let mock = MockFileBrowserDataSource()
