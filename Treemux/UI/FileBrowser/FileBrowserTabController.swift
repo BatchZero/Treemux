@@ -59,6 +59,10 @@ final class FileBrowserTabController: ObservableObject {
     let gitDiffService: GitDiffService?
     let repoRoot: String?
 
+    /// Shared word index for editor completion across this tab's sub-tabs.
+    /// Lazily populated by `WordCompletionCoordinator` as buffers open.
+    let wordIndex = BufferWordIndex()
+
     /// Called when the persistent state should be written back into
     /// `WorkspaceTabStateRecord.fileBrowserState` (debounced by caller).
     var onPersistableStateChanged: (() -> Void)?

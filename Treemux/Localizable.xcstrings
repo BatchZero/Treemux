@@ -1551,6 +1551,26 @@
         }
       }
     },
+    "Enable code completion in editor": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用编辑器代码补全"
+          }
+        }
+      }
+    },
+    "Suggestions are drawn from words already present in the buffer. LSP-based completion is not yet supported.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "补全建议来自当前缓冲区中已出现的单词。暂不支持基于 LSP 的补全。"
+          }
+        }
+      }
+    },
     "Inspecting hook status…": {
       "localizations": {
         "zh-Hans": {

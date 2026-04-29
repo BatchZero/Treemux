@@ -15,6 +15,7 @@ struct TextEditorView: View {
     let encoding: String.Encoding
     let dirty: Bool
     @ObservedObject var controller: FileBrowserTabController
+    @EnvironmentObject private var store: WorkspaceStore
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,12 +23,19 @@ struct TextEditorView: View {
                 path: path,
                 content: content,
                 hunks: controller.diffHunksByPath[path] ?? [],
+                bufferID: controller.activeSubTabID ?? Self.fallbackBufferID,
+                wordIndex: controller.wordIndex,
+                isCompletionEnabled: { store.settings.enableCodeCompletion },
                 onChange: { controller.updateBuffer(content: $0) }
             )
             Divider()
             statusBar
         }
     }
+
+    /// Stable UUID used when the controller has no active sub-tab — keeps the
+    /// editor wiring uniform without inserting a phantom entry into the index.
+    private static let fallbackBufferID = UUID()
 
     private var statusBar: some View {
         HStack {
@@ -64,6 +72,9 @@ private struct CodeEditorRepresentable: View {
     let path: String
     let content: String
     let hunks: [DiffHunk]
+    let bufferID: UUID
+    let wordIndex: BufferWordIndex
+    let isCompletionEnabled: () -> Bool
     let onChange: (String) -> Void
 
     @State private var text: String
@@ -71,13 +82,36 @@ private struct CodeEditorRepresentable: View {
     /// Persisted across view updates so we can push fresh hunks into the
     /// existing overlay without forcing CodeEditSourceEditor to rebuild.
     @StateObject private var stripeCoordinator = DiffStripeCoordinator()
+    /// Owns the `WordCompletionDelegate` and re-indexes the buffer on edits.
+    /// Held as `@StateObject` so a single instance survives view updates and
+    /// can keep its weak `controller` reference connected.
+    @StateObject private var completionCoordinator: WordCompletionCoordinator
 
-    init(path: String, content: String, hunks: [DiffHunk], onChange: @escaping (String) -> Void) {
+    init(
+        path: String,
+        content: String,
+        hunks: [DiffHunk],
+        bufferID: UUID,
+        wordIndex: BufferWordIndex,
+        isCompletionEnabled: @escaping () -> Bool,
+        onChange: @escaping (String) -> Void
+    ) {
         self.path = path
         self.content = content
         self.hunks = hunks
+        self.bufferID = bufferID
+        self.wordIndex = wordIndex
+        self.isCompletionEnabled = isCompletionEnabled
         self.onChange = onChange
         self._text = State(initialValue: content)
+        let delegate = WordCompletionDelegate(wordIndex: wordIndex, isEnabled: isCompletionEnabled)
+        self._completionCoordinator = StateObject(
+            wrappedValue: WordCompletionCoordinator(
+                bufferID: bufferID,
+                wordIndex: wordIndex,
+                delegate: delegate
+            )
+        )
     }
 
     var body: some View {
@@ -92,7 +126,8 @@ private struct CodeEditorRepresentable: View {
             language: language,
             configuration: configuration,
             state: $editorState,
-            coordinators: [stripeCoordinator]
+            coordinators: [stripeCoordinator, completionCoordinator],
+            completionDelegate: completionCoordinator.delegate
         )
         // When the sub-tab swaps the underlying file or content (e.g. activating
         // a different sub-tab, or saving / reloading), refresh the editor's
@@ -163,7 +198,12 @@ private struct CodeEditorRepresentable: View {
             peripherals: .init(
                 showGutter: true,
                 showMinimap: false,
-                showFoldingRibbon: false
+                showFoldingRibbon: false,
+                // Non-empty trigger set wires up CodeEditSourceEditor's
+                // `SuggestionTriggerCharacterModel`, which fires the
+                // completion delegate on every typed letter / digit in
+                // addition to the explicit trigger characters listed here.
+                codeSuggestionTriggerCharacters: [".", "_"]
             )
         )
     }
