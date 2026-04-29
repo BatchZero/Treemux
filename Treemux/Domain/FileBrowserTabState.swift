@@ -90,24 +90,4 @@ struct FileBrowserTabState: Codable, Equatable {
         try c.encode(subTabs, forKey: .subTabs)
         try c.encodeIfPresent(activeSubTabID, forKey: .activeSubTabID)
     }
-
-    // TODO: remove after D3+D4 sub-tab refactor.
-    // Compatibility shim that preserves existing controller call sites which
-    // still treat the file-browser state as having a single `selectedFilePath`.
-    // The synthesized accessor reads/writes the active pinned sub-tab. The
-    // setter intentionally collapses to one pinned record because Stage D
-    // hasn't introduced multi-tab semantics yet — D3+D4 will do that.
-    var selectedFilePath: String? {
-        get { subTabs.first(where: { $0.id == activeSubTabID })?.path }
-        set {
-            if let v = newValue {
-                let r = FileSubTabRecord(path: v, isPinned: true)
-                subTabs = [r]
-                activeSubTabID = r.id
-            } else {
-                subTabs = []
-                activeSubTabID = nil
-            }
-        }
-    }
 }

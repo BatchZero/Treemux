@@ -166,13 +166,27 @@ private struct NodeRow: View {
         )
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
-        .onTapGesture {
-            if node.isDirectory {
-                Task { await controller.toggleExpand(node.path) }
-            } else {
-                Task { await controller.selectFile(node.path) }
+        // VSCode-style click routing: single-click opens (or replaces) a
+        // preview sub-tab; double-click pins. When SwiftUI fires both a
+        // single-tap and then a double-tap on a real double-click, the result
+        // is still the same — `pinFile` finds the existing preview tab and
+        // promotes `isPinned`.
+        .gesture(
+            TapGesture(count: 2).onEnded {
+                if !node.isDirectory {
+                    Task { await controller.pinFile(node.path) }
+                }
             }
-        }
+        )
+        .simultaneousGesture(
+            TapGesture(count: 1).onEnded {
+                if node.isDirectory {
+                    Task { await controller.toggleExpand(node.path) }
+                } else {
+                    Task { await controller.openInTree(node.path) }
+                }
+            }
+        )
         .contextMenu {
             Button(LocalizedStringKey("Copy Absolute Path")) {
                 controller.copyPath(node.path, mode: .absolute)

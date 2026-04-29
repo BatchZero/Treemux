@@ -6,25 +6,28 @@ import XCTest
 @testable import Treemux
 
 final class FileBrowserTabStateCodingTests: XCTestCase {
-    // MARK: - Round-trip via the shim selectedFilePath setter
+    // MARK: - Round-trip via the sub-tab API
 
     func testRoundTripWithDefaults() throws {
-        // Use the shim setter so the resulting state still encodes as a single
-        // pinned sub-tab. The shim getter reads back the same path.
-        var state = FileBrowserTabState(
+        // Construct a state with a single pinned sub-tab and round-trip it
+        // through JSON. The decoder should give back the same sub-tab list.
+        let pinned = FileSubTabRecord(path: "/tmp/foo/bar.txt", isPinned: true)
+        let state = FileBrowserTabState(
             rootPath: "/tmp/foo",
             rootKind: .worktree,
             splitRatio: 0.3,
             expandedDirs: ["/tmp/foo", "/tmp/foo/sub"],
-            showsHiddenFiles: true
+            showsHiddenFiles: true,
+            subTabs: [pinned],
+            activeSubTabID: pinned.id
         )
-        state.selectedFilePath = "/tmp/foo/bar.txt"
 
         let data = try JSONEncoder().encode(state)
         let decoded = try JSONDecoder().decode(FileBrowserTabState.self, from: data)
         XCTAssertEqual(decoded.rootPath, "/tmp/foo")
         XCTAssertEqual(decoded.rootKind, .worktree)
-        XCTAssertEqual(decoded.selectedFilePath, "/tmp/foo/bar.txt")
+        XCTAssertEqual(decoded.subTabs.first?.path, "/tmp/foo/bar.txt")
+        XCTAssertEqual(decoded.activeSubTabID, pinned.id)
         XCTAssertEqual(decoded.splitRatio, 0.3, accuracy: 0.0001)
         XCTAssertEqual(decoded.expandedDirs, ["/tmp/foo", "/tmp/foo/sub"])
         XCTAssertTrue(decoded.showsHiddenFiles)
@@ -39,7 +42,6 @@ final class FileBrowserTabStateCodingTests: XCTestCase {
         let decoded = try JSONDecoder().decode(FileBrowserTabState.self, from: json)
         XCTAssertEqual(decoded.rootPath, "/x")
         XCTAssertEqual(decoded.rootKind, .project)
-        XCTAssertNil(decoded.selectedFilePath)
         XCTAssertEqual(decoded.splitRatio, 0.28, accuracy: 0.0001)
         XCTAssertEqual(decoded.expandedDirs, [])
         XCTAssertFalse(decoded.showsHiddenFiles)
