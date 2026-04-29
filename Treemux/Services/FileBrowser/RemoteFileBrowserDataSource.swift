@@ -8,7 +8,6 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
     let supportsWrite = true
     let sshTarget: SSHTarget
     private let service: SFTPService
-    private var didConnect = false
 
     init(sshTarget: SSHTarget, service: SFTPService = SFTPService()) {
         self.sshTarget = sshTarget
@@ -16,9 +15,19 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
     }
 
     private func ensureConnected() async throws {
-        if didConnect { return }
+        // Short-circuit on the actor's own connection state. With shared services
+        // across a workspace, a per-instance flag would let a fresh data source
+        // call `service.connect(target:)` and tear down sibling tabs' sessions
+        // (connect() begins with `await disconnect()`).
+        if await service.isConnected { return }
         try await service.connect(target: sshTarget)
-        didConnect = true
+    }
+
+    /// Connect using interactive password auth, bypassing SSH key auth entirely.
+    /// Invoked by `FileBrowserTabController.retryWithPassword(_:)` after the
+    /// initial key-auth attempt surfaces `.authenticationFailed`.
+    func connectWithPassword(_ password: String) async throws {
+        try await service.connectWithPassword(target: sshTarget, password: password)
     }
 
     func listDirectory(_ path: String) async throws -> [FileNode] {

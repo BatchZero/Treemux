@@ -183,6 +183,14 @@ private struct GeneralSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Section {
+                Toggle("Enable code completion in editor", isOn: $settings.enableCodeCompletion)
+            } footer: {
+                Text("Suggestions are drawn from words already present in the buffer. LSP-based completion is not yet supported.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
     }

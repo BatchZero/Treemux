@@ -1551,6 +1551,26 @@
         }
       }
     },
+    "Enable code completion in editor": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用编辑器代码补全"
+          }
+        }
+      }
+    },
+    "Suggestions are drawn from words already present in the buffer. LSP-based completion is not yet supported.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "补全建议来自当前缓冲区中已出现的单词。暂不支持基于 LSP 的补全。"
+          }
+        }
+      }
+    },
     "Inspecting hook status…": {
       "localizations": {
         "zh-Hans": {
@@ -1877,6 +1897,136 @@
           "stringUnit": {
             "state": "translated",
             "value": "未注册此 agent 的 provider"
+          }
+        }
+      }
+    },
+    "Retry": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重试"
+          }
+        }
+      }
+    },
+    "Copy Absolute Path": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制绝对路径"
+          }
+        }
+      }
+    },
+    "Copy Relative Path": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制相对路径"
+          }
+        }
+      }
+    },
+    "Pin Tab": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "固定标签页"
+          }
+        }
+      }
+    },
+    "Close Other Tabs": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭其他标签页"
+          }
+        }
+      }
+    },
+    "Close All Tabs": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭所有标签页"
+          }
+        }
+      }
+    },
+    "Cannot connect to %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法连接到 %@"
+          }
+        }
+      }
+    },
+    "Enter Password": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入密码"
+          }
+        }
+      }
+    },
+    "Connect": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接"
+          }
+        }
+      }
+    },
+    "%@ has unsaved changes.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 存在未保存的修改。"
+          }
+        }
+      }
+    },
+    "Don't Save": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不保存"
+          }
+        }
+      }
+    },
+    "%lld files have unsaved changes:": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个文件有未保存的修改："
+          }
+        }
+      }
+    },
+    "Save All": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部保存"
           }
         }
       }

@@ -293,6 +293,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func closeTab() {
         guard let ws = store?.selectedWorkspace, let tabID = ws.activeTabID else { return }
+        // Cmd+W cascades through file-browser sub-tabs first. If the active
+        // outer tab has open sub-tabs, close the active sub-tab and stop —
+        // only when there are no sub-tabs left does the shortcut fall through
+        // to closing the outer tab.
+        if ws.handleCloseShortcut() { return }
         ws.closeTab(tabID)
     }
 

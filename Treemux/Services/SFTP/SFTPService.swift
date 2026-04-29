@@ -54,6 +54,11 @@ private enum ConnectionMode {
 actor SFTPService {
     private var mode: ConnectionMode?
 
+    /// Whether this service currently holds an active SSH/SFTP connection.
+    /// Used by data sources sharing one service to avoid redundant `connect()` calls,
+    /// which would tear down sibling sessions via the leading `disconnect()`.
+    var isConnected: Bool { mode != nil }
+
     /// The POSIX file-type mask for directories (S_IFDIR).
     private static let S_IFMT: UInt32 = 0o170000
     private static let S_IFDIR: UInt32 = 0o040000
@@ -178,6 +183,33 @@ actor SFTPService {
         case .citadel(_, let sftp):
             try await writeFileViaSFTP(sftp: sftp, path: path, data: data)
         }
+    }
+
+    // MARK: - Arbitrary command (used by RemoteGitDiffService)
+
+    /// Runs an arbitrary shell command on the remote, returning its stdout.
+    /// In `.ssh` mode, executes via the existing system-ssh path.
+    /// In `.citadel` mode, throws — Citadel's API for arbitrary command exec
+    /// isn't wired and is not needed by file-browser flows in P1.
+    func runCommand(_ command: String, in cwd: String? = nil) async throws -> String {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let full: String
+            if let cwd { full = "cd \(Self.shellQuote(cwd)) && \(command)" }
+            else { full = command }
+            let result = try await runSSH(target: target, command: full)
+            guard result.exitCode == 0 else {
+                throw SFTPServiceError.commandFailed("exit \(result.exitCode): \(result.output)")
+            }
+            return result.output
+        case .citadel:
+            throw SFTPServiceError.commandFailed("runCommand not supported in Citadel password-auth mode")
+        }
+    }
+
+    private static func shellQuote(_ s: String) -> String {
+        "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
     // MARK: - Disconnection

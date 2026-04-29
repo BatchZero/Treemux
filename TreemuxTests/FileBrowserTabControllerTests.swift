@@ -7,6 +7,23 @@ import XCTest
 
 @MainActor
 final class FileBrowserTabControllerTests: XCTestCase {
+    func test_setShowsHiddenFiles_recoversHiddenAfterToggleOff() async {
+        let mock = MockFileBrowserDataSource()
+        let visible = FileNode(id: "/r/a", name: "a", path: "/r/a", kind: .file, sizeBytes: 0, modifiedAt: nil)
+        let hidden  = FileNode(id: "/r/.b", name: ".b", path: "/r/.b", kind: .file, sizeBytes: 0, modifiedAt: nil)
+        mock.directoryListings["/r"] = [visible, hidden]
+        let state = FileBrowserTabState(rootPath: "/r", rootKind: .project, showsHiddenFiles: true)
+        let ctrl = FileBrowserTabController(initial: state, dataSource: mock)
+        await ctrl.loadRoot()
+        XCTAssertEqual(ctrl.rootChildren.count, 2)
+
+        ctrl.setShowsHiddenFiles(false)
+        XCTAssertEqual(ctrl.rootChildren.count, 1, "only visible file remains")
+
+        ctrl.setShowsHiddenFiles(true)
+        XCTAssertEqual(ctrl.rootChildren.count, 2, "hidden file must reappear without re-fetch")
+    }
+
     func testLoadRootPopulatesChildren() async {
         let mock = MockFileBrowserDataSource()
         mock.directoryListings["/r"] = [
@@ -39,12 +56,17 @@ final class FileBrowserTabControllerTests: XCTestCase {
         XCTAssertEqual(ctrl.childrenByPath["/r/sub"]?.map(\.name), ["child.txt"])
     }
 
+    // Stage D rewires file loading to operate on the active sub-tab. The tests
+    // below now go through `openInTree`, which seeds a preview sub-tab and then
+    // dispatches to the same metadata/content loading code path the previous
+    // direct `selectFile` invocation hit.
+
     func testSelectSmallTextFile() async throws {
         let mock = MockFileBrowserDataSource()
         mock.fileMetas["/r/a.txt"] = FileMetadata(path: "/r/a.txt", sizeBytes: 5, modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
         mock.fileContents["/r/a.txt"] = "hello".data(using: .utf8)!
         let ctrl = FileBrowserTabController(initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
-        await ctrl.selectFile("/r/a.txt")
+        await ctrl.openInTree("/r/a.txt")
         if case .text(let path, let content, _, let dirty) = ctrl.openFile {
             XCTAssertEqual(path, "/r/a.txt")
             XCTAssertEqual(content, "hello")
@@ -59,7 +81,7 @@ final class FileBrowserTabControllerTests: XCTestCase {
         let big: Int64 = 6 * 1024 * 1024
         mock.fileMetas["/r/big.bin"] = FileMetadata(path: "/r/big.bin", sizeBytes: big, modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
         let ctrl = FileBrowserTabController(initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
-        await ctrl.selectFile("/r/big.bin")
+        await ctrl.openInTree("/r/big.bin")
         if case .confirmingLargeFile(let path, let size) = ctrl.openFile {
             XCTAssertEqual(path, "/r/big.bin")
             XCTAssertEqual(size, big)
@@ -72,7 +94,7 @@ final class FileBrowserTabControllerTests: XCTestCase {
         let mock = MockFileBrowserDataSource()
         mock.fileMetas["/r/a.exe"] = FileMetadata(path: "/r/a.exe", sizeBytes: 100, modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
         let ctrl = FileBrowserTabController(initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
-        await ctrl.selectFile("/r/a.exe")
+        await ctrl.openInTree("/r/a.exe")
         if case .binary = ctrl.openFile {} else {
             XCTFail("expected .binary, got \(ctrl.openFile)")
         }
@@ -83,7 +105,7 @@ final class FileBrowserTabControllerTests: XCTestCase {
         mock.fileMetas["/r/a.txt"] = FileMetadata(path: "/r/a.txt", sizeBytes: 1, modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
         mock.fileContents["/r/a.txt"] = "x".data(using: .utf8)!
         let ctrl = FileBrowserTabController(initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
-        await ctrl.selectFile("/r/a.txt")
+        await ctrl.openInTree("/r/a.txt")
         ctrl.updateBuffer(content: "edited")
         if case .text(_, let content, _, let dirty) = ctrl.openFile {
             XCTAssertEqual(content, "edited")
@@ -98,7 +120,7 @@ final class FileBrowserTabControllerTests: XCTestCase {
         mock.fileMetas["/r/a.txt"] = FileMetadata(path: "/r/a.txt", sizeBytes: 1, modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
         mock.fileContents["/r/a.txt"] = "x".data(using: .utf8)!
         let ctrl = FileBrowserTabController(initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
-        await ctrl.selectFile("/r/a.txt")
+        await ctrl.openInTree("/r/a.txt")
         ctrl.updateBuffer(content: "edited")
         try await ctrl.saveCurrentFile()
         XCTAssertEqual(mock.writes.count, 1)
@@ -114,10 +136,68 @@ final class FileBrowserTabControllerTests: XCTestCase {
         mock.fileContents["/r/a.txt"] = "x".data(using: .utf8)!
         let ctrl = FileBrowserTabController(initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
         XCTAssertFalse(ctrl.isDirty)
-        await ctrl.selectFile("/r/a.txt")
+        await ctrl.openInTree("/r/a.txt")
         XCTAssertFalse(ctrl.isDirty)
         ctrl.updateBuffer(content: "edited")
         XCTAssertTrue(ctrl.isDirty)
+    }
+
+    // MARK: - LoadError surface (B1)
+
+    func test_loadRoot_authFailed_setsNeedsPasswordError() async {
+        let mock = MockFileBrowserDataSource()
+        mock.listError = SFTPServiceError.authenticationFailed
+        let state = FileBrowserTabState(rootPath: "/r", rootKind: .project)
+        let ctrl = FileBrowserTabController(initial: state, dataSource: mock)
+        await ctrl.loadRoot()
+        if case .needsPassword = ctrl.loadError {
+            // ok — host is empty here because mock isn't a RemoteFileBrowserDataSource;
+            // real wiring is covered by retryWithPassword in production code.
+        } else {
+            XCTFail("expected .needsPassword, got \(String(describing: ctrl.loadError))")
+        }
+    }
+
+    func test_loadRoot_noAuthMethodAvailable_setsNeedsPasswordError() async {
+        let mock = MockFileBrowserDataSource()
+        mock.listError = SFTPServiceError.noAuthMethodAvailable
+        let ctrl = FileBrowserTabController(
+            initial: .init(rootPath: "/r", rootKind: .project),
+            dataSource: mock)
+        await ctrl.loadRoot()
+        if case .needsPassword = ctrl.loadError {
+            // ok
+        } else {
+            XCTFail("expected .needsPassword, got \(String(describing: ctrl.loadError))")
+        }
+    }
+
+    func test_loadRoot_genericError_setsGenericError() async {
+        struct Boom: Error, LocalizedError { var errorDescription: String? { "boom" } }
+        let mock = MockFileBrowserDataSource()
+        mock.listError = Boom()
+        let ctrl = FileBrowserTabController(
+            initial: .init(rootPath: "/r", rootKind: .project),
+            dataSource: mock)
+        await ctrl.loadRoot()
+        if case .generic(let msg) = ctrl.loadError {
+            XCTAssertEqual(msg, "boom")
+        } else {
+            XCTFail("expected .generic")
+        }
+    }
+
+    func test_loadRoot_success_clearsLoadError() async {
+        let mock = MockFileBrowserDataSource()
+        mock.listError = SFTPServiceError.authenticationFailed
+        let ctrl = FileBrowserTabController(
+            initial: .init(rootPath: "/r", rootKind: .project),
+            dataSource: mock)
+        await ctrl.loadRoot()  // sets needsPassword
+        XCTAssertNotNil(ctrl.loadError)
+        mock.listError = nil
+        await ctrl.loadRoot()  // resets to nil on entry, succeeds
+        XCTAssertNil(ctrl.loadError)
     }
 }
 
@@ -127,9 +207,12 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
     var fileContents: [String: Data] = [:]
     var fileMetas: [String: FileMetadata] = [:]
     var writes: [(path: String, data: Data)] = []
+    /// When non-nil, `listDirectory` throws this error before returning.
+    var listError: Error?
 
     func listDirectory(_ path: String) async throws -> [FileNode] {
-        directoryListings[path] ?? []
+        if let listError { throw listError }
+        return directoryListings[path] ?? []
     }
     func fileMetadata(_ path: String) async throws -> FileMetadata {
         fileMetas[path] ?? FileMetadata(path: path, sizeBytes: Int64(fileContents[path]?.count ?? 0), modifiedAt: nil, isDirectory: false, isSymbolicLink: false)

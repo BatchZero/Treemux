@@ -241,6 +241,24 @@ struct RepositoryStatusSnapshot {
     let untrackedCount: Int
 }
 
+// MARK: - Batch close request
+
+/// In-flight request to close a file-browser outer tab whose controller has
+/// 2+ dirty sub-tabs. Carried via `WorkspaceModel.pendingBatchClose` and
+/// presented by `WorkspaceTabContainerView` as a SwiftUI sheet.
+///
+/// The struct holds a strong reference to the controller — that's safe here
+/// because the request is short-lived (cleared on Save All / Don't Save /
+/// Cancel) and `WorkspaceModel` doesn't retain `pendingBatchClose` after
+/// resolution, so no retain cycle forms.
+struct BatchCloseRequest: Identifiable {
+    let id = UUID()
+    let tabID: UUID
+    let dirty: [SubTabRuntime]
+    let relativePaths: [String]
+    let controller: FileBrowserTabController
+}
+
 // MARK: - Observable Runtime Model
 
 /// A runtime workspace model observed by UI views via @EnvironmentObject.
@@ -276,6 +294,12 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     @Published var tabs: [WorkspaceTabStateRecord] = []
     @Published var activeTabID: UUID?
 
+    /// In-flight request for the batch unsaved-changes sheet (set when
+    /// closing an outer file-browser tab with 2+ dirty sub-tabs). The
+    /// containing view binds a `.sheet(item:)` to this property; setting it
+    /// to nil dismisses the sheet (used as the Cancel path).
+    @Published var pendingBatchClose: BatchCloseRequest?
+
     /// Tab controllers keyed by worktree path → tab ID.
     private var tabControllers: [String: [UUID: WorkspaceSessionController]] = [:]
     /// File browser controllers keyed by worktree path → tab ID.
@@ -285,11 +309,28 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     /// The worktree path currently being displayed.
     private(set) var activeWorktreePath: String = ""
 
+    /// Shared SFTP service for this workspace; lazily created the first time
+    /// a remote file-browser tab needs it. Sharing one service across tabs
+    /// means a successful password prompt on the first tab unlocks the rest.
+    private var sharedSFTPService_: SFTPService?
+
+    func ensureSharedSFTPService() -> SFTPService {
+        if let s = sharedSFTPService_ { return s }
+        let s = SFTPService()
+        sharedSFTPService_ = s
+        return s
+    }
+
     // MARK: - Active Controller
 
-    /// Returns the session controller for the currently active tab, or nil if no tab is active.
+    /// Returns the session controller for the currently active tab, or nil if no tab
+    /// is active or the active tab is not a terminal tab. File-browser tabs have no
+    /// session controller; callers (e.g. AIHookBannerController.evaluate) must tolerate
+    /// nil here so we don't lazy-create a phantom terminal controller for an FB tab.
     var sessionController: WorkspaceSessionController? {
-        guard let tabID = activeTabID else { return nil }
+        guard let tabID = activeTabID,
+              let tab = tabs.first(where: { $0.id == tabID }),
+              tab.kind == .terminal else { return nil }
         return controller(forTabID: tabID, worktreePath: activeWorktreePath)
     }
 
@@ -423,7 +464,22 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         if let existing = fileBrowserControllers[path]?[tabID] { return existing }
 
         let dataSource: any FileBrowserDataSource = makeDataSource()
-        let ctrl = FileBrowserTabController(initial: state, dataSource: dataSource)
+        // Inject a GitDiffService matching the workspace's transport (Local
+        // for on-disk worktrees, Remote SSH-backed for repository tabs with
+        // an `sshTarget`). The injected `repoRoot` is the file-browser tab's
+        // root path, which equals the project / worktree root in our model.
+        let gitService: GitDiffService = {
+            if sshTarget != nil {
+                return RemoteGitDiffService(service: ensureSharedSFTPService())
+            }
+            return LocalGitDiffService()
+        }()
+        let ctrl = FileBrowserTabController(
+            initial: state,
+            dataSource: dataSource,
+            gitDiffService: gitService,
+            repoRoot: state.rootPath
+        )
         ctrl.onPersistableStateChanged = { [weak self] in
             self?.persistFileBrowserState(tabID: tabID)
         }
@@ -434,7 +490,7 @@ final class WorkspaceModel: ObservableObject, Identifiable {
 
     private func makeDataSource() -> any FileBrowserDataSource {
         if let target = sshTarget {
-            return RemoteFileBrowserDataSource(sshTarget: target)
+            return RemoteFileBrowserDataSource(sshTarget: target, service: ensureSharedSFTPService())
         }
         return LocalFileBrowserDataSource()
     }
@@ -455,46 +511,127 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         activeTabID = tabID
     }
 
-    /// Closes the tab. If it's a dirty file-browser tab, shows a confirmation
-    /// modal first; user can save, discard, or cancel.
+    /// Cmd+W cascade: if the active outer tab is a file-browser with at least
+    /// one open sub-tab, close the active sub-tab and consume the shortcut.
+    /// Returns `false` (no-op) when the active tab is not a file-browser, when
+    /// the controller has not been instantiated yet, or when there are no
+    /// sub-tabs — in which case the caller should fall through to the existing
+    /// outer-tab close path.
+    func handleCloseShortcut() -> Bool {
+        guard let tabID = activeTabID,
+              let tab = tabs.first(where: { $0.id == tabID }),
+              tab.kind == .fileBrowser,
+              let ctrl = fileBrowserControllers[activeWorktreePath]?[tabID] else {
+            return false
+        }
+        return ctrl.handleCloseShortcut()
+    }
+
+    /// Closes the tab. If it's a file-browser tab with dirty sub-tabs, the user
+    /// is prompted first:
+    /// - 1 dirty sub-tab → NSAlert (Save / Don't Save / Cancel) including the
+    ///   file's basename in the title.
+    /// - 2+ dirty sub-tabs → SwiftUI sheet (`BatchUnsavedChangesSheet`)
+    ///   listing relative paths with Save All / Don't Save / Cancel.
+    /// Tabs whose dirty list is empty close immediately.
     func requestCloseTab(_ tabID: UUID) {
         guard let tab = tabs.first(where: { $0.id == tabID }) else { return }
         if tab.kind == .fileBrowser,
-           let ctrl = fileBrowserControllers[activeWorktreePath]?[tabID],
-           ctrl.isDirty {
-            confirmCloseDirtyFileBrowserTab(tabID: tabID, controller: ctrl)
-            return
+           let ctrl = fileBrowserControllers[activeWorktreePath]?[tabID] {
+            let dirty = ctrl.dirtySubTabs
+            switch dirty.count {
+            case 0:
+                break  // fall through to closeTab
+            case 1:
+                confirmCloseSingleDirtySubTabAndOuter(tabID: tabID, controller: ctrl, subTab: dirty[0])
+                return
+            default:
+                requestBatchCloseSheet(tabID: tabID, controller: ctrl, dirty: dirty)
+                return
+            }
         }
         closeTab(tabID)
     }
 
-    private func confirmCloseDirtyFileBrowserTab(tabID: UUID, controller: FileBrowserTabController) {
+    private func confirmCloseSingleDirtySubTabAndOuter(tabID: UUID,
+                                                      controller: FileBrowserTabController,
+                                                      subTab: SubTabRuntime) {
         let alert = NSAlert()
-        alert.messageText = String(localized: "Unsaved changes")
+        let name = URL(fileURLWithPath: subTab.path).lastPathComponent
+        alert.messageText = String.localizedStringWithFormat(
+            String(localized: "%@ has unsaved changes."), name)
         alert.informativeText = String(localized: "Save changes before closing?")
         alert.alertStyle = .warning
         alert.addButton(withTitle: String(localized: "Save"))
-        alert.addButton(withTitle: String(localized: "Discard"))
+        alert.addButton(withTitle: String(localized: "Don't Save"))
         alert.addButton(withTitle: String(localized: "Cancel"))
         let response = alert.runModal()
         switch response {
         case .alertFirstButtonReturn: // Save
             Task { @MainActor in
                 do {
+                    controller.activateSubTab(subTab.id)
                     try await controller.saveCurrentFile()
                     self.closeTab(tabID)
                 } catch {
-                    // Saving failed — leave the tab open; user can retry / discard.
                     let err = NSAlert()
                     err.messageText = String(localized: "Save failed")
                     err.informativeText = error.localizedDescription
                     err.runModal()
                 }
             }
-        case .alertSecondButtonReturn: // Discard
+        case .alertSecondButtonReturn: // Don't Save
             closeTab(tabID)
         default: // Cancel
             break
+        }
+    }
+
+    private func requestBatchCloseSheet(tabID: UUID,
+                                        controller: FileBrowserTabController,
+                                        dirty: [SubTabRuntime]) {
+        let rels = dirty.map { controller.relativePath($0.path) }
+        pendingBatchClose = BatchCloseRequest(
+            tabID: tabID,
+            dirty: dirty,
+            relativePaths: rels,
+            controller: controller
+        )
+    }
+
+    /// Resolves the in-flight `pendingBatchClose`. Called from
+    /// `BatchUnsavedChangesSheet`'s callbacks.
+    /// - Parameters:
+    ///   - saveAll: when `true`, iterates the dirty sub-tabs activating each
+    ///     and running `saveCurrentFile()` sequentially. The first failure
+    ///     surfaces a Save-failed alert and aborts before the outer tab closes.
+    ///   - discard: when `true`, closes the outer tab immediately without
+    ///     saving. Mutually exclusive with `saveAll`.
+    /// Cancel is handled by setting `pendingBatchClose = nil` directly via the
+    /// sheet binding.
+    func resolveBatchClose(saveAll: Bool, discard: Bool) {
+        guard let req = pendingBatchClose else { return }
+        pendingBatchClose = nil
+        if discard {
+            closeTab(req.tabID)
+            return
+        }
+        guard saveAll else { return }
+        let ctrl = req.controller
+        Task { @MainActor in
+            for sub in req.dirty {
+                ctrl.activateSubTab(sub.id)
+                do {
+                    try await ctrl.saveCurrentFile()
+                } catch {
+                    let err = NSAlert()
+                    err.messageText = String(localized: "Save failed")
+                    err.informativeText = error.localizedDescription
+                    err.runModal()
+                    return  // abort batch close on first failure
+                }
+            }
+            self.closeTab(req.tabID)
         }
     }
 
@@ -584,22 +721,27 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     // MARK: - State Save/Load
 
     /// Saves the current active tab's layout and pane state from its controller.
+    /// Only applies to terminal tabs — file-browser tabs persist their state via
+    /// `persistFileBrowserState` and must not be rewritten here.
     func saveActiveTabState() {
         guard let tabID = activeTabID,
-              let index = tabs.firstIndex(where: { $0.id == tabID }),
+              let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
+        let existingTab = tabs[index]
+        guard existingTab.kind == .terminal,
               let ctrl = tabControllers[activeWorktreePath]?[tabID] else { return }
 
-        let existingTab = tabs[index]
         let preferredTitle = suggestedTitle(for: ctrl, existingTab: existingTab)
 
         tabs[index] = WorkspaceTabStateRecord(
             id: tabID,
             title: preferredTitle,
             isManuallyNamed: existingTab.isManuallyNamed,
+            kind: .terminal,
             layout: ctrl.layout,
             panes: ctrl.sessionSnapshots(),
             focusedPaneID: ctrl.focusedPaneID,
-            zoomedPaneID: ctrl.zoomedPaneID
+            zoomedPaneID: ctrl.zoomedPaneID,
+            fileBrowserState: nil
         )
     }
 
@@ -682,6 +824,13 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     private func controller(forTabID tabID: UUID, worktreePath: String) -> WorkspaceSessionController {
         if let existing = tabControllers[worktreePath]?[tabID] {
             return existing
+        }
+
+        // Defensive: this factory should only be reached for terminal tabs.
+        // sessionController already gates on tab.kind == .terminal; this assertion
+        // catches future regressions where a caller bypasses that guard.
+        if let tab = tabs.first(where: { $0.id == tabID }), tab.kind != .terminal {
+            assertionFailure("controller(forTabID:) called for non-terminal tab \(tabID)")
         }
 
         // Look up the saved tab state to restore layout and panes

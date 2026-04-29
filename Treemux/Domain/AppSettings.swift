@@ -31,10 +31,15 @@ struct AppSettings: Codable, Equatable {
     /// "Don't ask for this host". Stored as `["<workspaceID>:<AIToolKind.rawValue>"]`.
     var aiHookSkippedKeys: [String] = []
 
+    /// Whether the editor shows a word-completion popover while typing.
+    /// Backed by `BufferWordIndex` (Tier 3a per the P1 design doc); LSP-based
+    /// completion is deferred to P2.
+    var enableCodeCompletion: Bool = true
+
     enum CodingKeys: String, CodingKey {
         case version, language, activeThemeID, appearance, terminal, startup, ssh,
              shortcutOverrides, defaultLocalTerminalIcon, updates, showDefaultTerminal,
-             aiActivityHintsEnabled, aiHookSkippedKeys
+             aiActivityHintsEnabled, aiHookSkippedKeys, enableCodeCompletion
     }
 
     init() {}
@@ -54,6 +59,7 @@ struct AppSettings: Codable, Equatable {
         showDefaultTerminal = try container.decodeIfPresent(Bool.self, forKey: .showDefaultTerminal) ?? true
         aiActivityHintsEnabled = try container.decodeIfPresent(Bool.self, forKey: .aiActivityHintsEnabled) ?? true
         aiHookSkippedKeys = try container.decodeIfPresent([String].self, forKey: .aiHookSkippedKeys) ?? []
+        enableCodeCompletion = try container.decodeIfPresent(Bool.self, forKey: .enableCodeCompletion) ?? true
     }
 }
 
