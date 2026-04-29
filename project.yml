@@ -14,6 +14,9 @@ packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     exactVersion: "2.7.3"
+  CodeEditSourceEditor:
+    url: https://github.com/CodeEditApp/CodeEditSourceEditor
+    exactVersion: "0.15.2"
 
 settings:
   base:
@@ -42,6 +45,8 @@ targets:
         product: Citadel
       - package: Sparkle
         product: Sparkle
+      - package: CodeEditSourceEditor
+        product: CodeEditSourceEditor
     postBuildScripts:
       - name: Copy Ghostty Resources
         script: |
