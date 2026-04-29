@@ -71,6 +71,14 @@ private struct WorkspaceTabContainerView: View {
         .sheet(item: $pendingPreview) { model in
             HookPreviewSheet(model: model)
         }
+        .sheet(item: $workspace.pendingBatchClose) { req in
+            BatchUnsavedChangesSheet(
+                dirtyRelativePaths: req.relativePaths,
+                onSaveAll: { workspace.resolveBatchClose(saveAll: true, discard: false) },
+                onDiscardAll: { workspace.resolveBatchClose(saveAll: false, discard: true) },
+                onCancel: { workspace.pendingBatchClose = nil }
+            )
+        }
         .task(id: workspace.id) {
             await bannerController.evaluate(workspace: workspace, appSettings: store.settings)
         }

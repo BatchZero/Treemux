@@ -241,6 +241,24 @@ struct RepositoryStatusSnapshot {
     let untrackedCount: Int
 }
 
+// MARK: - Batch close request
+
+/// In-flight request to close a file-browser outer tab whose controller has
+/// 2+ dirty sub-tabs. Carried via `WorkspaceModel.pendingBatchClose` and
+/// presented by `WorkspaceTabContainerView` as a SwiftUI sheet.
+///
+/// The struct holds a strong reference to the controller — that's safe here
+/// because the request is short-lived (cleared on Save All / Don't Save /
+/// Cancel) and `WorkspaceModel` doesn't retain `pendingBatchClose` after
+/// resolution, so no retain cycle forms.
+struct BatchCloseRequest: Identifiable {
+    let id = UUID()
+    let tabID: UUID
+    let dirty: [SubTabRuntime]
+    let relativePaths: [String]
+    let controller: FileBrowserTabController
+}
+
 // MARK: - Observable Runtime Model
 
 /// A runtime workspace model observed by UI views via @EnvironmentObject.
@@ -275,6 +293,12 @@ final class WorkspaceModel: ObservableObject, Identifiable {
 
     @Published var tabs: [WorkspaceTabStateRecord] = []
     @Published var activeTabID: UUID?
+
+    /// In-flight request for the batch unsaved-changes sheet (set when
+    /// closing an outer file-browser tab with 2+ dirty sub-tabs). The
+    /// containing view binds a `.sheet(item:)` to this property; setting it
+    /// to nil dismisses the sheet (used as the Cancel path).
+    @Published var pendingBatchClose: BatchCloseRequest?
 
     /// Tab controllers keyed by worktree path → tab ID.
     private var tabControllers: [String: [UUID: WorkspaceSessionController]] = [:]
@@ -488,46 +512,111 @@ final class WorkspaceModel: ObservableObject, Identifiable {
         return ctrl.handleCloseShortcut()
     }
 
-    /// Closes the tab. If it's a dirty file-browser tab, shows a confirmation
-    /// modal first; user can save, discard, or cancel.
+    /// Closes the tab. If it's a file-browser tab with dirty sub-tabs, the user
+    /// is prompted first:
+    /// - 1 dirty sub-tab → NSAlert (Save / Don't Save / Cancel) including the
+    ///   file's basename in the title.
+    /// - 2+ dirty sub-tabs → SwiftUI sheet (`BatchUnsavedChangesSheet`)
+    ///   listing relative paths with Save All / Don't Save / Cancel.
+    /// Tabs whose dirty list is empty close immediately.
     func requestCloseTab(_ tabID: UUID) {
         guard let tab = tabs.first(where: { $0.id == tabID }) else { return }
         if tab.kind == .fileBrowser,
-           let ctrl = fileBrowserControllers[activeWorktreePath]?[tabID],
-           ctrl.isDirty {
-            confirmCloseDirtyFileBrowserTab(tabID: tabID, controller: ctrl)
-            return
+           let ctrl = fileBrowserControllers[activeWorktreePath]?[tabID] {
+            let dirty = ctrl.dirtySubTabs
+            switch dirty.count {
+            case 0:
+                break  // fall through to closeTab
+            case 1:
+                confirmCloseSingleDirtySubTabAndOuter(tabID: tabID, controller: ctrl, subTab: dirty[0])
+                return
+            default:
+                requestBatchCloseSheet(tabID: tabID, controller: ctrl, dirty: dirty)
+                return
+            }
         }
         closeTab(tabID)
     }
 
-    private func confirmCloseDirtyFileBrowserTab(tabID: UUID, controller: FileBrowserTabController) {
+    private func confirmCloseSingleDirtySubTabAndOuter(tabID: UUID,
+                                                      controller: FileBrowserTabController,
+                                                      subTab: SubTabRuntime) {
         let alert = NSAlert()
-        alert.messageText = String(localized: "Unsaved changes")
+        let name = URL(fileURLWithPath: subTab.path).lastPathComponent
+        alert.messageText = String.localizedStringWithFormat(
+            String(localized: "%@ has unsaved changes."), name)
         alert.informativeText = String(localized: "Save changes before closing?")
         alert.alertStyle = .warning
         alert.addButton(withTitle: String(localized: "Save"))
-        alert.addButton(withTitle: String(localized: "Discard"))
+        alert.addButton(withTitle: String(localized: "Don't Save"))
         alert.addButton(withTitle: String(localized: "Cancel"))
         let response = alert.runModal()
         switch response {
         case .alertFirstButtonReturn: // Save
             Task { @MainActor in
                 do {
+                    controller.activateSubTab(subTab.id)
                     try await controller.saveCurrentFile()
                     self.closeTab(tabID)
                 } catch {
-                    // Saving failed — leave the tab open; user can retry / discard.
                     let err = NSAlert()
                     err.messageText = String(localized: "Save failed")
                     err.informativeText = error.localizedDescription
                     err.runModal()
                 }
             }
-        case .alertSecondButtonReturn: // Discard
+        case .alertSecondButtonReturn: // Don't Save
             closeTab(tabID)
         default: // Cancel
             break
+        }
+    }
+
+    private func requestBatchCloseSheet(tabID: UUID,
+                                        controller: FileBrowserTabController,
+                                        dirty: [SubTabRuntime]) {
+        let rels = dirty.map { controller.relativePath($0.path) }
+        pendingBatchClose = BatchCloseRequest(
+            tabID: tabID,
+            dirty: dirty,
+            relativePaths: rels,
+            controller: controller
+        )
+    }
+
+    /// Resolves the in-flight `pendingBatchClose`. Called from
+    /// `BatchUnsavedChangesSheet`'s callbacks.
+    /// - Parameters:
+    ///   - saveAll: when `true`, iterates the dirty sub-tabs activating each
+    ///     and running `saveCurrentFile()` sequentially. The first failure
+    ///     surfaces a Save-failed alert and aborts before the outer tab closes.
+    ///   - discard: when `true`, closes the outer tab immediately without
+    ///     saving. Mutually exclusive with `saveAll`.
+    /// Cancel is handled by setting `pendingBatchClose = nil` directly via the
+    /// sheet binding.
+    func resolveBatchClose(saveAll: Bool, discard: Bool) {
+        guard let req = pendingBatchClose else { return }
+        pendingBatchClose = nil
+        if discard {
+            closeTab(req.tabID)
+            return
+        }
+        guard saveAll else { return }
+        let ctrl = req.controller
+        Task { @MainActor in
+            for sub in req.dirty {
+                ctrl.activateSubTab(sub.id)
+                do {
+                    try await ctrl.saveCurrentFile()
+                } catch {
+                    let err = NSAlert()
+                    err.messageText = String(localized: "Save failed")
+                    err.informativeText = error.localizedDescription
+                    err.runModal()
+                    return  // abort batch close on first failure
+                }
+            }
+            self.closeTab(req.tabID)
         }
     }
 
