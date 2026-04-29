@@ -144,6 +144,66 @@ final class HookBackupServiceTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: second.localPath.path))
     }
 
+    func testBackupSameSecondAppendsSuffix() async throws {
+        // Same fixed timestamp on every call: forces filename collision.
+        let service = HookBackupService(now: { self.fixedNow() }, home: tempHome)
+        let change = HookInstallChange(
+            path: "~/.claude/settings.json",
+            proposed: "{}",
+            current: "{}"
+        )
+
+        let first = try await service.backup(change: change, target: .local,
+                                             provider: ClaudeCodeHookProvider())
+        let second = try await service.backup(change: change, target: .local,
+                                              provider: ClaudeCodeHookProvider())
+        let third = try await service.backup(change: change, target: .local,
+                                             provider: ClaudeCodeHookProvider())
+
+        XCTAssertNotEqual(first.localPath, second.localPath)
+        XCTAssertNotEqual(second.localPath, third.localPath)
+        XCTAssertEqual(first.localPath.lastPathComponent,
+                       "settings.json.20260429-153012")
+        XCTAssertEqual(second.localPath.lastPathComponent,
+                       "settings.json.20260429-153012-2")
+        XCTAssertEqual(third.localPath.lastPathComponent,
+                       "settings.json.20260429-153012-3")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: first.localPath.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: second.localPath.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: third.localPath.path))
+    }
+
+    func testBackupSanitizesPathTraversalCharsInHost() async throws {
+        let service = HookBackupService(now: { self.fixedNow() }, home: tempHome)
+        // Host with path-segment-hostile characters.
+        let target = HookTarget.remote(SSHTarget(
+            host: "../../etc/passwd/host",
+            port: 22,
+            user: "u",
+            identityFile: nil,
+            displayName: "evil",
+            remotePath: nil
+        ))
+        let change = HookInstallChange(
+            path: "~/.claude/settings.json",
+            proposed: "{}",
+            current: "{}"
+        )
+
+        let result = try await service.backup(
+            change: change, target: target,
+            provider: ClaudeCodeHookProvider()
+        )
+
+        // Backup must stay strictly under tempHome/.treemux/backups/.
+        let safeRoot = tempHome.appendingPathComponent(".treemux/backups", isDirectory: true)
+        XCTAssertTrue(result.localPath.path.hasPrefix(safeRoot.path),
+                      "backup path \(result.localPath.path) escaped the safe root")
+        // The slashes and dots in the host were replaced with underscores.
+        XCTAssertFalse(result.localPath.path.contains("/etc/"))
+        XCTAssertFalse(result.localPath.path.contains("/.."))
+    }
+
     func testBackupCreatesMissingIntermediateDirectories() async throws {
         let dotTreemux = tempHome.appendingPathComponent(".treemux")
         XCTAssertFalse(FileManager.default.fileExists(atPath: dotTreemux.path),

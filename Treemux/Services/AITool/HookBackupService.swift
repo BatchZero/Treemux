@@ -47,22 +47,35 @@ final class HookBackupService {
             .appendingPathComponent(provider.kind.rawValue, isDirectory: true)
         let basename = (change.path as NSString).lastPathComponent
         let filename = "\(basename).\(Self.formatter.string(from: timestamp))"
-        let url = dir.appendingPathComponent(filename)
 
         do {
             try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            // Avoid silent overwrite when two backups land in the same second.
+            let baseURL = dir.appendingPathComponent(filename)
+            var url = baseURL
+            var n = 2
+            while fm.fileExists(atPath: url.path) {
+                url = dir.appendingPathComponent("\(filename)-\(n)")
+                n += 1
+            }
             try current.write(to: url, atomically: true, encoding: .utf8)
+            return HookBackupResult(localPath: url, timestamp: timestamp)
         } catch {
-            throw HookInstallError.ioError("backup \(url.path): \(error.localizedDescription)")
+            throw HookInstallError.ioError("backup \(dir.path)/\(filename): \(error.localizedDescription)")
         }
-        return HookBackupResult(localPath: url, timestamp: timestamp)
     }
 
-    /// Replace characters that aren't safe in a path segment. Only ":" appears
-    /// in our target IDs today (`remote:user@host`), so a single substitution
-    /// suffices.
+    /// Whitelist of characters allowed in a sanitized target-ID path segment.
+    /// Anything else (including "/", ":", "..") is replaced with "_" to keep
+    /// the backup tree strictly under `~/.treemux/backups/<targetID>/`.
+    private static let safeChars: CharacterSet = {
+        var s = CharacterSet.alphanumerics
+        s.insert(charactersIn: "._@-")
+        return s
+    }()
+
     private static func sanitize(_ id: String) -> String {
-        id.replacingOccurrences(of: ":", with: "_")
+        String(id.unicodeScalars.map { safeChars.contains($0) ? Character($0) : "_" })
     }
 
     private static let formatter: DateFormatter = {
