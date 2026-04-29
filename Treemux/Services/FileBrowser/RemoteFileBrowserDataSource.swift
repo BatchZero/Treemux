@@ -21,6 +21,14 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
         didConnect = true
     }
 
+    /// Connect using interactive password auth, bypassing SSH key auth entirely.
+    /// Invoked by `FileBrowserTabController.retryWithPassword(_:)` after the
+    /// initial key-auth attempt surfaces `.authenticationFailed`.
+    func connectWithPassword(_ password: String) async throws {
+        try await service.connectWithPassword(target: sshTarget, password: password)
+        didConnect = true
+    }
+
     func listDirectory(_ path: String) async throws -> [FileNode] {
         try await ensureConnected()
         let rich = try await service.listAllEntries(at: path)

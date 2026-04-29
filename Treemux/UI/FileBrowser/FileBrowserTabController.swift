@@ -8,6 +8,13 @@ import Foundation
 
 @MainActor
 final class FileBrowserTabController: ObservableObject {
+    /// Surfaced load failure for the file tree. UI binds this to a banner
+    /// (Task B4) so SSH-key/permission failures stop being silently swallowed.
+    enum LoadError: Equatable {
+        case generic(String)
+        case needsPassword(host: String)
+    }
+
     // Persistent state mirrors / writes back to FileBrowserTabState.
     @Published var rootPath: String
     @Published private(set) var rootKind: FileBrowserRootKind
@@ -22,6 +29,7 @@ final class FileBrowserTabController: ObservableObject {
     @Published private(set) var selectedFilePath: String?
     @Published private(set) var openFile: OpenFileState = .empty
     @Published private(set) var loadingPaths: Set<String> = []
+    @Published private(set) var loadError: LoadError?
 
     // Configuration.
     static let textReadLimit: Int = 5 * 1024 * 1024       // 5 MB
@@ -58,6 +66,7 @@ final class FileBrowserTabController: ObservableObject {
     // MARK: - Tree loading
 
     func loadRoot() async {
+        loadError = nil
         do {
             let children = try await dataSource.listDirectory(rootPath)
             rawChildrenByPath[rootPath] = children
@@ -72,6 +81,7 @@ final class FileBrowserTabController: ObservableObject {
             }
         } catch {
             rootChildren = []
+            loadError = mapError(error)
         }
     }
 
@@ -89,7 +99,8 @@ final class FileBrowserTabController: ObservableObject {
                 childrenByPath[path] = filtered(kids)
                 expandedDirs.insert(path)
             } catch {
-                // Leave collapsed on error; caller may surface a toast.
+                // Leave collapsed on error; surface via loadError so the UI banner can show.
+                loadError = mapError(error)
             }
         }
         onPersistableStateChanged?()
@@ -116,7 +127,9 @@ final class FileBrowserTabController: ObservableObject {
             childrenByPath[path] = filtered(kids)
             if path == rootPath { rootChildren = childrenByPath[path] ?? [] }
         } catch {
-            // Silent on error; caller can surface UI.
+            // Surface via loadError so the UI banner can show (do not reset on entry —
+            // user-driven retries go through loadRoot, which clears).
+            loadError = mapError(error)
         }
     }
 
@@ -268,5 +281,34 @@ final class FileBrowserTabController: ObservableObject {
         let data = content.data(using: encoding) ?? Data()
         try await dataSource.writeFile(path, data: data)
         openFile = .text(path: path, content: content, encoding: encoding, dirty: false)
+    }
+
+    // MARK: - Error mapping & password retry
+
+    /// Maps an arbitrary error into a user-presentable `LoadError`. SSH key-auth
+    /// failures become `.needsPassword` so the UI can prompt for a password
+    /// instead of silently returning an empty tree.
+    private func mapError(_ error: Error) -> LoadError {
+        if case SFTPServiceError.authenticationFailed = error {
+            let host = (dataSource as? RemoteFileBrowserDataSource)?.sshTarget.host ?? ""
+            return .needsPassword(host: host)
+        }
+        if let localized = error as? LocalizedError, let msg = localized.errorDescription {
+            return .generic(msg)
+        }
+        return .generic(error.localizedDescription)
+    }
+
+    /// Re-attempts the SFTP connection with an interactive password and reloads
+    /// the root listing. Only meaningful when the data source is remote; for
+    /// local sources this is a no-op.
+    func retryWithPassword(_ password: String) async {
+        guard let remote = dataSource as? RemoteFileBrowserDataSource else { return }
+        do {
+            try await remote.connectWithPassword(password)
+            await loadRoot()
+        } catch {
+            loadError = mapError(error)
+        }
     }
 }

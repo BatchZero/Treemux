@@ -136,6 +136,50 @@ final class FileBrowserTabControllerTests: XCTestCase {
         ctrl.updateBuffer(content: "edited")
         XCTAssertTrue(ctrl.isDirty)
     }
+
+    // MARK: - LoadError surface (B1)
+
+    func test_loadRoot_authFailed_setsNeedsPasswordError() async {
+        let mock = MockFileBrowserDataSource()
+        mock.listError = SFTPServiceError.authenticationFailed
+        let state = FileBrowserTabState(rootPath: "/r", rootKind: .project)
+        let ctrl = FileBrowserTabController(initial: state, dataSource: mock)
+        await ctrl.loadRoot()
+        if case .needsPassword = ctrl.loadError {
+            // ok — host is empty here because mock isn't a RemoteFileBrowserDataSource;
+            // real wiring is covered by retryWithPassword in production code.
+        } else {
+            XCTFail("expected .needsPassword, got \(String(describing: ctrl.loadError))")
+        }
+    }
+
+    func test_loadRoot_genericError_setsGenericError() async {
+        struct Boom: Error, LocalizedError { var errorDescription: String? { "boom" } }
+        let mock = MockFileBrowserDataSource()
+        mock.listError = Boom()
+        let ctrl = FileBrowserTabController(
+            initial: .init(rootPath: "/r", rootKind: .project),
+            dataSource: mock)
+        await ctrl.loadRoot()
+        if case .generic(let msg) = ctrl.loadError {
+            XCTAssertEqual(msg, "boom")
+        } else {
+            XCTFail("expected .generic")
+        }
+    }
+
+    func test_loadRoot_success_clearsLoadError() async {
+        let mock = MockFileBrowserDataSource()
+        mock.listError = SFTPServiceError.authenticationFailed
+        let ctrl = FileBrowserTabController(
+            initial: .init(rootPath: "/r", rootKind: .project),
+            dataSource: mock)
+        await ctrl.loadRoot()  // sets needsPassword
+        XCTAssertNotNil(ctrl.loadError)
+        mock.listError = nil
+        await ctrl.loadRoot()  // resets to nil on entry, succeeds
+        XCTAssertNil(ctrl.loadError)
+    }
 }
 
 final class MockFileBrowserDataSource: FileBrowserDataSource {
@@ -144,9 +188,12 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
     var fileContents: [String: Data] = [:]
     var fileMetas: [String: FileMetadata] = [:]
     var writes: [(path: String, data: Data)] = []
+    /// When non-nil, `listDirectory` throws this error before returning.
+    var listError: Error?
 
     func listDirectory(_ path: String) async throws -> [FileNode] {
-        directoryListings[path] ?? []
+        if let listError { throw listError }
+        return directoryListings[path] ?? []
     }
     func fileMetadata(_ path: String) async throws -> FileMetadata {
         fileMetas[path] ?? FileMetadata(path: path, sizeBytes: Int64(fileContents[path]?.count ?? 0), modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
