@@ -113,6 +113,37 @@ final class HookBackupServiceTests: XCTestCase {
         }
     }
 
+    func testBackupTwiceProducesDistinctFiles() async throws {
+        var counter = 0
+        let service = HookBackupService(
+            now: {
+                counter += 1
+                return self.fixedNow(2026, 4, 29, 15, 30, counter)
+            },
+            home: tempHome
+        )
+        let change = HookInstallChange(
+            path: "~/.claude/settings.json",
+            proposed: "{}",
+            current: "{}"
+        )
+
+        let first = try await service.backup(
+            change: change,
+            target: .local,
+            provider: ClaudeCodeHookProvider()
+        )
+        let second = try await service.backup(
+            change: change,
+            target: .local,
+            provider: ClaudeCodeHookProvider()
+        )
+
+        XCTAssertNotEqual(first.localPath, second.localPath)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: first.localPath.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: second.localPath.path))
+    }
+
     func testBackupCreatesMissingIntermediateDirectories() async throws {
         let dotTreemux = tempHome.appendingPathComponent(".treemux")
         XCTAssertFalse(FileManager.default.fileExists(atPath: dotTreemux.path),
