@@ -108,6 +108,11 @@ private struct FileTreeErrorBanner: View {
                 EmptyView()
             }
         }
+        // Clear the SecureField whenever loadError transitions, so a rejected
+        // password doesn't linger in the field across retry attempts.
+        .onChange(of: controller.loadError) { _, _ in
+            password = ""
+        }
     }
 }
 

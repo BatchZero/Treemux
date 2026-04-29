@@ -54,6 +54,11 @@ private enum ConnectionMode {
 actor SFTPService {
     private var mode: ConnectionMode?
 
+    /// Whether this service currently holds an active SSH/SFTP connection.
+    /// Used by data sources sharing one service to avoid redundant `connect()` calls,
+    /// which would tear down sibling sessions via the leading `disconnect()`.
+    var isConnected: Bool { mode != nil }
+
     /// The POSIX file-type mask for directories (S_IFDIR).
     private static let S_IFMT: UInt32 = 0o170000
     private static let S_IFDIR: UInt32 = 0o040000
