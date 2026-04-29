@@ -47,6 +47,7 @@ load_build_settings() {
       -scheme "$SCHEME" \
       -configuration Release \
       -destination 'platform=macOS,arch=arm64' \
+      -skipPackagePluginValidation \
       -showBuildSettings
   )"
 }
@@ -93,6 +94,7 @@ xcodebuild \
   -configuration Release \
   -derivedDataPath "$DERIVED_DATA_PATH" \
   -destination 'platform=macOS' \
+  -skipPackagePluginValidation \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
   ARCHS="$ARCHS_VALUE" \
