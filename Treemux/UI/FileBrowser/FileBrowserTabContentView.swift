@@ -8,6 +8,8 @@ struct FileBrowserTabContentView: View {
     @ObservedObject var controller: FileBrowserTabController
 
     var body: some View {
+        // HSplitView consults `idealWidth` only on initial layout per view instance;
+        // once the user drags the divider, that cached position wins over updates.
         GeometryReader { geo in
             HSplitView {
                 FileTreePanelView(controller: controller)
