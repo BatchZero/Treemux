@@ -410,12 +410,13 @@ actor SFTPService {
             throw SFTPServiceError.commandFailed("ls failed at \(path)")
         }
 
-        return parseListing(output: result.output, parentPath: path)
+        return Self.parseListing(output: result.output, parentPath: path)
     }
 
     /// Parse `ls -lA` style output. Auto-detects whether the timestamp is a single epoch field
     /// (Linux `--time-style=+%s`) or 4 BSD fields (`Mon DD HH:MM:SS YYYY`).
-    private func parseListing(output: String, parentPath: String) -> [SFTPRichEntry] {
+    /// Exposed at internal scope (and as a static function) so unit tests can drive it directly.
+    static func parseListing(output: String, parentPath: String) -> [SFTPRichEntry] {
         var entries: [SFTPRichEntry] = []
 
         let lines = output.components(separatedBy: "\n")
@@ -426,10 +427,11 @@ actor SFTPService {
 
             // Tokenize by whitespace; collapse runs.
             let tokens = trimmed.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
-            // Minimum: perms links owner group size <date...> name
-            // GNU --time-style=+%s: 7 tokens before name → 8+
-            // BSD `ls -lAT`:        10 tokens before name → 11+
-            guard tokens.count >= 8 else { continue }
+            // Layout: tokens[0]=perms, [1]=links, [2]=owner, [3]=group, [4]=size, [5..]=date+name.
+            // GNU `--time-style=+%s`: epoch is one field, so a single-word filename takes 7 tokens.
+            // BSD `ls -lAT`:           date is four fields, so a single-word filename takes 10 tokens.
+            // The lower bound (7) is the minimum for either format.
+            guard tokens.count >= 7 else { continue }
 
             let perms = tokens[0]
             guard !perms.isEmpty else { continue }
