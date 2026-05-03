@@ -7,18 +7,36 @@ import SwiftUI
 struct FileBrowserTabContentView: View {
     @ObservedObject var controller: FileBrowserTabController
 
+    // Default 2:8 split. HStack + explicit widths + SplitDivider gives reliable
+    // initial layout and per-tab drag state, unlike HSplitView's idealWidth cache.
+    @State private var fraction: Double = 0.2
+
+    private let dividerThickness: CGFloat = 6
+    private let leftMin: CGFloat = 180
+    private let rightMin: CGFloat = 200
+
     var body: some View {
-        // HSplitView consults `idealWidth` only on initial layout per view instance;
-        // once the user drags the divider, that cached position wins over updates.
         GeometryReader { geo in
-            HSplitView {
+            let totalWidth = geo.size.width
+            let availableWidth = max(totalWidth - dividerThickness, 1)
+            let lowerBound = min(0.95, leftMin / availableWidth)
+            let upperBound = max(0.05, 1 - rightMin / availableWidth)
+            let clampedFraction = min(max(fraction, lowerBound), upperBound)
+            let leftWidth = availableWidth * clampedFraction
+            let rightWidth = availableWidth - leftWidth
+
+            HStack(spacing: 0) {
                 FileTreePanelView(controller: controller)
-                    .frame(
-                        minWidth: 180,
-                        idealWidth: max(180, geo.size.width * 0.2)
-                    )
+                    .frame(width: leftWidth)
+                SplitDivider(
+                    axis: .horizontal,
+                    fraction: clampedFraction,
+                    availableLength: availableWidth
+                ) { newFraction in
+                    fraction = min(max(newFraction, lowerBound), upperBound)
+                }
                 FileViewerPanelView(controller: controller)
-                    .frame(minWidth: 200)
+                    .frame(width: rightWidth)
             }
         }
         .task {
