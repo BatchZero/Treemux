@@ -15,6 +15,10 @@ struct FileViewerPanelView: View {
             }
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // GutterView is `addFloatingSubview`-attached to NSScrollView
+                // without layer clipping, so without this the line numbers
+                // leak above the sub-tab bar into the window toolbar.
+                .clipped()
         }
         .background(Color(nsColor: .textBackgroundColor))
     }
