@@ -7,18 +7,16 @@ import SwiftUI
 
 // MARK: - Activity Indicator State
 
-/// Four-state activity indicator for sidebar icons.
+/// Two-state activity indicator for sidebar icons.
 enum SidebarIconActivityIndicator {
     case none
-    case current   // Static dot — this worktree is the active working directory
-    case working   // Animated pulse — terminal sessions are running
-    case attention // Faster, brighter pulse — AI agent needs the user
+    case working   // Static dot — terminal sessions are running
 }
 
 // MARK: - Icon View
 
 /// Renders a sidebar icon as a rounded-rectangle (or circular) tile with an SF Symbol
-/// and an optional activity indicator badge at the bottom-right corner.
+/// and an optional activity dot at the bottom-right corner.
 struct SidebarItemIconView: View {
     let icon: SidebarItemIcon
     let size: CGFloat
@@ -51,14 +49,9 @@ struct SidebarItemIconView: View {
                         .strokeBorder(palette.border, lineWidth: 1)
                 )
 
-            if activityIndicator != .none {
-                SidebarIconActivityBadge(
-                    kind: activityIndicator,
-                    size: size,
-                    palette: activityPalette,
-                    isEmphasized: isEmphasized
-                )
-                .offset(x: 2, y: 2)
+            if activityIndicator == .working {
+                SidebarIconActivityBadge(size: size, palette: activityPalette)
+                    .offset(x: 2, y: 2)
             }
         }
         .frame(width: size + 2, height: size + 2)
@@ -83,101 +76,24 @@ struct SidebarItemIconView: View {
 
 // MARK: - Activity Badge
 
-/// Animated or static badge shown at the bottom-right of a sidebar icon.
+/// Static dot shown at the bottom-right of a sidebar icon when the node has
+/// at least one running terminal session.
 struct SidebarIconActivityBadge: View {
-    let kind: SidebarIconActivityIndicator
     let size: CGFloat
     let palette: SidebarIconPalette
-    let isEmphasized: Bool
-    @State private var isAnimating = false
 
     private var activityColor: Color {
         palette.descriptor.gradientEnd
     }
 
     private var badgeSize: CGFloat {
-        switch kind {
-        case .working, .attention:
-            return max(7, size * 0.34)
-        case .current, .none:
-            return max(6, size * 0.28)
-        }
-    }
-
-    private var isAnimatedKind: Bool {
-        kind == .attention
-    }
-
-    private var pulseLineWidth: CGFloat {
-        isEmphasized ? 1.4 : 1.15
-    }
-
-    private var pulseOpacity: Double {
-        isEmphasized ? 0.8 : 0.5
-    }
-
-    private var pulseScale: CGFloat {
-        isEmphasized ? 2.15 : 1.85
-    }
-
-    private var pulseDuration: Double {
-        // Only .attention animates; the duration only matters for it.
-        isEmphasized ? 0.55 : 0.7
-    }
-
-    private var coreScale: CGFloat {
-        isAnimatedKind ? (isAnimating ? 1.18 : 0.9) : 1
-    }
-
-    private var coreOpacity: Double {
-        isAnimatedKind ? (isAnimating ? 1 : 0.82) : 1
-    }
-
-    private var glowRadius: CGFloat {
-        guard kind == .attention else { return 0 }
-        return isEmphasized ? 8 : 6
+        max(6, size * 0.28)
     }
 
     var body: some View {
-        ZStack {
-            if isAnimatedKind {
-                Circle()
-                    .fill(activityColor.opacity(isAnimating ? 0.18 : 0.06))
-                    .frame(width: badgeSize, height: badgeSize)
-                    .scaleEffect(isAnimating ? pulseScale * 0.9 : 1.0)
-                    .blur(radius: isEmphasized ? 1.2 : 0.8)
-
-                Circle()
-                    .stroke(activityColor.opacity(pulseOpacity), lineWidth: pulseLineWidth)
-                    .frame(width: badgeSize, height: badgeSize)
-                    .scaleEffect(isAnimating ? pulseScale : 1.0)
-                    .opacity(isAnimating ? 0 : pulseOpacity)
-            }
-
-            Circle()
-                .fill(activityColor)
-                .frame(width: badgeSize, height: badgeSize)
-                .overlay(Circle().stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 1))
-                .scaleEffect(coreScale)
-                .opacity(coreOpacity)
-                .shadow(color: activityColor.opacity(isAnimatedKind ? 0.9 : 0), radius: glowRadius)
-        }
-        .onAppear {
-            updateAnimationState()
-        }
-        .onChange(of: kind) { _, _ in
-            updateAnimationState()
-        }
-    }
-
-    private func updateAnimationState() {
-        guard isAnimatedKind else {
-            isAnimating = false
-            return
-        }
-        isAnimating = false
-        withAnimation(.easeInOut(duration: pulseDuration).repeatForever(autoreverses: true)) {
-            isAnimating = true
-        }
+        Circle()
+            .fill(activityColor)
+            .frame(width: badgeSize, height: badgeSize)
+            .overlay(Circle().stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 1))
     }
 }
