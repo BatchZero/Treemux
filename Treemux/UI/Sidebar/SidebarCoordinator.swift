@@ -3,7 +3,6 @@
 //  Treemux
 
 import AppKit
-import Combine
 import SwiftUI
 
 /// Coordinator that serves as NSOutlineView data source and delegate,
@@ -24,13 +23,6 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
     private var rootNodes: [SidebarNodeItem] = []
     private var isApplyingSelection = false
     private var lastDataFingerprint: String = ""
-
-    /// Subscribes to `AttentionStore.shared.objectWillChange` and force-rebuilds
-    /// visible cell content. Sidebar rows are hosted in `NSHostingView<AnyView>`,
-    /// where `@ObservedObject` subscriptions are unreliable, so the indicator
-    /// is precomputed in `makeCellContent` and passed by value into
-    /// `SidebarNodeRow`. This sink is what drives recompute on store changes.
-    private var attentionCancellable: AnyCancellable?
 
     // MARK: - Attach
 
@@ -53,14 +45,6 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
             self?.toggleExpansionForSelection()
         }
 
-        // Subscribe to AttentionStore changes and force-refresh visible rows.
-        // Throttled so a burst of updates doesn't tax the main thread.
-        attentionCancellable = AttentionStore.shared.objectWillChange
-            .throttle(for: .milliseconds(100), scheduler: DispatchQueue.main, latest: true)
-            .sink { [weak self, weak outlineView] in
-                guard let self, let outlineView else { return }
-                self.refreshVisibleRows(on: outlineView)
-            }
     }
 
     // MARK: - Apply (Diff + Rebuild)
@@ -248,23 +232,17 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         )
     }
 
-    /// Computes the activity indicator for a sidebar node by reading
-    /// `AttentionStore.shared` (via `WorkspaceModel.hasAttention*`) and the
-    /// workspace's running-session counts. Called fresh on every cell
-    /// rebuild — including when the Combine sink fires after an attention
-    /// store mutation — so the row always reflects current state.
+    /// Computes the activity indicator for a sidebar node from the workspace's
+    /// running-session counts. Returns `.working` when the node (or any of its
+    /// worktrees) has at least one active TerminalTabController.
     private func activityIndicator(for node: SidebarNodeItem) -> SidebarIconActivityIndicator {
         switch node.kind {
         case .section:
             return .none
         case .workspace(let ws):
-            if ws.hasAttention { return .attention }
-            if ws.hasAnyRunningSessions { return .working }
-            return .none
+            return ws.hasAnyRunningSessions ? .working : .none
         case .worktree(let ws, let wt):
-            if ws.hasAttention(forWorktreePath: wt.path.path) { return .attention }
-            if ws.hasRunningSessions(forWorktreePath: wt.path.path) { return .working }
-            return .none
+            return ws.hasRunningSessions(forWorktreePath: wt.path.path) ? .working : .none
         }
     }
 
