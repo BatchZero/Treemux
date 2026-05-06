@@ -82,7 +82,6 @@
 		7C890E7C842699E9E4E18606 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */; };
 		7DAFA3057CBB618258D561C4 /* FileViewerPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 597C1CF15FDBE05E8C17339E /* FileViewerPanelView.swift */; };
 		7DE56E0C99F7ED3EB64B5055 /* SFTPServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F1C3A585525B45A2CED48F /* SFTPServiceTests.swift */; };
-		84C7FE542B06B599E916B1A4 /* RemoteHookFileSystemTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69120FFFCCD4EA3E9B92D386 /* RemoteHookFileSystemTests.swift */; };
 		850CC38A621639ECDA370B07 /* ImagePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B420B3E15F447FDA5E8053 /* ImagePreviewView.swift */; };
 		8549BFC4F8F972BE26BEC4F3 /* WorkspaceTabKindCodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71FCB95357127BEE31A3AC96 /* WorkspaceTabKindCodingTests.swift */; };
 		861758C31CCB50A6B7F1E98F /* CodeEditSourceEditor in Frameworks */ = {isa = PBXBuildFile; productRef = C97849ADC35767BC3DF4C9E6 /* CodeEditSourceEditor */; };
@@ -140,7 +139,6 @@
 		F456345A8C56133D248B5234 /* FileNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03F44873E99A802B3C59BE39 /* FileNode.swift */; };
 		317A2FF806A94A9DA05E2AA6 /* HookDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = C201D4D7CC7245F8BDCBC44A /* HookDiff.swift */; };
 		5AADA7F125DF495CA7E71065 /* HookDiffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A99D70249E4DF69977EE94 /* HookDiffTests.swift */; };
-		BF080595088289E5036E5D9C /* HookBackupServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6411D1C5C66C5B6F8D27F2F9 /* HookBackupServiceTests.swift */; };
 		F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */; };
 		F8644091777403C59611547D /* LocalFileBrowserDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E3AB47E2F0BA80F74F955AD /* LocalFileBrowserDataSource.swift */; };
 		FBA39534A25C607A48314803 /* GhosttyKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = AC606574E1DF3045291D300B /* GhosttyKit.xcframework */; };
@@ -218,7 +216,6 @@
 		62EB76FEF501CC1380FB2607 /* SidebarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarCoordinator.swift; sourceTree = "<group>"; };
 		656D4A17827E564EDD5A8918 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 		68300DAD2E46A8B3E6E11839 /* FileTreePanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreePanelView.swift; sourceTree = "<group>"; };
-		69120FFFCCD4EA3E9B92D386 /* RemoteHookFileSystemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteHookFileSystemTests.swift; sourceTree = "<group>"; };
 		6AECC7D7718049E6DE71D772 /* Notifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Notifications.swift; sourceTree = "<group>"; };
 		6DD2CC0A8B9D60B36E1F8105 /* Treemux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Treemux.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		719F86B8BC90BA882B83152E /* SettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheet.swift; sourceTree = "<group>"; };
@@ -294,7 +291,6 @@
 		FB0ABA0B08B1F2185D6C82B5 /* SSHConfigParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParserTests.swift; sourceTree = "<group>"; };
 		C201D4D7CC7245F8BDCBC44A /* HookDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookDiff.swift; sourceTree = "<group>"; };
 		D4A99D70249E4DF69977EE94 /* HookDiffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookDiffTests.swift; sourceTree = "<group>"; };
-		6411D1C5C66C5B6F8D27F2F9 /* HookBackupServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookBackupServiceTests.swift; sourceTree = "<group>"; };
 		FCDABAEAB8A96753452954DD /* AIHooks */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AIHooks; path = Treemux/Support/AIHooks; sourceTree = SOURCE_ROOT; };
 		FED0327A7E59732F42304316 /* WorkspaceMetadataWatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceMetadataWatchService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -361,7 +357,6 @@
 				30CC2AAEA217BA6CC93B9774 /* AdaptiveFontShortcutTests.swift */,
 				E663E6BCCD39B232086BBA79 /* AdaptiveFontSizeCalculatorTests.swift */,
 				D4A99D70249E4DF69977EE94 /* HookDiffTests.swift */,
-				6411D1C5C66C5B6F8D27F2F9 /* HookBackupServiceTests.swift */,
 				EE469F5267854D1A9BC1F4B9 /* BufferWordIndexTests.swift */,
 				5A8FDDA8554C79E902629B64 /* FileBrowserTabControllerCopyPathTests.swift */,
 				734F67CDFA2343E303D8CE74 /* FileBrowserTabControllerSubTabTests.swift */,
@@ -375,7 +370,6 @@
 				4742F4CA09E0C12BCF63C7CD /* PaneLayoutTests.swift */,
 				656D4A17827E564EDD5A8918 /* PersistenceTests.swift */,
 				081CA32DCF94FDC4583766A2 /* ProcessTreeTests.swift */,
-				69120FFFCCD4EA3E9B92D386 /* RemoteHookFileSystemTests.swift */,
 				DE6931E2152155F3F99223FC /* SessionBackendTests.swift */,
 				C9F1C3A585525B45A2CED48F /* SFTPServiceTests.swift */,
 				443B856819FD330809E0722A /* ShellCommandRunnerTests.swift */,
@@ -926,7 +920,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				5AADA7F125DF495CA7E71065 /* HookDiffTests.swift in Sources */,
-				BF080595088289E5036E5D9C /* HookBackupServiceTests.swift in Sources */,
 				A4E4E36C7436B4F6552F2942 /* AdaptiveFontShortcutTests.swift in Sources */,
 				0DAB709EEE832E5898E7F570 /* AdaptiveFontSizeCalculatorTests.swift in Sources */,
 				02245B1A70FB0EFD341B4406 /* BufferWordIndexTests.swift in Sources */,
@@ -942,7 +935,6 @@
 				5BE675E29A6A2B29C647BB5E /* PaneLayoutTests.swift in Sources */,
 				309F402A9FFCA18BA24D7BD4 /* PersistenceTests.swift in Sources */,
 				86E976461528AC1A196E4DC6 /* ProcessTreeTests.swift in Sources */,
-				84C7FE542B06B599E916B1A4 /* RemoteHookFileSystemTests.swift in Sources */,
 				7DE56E0C99F7ED3EB64B5055 /* SFTPServiceTests.swift in Sources */,
 				50703AC7FE57471B65F8443A /* SSHConfigParserTests.swift in Sources */,
 				2C0D2D1CDB0C7DDD9C2487E9 /* SessionBackendTests.swift in Sources */,
