@@ -71,16 +71,6 @@
         }
       }
     },
-    "AI Tools": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "AI 工具"
-          }
-        }
-      }
-    },
     "Shortcuts": {
       "localizations": {
         "zh-Hans": {
@@ -317,26 +307,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "将自定义主题 JSON 文件放入 ~/.treemux/themes/"
-          }
-        }
-      }
-    },
-    "Auto-detect AI Tools": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自动检测 AI 工具"
-          }
-        }
-      }
-    },
-    "Place agent preset JSON files in ~/.treemux/agents/": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "将 Agent 预设 JSON 文件放入 ~/.treemux/agents/"
           }
         }
       }
@@ -1521,36 +1491,6 @@
         }
       }
     },
-    "AI Activity Hints": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "AI 活动提示"
-          }
-        }
-      }
-    },
-    "Hook installation status for Claude Code, Codex, opencode": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Claude Code、Codex、opencode 的 hook 安装状态"
-          }
-        }
-      }
-    },
-    "Show AI activity in sidebar": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "在侧边栏显示 AI 活动状态"
-          }
-        }
-      }
-    },
     "Enable code completion in editor": {
       "localizations": {
         "zh-Hans": {
@@ -1567,26 +1507,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "补全建议来自当前缓冲区中已出现的单词。暂不支持基于 LSP 的补全。"
-          }
-        }
-      }
-    },
-    "Inspecting hook status…": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在检查 hook 状态…"
-          }
-        }
-      }
-    },
-    "No AI agents detected. Run claude, codex, or opencode at least once on this machine to see install options.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "未检测到 AI 工具。请在本机至少运行一次 claude、codex 或 opencode，以查看安装选项。"
           }
         }
       }
@@ -1777,16 +1697,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Treemux 可以在 %@ 完成或需要输入时提示"
-          }
-        }
-      }
-    },
-    "by adding a hook to %@.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "通过在 %@ 中添加 hook 实现。"
           }
         }
       }
