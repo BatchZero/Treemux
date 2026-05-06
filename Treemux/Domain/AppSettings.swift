@@ -24,13 +24,6 @@ struct AppSettings: Codable, Equatable {
     /// When false and no other workspace exists, the filter is overridden as a fallback so the sidebar is never empty.
     var showDefaultTerminal: Bool = true
 
-    /// Whether the sidebar/tab AI attention indicator is enabled. Default: on.
-    var aiActivityHintsEnabled: Bool = true
-
-    /// Persisted set of (workspace, agent) pairs the user has dismissed via
-    /// "Don't ask for this host". Stored as `["<workspaceID>:<AIToolKind.rawValue>"]`.
-    var aiHookSkippedKeys: [String] = []
-
     /// Whether the editor shows a word-completion popover while typing.
     /// Backed by `BufferWordIndex` (Tier 3a per the P1 design doc); LSP-based
     /// completion is deferred to P2.
@@ -39,7 +32,7 @@ struct AppSettings: Codable, Equatable {
     enum CodingKeys: String, CodingKey {
         case version, language, activeThemeID, appearance, terminal, startup, ssh,
              shortcutOverrides, defaultLocalTerminalIcon, updates, showDefaultTerminal,
-             aiActivityHintsEnabled, aiHookSkippedKeys, enableCodeCompletion
+             enableCodeCompletion
     }
 
     init() {}
@@ -57,8 +50,6 @@ struct AppSettings: Codable, Equatable {
         defaultLocalTerminalIcon = try container.decodeIfPresent(SidebarItemIcon.self, forKey: .defaultLocalTerminalIcon) ?? .localTerminalDefault
         updates = try container.decodeIfPresent(UpdateSettings.self, forKey: .updates) ?? UpdateSettings()
         showDefaultTerminal = try container.decodeIfPresent(Bool.self, forKey: .showDefaultTerminal) ?? true
-        aiActivityHintsEnabled = try container.decodeIfPresent(Bool.self, forKey: .aiActivityHintsEnabled) ?? true
-        aiHookSkippedKeys = try container.decodeIfPresent([String].self, forKey: .aiHookSkippedKeys) ?? []
         enableCodeCompletion = try container.decodeIfPresent(Bool.self, forKey: .enableCodeCompletion) ?? true
     }
 }

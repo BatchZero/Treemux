@@ -36,7 +36,7 @@ final class WorkspaceModelTabKindTests: XCTestCase {
         XCTAssertEqual(fbTab?.fileBrowserState?.rootPath, "/x")
     }
 
-    /// Regression: AIHookBannerController.evaluate touches `workspace.sessionController`
+    /// Regression: external observers may touch `workspace.sessionController`
     /// on every objectWillChange. With a file-browser tab active, the previous
     /// implementation lazily created a terminal controller for the FB tab id and
     /// stored it in tabControllers. The next saveActiveTabState() then overwrote
@@ -52,7 +52,7 @@ final class WorkspaceModelTabKindTests: XCTestCase {
         let fbID = ws.activeTabID!
         XCTAssertEqual(ws.tabs.first(where: { $0.id == fbID })?.kind, .fileBrowser)
 
-        // Simulate the AIHookBannerController path: external code touches
+        // Simulate an external-observer code path that touches
         // sessionController while a file-browser tab is active. With the bug,
         // this lazy-creates a terminal controller for the FB tab id.
         _ = ws.sessionController
