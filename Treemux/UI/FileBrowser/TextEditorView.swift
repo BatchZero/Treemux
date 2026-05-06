@@ -236,7 +236,7 @@ private enum TreemuxEditorTheme {
         let textMuted = NSColor(Color(hex: ui.textMuted)).editorThemeColor
         let background = NSColor(Color(hex: ui.paneBackground)).editorThemeColor
         let lineHighlight = NSColor(Color(hex: ui.paneHeaderBackground)).editorThemeColor
-        let selection = NSColor(Color(hex: ui.accentColor)).withAlphaComponent(0.3).editorThemeColor
+        let selection = NSColor.sRGBSelection(fromHex: ui.accentColor, alpha: 0.45)
 
         return EditorTheme(
             text: .init(color: textPrimary),
@@ -268,9 +268,97 @@ private extension NSColor {
     var editorThemeColor: NSColor {
         usingColorSpace(.sRGB) ?? self
     }
+
+    /// Builds a selection-highlight color directly in sRGB from a hex string,
+    /// bypassing the SwiftUI `Color(hex:)` → `NSColor(_:)` → `withAlphaComponent`
+    /// bridge. That bridge is unreliable across macOS versions: the resulting
+    /// NSColor can be tagged with display-P3 or a dynamic catalog space, and
+    /// alpha adjustments on it are sometimes silently dropped or muted, which
+    /// is what made the existing 30%-alpha selection nearly invisible.
+    ///
+    /// Only the low 24 bits of the hex are read; any embedded alpha is
+    /// ignored so the explicit `alpha:` argument always wins.
+    static func sRGBSelection(fromHex hex: String, alpha: CGFloat) -> NSColor {
+        let cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "#", with: "")
+        var rgb: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&rgb)
+        let r = CGFloat((rgb >> 16) & 0xFF) / 255.0
+        let g = CGFloat((rgb >> 8)  & 0xFF) / 255.0
+        let b = CGFloat( rgb        & 0xFF) / 255.0
+        return NSColor(srgbRed: r, green: g, blue: b, alpha: alpha)
+    }
 }
 
 // MARK: - Scroll behavior
+
+/// Wraps `TextLayoutManagerDelegate` to keep `wrapLinesWidth` non-negative
+/// even when `ScrollBehaviorCoordinator` has inflated `edgeInsets.right` to
+/// preserve horizontal scrolling for unwrapped lines.
+///
+/// Why this exists:
+/// `TextSelectionManager.getFillRects` clamps every selection rect to a
+/// `validTextDrawingRect.width = max(layoutManager.maxLineWidth,
+/// layoutManager.wrapLinesWidth)`. Because of an upstream inout-shadowing
+/// bug (`TextLayoutManager+Layout.swift:190`, present in CodeEditTextView
+/// main as of 2026-05) `maxLineWidth` stays at 0. `wrapLinesWidth` resolves
+/// to `delegate?.textViewportSize().width − edgeInsets.horizontal`. The
+/// scroll workaround inflates `edgeInsets.right` past the viewport width,
+/// which makes `wrapLinesWidth` negative, which collapses every selection
+/// rect to zero width — selection background becomes invisible everywhere
+/// (mouse drag, ⌘A, shift-arrow all affected).
+///
+/// We can't subclass `TextLayoutManager` (`public class` without `open`),
+/// can't write `maxLineWidth` (internal), can't fork the package without
+/// owning a long-running fork. But `TextLayoutManager.delegate` is a
+/// `public weak var`, so we can slot a wrapper in front of the textView.
+/// We forward 4 of 5 protocol methods unchanged, and override
+/// `textViewportSize()` to return `real_viewport + edgeInsets.horizontal`.
+/// `wrapLinesWidth` then evaluates to `real_viewport`, regardless of how
+/// much we inflate `edgeInsets.right`. Selection draws correctly; horizontal
+/// scrolling continues to work.
+///
+/// Containment proof: `textViewportSize()` is consumed at exactly one site
+/// in CodeEditTextView (the `wrapLinesWidth` getter) and `wrapLinesWidth`
+/// itself only feeds `maxLineLayoutWidth` (only used when `wrapLines == true`,
+/// which we never set) and `getFillRects`. So the inflation only affects
+/// selection-rect width — exactly what we want — and nothing else.
+private final class SelectionRectFixDelegate: NSObject, TextLayoutManagerDelegate {
+    weak var textView: TextView?
+    weak var layoutManager: TextLayoutManager?
+
+    func layoutManagerHeightDidUpdate(newHeight: CGFloat) {
+        textView?.layoutManagerHeightDidUpdate(newHeight: newHeight)
+    }
+
+    func layoutManagerMaxWidthDidChange(newWidth: CGFloat) {
+        textView?.layoutManagerMaxWidthDidChange(newWidth: newWidth)
+    }
+
+    func layoutManagerTypingAttributes() -> [NSAttributedString.Key: Any] {
+        textView?.layoutManagerTypingAttributes() ?? [:]
+    }
+
+    func textViewportSize() -> CGSize {
+        guard let textView else { return .zero }
+        var size = textView.textViewportSize()
+        // Compensate for the inflated edge insets so wrapLinesWidth resolves
+        // to the real viewport width. Reading edgeInsets at call time means
+        // we always reflect the current inflation level.
+        if let layoutManager {
+            size.width += layoutManager.edgeInsets.horizontal
+        }
+        return size
+    }
+
+    func layoutManagerYAdjustment(_ yAdjustment: CGFloat) {
+        textView?.layoutManagerYAdjustment(yAdjustment)
+    }
+
+    var visibleRect: NSRect {
+        textView?.visibleRect ?? .zero
+    }
+}
 
 /// Makes long unwrapped lines actually horizontally scrollable.
 ///
@@ -290,10 +378,21 @@ private extension NSColor {
 ///   frame at the desired size **on every call** — no shrink/expand
 ///   tug-of-war, no clip-view origin clamping, no scroll jitter.
 ///
-/// `edgeInsets.right` only flows through `estimatedWidth` and the
-/// `wrapLinesWidth` calc (which is unused while `wrapLines == false`). It
-/// does NOT change line-fragment origin or selection rects, so there's no
-/// visible effect beyond ~1px of post-EOL padding.
+/// **Important:** the comment above used to claim `wrapLinesWidth` is unused
+/// while `wrapLines == false`. That's wrong: `TextSelectionManager.getFillRects`
+/// reads `wrapLinesWidth` unconditionally, and clamps every selection rect
+/// to `validTextDrawingRect.width = max(maxLineWidth, wrapLinesWidth)`. With
+/// `wrapLinesWidth = viewport_width − edgeInsets.horizontal` going negative
+/// after we inflate `edgeInsets.right`, the clamp collapses every selection
+/// rect to zero width and the selection background becomes invisible.
+///
+/// The fix is `SelectionRectFixDelegate` below: a wrapper around the layout
+/// manager's existing delegate (the textView) that lies about
+/// `textViewportSize().width`, returning `real_viewport + edgeInsets.horizontal`.
+/// That makes `wrapLinesWidth` evaluate to the real viewport width regardless
+/// of how much we've inflated `edgeInsets.right`, restoring selection draw
+/// without sacrificing horizontal scroll. `textViewportSize()` is *only*
+/// consumed by `wrapLinesWidth` in the package, so the lie is contained.
 private final class ScrollBehaviorCoordinator: ObservableObject, TextViewCoordinator {
     /// Skip the wide-frame workaround on very large files; the linear scan
     /// would block the main thread on open. Mirrors the highlight limit.
@@ -306,6 +405,13 @@ private final class ScrollBehaviorCoordinator: ObservableObject, TextViewCoordin
     private var desiredWidth: CGFloat = 0
     private var frameObserver: NSObjectProtocol?
     private var isApplyingInsets = false
+    /// Held strongly because `TextLayoutManager.delegate` is `weak`. Owns the
+    /// reference to the textView (also weak) so the wrapper itself is safe
+    /// to outlive the textView; if the textView is gone we no-op forwards.
+    private let selectionFixDelegate = SelectionRectFixDelegate()
+    /// Captured at install time so we can restore the original delegate when
+    /// the coordinator is destroyed. Weak: the textView owns it.
+    private weak var originalLayoutDelegate: TextLayoutManagerDelegate?
 
     func prepareCoordinator(controller: TextViewController) {
         configure(controller.scrollView)
@@ -314,6 +420,7 @@ private final class ScrollBehaviorCoordinator: ObservableObject, TextViewCoordin
     func controllerDidAppear(controller: TextViewController) {
         configure(controller.scrollView)
         attach(to: controller.textView)
+        installSelectionRectFix(on: controller.textView)
         recomputeDesiredWidth()
         applyDesiredWidth()
     }
@@ -329,7 +436,36 @@ private final class ScrollBehaviorCoordinator: ObservableObject, TextViewCoordin
 
     func destroy() {
         detach()
+        uninstallSelectionRectFix()
         textView = nil
+    }
+
+    /// Slot the wrapper delegate in front of the textView for the editor's
+    /// layout manager. Idempotent — if our wrapper is already installed we
+    /// just refresh its captured references in case the textView changed.
+    private func installSelectionRectFix(on textView: TextView?) {
+        guard let textView, let layoutManager = textView.layoutManager else { return }
+        // If our wrapper is already in place, just refresh references.
+        if layoutManager.delegate === selectionFixDelegate {
+            selectionFixDelegate.textView = textView
+            selectionFixDelegate.layoutManager = layoutManager
+            return
+        }
+        originalLayoutDelegate = layoutManager.delegate
+        selectionFixDelegate.textView = textView
+        selectionFixDelegate.layoutManager = layoutManager
+        layoutManager.delegate = selectionFixDelegate
+    }
+
+    /// Restore the textView's own delegate so the editor returns to upstream
+    /// behavior cleanly when the coordinator is torn down.
+    private func uninstallSelectionRectFix() {
+        guard let layoutManager = textView?.layoutManager,
+              layoutManager.delegate === selectionFixDelegate else { return }
+        layoutManager.delegate = originalLayoutDelegate ?? textView
+        originalLayoutDelegate = nil
+        selectionFixDelegate.textView = nil
+        selectionFixDelegate.layoutManager = nil
     }
 
     private func configure(_ scrollView: NSScrollView?) {
