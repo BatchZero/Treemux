@@ -64,14 +64,13 @@ final class SessionBackendTests: XCTestCase {
             name: "Claude Code",
             launchCommand: "claude",
             arguments: [],
-            environment: [:],
-            toolKind: .claudeCode
+            environment: [:]
         ))
         let data = try JSONEncoder().encode(config)
         let decoded = try JSONDecoder().decode(SessionBackendConfiguration.self, from: data)
         if case .agent(let agent) = decoded {
             XCTAssertEqual(agent.name, "Claude Code")
-            XCTAssertEqual(agent.toolKind, .claudeCode)
+            XCTAssertEqual(agent.launchCommand, "claude")
         } else {
             XCTFail("Expected agent")
         }
