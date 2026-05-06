@@ -21,23 +21,9 @@ struct WorkspaceDetailView: View {
 private struct WorkspaceTabContainerView: View {
     @EnvironmentObject private var store: WorkspaceStore
     @ObservedObject var workspace: WorkspaceModel
-    @StateObject private var bannerController = AIHookBannerController()
-    @State private var pendingPreview: HookPreviewModel?
 
     var body: some View {
         VStack(spacing: 0) {
-            if let invitation = bannerController.pendingInvitation {
-                AIHookBanner(
-                    displayName: invitation.displayName,
-                    configPath: invitation.configPath,
-                    onPreview: { Task { await openPreview(invitation) } },
-                    onSkip: { bannerController.dismissTransient() },
-                    onSkipHost: { skipHost() }
-                )
-                .padding(.horizontal, 8)
-                .padding(.top, 6)
-            }
-
             // Tab bar: shown when 2+ tabs
             if workspace.tabs.count > 1 {
                 WorkspaceTabBarView(workspace: workspace)
@@ -68,9 +54,6 @@ private struct WorkspaceTabContainerView: View {
                 }
             }
         }
-        .sheet(item: $pendingPreview) { model in
-            HookPreviewSheet(model: model)
-        }
         .sheet(item: $workspace.pendingBatchClose) { req in
             BatchUnsavedChangesSheet(
                 dirtyRelativePaths: req.relativePaths,
@@ -79,51 +62,6 @@ private struct WorkspaceTabContainerView: View {
                 onCancel: { workspace.pendingBatchClose = nil }
             )
         }
-        .task(id: workspace.id) {
-            await bannerController.evaluate(workspace: workspace, appSettings: store.settings)
-        }
-        .onReceive(workspace.objectWillChange) { _ in
-            // Re-evaluate when workspace state changes (covers detected tool flip-on)
-            Task { await bannerController.evaluate(workspace: workspace, appSettings: store.settings) }
-        }
-    }
-
-    private func openPreview(_ invitation: AIHookBannerController.BannerInvitation) async {
-        let installer = AIHookInstaller()
-        guard let bundleURL = installer.helperBundleURL else { return }
-        let fs: AIHookFileSystem = {
-            switch invitation.target {
-            case .local: return LocalHookFileSystem()
-            case .remote(let t): return RemoteHookFileSystem(target: t)
-            }
-        }()
-        guard let provider = installer.provider(for: invitation.kind) else { return }
-        let changes: [HookInstallChange]
-        do {
-            changes = try await provider.dryRunInstall(fs: fs, helperBundleURL: bundleURL)
-        } catch {
-            return
-        }
-        pendingPreview = HookPreviewModel(
-            kind: invitation.kind,
-            target: invitation.target,
-            displayName: invitation.displayName,
-            changes: changes,
-            onApply: { [bannerController] in
-                do {
-                    _ = try await installer.install(invitation.kind, fs: fs)
-                    bannerController.dismissTransient()
-                } catch {
-                    // best-effort
-                }
-            }
-        )
-    }
-
-    private func skipHost() {
-        var settings = store.settings
-        bannerController.dismissAndPersist(workspace: workspace, appSettings: &settings)
-        store.updateSettings(settings)
     }
 }
 
