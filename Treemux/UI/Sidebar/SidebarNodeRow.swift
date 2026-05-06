@@ -8,9 +8,8 @@ import SwiftUI
 /// based on the SidebarNodeItem kind.
 /// All dependencies are passed as parameters — no @EnvironmentObject usage.
 ///
-/// `activityIndicator` is precomputed by the coordinator (from `AttentionStore`
-/// + workspace running-session state) and passed in by value. We avoid
-/// observing `AttentionStore` directly here because this row is hosted inside
+/// `activityIndicator` is precomputed by the coordinator from the workspace's
+/// running-session state and passed in by value. The row is hosted inside
 /// `NSHostingView<AnyView>`, where SwiftUI's diffing of the wrapped view can
 /// suppress `@ObservedObject` re-evaluation. Plain-value props always force a
 /// fresh view struct, so the body re-runs whenever the indicator changes.
@@ -55,7 +54,7 @@ struct WorkspaceRowContent: View {
     let theme: ThemeManager
     let isSelected: Bool
     /// Precomputed by the coordinator. See `SidebarNodeRow` for why we don't
-    /// observe `AttentionStore` directly inside this row.
+    /// observe workspace state directly inside this row.
     let activityIndicator: SidebarIconActivityIndicator
 
     @State private var isHovered = false
@@ -124,7 +123,7 @@ struct WorktreeRowContent: View {
     let theme: ThemeManager
     let isSelected: Bool
     /// Precomputed by the coordinator. See `SidebarNodeRow` for why we don't
-    /// observe `AttentionStore` directly inside this row.
+    /// observe workspace state directly inside this row.
     let activityIndicator: SidebarIconActivityIndicator
 
     @State private var isHovered = false
