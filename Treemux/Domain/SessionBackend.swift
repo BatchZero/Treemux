@@ -25,15 +25,6 @@ struct SSHSessionConfig: Codable, Hashable {
     let remoteCommand: String?
 }
 
-// MARK: - AI tool kind
-
-enum AIToolKind: String, Codable {
-    case claudeCode = "claude"
-    case openaiCodex = "codex"
-    case opencode = "opencode"
-    case custom
-}
-
 // MARK: - Agent session configuration
 
 struct AgentSessionConfig: Codable, Hashable {
@@ -41,7 +32,6 @@ struct AgentSessionConfig: Codable, Hashable {
     let launchCommand: String
     let arguments: [String]
     let environment: [String: String]
-    let toolKind: AIToolKind?
 }
 
 // MARK: - Tmux attach configuration
