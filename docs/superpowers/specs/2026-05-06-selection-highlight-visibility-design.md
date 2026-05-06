@@ -1,125 +1,222 @@
 # Selection Highlight Visibility — Design
 
 **Date:** 2026-05-06
-**Status:** Draft
+**Status:** Implemented
 **Owner:** 卡皮巴拉 / BatchZero
 
 ## Problem
 
-When viewing a text file in Treemux's file viewer, dragging the mouse to select characters does not produce a clearly visible background highlight. The user expects VSCode-style selection feedback (a clearly distinguishable colored background under the selected glyphs).
+When viewing a text file in Treemux's file viewer, the selection background is
+**invisible** under every selection method — mouse drag-select, ⌘A select-all,
+shift-arrow extension. The selection range itself is correct (⌘C copies the
+right text), but no visual feedback appears.
 
-## Current Behavior (Diagnosis)
+Goal: make selection produce a clearly visible, VSCode-style background
+highlight, **without** sacrificing the existing horizontal scrolling for
+unwrapped long lines.
 
-The text viewer is `TextEditorView`, which embeds `CodeEditSourceEditor.SourceEditor` (`Treemux/UI/FileBrowser/TextEditorView.swift`).
+## Investigation Trail (kept for the file's archaeological value)
 
-Selection color is already plumbed through:
+The root cause is non-obvious and shared between an upstream library bug and
+a Treemux-side workaround that was added for a different reason. The first
+hypothesis (alpha being eaten by the SwiftUI→AppKit `NSColor` bridge) turned
+out to be wrong; recording the real chain so future debugging doesn't repeat
+the dead end:
 
-1. `TreemuxEditorTheme.from(uiColors:)` builds an `EditorTheme.selection`:
-   ```swift
-   let selection = NSColor(Color(hex: ui.accentColor))
-       .withAlphaComponent(0.3)
-       .editorThemeColor
-   ```
-2. `CodeEditSourceEditor` assigns it to `controller.textView.selectionManager.selectionBackgroundColor`
-   (`SourceEditorConfiguration+Appearance.swift:144`).
-3. `TextSelectionManager.drawSelectedRange` fills selection rects with that color when the
-   text view is first responder (`TextSelectionManager+Draw.swift:79`).
+### Bug 1 — upstream `maxLineWidth` never propagates
 
-So selection IS being drawn — visibility is the issue. Two contributing factors:
+In `CodeEditTextView`'s `TextLayoutManager+Layout.swift:190`, the per-line
+layout helper does:
 
-- **Alpha is too low for the color/background pairing.** Dark theme: `accentColor #418ADE` at 30% over `paneBackground #111317` ≈ `#1F3653`. Visible, but markedly weaker than VSCode dark+'s `#264F78` over `#1E1E1E`.
-- **The construction path goes through SwiftUI→AppKit bridging.** `NSColor(Color(hex:))` returns an NSColor whose representation can be a "resolved" or display-P3-tagged color depending on macOS version; chaining `.withAlphaComponent(_:)` on such an NSColor is not consistently lossless across versions, and the subsequent `.usingColorSpace(.sRGB)` adds a second conversion. The end-effective alpha can be lower than 0.3.
+```swift
+private func layoutLine(
+    ...,
+    maxFoundLineWidth: inout CGFloat
+) -> (...) {
+    ...
+    var maxFoundLineWidth = maxFoundLineWidth   // ← shadows the inout
+    ...
+    if maxFoundLineWidth < lineSize.width {
+        maxFoundLineWidth = lineSize.width      // ← writes to the local copy
+    }
+}
+```
 
-## Goal
+The `var maxFoundLineWidth = maxFoundLineWidth` line creates a local copy
+that shadows the `inout` parameter. Every subsequent write goes to the
+local; nothing is propagated back to the caller. As a result,
+`TextLayoutManager.maxLineWidth` permanently stays at its initial value of
+`0`, no matter how wide the actual document is.
 
-When the user drags to select text in the file viewer, the selection background reads clearly against the active theme's background — comparable to VSCode's default selection contrast — for both built-in themes (Treemux Dark, Treemux Light).
+Introduced in commit `e7f1580a` (2025-07-23) and still present in
+CodeEditTextView main HEAD as of 2026-05.
 
-## Non-Goals
+### Bug 2 — Treemux's existing scroll workaround
 
-- Selection-match highlighting (other occurrences of the selected substring).
-- Cursor-line ("active line") highlight tuning.
-- New theme schema fields, theme migrations, settings toggles, or user-configurable selection colors.
-- Any change to selection behavior outside the file viewer (terminal, sidebar, etc.).
-- Changes to how `EditorTheme` consumers other than `selection` are constructed.
+`ScrollBehaviorCoordinator` (this file) was added to make horizontal
+scrolling work for long unwrapped lines despite Bug 1. It does so by
+inflating `layoutManager.edgeInsets.right` until `estimatedWidth() =
+maxLineWidth + edgeInsets.horizontal` reports a value large enough that
+`updateFrameIfNeeded` keeps the textView frame wider than the viewport
+(giving NSScrollView something to scroll).
+
+That inflation has a side effect that the original comment incorrectly
+dismissed as "no visible effect": `wrapLinesWidth = viewport.width −
+edgeInsets.horizontal` goes **negative** once `right` exceeds the viewport.
+
+### Where the two bugs meet — `getFillRects`
+
+`TextSelectionManager.getFillRects` clamps every selection rect to a
+bounding rect of width `max(maxLineWidth, wrapLinesWidth)`:
+
+```swift
+let textWidth = if maxLineLayoutWidth == .greatestFiniteMagnitude {
+    maxLineWidth         // 0, per Bug 1
+} else {
+    maxLineLayoutWidth   // wrapLines==true path, not used here
+}
+let maxWidth = max(textWidth, wrapLinesWidth)   // max(0, negative) = 0
+let validTextDrawingRect = CGRect(x: ..., width: maxWidth, ...)
+```
+
+With `wrapLines: false` (Treemux's setting), the `if` branch hits
+`maxLineWidth = 0`. With Bug 2 active, `wrapLinesWidth` is negative.
+`max(0, negative) = 0`, so `validTextDrawingRect.width = 0`. Every
+selection rect intersected with this zero-width rect collapses to zero
+width. `context.fill(...)` paints zero pixels. Selection is invisible.
+
+The selection range data is correct throughout — only the visual draw is
+broken.
+
+### Containment check before solving
+
+`textViewportSize()` (which feeds `wrapLinesWidth`) is called from
+exactly one place in CodeEditTextView: the `wrapLinesWidth` getter
+itself. `wrapLinesWidth` is consumed in two places:
+
+1. `maxLineLayoutWidth` — only when `wrapLines == true` (we never set it).
+2. `getFillRects` — exactly the path we want to fix.
+
+So overriding `textViewportSize()` only affects selection-rect width.
+Nothing else in the package depends on it.
 
 ## Approach
 
-Single-line change in `TreemuxEditorTheme.from(uiColors:)`: rebuild `EditorTheme.selection` so it (a) bypasses the SwiftUI→AppKit color bridge and (b) uses an alpha that produces VSCode-comparable contrast.
+Single-file change in `Treemux/UI/FileBrowser/TextEditorView.swift`. Two
+independent improvements that ship together:
 
-### New construction path
+### 1. Wrapper delegate to keep `wrapLinesWidth` non-negative
 
-Parse the hex string from `ui.accentColor` directly into 8-bit RGB components, then construct an sRGB `NSColor` with explicit `alpha: 0.45`:
+Add a `SelectionRectFixDelegate` private class that conforms to
+`TextLayoutManagerDelegate`. It's installed in front of the textView
+on `TextLayoutManager.delegate` (a `public weak var` — accessible from
+outside the package). Five of the six protocol members forward
+unchanged to the textView. The sixth — `textViewportSize()` — returns:
+
+```swift
+var size = textView.textViewportSize()
+size.width += layoutManager.edgeInsets.horizontal
+return size
+```
+
+Reading `edgeInsets.horizontal` at call-time means we always reflect the
+current inflation level. With this lie, `wrapLinesWidth = (real_viewport
++ horizontal) − horizontal = real_viewport` — always positive,
+regardless of how far `ScrollBehaviorCoordinator` has inflated `right`.
+Selection rects clamp to the actual viewport width and become visible.
+
+The wrapper is installed in `controllerDidAppear`, restored to the
+original delegate in `destroy()`, and held strongly by the coordinator
+(since `TextLayoutManager.delegate` is `weak`).
+
+### 2. VSCode-strength selection color
+
+Independent of the wrapper fix: replace the `EditorTheme.selection`
+construction so the alpha is reliably 0.45 (matching VSCode dark+'s
+contrast against the editor background) and the NSColor is built
+directly in sRGB rather than going through the SwiftUI `Color(hex:)` →
+`NSColor(_:)` → `withAlphaComponent` bridge:
 
 ```swift
 let selection = NSColor.sRGBSelection(fromHex: ui.accentColor, alpha: 0.45)
 ```
 
-Where `sRGBSelection(fromHex:alpha:)` is a small private helper in this file:
+A small `NSColor.sRGBSelection(fromHex:alpha:)` helper sits next to the
+existing `editorThemeColor` extension — parses the hex string into 8-bit
+sRGB components and constructs the color directly with the requested
+alpha.
 
-```swift
-private extension NSColor {
-    static func sRGBSelection(fromHex hex: String, alpha: CGFloat) -> NSColor {
-        let cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "#", with: "")
-        var rgb: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&rgb)
-        let r = CGFloat((rgb >> 16) & 0xFF) / 255.0
-        let g = CGFloat((rgb >> 8)  & 0xFF) / 255.0
-        let b = CGFloat( rgb        & 0xFF) / 255.0
-        return NSColor(srgbRed: r, green: g, blue: b, alpha: alpha)
-    }
-}
-```
+The alpha and color-space hardening were originally believed to be
+load-bearing fixes for the visibility issue (per the v1 of this spec).
+They aren't — even alpha 1.0 magenta would have rendered invisibly
+because of the zero-width clamp. They are kept anyway as a quality
+improvement: the resulting blue is closer to VSCode's dark+/light
+defaults, reading clearly against both built-in themes.
 
-This bypasses `Color(hex:)` → `NSColor(_: Color)` → `withAlphaComponent` entirely. The returned NSColor is unambiguously sRGB, so the existing `.editorThemeColor` (`usingColorSpace(.sRGB)`) is a no-op and remains for safety.
+## Numbers (for visual reference)
 
-### Why alpha = 0.45
-
-Visual targets, blended over each theme's `paneBackground`:
+Blended over each theme's `paneBackground`:
 
 | Theme | accent | bg      | result @ 0.45 | VSCode reference |
 |-------|--------|---------|---------------|------------------|
 | Dark  | `#418ADE` | `#111317` | `~#28547B`    | `#264F78` (dark+) |
 | Light | `#2F7DE1` | `#FFFFFF` | `~#A1C2EE`    | `#ADD6FF` (light) |
 
-Both land within a few units of VSCode's defaults. Alpha is kept below 1.0 so glyph color still reads through the highlight (matching VSCode's behavior — selected text isn't reverse-video).
-
-### What stays the same
-
-- `EditorTheme.selection` keeps deriving from `accentColor`, so theme cohesion is preserved.
-- All other `EditorTheme` fields, the call site in `TextEditorView.body`, and theme schema are untouched.
-- The `editorThemeColor` extension is kept; only the input to it changes.
-
 ## Files Touched
 
-- `Treemux/UI/FileBrowser/TextEditorView.swift` — replace the one-line `selection` build inside `TreemuxEditorTheme.from(uiColors:)`, and add a small `NSColor.sRGBSelection(fromHex:alpha:)` helper alongside the existing private NSColor extension in the same file.
+- `Treemux/UI/FileBrowser/TextEditorView.swift` — single file
+  - Add `SelectionRectFixDelegate` private class implementing
+    `TextLayoutManagerDelegate`
+  - In `ScrollBehaviorCoordinator`: hold the wrapper strongly,
+    install in `controllerDidAppear`, restore in `destroy()`
+  - In `TreemuxEditorTheme.from(uiColors:)`: build `selection` via
+    `NSColor.sRGBSelection(fromHex:alpha:)`
+  - Add `NSColor.sRGBSelection(fromHex:alpha:)` helper next to the
+    existing `editorThemeColor` extension
+  - Update the `ScrollBehaviorCoordinator` doc-comment to correct the
+    "no visible effect" claim (it broke selection draw — that's the
+    whole reason this change exists)
 
-No other files are modified. No new strings, so no `Localizable.xcstrings` changes.
+No other files modified. No theme schema changes. No new strings
+(no `Localizable.xcstrings` update).
+
+## Out of Scope (Deferred)
+
+- VSCode "selection match" (highlight all occurrences of the selected
+  substring) — explicitly declined for this iteration.
+- Theme-specific selection color overrides via `UIColors`.
+- Tuning `EditorTheme.lineHighlight` (the active-line background).
+- **Patching upstream `maxLineWidth` / `inout` shadowing.** The right
+  long-term fix is a one-line PR to CodeEditTextView removing the
+  `var maxFoundLineWidth = maxFoundLineWidth` shadow. Once upstream
+  merges that, our `ScrollBehaviorCoordinator` and the wrapper delegate
+  can both be deleted entirely. Filing the PR is a separate task; the
+  wrapper here is forward-compatible (when upstream is fixed,
+  `edgeInsets.horizontal` shrinks to its natural value, the
+  compensation in `textViewportSize()` becomes nearly zero, and the
+  numbers fall out the same).
 
 ## Testing
 
-### Manual (primary)
+Manual visual verification only — confirmed in both built-in themes:
 
-1. Build the app, open a text file (e.g. any `.swift` source) in the file viewer.
-2. Drag-select a span of characters → expect a clearly visible blue selection background, comparable to VSCode dark+.
-3. Switch to Treemux Light theme via Settings → repeat → expect a soft blue selection background, comparable to VSCode light.
-4. Click into the editor without selecting (caret only) → confirm the cursor still appears and behaves as before (no regression in the line-highlight path, which is unchanged).
-5. Resize / scroll while a selection is active → confirm highlight tracks correctly (sanity check that we haven't disturbed the draw path).
+- **Selection visibility**: drag-select, ⌘A, shift-arrow all show a
+  clearly visible blue background under the selected glyphs.
+- **Horizontal scroll preserved**: a file with lines wider than the
+  viewport scrolls horizontally (trackpad pan or scrollbar drag), and
+  selections within the off-viewport region still highlight correctly.
 
-### Automated
-
-No new unit test. The change is a color value; verifying it would require either a snapshot test (not currently set up for this view) or asserting RGB components, which is low signal versus visual confirmation. The existing theme test suite (`ThemeTests.swift`) does not cover `EditorTheme` construction; adding coverage there is out of scope.
+No automated test added: the change is a behavioral fix that depends
+on visual rendering of CGContext fills behind subviews. Unit-testing
+that would require either a snapshot harness (not configured for this
+view) or asserting RGB components (low signal). Manual verification
+is the agreed test.
 
 ## Risks & Mitigations
 
 | Risk | Mitigation |
 |------|------------|
-| `accentColor` strings ever contain 8-digit hex (with alpha). | The hex parser only reads the low 24 bits — any embedded alpha component is ignored, and the explicit `alpha:` argument always wins. Behavior is well-defined. |
-| A future custom theme defines a non-blue accent that looks bad at 0.45 (e.g., a very dark red). | Acceptable: the existing design already couples selection to accent. Custom themes can ship later with a dedicated selection field if needed; that's outside this spec. |
-| 0.45 still feels too weak after building. | Trivially tunable — adjust the alpha constant in the same line. No dependent code. |
-
-## Out of Scope (Deferred)
-
-- VSCode "selection match" (highlight all occurrences of the selected substring) — explicitly declined by the user for this iteration.
-- Theme-specific selection color overrides via `UIColors`.
-- Tuning `EditorTheme.lineHighlight` (the active-line background, currently `paneHeaderBackground` and barely visible against `paneBackground`).
+| Upstream adds another consumer of `textViewportSize()` that depends on the *real* viewport size; our wrapper would feed it an inflated value. | Containment is verified in this spec — currently only `wrapLinesWidth` consumes `textViewportSize()`. The wrapper's compensation should be revisited on every CodeEditTextView upgrade. |
+| Upstream fixes `maxLineWidth`; the wrapper would still be installed but harmless. | When `edgeInsets.horizontal` is small, `compensation = horizontal` is small too, so `wrapLinesWidth` resolves to ~`viewport_width` either way. The wrapper is forward-compatible; deleting it later is purely cleanup. |
+| `TextLayoutManager.delegate` weak-pointer churn: if the wrapper is deallocated mid-edit, the layout manager loses its delegate. | The coordinator holds the wrapper as a stored `let` property, so it lives as long as the coordinator. The coordinator is held by `@StateObject` in `CodeEditorRepresentable`, so it survives view updates. |
+| `accentColor` ever contains an 8-digit hex (with embedded alpha). | The hex parser only reads the low 24 bits — any embedded alpha is ignored, and the explicit `alpha:` argument always wins. |
