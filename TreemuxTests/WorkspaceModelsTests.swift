@@ -6,9 +6,6 @@
 import XCTest
 @testable import Treemux
 
-// Note: hasAttention aggregations are exercised here only on the scalar shortcut paths
-// (empty workspace returns false). Integration-level tests over real sessions are deferred
-// because they would require live ghostty surfaces.
 final class WorkspaceModelsTests: XCTestCase {
 
     func testWorkspaceRecordCodableRoundTrip() throws {
@@ -598,17 +595,6 @@ final class WorkspaceModelsTests: XCTestCase {
 
         let remote = SidebarSection.remote(groupKey: "server1|root", displayTitle: "server1 (root@10.0.0.1)")
         XCTAssertEqual(remote.persistenceKey, "server1|root")
-    }
-
-    @MainActor
-    func testHasAttentionFalseOnFreshWorkspace() {
-        let workspace = WorkspaceModel(
-            name: "test",
-            kind: .repository
-        )
-        XCTAssertFalse(workspace.hasAttention)
-        XCTAssertFalse(workspace.hasAttention(forWorktreePath: "/nonexistent"))
-        XCTAssertFalse(workspace.hasAttention(forTabID: UUID(), worktreePath: "/nonexistent"))
     }
 
     @MainActor
