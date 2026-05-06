@@ -325,7 +325,7 @@ final class WorkspaceModel: ObservableObject, Identifiable {
 
     /// Returns the session controller for the currently active tab, or nil if no tab
     /// is active or the active tab is not a terminal tab. File-browser tabs have no
-    /// session controller; callers (e.g. AIHookBannerController.evaluate) must tolerate
+    /// session controller; callers must tolerate
     /// nil here so we don't lazy-create a phantom terminal controller for an FB tab.
     var sessionController: WorkspaceSessionController? {
         guard let tabID = activeTabID,
@@ -351,30 +351,6 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     /// Returns true if any worktree path in this workspace has running sessions.
     var hasAnyRunningSessions: Bool {
         tabControllers.values.contains { !$0.isEmpty }
-    }
-
-    /// True if any session in any worktree of this workspace is currently
-    /// asking for attention (an AI agent finished a turn or is awaiting input).
-    var hasAttention: Bool {
-        tabControllers.values.contains { tabMap in
-            tabMap.values.contains { ctrl in
-                ctrl.sessions.values.contains { $0.aiAttention != .none }
-            }
-        }
-    }
-
-    /// True if any session inside the given worktree path has attention.
-    func hasAttention(forWorktreePath path: String) -> Bool {
-        guard let controllers = tabControllers[path] else { return false }
-        return controllers.values.contains { ctrl in
-            ctrl.sessions.values.contains { $0.aiAttention != .none }
-        }
-    }
-
-    /// True if the specific tab inside the given worktree has an attentive session.
-    func hasAttention(forTabID tabID: UUID, worktreePath: String) -> Bool {
-        guard let ctrl = tabControllers[worktreePath]?[tabID] else { return false }
-        return ctrl.sessions.values.contains { $0.aiAttention != .none }
     }
 
     // MARK: - Initialization
