@@ -52,7 +52,12 @@ struct SplitDivider: View {
             }
         }
         .gesture(
-            DragGesture(minimumDistance: 1)
+            // Use .global so translation is measured in screen coordinates.
+            // The divider's own position changes as we drag (its frame is laid out
+            // by the parent based on the new fraction). With the default .local space,
+            // each event's translation is reduced by the view's own movement, creating
+            // a feedback loop that snaps the divider back and forth (jitter + lag).
+            DragGesture(minimumDistance: 1, coordinateSpace: .global)
                 .onChanged { value in
                     let startFraction = dragStartFraction ?? fraction
                     if dragStartFraction == nil {
