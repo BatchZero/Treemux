@@ -44,6 +44,28 @@ private enum ConnectionMode {
     case citadel(SSHClient, SFTPClient)
 }
 
+// MARK: - Pipe drain helper
+
+/// Thread-safe `Data` accumulator. `Pipe.readabilityHandler` fires on a
+/// private Foundation queue, so writes can race with the snapshot read in the
+/// process's `terminationHandler`.
+fileprivate final class DataAccumulator: @unchecked Sendable {
+    private let lock = NSLock()
+    private var buffer = Data()
+
+    func append(_ chunk: Data) {
+        lock.lock()
+        buffer.append(chunk)
+        lock.unlock()
+    }
+
+    func snapshot() -> Data {
+        lock.lock()
+        defer { lock.unlock() }
+        return buffer
+    }
+}
+
 // MARK: - SFTP service actor
 
 /// Manages SFTP connections and directory operations.
@@ -291,7 +313,7 @@ actor SFTPService {
 
     // MARK: - Process helper
 
-    private struct SSHResult {
+    struct SSHResult {
         let exitCode: Int32
         let output: String
     }
@@ -299,42 +321,8 @@ actor SFTPService {
     private func runSSH(target: SSHTarget, command: String) async throws -> SSHResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-
-        var args: [String] = [
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=10",
-            "-o", "StrictHostKeyChecking=accept-new",
-            "-p", "\(target.port)"
-        ]
-
-        if let identityFile = target.identityFile {
-            let expandedPath = (identityFile as NSString).expandingTildeInPath
-            args += ["-i", expandedPath]
-        }
-
-        let username = target.user ?? NSUserName()
-        args.append("\(username)@\(target.host)")
-        args.append(command)
-
-        process.arguments = args
-
-        let pipe = Pipe()
-        let errorPipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = errorPipe
-
-        return try await withCheckedThrowingContinuation { continuation in
-            process.terminationHandler = { _ in
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                let output = String(data: data, encoding: .utf8) ?? ""
-                continuation.resume(returning: SSHResult(exitCode: process.terminationStatus, output: output))
-            }
-            do {
-                try process.run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
+        process.arguments = Self.sshArgs(target: target, command: command)
+        return try await Self.runProcessAndCaptureOutput(process)
     }
 
     private func shellEscape(_ path: String) -> String {
@@ -347,44 +335,91 @@ actor SFTPService {
     private func runSSHWithStdin(target: SSHTarget, command: String, stdin: String) async throws -> SSHResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
+        process.arguments = Self.sshArgs(target: target, command: command)
+        let stdinData = stdin.data(using: .utf8) ?? Data()
+        return try await Self.runProcessAndCaptureOutput(process, stdin: stdinData)
+    }
 
+    private static func sshArgs(target: SSHTarget, command: String) -> [String] {
         var args: [String] = [
             "-o", "BatchMode=yes",
             "-o", "ConnectTimeout=10",
             "-o", "StrictHostKeyChecking=accept-new",
             "-p", "\(target.port)"
         ]
-
         if let identityFile = target.identityFile {
             let expandedPath = (identityFile as NSString).expandingTildeInPath
             args += ["-i", expandedPath]
         }
-
         let username = target.user ?? NSUserName()
         args.append("\(username)@\(target.host)")
         args.append(command)
+        return args
+    }
 
-        process.arguments = args
-
-        let stdinPipe = Pipe()
+    /// Runs `process` to completion and returns its stdout + exit code.
+    ///
+    /// Drains stdout/stderr incrementally as the child writes. Darwin's pipe
+    /// buffer is ~16 KB, so a child producing more than that on either stream
+    /// blocks on write if nobody reads — with the previous "read in
+    /// terminationHandler" approach the process then never terminated, the
+    /// callback never fired, and the awaiting Task hung forever. Manifested
+    /// as a stuck spinner when reading any remote file larger than the buffer
+    /// over SSH (`cat | base64` output exceeds 16 KB at ~12 KB of source).
+    ///
+    /// Optionally writes `stdin` to the child and closes it. The write runs
+    /// off the cooperative pool so a backpressured ssh process can't stall
+    /// the awaiting Task while a large payload drains.
+    static func runProcessAndCaptureOutput(_ process: Process, stdin: Data? = nil) async throws -> SSHResult {
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
-        process.standardInput = stdinPipe
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
 
+        let stdinPipe: Pipe?
+        if stdin != nil {
+            let p = Pipe()
+            process.standardInput = p
+            stdinPipe = p
+        } else {
+            stdinPipe = nil
+        }
+
+        let stdoutBuffer = DataAccumulator()
+        let stderrBuffer = DataAccumulator()
+        stdoutPipe.fileHandleForReading.readabilityHandler = { fh in
+            let chunk = fh.availableData
+            if chunk.isEmpty { fh.readabilityHandler = nil }
+            else { stdoutBuffer.append(chunk) }
+        }
+        stderrPipe.fileHandleForReading.readabilityHandler = { fh in
+            let chunk = fh.availableData
+            if chunk.isEmpty { fh.readabilityHandler = nil }
+            else { stderrBuffer.append(chunk) }
+        }
+
         return try await withCheckedThrowingContinuation { continuation in
             process.terminationHandler = { _ in
-                let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-                let output = String(data: data, encoding: .utf8) ?? ""
+                // Detach handlers and grab any final bytes synchronously. The
+                // child's write end is closed by the kernel on exit, so these
+                // reads see EOF promptly even if a chunk arrived between the
+                // last readabilityHandler call and the termination callback.
+                stdoutPipe.fileHandleForReading.readabilityHandler = nil
+                stderrPipe.fileHandleForReading.readabilityHandler = nil
+                stdoutBuffer.append(stdoutPipe.fileHandleForReading.readDataToEndOfFile())
+                stderrBuffer.append(stderrPipe.fileHandleForReading.readDataToEndOfFile())
+
+                let output = String(data: stdoutBuffer.snapshot(), encoding: .utf8) ?? ""
                 continuation.resume(returning: SSHResult(exitCode: process.terminationStatus, output: output))
             }
             do {
                 try process.run()
-                if let stdinData = stdin.data(using: .utf8) {
-                    try stdinPipe.fileHandleForWriting.write(contentsOf: stdinData)
+                if let stdin, let stdinPipe {
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        try? stdinPipe.fileHandleForWriting.write(contentsOf: stdin)
+                        try? stdinPipe.fileHandleForWriting.close()
+                    }
                 }
-                try stdinPipe.fileHandleForWriting.close()
             } catch {
                 continuation.resume(throwing: error)
             }

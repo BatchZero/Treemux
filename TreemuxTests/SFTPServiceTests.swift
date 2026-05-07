@@ -100,4 +100,73 @@ final class SFTPServiceTests: XCTestCase {
         XCTAssertEqual(withSlash.first?.path, "/x/file")
         XCTAssertEqual(withoutSlash.first?.path, "/x/file")
     }
+
+    // MARK: - runProcessAndCaptureOutput: pipe drain regression
+
+    /// Regression: opening a remote file ≥ ~16 KB used to hang forever because
+    /// stdout was only read in the process's `terminationHandler`. The kernel
+    /// pipe buffer fills, the child blocks on write, the process never
+    /// terminates, and the awaiting Task is stuck. The 100 KB output here is
+    /// well past the buffer cap, so a regression of the drain logic would make
+    /// this test exceed its 10 s timeout instead of finishing in milliseconds.
+    func test_runProcessAndCaptureOutput_largeStdout_doesNotDeadlock() async throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", "yes | head -c 100000"]
+
+        let result = try await withTimeout(seconds: 10) {
+            try await SFTPService.runProcessAndCaptureOutput(process)
+        }
+
+        XCTAssertEqual(result.exitCode, 0)
+        XCTAssertEqual(result.output.count, 100_000)
+    }
+
+    func test_runProcessAndCaptureOutput_smallStdout_returnsExactBytes() async throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/echo")
+        process.arguments = ["hello"]
+
+        let result = try await withTimeout(seconds: 5) {
+            try await SFTPService.runProcessAndCaptureOutput(process)
+        }
+
+        XCTAssertEqual(result.exitCode, 0)
+        XCTAssertEqual(result.output, "hello\n")
+    }
+
+    /// Stdin write also has to stay off the cooperative pool — for a payload
+    /// past the pipe buffer the synchronous write would otherwise stall the
+    /// awaiting Task. This pipes 100 KB through `cat` and round-trips.
+    func test_runProcessAndCaptureOutput_largeStdin_isPiped() async throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/cat")
+        let payload = Data(repeating: UInt8(ascii: "x"), count: 100_000)
+
+        let result = try await withTimeout(seconds: 10) {
+            try await SFTPService.runProcessAndCaptureOutput(process, stdin: payload)
+        }
+
+        XCTAssertEqual(result.exitCode, 0)
+        XCTAssertEqual(result.output.count, 100_000)
+    }
+}
+
+// MARK: - Test helpers
+
+private struct TestTimeoutError: Error {}
+
+/// Races `body` against a timeout. Without this, a regression of the pipe
+/// drain logic would hang the test runner indefinitely instead of failing.
+private func withTimeout<T: Sendable>(seconds: TimeInterval, _ body: @Sendable @escaping () async throws -> T) async throws -> T {
+    try await withThrowingTaskGroup(of: T.self) { group in
+        group.addTask { try await body() }
+        group.addTask {
+            try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            throw TestTimeoutError()
+        }
+        let first = try await group.next()!
+        group.cancelAll()
+        return first
+    }
 }
