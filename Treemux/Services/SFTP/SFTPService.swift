@@ -195,6 +195,21 @@ actor SFTPService {
         }
     }
 
+    /// Read at most the first `maxBytes` of a remote file. Unlike `readFile`,
+    /// this never errors on oversized files — large files yield a `maxBytes`
+    /// prefix and stop. Used for content sniffing where we only need a small
+    /// window to decide text vs. binary.
+    func readPrefix(at path: String, maxBytes: Int) async throws -> Data {
+        guard let mode else { throw SFTPServiceError.notConnected }
+
+        switch mode {
+        case .ssh(let target):
+            return try await readPrefixViaSSH(target: target, path: path, maxBytes: maxBytes)
+        case .citadel(_, let sftp):
+            return try await readPrefixViaSFTP(sftp: sftp, path: path, maxBytes: maxBytes)
+        }
+    }
+
     /// Write `data` to the given remote file path, creating or truncating as needed.
     func writeFile(at path: String, data: Data) async throws {
         guard let mode else { throw SFTPServiceError.notConnected }
@@ -706,6 +721,38 @@ actor SFTPService {
         let file = try await sftp.openFile(filePath: path, flags: .read)
         do {
             let buffer = try await file.readAll()
+            try await file.close()
+            return Data(buffer.readableBytesView)
+        } catch {
+            try? await file.close()
+            throw error
+        }
+    }
+
+    // MARK: - Read prefix (sniff)
+
+    private func readPrefixViaSSH(target: SSHTarget, path: String, maxBytes: Int) async throws -> Data {
+        // `head -c` bounds the read at the source so we don't transfer more
+        // bytes than necessary. base64 keeps the channel binary-safe.
+        let cmd = "head -c \(maxBytes) -- \(shellEscape(path)) | base64"
+        let result = try await runSSH(target: target, command: cmd)
+        guard result.exitCode == 0 else {
+            throw SFTPServiceError.commandFailed("head failed at \(path)")
+        }
+        let cleaned = result.output.replacingOccurrences(of: "\n", with: "")
+            .replacingOccurrences(of: "\r", with: "")
+            .replacingOccurrences(of: " ", with: "")
+        guard let data = Data(base64Encoded: cleaned) else {
+            throw SFTPServiceError.commandFailed("base64 decode failed for \(path)")
+        }
+        return data
+    }
+
+    private func readPrefixViaSFTP(sftp: SFTPClient, path: String, maxBytes: Int) async throws -> Data {
+        let file = try await sftp.openFile(filePath: path, flags: .read)
+        do {
+            let length = UInt32(min(maxBytes, Int(UInt32.max)))
+            let buffer = try await file.read(from: 0, length: length)
             try await file.close()
             return Data(buffer.readableBytesView)
         } catch {

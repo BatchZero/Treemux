@@ -66,6 +66,36 @@ final class LocalFileBrowserDataSourceTests: XCTestCase {
         }
     }
 
+    // readPrefix is the read variant used for content sniffing: it must never
+    // throw fileTooLarge. It returns up to maxBytes from the start of the file.
+
+    func testReadPrefixReturnsAllBytesForSmallFile() async throws {
+        let file = tmpDir.appendingPathComponent("small.txt")
+        try "hi".write(to: file, atomically: true, encoding: .utf8)
+        let ds = LocalFileBrowserDataSource()
+        let data = try await ds.readPrefix(file.path, maxBytes: 1024)
+        XCTAssertEqual(String(data: data, encoding: .utf8), "hi")
+    }
+
+    func testReadPrefixTruncatesLargeFileWithoutThrowing() async throws {
+        let file = tmpDir.appendingPathComponent("big.txt")
+        // 5000 bytes of 'A' — well over the 512-byte sniff window.
+        try Data(repeating: 0x41, count: 5000).write(to: file)
+        let ds = LocalFileBrowserDataSource()
+        let data = try await ds.readPrefix(file.path, maxBytes: 512)
+        XCTAssertEqual(data.count, 512)
+        XCTAssertEqual(data.first, 0x41)
+        XCTAssertEqual(data.last, 0x41)
+    }
+
+    func testReadPrefixOnEmptyFileReturnsEmpty() async throws {
+        let file = tmpDir.appendingPathComponent("empty.txt")
+        try Data().write(to: file)
+        let ds = LocalFileBrowserDataSource()
+        let data = try await ds.readPrefix(file.path, maxBytes: 512)
+        XCTAssertEqual(data.count, 0)
+    }
+
     func testWriteFileAtomic() async throws {
         let file = tmpDir.appendingPathComponent("out.txt")
         let ds = LocalFileBrowserDataSource()

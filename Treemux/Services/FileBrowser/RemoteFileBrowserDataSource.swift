@@ -60,6 +60,11 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
         return try await service.readFile(at: path, maxBytes: maxBytes)
     }
 
+    func readPrefix(_ path: String, maxBytes: Int) async throws -> Data {
+        try await ensureConnected()
+        return try await service.readPrefix(at: path, maxBytes: maxBytes)
+    }
+
     func writeFile(_ path: String, data: Data) async throws {
         try await ensureConnected()
         try await service.writeFile(at: path, data: data)
