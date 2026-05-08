@@ -100,6 +100,34 @@ final class FileBrowserTabControllerTests: XCTestCase {
         }
     }
 
+    /// Regression: a Julia source file (.jl) larger than the sniff window must
+    /// classify as text, not binary. Previously `loadUnknown` requested only
+    /// 512 bytes via `readFile`, which threw `fileTooLarge` for anything over
+    /// the limit and dropped the file into the binary path.
+    func testSelectUnknownExtensionLargeTextFile() async {
+        let mock = MockFileBrowserDataSource()
+        let big = "function greet()\n  println(\"hello\")\nend\n".data(using: .utf8)!
+            + Data(repeating: 0x20, count: 100_000) // padding so size >> sniff window
+        mock.fileContents["/r/main.jl"] = big
+        mock.fileMetas["/r/main.jl"] = FileMetadata(
+            path: "/r/main.jl",
+            sizeBytes: Int64(big.count),
+            modifiedAt: nil,
+            isDirectory: false,
+            isSymbolicLink: false
+        )
+        let ctrl = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree),
+            dataSource: mock
+        )
+        await ctrl.openInTree("/r/main.jl")
+        if case .text = ctrl.openFile {
+            // ok
+        } else {
+            XCTFail("expected .text for a large .jl source file, got \(ctrl.openFile)")
+        }
+    }
+
     func testEditMarksDirty() async {
         let mock = MockFileBrowserDataSource()
         mock.fileMetas["/r/a.txt"] = FileMetadata(path: "/r/a.txt", sizeBytes: 1, modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
@@ -221,6 +249,10 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
         guard let data = fileContents[path] else { throw FileBrowserError.notFound(path) }
         if data.count > maxBytes { throw FileBrowserError.fileTooLarge(path: path, sizeBytes: Int64(data.count), limit: Int64(maxBytes)) }
         return data
+    }
+    func readPrefix(_ path: String, maxBytes: Int) async throws -> Data {
+        guard let data = fileContents[path] else { throw FileBrowserError.notFound(path) }
+        return data.prefix(maxBytes)
     }
     func writeFile(_ path: String, data: Data) async throws {
         writes.append((path, data))

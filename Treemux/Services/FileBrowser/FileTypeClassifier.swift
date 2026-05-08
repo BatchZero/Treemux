@@ -33,6 +33,11 @@ enum FileTypeClassifier {
         "rtf", "rtfd"
     ]
 
+    /// Maximum bytes inspected by `classifyByContent`. Matches VS Code's
+    /// `ZERO_BYTE_DETECTION_BUFFER_MAX_LEN` — small enough to keep remote
+    /// (SFTP) reads cheap, large enough to catch real binaries reliably.
+    static let sniffByteCount = 512
+
     static func classifyByName(_ filename: String) -> FileViewKind {
         let lower = filename.lowercased()
         // Special filenames without extensions.
@@ -41,20 +46,37 @@ enum FileTypeClassifier {
             return .text
         }
         let ext = (lower as NSString).pathExtension
-        if ext.isEmpty { return .unknown }
         if textExts.contains(ext) { return .text }
+        // Image and Quick Look formats must be routed by extension because
+        // their bytes contain NULs and would otherwise be classified as
+        // binary by `classifyByContent`.
         if imageExts.contains(ext) { return .image }
         if quickLookExts.contains(ext) { return .quickLook }
-        // Anything else with a known extension is treated as binary by default.
-        return .binary
+        // Defer to content sniffing for everything else, including unknown
+        // source-file extensions (.jl, .zig, .nim, ...) and files without
+        // an extension. The caller reads a small prefix and calls
+        // `classifyByContent` to decide text vs. binary.
+        return .unknown
     }
 
-    /// Sniff up to 8 KB to decide text vs. binary (null bytes => binary).
+    /// Decide text vs. binary by examining the first `sniffByteCount` bytes.
+    ///
+    /// Mirrors VS Code's heuristic: a NUL byte in the window means binary,
+    /// unless the data starts with a UTF-16 LE/BE BOM (in which case the
+    /// alternating zero bytes are expected and the file is text).
     static func classifyByContent(_ data: Data) -> FileViewKind {
-        let sample = data.prefix(8192)
+        if hasUTF16BOM(data) { return .text }
+        let sample = data.prefix(sniffByteCount)
         if sample.contains(0) { return .binary }
-        if String(data: sample, encoding: .utf8) != nil { return .text }
-        return .binary
+        return .text
+    }
+
+    private static func hasUTF16BOM(_ data: Data) -> Bool {
+        guard data.count >= 2 else { return false }
+        let b0 = data[data.startIndex]
+        let b1 = data[data.startIndex + 1]
+        // FF FE = UTF-16 LE, FE FF = UTF-16 BE.
+        return (b0 == 0xFF && b1 == 0xFE) || (b0 == 0xFE && b1 == 0xFF)
     }
 
     /// Returns a `SupportedLanguage` for the file at `path` based on its

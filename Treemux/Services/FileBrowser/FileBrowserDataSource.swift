@@ -38,6 +38,12 @@ protocol FileBrowserDataSource: AnyObject {
     /// `fileMetadata` for files larger than the comfort threshold.
     func readFile(_ path: String, maxBytes: Int) async throws -> Data
 
+    /// Reads at most `maxBytes` from the start of the file, truncating
+    /// silently if the file is larger. Used for content sniffing where the
+    /// caller only needs a small prefix and explicitly does not want a
+    /// `fileTooLarge` failure on big files.
+    func readPrefix(_ path: String, maxBytes: Int) async throws -> Data
+
     /// Writes data atomically when possible. Local: temp file + rename; remote:
     /// SFTP write to temp, rename. Caller decides whether to confirm overwrites.
     func writeFile(_ path: String, data: Data) async throws

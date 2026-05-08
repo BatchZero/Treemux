@@ -496,7 +496,7 @@ final class FileBrowserTabController: ObservableObject {
 
     private func loadUnknown(path: String, meta: FileMetadata) async {
         do {
-            let preview = try await dataSource.readFile(path, maxBytes: 8192)
+            let preview = try await dataSource.readPrefix(path, maxBytes: FileTypeClassifier.sniffByteCount)
             switch FileTypeClassifier.classifyByContent(preview) {
             case .text:
                 await loadText(path: path)

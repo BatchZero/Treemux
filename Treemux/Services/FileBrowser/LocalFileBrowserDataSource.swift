@@ -54,6 +54,16 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
         }
     }
 
+    func readPrefix(_ path: String, maxBytes: Int) async throws -> Data {
+        try await runOnQueue {
+            let handle = try FileHandle(forReadingFrom: URL(fileURLWithPath: path))
+            defer { try? handle.close() }
+            // FileHandle.read returns up to the requested count; never throws
+            // on EOF, so empty / short files just yield short Data.
+            return handle.readData(ofLength: maxBytes)
+        }
+    }
+
     func writeFile(_ path: String, data: Data) async throws {
         try await runOnQueue {
             let url = URL(fileURLWithPath: path)
