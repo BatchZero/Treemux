@@ -85,9 +85,6 @@ private struct CodeEditorRepresentable: View {
     /// Persisted across view updates so we can push fresh hunks into the
     /// existing overlay without forcing CodeEditSourceEditor to rebuild.
     @StateObject private var stripeCoordinator = DiffStripeCoordinator()
-    /// Tweaks NSScrollView so trackpad/wheel horizontal panning actually
-    /// scrolls long unwrapped lines (overlay scrollbar stays unchanged).
-    @StateObject private var scrollBehaviorCoordinator = ScrollBehaviorCoordinator()
     /// Owns the `WordCompletionDelegate` and re-indexes the buffer on edits.
     /// Held as `@StateObject` so a single instance survives view updates and
     /// can keep its weak `controller` reference connected.
@@ -134,7 +131,7 @@ private struct CodeEditorRepresentable: View {
             language: language,
             configuration: configuration,
             state: $editorState,
-            coordinators: [stripeCoordinator, scrollBehaviorCoordinator, completionCoordinator],
+            coordinators: [stripeCoordinator, completionCoordinator],
             completionDelegate: completionCoordinator.delegate
         )
         // When the sub-tab swaps the underlying file or content (e.g. activating
@@ -198,7 +195,7 @@ private struct CodeEditorRepresentable: View {
                 theme: editorTheme,
                 useThemeBackground: true,
                 font: .monospacedSystemFont(ofSize: 13, weight: .regular),
-                wrapLines: false,
+                wrapLines: true,
                 tabWidth: 4
             ),
             behavior: .init(),
@@ -290,269 +287,6 @@ private extension NSColor {
     }
 }
 
-// MARK: - Scroll behavior
-
-/// Wraps `TextLayoutManagerDelegate` to keep `wrapLinesWidth` non-negative
-/// even when `ScrollBehaviorCoordinator` has inflated `edgeInsets.right` to
-/// preserve horizontal scrolling for unwrapped lines.
-///
-/// Why this exists:
-/// `TextSelectionManager.getFillRects` clamps every selection rect to a
-/// `validTextDrawingRect.width = max(layoutManager.maxLineWidth,
-/// layoutManager.wrapLinesWidth)`. Because of an upstream inout-shadowing
-/// bug (`TextLayoutManager+Layout.swift:190`, present in CodeEditTextView
-/// main as of 2026-05) `maxLineWidth` stays at 0. `wrapLinesWidth` resolves
-/// to `delegate?.textViewportSize().width − edgeInsets.horizontal`. The
-/// scroll workaround inflates `edgeInsets.right` past the viewport width,
-/// which makes `wrapLinesWidth` negative, which collapses every selection
-/// rect to zero width — selection background becomes invisible everywhere
-/// (mouse drag, ⌘A, shift-arrow all affected).
-///
-/// We can't subclass `TextLayoutManager` (`public class` without `open`),
-/// can't write `maxLineWidth` (internal), can't fork the package without
-/// owning a long-running fork. But `TextLayoutManager.delegate` is a
-/// `public weak var`, so we can slot a wrapper in front of the textView.
-/// We forward 4 of 5 protocol methods unchanged, and override
-/// `textViewportSize()` to return `real_viewport + edgeInsets.horizontal`.
-/// `wrapLinesWidth` then evaluates to `real_viewport`, regardless of how
-/// much we inflate `edgeInsets.right`. Selection draws correctly; horizontal
-/// scrolling continues to work.
-///
-/// Containment proof: `textViewportSize()` is consumed at exactly one site
-/// in CodeEditTextView (the `wrapLinesWidth` getter) and `wrapLinesWidth`
-/// itself only feeds `maxLineLayoutWidth` (only used when `wrapLines == true`,
-/// which we never set) and `getFillRects`. So the inflation only affects
-/// selection-rect width — exactly what we want — and nothing else.
-private final class SelectionRectFixDelegate: NSObject, TextLayoutManagerDelegate {
-    weak var textView: TextView?
-    weak var layoutManager: TextLayoutManager?
-
-    func layoutManagerHeightDidUpdate(newHeight: CGFloat) {
-        textView?.layoutManagerHeightDidUpdate(newHeight: newHeight)
-    }
-
-    func layoutManagerMaxWidthDidChange(newWidth: CGFloat) {
-        textView?.layoutManagerMaxWidthDidChange(newWidth: newWidth)
-    }
-
-    func layoutManagerTypingAttributes() -> [NSAttributedString.Key: Any] {
-        textView?.layoutManagerTypingAttributes() ?? [:]
-    }
-
-    func textViewportSize() -> CGSize {
-        guard let textView else { return .zero }
-        var size = textView.textViewportSize()
-        // Compensate for the inflated edge insets so wrapLinesWidth resolves
-        // to the real viewport width. Reading edgeInsets at call time means
-        // we always reflect the current inflation level.
-        if let layoutManager {
-            size.width += layoutManager.edgeInsets.horizontal
-        }
-        return size
-    }
-
-    func layoutManagerYAdjustment(_ yAdjustment: CGFloat) {
-        textView?.layoutManagerYAdjustment(yAdjustment)
-    }
-
-    var visibleRect: NSRect {
-        textView?.visibleRect ?? .zero
-    }
-}
-
-/// Makes long unwrapped lines actually horizontally scrollable.
-///
-/// CodeEditTextView 0.x has a bug in `TextLayoutManager.layoutLine`:
-/// `var maxFoundLineWidth = maxFoundLineWidth` shadows the inout parameter,
-/// so per-line widths are never propagated back. `maxLineWidth` stays at 0
-/// regardless of the actual document, `estimatedWidth()` is tiny, and
-/// `updateFrameIfNeeded` shrinks `textView.frame.width` back to the
-/// clip-view width — leaving NSScrollView with no horizontal range to scroll.
-///
-/// Workaround without forking the package:
-/// * `usesPredominantAxisScrolling = false` so the trackpad's X delta
-///   reaches the scroll view (overlay scrollbar is unchanged).
-/// * Scan the buffer once to estimate the longest line's pixel width.
-/// * Inflate `layoutManager.edgeInsets.right` so `estimatedWidth()`
-///   reports the inflated total, making `updateFrameIfNeeded` keep the
-///   frame at the desired size **on every call** — no shrink/expand
-///   tug-of-war, no clip-view origin clamping, no scroll jitter.
-///
-/// **Important:** the comment above used to claim `wrapLinesWidth` is unused
-/// while `wrapLines == false`. That's wrong: `TextSelectionManager.getFillRects`
-/// reads `wrapLinesWidth` unconditionally, and clamps every selection rect
-/// to `validTextDrawingRect.width = max(maxLineWidth, wrapLinesWidth)`. With
-/// `wrapLinesWidth = viewport_width − edgeInsets.horizontal` going negative
-/// after we inflate `edgeInsets.right`, the clamp collapses every selection
-/// rect to zero width and the selection background becomes invisible.
-///
-/// The fix is `SelectionRectFixDelegate` below: a wrapper around the layout
-/// manager's existing delegate (the textView) that lies about
-/// `textViewportSize().width`, returning `real_viewport + edgeInsets.horizontal`.
-/// That makes `wrapLinesWidth` evaluate to the real viewport width regardless
-/// of how much we've inflated `edgeInsets.right`, restoring selection draw
-/// without sacrificing horizontal scroll. `textViewportSize()` is *only*
-/// consumed by `wrapLinesWidth` in the package, so the lie is contained.
-private final class ScrollBehaviorCoordinator: ObservableObject, TextViewCoordinator {
-    /// Skip the wide-frame workaround on very large files; the linear scan
-    /// would block the main thread on open. Mirrors the highlight limit.
-    private static let scanByteLimit: Int = 2 * 1024 * 1024
-    /// Tab visual width in characters — must match
-    /// `SourceEditorConfiguration.appearance.tabWidth` set on the editor.
-    private static let tabVisualWidth: Int = 4
-
-    private weak var textView: TextView?
-    private var desiredWidth: CGFloat = 0
-    private var frameObserver: NSObjectProtocol?
-    private var isApplyingInsets = false
-    /// Held strongly because `TextLayoutManager.delegate` is `weak`. Owns the
-    /// reference to the textView (also weak) so the wrapper itself is safe
-    /// to outlive the textView; if the textView is gone we no-op forwards.
-    private let selectionFixDelegate = SelectionRectFixDelegate()
-    /// Captured at install time so we can restore the original delegate when
-    /// the coordinator is destroyed. Weak: the textView owns it.
-    private weak var originalLayoutDelegate: TextLayoutManagerDelegate?
-
-    func prepareCoordinator(controller: TextViewController) {
-        configure(controller.scrollView)
-    }
-
-    func controllerDidAppear(controller: TextViewController) {
-        configure(controller.scrollView)
-        attach(to: controller.textView)
-        installSelectionRectFix(on: controller.textView)
-        recomputeDesiredWidth()
-        applyDesiredWidth()
-    }
-
-    func controllerDidDisappear(controller: TextViewController) {
-        detach()
-    }
-
-    func textViewDidChangeText(controller: TextViewController) {
-        recomputeDesiredWidth()
-        applyDesiredWidth()
-    }
-
-    func destroy() {
-        detach()
-        uninstallSelectionRectFix()
-        textView = nil
-    }
-
-    /// Slot the wrapper delegate in front of the textView for the editor's
-    /// layout manager. Idempotent — if our wrapper is already installed we
-    /// just refresh its captured references in case the textView changed.
-    private func installSelectionRectFix(on textView: TextView?) {
-        guard let textView, let layoutManager = textView.layoutManager else { return }
-        // If our wrapper is already in place, just refresh references.
-        if layoutManager.delegate === selectionFixDelegate {
-            selectionFixDelegate.textView = textView
-            selectionFixDelegate.layoutManager = layoutManager
-            return
-        }
-        originalLayoutDelegate = layoutManager.delegate
-        selectionFixDelegate.textView = textView
-        selectionFixDelegate.layoutManager = layoutManager
-        layoutManager.delegate = selectionFixDelegate
-    }
-
-    /// Restore the textView's own delegate so the editor returns to upstream
-    /// behavior cleanly when the coordinator is torn down.
-    private func uninstallSelectionRectFix() {
-        guard let layoutManager = textView?.layoutManager,
-              layoutManager.delegate === selectionFixDelegate else { return }
-        layoutManager.delegate = originalLayoutDelegate ?? textView
-        originalLayoutDelegate = nil
-        selectionFixDelegate.textView = nil
-        selectionFixDelegate.layoutManager = nil
-    }
-
-    private func configure(_ scrollView: NSScrollView?) {
-        guard let scrollView else { return }
-        scrollView.usesPredominantAxisScrolling = false
-        scrollView.horizontalScrollElasticity = .allowed
-    }
-
-    private func attach(to textView: TextView?) {
-        if self.textView !== textView { detach() }
-        self.textView = textView
-        guard let textView, frameObserver == nil else { return }
-        // `updateTextInsets` (e.g. when gutter width grows) resets
-        // `layoutManager.edgeInsets`, which causes `updateFrameIfNeeded`
-        // to shrink the frame. Re-applying on every frame change keeps
-        // the inflation in place across those resets.
-        frameObserver = NotificationCenter.default.addObserver(
-            forName: NSView.frameDidChangeNotification,
-            object: textView,
-            queue: .main
-        ) { [weak self] _ in
-            self?.applyDesiredWidth()
-        }
-    }
-
-    private func detach() {
-        if let frameObserver { NotificationCenter.default.removeObserver(frameObserver) }
-        frameObserver = nil
-    }
-
-    private func recomputeDesiredWidth() {
-        guard let textView, let layoutManager = textView.layoutManager else {
-            desiredWidth = 0
-            return
-        }
-        guard !layoutManager.wrapLines else { desiredWidth = 0; return }
-        let string = textView.string
-        guard string.utf16.count <= Self.scanByteLimit else { desiredWidth = 0; return }
-
-        // Walk the buffer once, counting the visual columns of each line.
-        // For a monospaced font the per-character advance is constant, so
-        // this lines up with what the typesetter ultimately produces.
-        var maxColumns = 0
-        var current = 0
-        for ch in string.unicodeScalars {
-            if ch == "\n" {
-                if current > maxColumns { maxColumns = current }
-                current = 0
-            } else if ch == "\t" {
-                current += Self.tabVisualWidth
-            } else {
-                current += 1
-            }
-        }
-        if current > maxColumns { maxColumns = current }
-
-        let charWidth = (" " as NSString).size(withAttributes: [.font: textView.font]).width
-        // Line fragment views render at `edgeInsets.left` (gutter offset),
-        // so documentView needs to fit `left + line content + slack` to
-        // let the user scroll the last column past the right edge. +4
-        // columns of slack absorbs typesetter rounding / wider glyphs.
-        let leftInset = layoutManager.edgeInsets.left
-        desiredWidth = leftInset + CGFloat(maxColumns + 4) * charWidth
-    }
-
-    private func applyDesiredWidth() {
-        guard !isApplyingInsets,
-              let textView,
-              let layoutManager = textView.layoutManager,
-              desiredWidth > 0 else { return }
-
-        let clipW = textView.enclosingScrollView?.contentSize.width ?? 0
-        let target = max(desiredWidth, clipW)
-        let currentEstimated = layoutManager.estimatedWidth()
-        guard currentEstimated < target - 0.5 else { return }
-
-        var insets = layoutManager.edgeInsets
-        insets.right += target - currentEstimated
-        // didSet on layoutManager.edgeInsets pings the delegate, which
-        // calls updateFrameIfNeeded; that's how the frame grows. We set
-        // the flag so the resulting frameDidChange notification doesn't
-        // re-enter this method.
-        isApplyingInsets = true
-        layoutManager.edgeInsets = insets
-        isApplyingInsets = false
-    }
-}
 
 // MARK: - Git diff stripe overlay
 
