@@ -23,9 +23,32 @@ struct FileViewerPanelView: View {
         .background(Color(nsColor: .textBackgroundColor))
     }
 
+    /// Renders every sub-tab's viewer in a ZStack and toggles visibility via
+    /// `.opacity` + `.allowsHitTesting`. Keeping inactive editors alive (rather
+    /// than tearing them down with `.id(activeSubTabID)`) preserves each
+    /// sub-tab's NSTextView, undo stack, cursor, scroll, and find-panel state
+    /// independently. CodeEditSourceEditor 0.15.x clears the undo stack inside
+    /// `TextView.setTextStorage` on every controller rebuild, so an
+    /// "external storage + same undoManager" approach cannot preserve undo
+    /// across rebuilds. ZStack avoids the rebuild entirely.
     @ViewBuilder
     private var content: some View {
-        switch controller.openFile {
+        if controller.subTabs.isEmpty {
+            EmptyViewerState(rootPath: controller.rootPath)
+        } else {
+            ZStack {
+                ForEach(controller.subTabs) { subTab in
+                    subTabContent(subTab)
+                        .opacity(subTab.id == controller.activeSubTabID ? 1 : 0)
+                        .allowsHitTesting(subTab.id == controller.activeSubTabID)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func subTabContent(_ subTab: SubTabRuntime) -> some View {
+        switch subTab.openFile {
         case .empty:
             EmptyViewerState(rootPath: controller.rootPath)
         case .loadingMeta(let p), .loadingContent(let p):
@@ -35,7 +58,8 @@ struct FileViewerPanelView: View {
                                  onConfirm: { Task { await controller.confirmLargeFileLoad() } },
                                  onCancel: { controller.cancelLargeFileLoad() })
         case .text(let path, let content, let encoding, let dirty):
-            TextEditorView(path: path, content: content, encoding: encoding, dirty: dirty, controller: controller)
+            TextEditorView(subTabID: subTab.id, path: path, content: content,
+                           encoding: encoding, dirty: dirty, controller: controller)
         case .image(let path, let img):
             ImagePreviewView(path: path, image: img)
         case .quickLook(let path, let url):

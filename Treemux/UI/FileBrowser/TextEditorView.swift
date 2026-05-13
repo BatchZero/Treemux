@@ -10,6 +10,7 @@ import Combine
 import SwiftUI
 
 struct TextEditorView: View {
+    let subTabID: UUID
     let path: String
     let content: String
     let encoding: String.Encoding
@@ -24,20 +25,16 @@ struct TextEditorView: View {
                 path: path,
                 content: content,
                 hunks: controller.diffHunksByPath[path] ?? [],
-                bufferID: controller.activeSubTabID ?? Self.fallbackBufferID,
+                bufferID: subTabID,
                 wordIndex: controller.wordIndex,
                 isCompletionEnabled: { store.settings.enableCodeCompletion },
                 editorTheme: TreemuxEditorTheme.from(uiColors: themeManager.activeTheme.ui),
-                onChange: { controller.updateBuffer(content: $0) }
+                onChange: { controller.updateBuffer(content: $0, forSubTab: subTabID) }
             )
             Divider()
             statusBar
         }
     }
-
-    /// Stable UUID used when the controller has no active sub-tab — keeps the
-    /// editor wiring uniform without inserting a phantom entry into the index.
-    private static let fallbackBufferID = UUID()
 
     private var statusBar: some View {
         HStack {

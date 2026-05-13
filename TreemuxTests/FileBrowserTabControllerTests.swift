@@ -134,7 +134,8 @@ final class FileBrowserTabControllerTests: XCTestCase {
         mock.fileContents["/r/a.txt"] = "x".data(using: .utf8)!
         let ctrl = FileBrowserTabController(initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
         await ctrl.openInTree("/r/a.txt")
-        ctrl.updateBuffer(content: "edited")
+        let id = ctrl.activeSubTabID!
+        ctrl.updateBuffer(content: "edited", forSubTab: id)
         if case .text(_, let content, _, let dirty) = ctrl.openFile {
             XCTAssertEqual(content, "edited")
             XCTAssertTrue(dirty)
@@ -149,7 +150,8 @@ final class FileBrowserTabControllerTests: XCTestCase {
         mock.fileContents["/r/a.txt"] = "x".data(using: .utf8)!
         let ctrl = FileBrowserTabController(initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
         await ctrl.openInTree("/r/a.txt")
-        ctrl.updateBuffer(content: "edited")
+        let id = ctrl.activeSubTabID!
+        ctrl.updateBuffer(content: "edited", forSubTab: id)
         try await ctrl.saveCurrentFile()
         XCTAssertEqual(mock.writes.count, 1)
         XCTAssertEqual(String(data: mock.writes[0].data, encoding: .utf8), "edited")
@@ -166,7 +168,8 @@ final class FileBrowserTabControllerTests: XCTestCase {
         XCTAssertFalse(ctrl.isDirty)
         await ctrl.openInTree("/r/a.txt")
         XCTAssertFalse(ctrl.isDirty)
-        ctrl.updateBuffer(content: "edited")
+        let id = ctrl.activeSubTabID!
+        ctrl.updateBuffer(content: "edited", forSubTab: id)
         XCTAssertTrue(ctrl.isDirty)
     }
 
