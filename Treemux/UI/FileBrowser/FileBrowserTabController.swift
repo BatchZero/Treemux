@@ -137,13 +137,28 @@ final class FileBrowserTabController: ObservableObject {
         subTabs[idx].openFile = state
     }
 
+    /// Writes `state` into the sub-tab identified by `id`, but only if that
+    /// sub-tab still exists AND its `path` still equals `expectingPath`.
+    /// Used by async load chains so a stale completion can't overwrite the
+    /// wrong sub-tab when the user has switched tabs or repurposed the
+    /// preview tab mid-load.
+    private func setOpenFile(
+        forSubTab id: UUID,
+        expectingPath path: String,
+        _ state: OpenFileState
+    ) {
+        guard let idx = subTabs.firstIndex(where: { $0.id == id }),
+              subTabs[idx].path == path else { return }
+        subTabs[idx].openFile = state
+    }
+
     private var activeOpenFile: OpenFileState {
         activeSubTab?.openFile ?? .empty
     }
 
     private func loadActiveTab() async {
         guard let active = activeSubTab else { return }
-        await selectFile(active.path)
+        await selectFile(active.path, subTabID: active.id)
     }
 
     // MARK: - Tree loading
@@ -398,40 +413,52 @@ final class FileBrowserTabController: ObservableObject {
     // MARK: - File loading (operates on the active sub-tab)
 
     func selectFile(_ path: String) async {
+        guard let id = activeSubTabID else { return }
+        await selectFile(path, subTabID: id)
+    }
+
+    /// Internal entry point that pins the load to a specific sub-tab id, so
+    /// every async write goes back to that exact slot regardless of the
+    /// current `activeSubTabID` when the await resumes.
+    private func selectFile(_ path: String, subTabID: UUID) async {
         // Dirty guard handled by the UI sheet before calling selectFile.
-        setActiveOpenFile(.loadingMeta(path: path))
+        setOpenFile(forSubTab: subTabID, expectingPath: path, .loadingMeta(path: path))
         onPersistableStateChanged?()
 
         let meta: FileMetadata
         do {
             meta = try await dataSource.fileMetadata(path)
         } catch {
-            setActiveOpenFile(.error(path: path, message: error.localizedDescription))
+            setOpenFile(forSubTab: subTabID, expectingPath: path,
+                        .error(path: path, message: error.localizedDescription))
             return
         }
 
         // Force Quick Look for files larger than the absolute editor cap.
         if meta.sizeBytes > Self.quickLookOnlyThreshold {
-            await loadQuickLook(path: path)
+            await loadQuickLook(path: path, subTabID: subTabID)
             return
         }
         // Prompt for files between large threshold and quickLookOnly threshold.
         if meta.sizeBytes > Self.largeFileThreshold {
-            setActiveOpenFile(.confirmingLargeFile(path: path, sizeBytes: meta.sizeBytes))
+            setOpenFile(forSubTab: subTabID, expectingPath: path,
+                        .confirmingLargeFile(path: path, sizeBytes: meta.sizeBytes))
             return
         }
 
-        await dispatchByType(path: path, meta: meta)
+        await dispatchByType(path: path, meta: meta, subTabID: subTabID)
     }
 
     /// Called from UI when user confirms the large-file prompt.
     func confirmLargeFileLoad() async {
-        guard case .confirmingLargeFile(let path, _) = activeOpenFile else { return }
+        guard case .confirmingLargeFile(let path, _) = activeOpenFile,
+              let id = activeSubTabID else { return }
         do {
             let meta = try await dataSource.fileMetadata(path)
-            await dispatchByType(path: path, meta: meta)
+            await dispatchByType(path: path, meta: meta, subTabID: id)
         } catch {
-            setActiveOpenFile(.error(path: path, message: error.localizedDescription))
+            setOpenFile(forSubTab: id, expectingPath: path,
+                        .error(path: path, message: error.localizedDescription))
         }
     }
 
@@ -440,71 +467,85 @@ final class FileBrowserTabController: ObservableObject {
         setActiveOpenFile(.empty)
     }
 
-    private func dispatchByType(path: String, meta: FileMetadata) async {
+    private func dispatchByType(path: String, meta: FileMetadata, subTabID: UUID) async {
         let kind = FileTypeClassifier.classifyByName(path)
         switch kind {
         case .text:
-            await loadText(path: path)
+            await loadText(path: path, subTabID: subTabID)
         case .image:
-            await loadImage(path: path)
+            await loadImage(path: path, subTabID: subTabID)
         case .quickLook:
-            await loadQuickLook(path: path)
+            await loadQuickLook(path: path, subTabID: subTabID)
         case .binary:
-            setActiveOpenFile(.binary(path: path, metadata: meta))
+            setOpenFile(forSubTab: subTabID, expectingPath: path,
+                        .binary(path: path, metadata: meta))
         case .unknown:
             // Try a content sniff to upgrade unknowns into text where possible.
-            await loadUnknown(path: path, meta: meta)
+            await loadUnknown(path: path, meta: meta, subTabID: subTabID)
         }
     }
 
-    private func loadText(path: String) async {
-        setActiveOpenFile(.loadingContent(path: path))
+    private func loadText(path: String, subTabID: UUID) async {
+        setOpenFile(forSubTab: subTabID, expectingPath: path,
+                    .loadingContent(path: path))
         do {
             let data = try await dataSource.readFile(path, maxBytes: Self.textReadLimit)
             let (content, encoding) = decode(data)
-            setActiveOpenFile(.text(path: path, content: content, encoding: encoding, dirty: false))
+            setOpenFile(forSubTab: subTabID, expectingPath: path,
+                        .text(path: path, content: content, encoding: encoding, dirty: false))
         } catch FileBrowserError.fileTooLarge(_, let size, _) {
-            setActiveOpenFile(.confirmingLargeFile(path: path, sizeBytes: size))
+            setOpenFile(forSubTab: subTabID, expectingPath: path,
+                        .confirmingLargeFile(path: path, sizeBytes: size))
         } catch {
-            setActiveOpenFile(.error(path: path, message: error.localizedDescription))
+            setOpenFile(forSubTab: subTabID, expectingPath: path,
+                        .error(path: path, message: error.localizedDescription))
         }
     }
 
-    private func loadImage(path: String) async {
-        setActiveOpenFile(.loadingContent(path: path))
+    private func loadImage(path: String, subTabID: UUID) async {
+        setOpenFile(forSubTab: subTabID, expectingPath: path,
+                    .loadingContent(path: path))
         do {
             let data = try await dataSource.readFile(path, maxBytes: Int(Self.quickLookOnlyThreshold))
             if let img = NSImage(data: data) {
-                setActiveOpenFile(.image(path: path, image: img))
+                setOpenFile(forSubTab: subTabID, expectingPath: path,
+                            .image(path: path, image: img))
             } else {
-                setActiveOpenFile(.error(path: path, message: "Cannot decode image"))
+                setOpenFile(forSubTab: subTabID, expectingPath: path,
+                            .error(path: path, message: "Cannot decode image"))
             }
         } catch {
-            setActiveOpenFile(.error(path: path, message: error.localizedDescription))
+            setOpenFile(forSubTab: subTabID, expectingPath: path,
+                        .error(path: path, message: error.localizedDescription))
         }
     }
 
-    private func loadQuickLook(path: String) async {
-        setActiveOpenFile(.loadingContent(path: path))
+    private func loadQuickLook(path: String, subTabID: UUID) async {
+        setOpenFile(forSubTab: subTabID, expectingPath: path,
+                    .loadingContent(path: path))
         do {
             let url = try await dataSource.downloadForQuickLook(path) { _ in }
-            setActiveOpenFile(.quickLook(path: path, localFileURL: url))
+            setOpenFile(forSubTab: subTabID, expectingPath: path,
+                        .quickLook(path: path, localFileURL: url))
         } catch {
-            setActiveOpenFile(.error(path: path, message: error.localizedDescription))
+            setOpenFile(forSubTab: subTabID, expectingPath: path,
+                        .error(path: path, message: error.localizedDescription))
         }
     }
 
-    private func loadUnknown(path: String, meta: FileMetadata) async {
+    private func loadUnknown(path: String, meta: FileMetadata, subTabID: UUID) async {
         do {
             let preview = try await dataSource.readPrefix(path, maxBytes: FileTypeClassifier.sniffByteCount)
             switch FileTypeClassifier.classifyByContent(preview) {
             case .text:
-                await loadText(path: path)
+                await loadText(path: path, subTabID: subTabID)
             default:
-                setActiveOpenFile(.binary(path: path, metadata: meta))
+                setOpenFile(forSubTab: subTabID, expectingPath: path,
+                            .binary(path: path, metadata: meta))
             }
         } catch {
-            setActiveOpenFile(.binary(path: path, metadata: meta))
+            setOpenFile(forSubTab: subTabID, expectingPath: path,
+                        .binary(path: path, metadata: meta))
         }
     }
 
@@ -523,10 +564,17 @@ final class FileBrowserTabController: ObservableObject {
         return false
     }
 
-    /// Updates the in-memory buffer for the currently open text file.
-    func updateBuffer(content: String) {
-        guard case .text(let path, _, let encoding, _) = activeOpenFile else { return }
-        setActiveOpenFile(.text(path: path, content: content, encoding: encoding, dirty: true))
+    /// Updates the in-memory buffer for the sub-tab identified by `id`, but
+    /// only if that sub-tab still exists, its `path` is unchanged, and its
+    /// `openFile` is still `.text` at the same `path`. The path/state guards
+    /// are essential because the editor view stays alive across sub-tab
+    /// switches (ZStack), so a delayed text-binding setter can fire long
+    /// after the user has activated, closed, or repurposed another sub-tab.
+    func updateBuffer(content: String, forSubTab id: UUID) {
+        guard let idx = subTabs.firstIndex(where: { $0.id == id }) else { return }
+        guard case .text(let path, _, let encoding, _) = subTabs[idx].openFile else { return }
+        guard subTabs[idx].path == path else { return }
+        subTabs[idx].openFile = .text(path: path, content: content, encoding: encoding, dirty: true)
     }
 
     /// Saves the current buffer back to disk via the data source.
