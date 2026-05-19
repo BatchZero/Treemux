@@ -17,6 +17,15 @@ packages:
   CodeEditSourceEditor:
     url: https://github.com/CodeEditApp/CodeEditSourceEditor
     exactVersion: "0.15.2"
+  # Override the transitive CodeEditTextView dependency with our BatchZero fork
+  # that patches a wrapping bug where the typesetter built each non-first
+  # wrapped fragment's CTLine using `lineBreak` as a length instead of as an
+  # absolute offset. Upstream issue: chars at the end of a wrapped visual line
+  # appeared duplicated at the start of the next wrapped sub-line. Pinned to a
+  # specific commit; remove this override once a fixed upstream release ships.
+  CodeEditTextView:
+    url: https://github.com/BatchZero/CodeEditTextView
+    revision: a2922cef1ef6b1972549f1f7d02f4e40a8e34a78
 
 settings:
   base:
