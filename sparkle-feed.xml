@@ -3,6 +3,16 @@
     <channel>
         <title>Treemux</title>
         <item>
+            <title>0.0.13</title>
+            <pubDate>Tue, 19 May 2026 13:59:35 +0800</pubDate>
+            <link>https://github.com/BatchZero/Treemux</link>
+            <sparkle:fullReleaseNotesLink>https://github.com/BatchZero/Treemux/releases/tag/v0.0.13</sparkle:fullReleaseNotesLink>
+            <sparkle:version>13</sparkle:version>
+            <sparkle:shortVersionString>0.0.13</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/BatchZero/Treemux/releases/download/v0.0.13/Treemux-0.0.13.app.zip" length="37495781" type="application/octet-stream" sparkle:edSignature="MOpEgpJK1AhK2rjf4r/DdxpiAjptjCH1b9MlpdC3AoJuah8MbNRrIcs8PJZGyYjxx/9AmnbLjHM5NxiFpJCNDA=="/>
+        </item>
+        <item>
             <title>0.0.12</title>
             <pubDate>Wed, 13 May 2026 11:49:44 +0800</pubDate>
             <link>https://github.com/BatchZero/Treemux</link>
