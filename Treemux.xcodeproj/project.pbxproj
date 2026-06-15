@@ -55,6 +55,7 @@
 		44D9A39F7E62E88E88ED2DAD /* TerminalHostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C2110A46976203DDBF9D707 /* TerminalHostView.swift */; };
 		44F22E50FB5925ABD08DD1F1 /* SidebarItemIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD730723C379BFA4C7D00F8 /* SidebarItemIconView.swift */; };
 		4603CCA2E939A7EE37183995 /* LocalFileBrowserDataSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 013F880772F0D64DBCEC5CC7 /* LocalFileBrowserDataSourceTests.swift */; };
+		4DE2CEAEC3114FC1C79E784C /* SSHServerEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA7F3CF6F855DC00ADAB6764 /* SSHServerEditSheet.swift */; };
 		4F797B3482955657212C4A24 /* SSHConfigDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDABEBA6E29676427AB96F34 /* SSHConfigDocument.swift */; };
 		4F93E2B9A2A6EC003FCAB4BE /* SessionBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */; };
 		50703AC7FE57471B65F8443A /* SSHConfigParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB0ABA0B08B1F2185D6C82B5 /* SSHConfigParserTests.swift */; };
@@ -298,6 +299,7 @@
 		F028C529027B0CEB4E5A6DA0 /* FileSubTabRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSubTabRecord.swift; sourceTree = "<group>"; };
 		F2ABC31C96A9F51C865E1FCD /* SFTPDirectoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPDirectoryEntry.swift; sourceTree = "<group>"; };
 		F59B5026A96BF865D41D0890 /* TreemuxGhosttyShellIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyShellIntegration.swift; sourceTree = "<group>"; };
+		FA7F3CF6F855DC00ADAB6764 /* SSHServerEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHServerEditSheet.swift; sourceTree = "<group>"; };
 		FB0ABA0B08B1F2185D6C82B5 /* SSHConfigParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParserTests.swift; sourceTree = "<group>"; };
 		FCDABAEAB8A96753452954DD /* AIHooks */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AIHooks; path = Treemux/Support/AIHooks; sourceTree = SOURCE_ROOT; };
 		FED0327A7E59732F42304316 /* WorkspaceMetadataWatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceMetadataWatchService.swift; sourceTree = "<group>"; };
@@ -450,6 +452,7 @@
 				9250C83EF14A84383E73002A /* RemoteDirectoryBrowser.swift */,
 				3579E21F95E49A08C0BE1E5F /* RemoteDirectoryBrowserViewModel.swift */,
 				2596BF207C9F981D9A0FE02D /* SidebarIconCustomizationSheet.swift */,
+				FA7F3CF6F855DC00ADAB6764 /* SSHServerEditSheet.swift */,
 			);
 			path = Sheets;
 			sourceTree = "<group>";
@@ -848,6 +851,7 @@
 				4F797B3482955657212C4A24 /* SSHConfigDocument.swift in Sources */,
 				72AAF9CD646BD3A52B8927C5 /* SSHConfigParser.swift in Sources */,
 				C932ED5A8C19385027F0691D /* SSHConfigService.swift in Sources */,
+				4DE2CEAEC3114FC1C79E784C /* SSHServerEditSheet.swift in Sources */,
 				E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */,
 				4F93E2B9A2A6EC003FCAB4BE /* SessionBackend.swift in Sources */,
 				A7746DB757BF4458229659E0 /* SessionBackendLaunch.swift in Sources */,
