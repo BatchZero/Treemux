@@ -67,4 +67,40 @@ final class SSHConfigDocumentTests: XCTestCase {
         doc.add(SSHServerDraft(alias: "x", hostName: "h"))
         XCTAssertEqual(doc.render(), "Host x\n    HostName h")
     }
+
+    func testUpdateInPlacePreservesUnknownDirectives() {
+        let config = """
+        Host srv
+            HostName old.com
+            # keep me
+            ProxyJump bastion
+            Port 22
+        """
+        var doc = SSHConfigDocument(contents: config)
+        doc.update(alias: "srv",
+                   to: SSHServerDraft(alias: "srv", hostName: "new.com", port: 2222,
+                                      user: "u", identityFile: ""))
+        let expected = """
+        Host srv
+            HostName new.com
+            # keep me
+            ProxyJump bastion
+            Port 2222
+            User u
+        """
+        XCTAssertEqual(doc.render(), expected)
+    }
+
+    func testUpdateRenamesAliasOnly() {
+        var doc = SSHConfigDocument(contents: "Host old\n    HostName h.com")
+        doc.update(alias: "old", to: SSHServerDraft(alias: "new", hostName: "h.com"))
+        XCTAssertEqual(doc.render(), "Host new\n    HostName h.com")
+    }
+
+    func testUpdateClearingUserRemovesLine() {
+        let config = "Host s\n    HostName h\n    User bob"
+        var doc = SSHConfigDocument(contents: config)
+        doc.update(alias: "s", to: SSHServerDraft(alias: "s", hostName: "h", user: ""))
+        XCTAssertEqual(doc.render(), "Host s\n    HostName h")
+    }
 }

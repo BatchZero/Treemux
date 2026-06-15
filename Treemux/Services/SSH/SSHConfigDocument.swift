@@ -97,6 +97,77 @@ struct SSHConfigDocument {
         lines.append(contentsOf: block)
     }
 
+    /// Surgically update a managed block's known directives in place.
+    mutating func update(alias: String, to draft: SSHServerDraft) {
+        guard hostBlocks().contains(where: { $0.isEditable && $0.alias == alias }) else { return }
+        setDirective(blockAlias: alias, keyword: "HostName",
+                     value: draft.hostName.isEmpty ? nil : draft.hostName)
+        setDirective(blockAlias: alias, keyword: "Port",
+                     value: draft.port == 22 ? nil : String(draft.port))
+        setDirective(blockAlias: alias, keyword: "User",
+                     value: draft.user.isEmpty ? nil : draft.user)
+        setDirective(blockAlias: alias, keyword: "IdentityFile",
+                     value: draft.identityFile.isEmpty ? nil : draft.identityFile)
+        // Rename last so the lookups above still resolve by the original alias.
+        if draft.alias != alias,
+           let block = hostBlocks().first(where: { $0.isEditable && $0.alias == alias }) {
+            lines[block.start] = replaceHostToken(lines[block.start], with: draft.alias)
+        }
+    }
+
+    /// Set / insert / remove a single known directive within a block.
+    /// `value == nil` removes the line if present; otherwise replaces or appends.
+    private mutating func setDirective(blockAlias: String, keyword: String, value: String?) {
+        guard let block = hostBlocks().first(where: { $0.isEditable && $0.alias == blockAlias })
+        else { return }
+
+        var existing: Int?
+        for i in block.start..<block.end {
+            if let d = Self.directive(of: lines[i]), d.keyword == keyword.lowercased() {
+                existing = i
+                break
+            }
+        }
+
+        if let value {
+            let newLine = "\(blockIndent(block))\(keyword) \(value)"
+            if let idx = existing {
+                lines[idx] = newLine
+            } else {
+                // Append after the last non-blank line of the block.
+                var insertAt = block.start + 1
+                for i in (block.start + 1)..<block.end
+                where !lines[i].trimmingCharacters(in: .whitespaces).isEmpty {
+                    insertAt = i + 1
+                }
+                lines.insert(newLine, at: insertAt)
+            }
+        } else if let idx = existing {
+            lines.remove(at: idx)
+        }
+    }
+
+    /// Indentation used by directive lines in the block (default 4 spaces).
+    private func blockIndent(_ block: HostBlock) -> String {
+        for i in (block.start + 1)..<block.end where Self.directive(of: lines[i]) != nil {
+            let ws = lines[i].prefix { $0 == " " || $0 == "\t" }
+            return ws.isEmpty ? "    " : String(ws)
+        }
+        return "    "
+    }
+
+    /// Replace the single host token on a `Host` line, preserving leading
+    /// whitespace and the original keyword text.
+    private func replaceHostToken(_ line: String, with newAlias: String) -> String {
+        let leading = line.prefix { $0 == " " || $0 == "\t" }
+        let rest = line.dropFirst(leading.count)
+        if let range = rest.rangeOfCharacter(from: .whitespaces) {
+            let keyword = rest[..<range.lowerBound]
+            return "\(leading)\(keyword) \(newAlias)"
+        }
+        return "\(leading)Host \(newAlias)"
+    }
+
     private func draft(for block: HostBlock, editable: Bool) -> SSHServerDraft {
         let aliasForDisplay = editable ? block.alias : block.tokens.joined(separator: " ")
         var d = SSHServerDraft(alias: aliasForDisplay, hostName: "")
