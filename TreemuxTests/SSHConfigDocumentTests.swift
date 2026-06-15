@@ -103,4 +103,30 @@ final class SSHConfigDocumentTests: XCTestCase {
         doc.update(alias: "s", to: SSHServerDraft(alias: "s", hostName: "h", user: ""))
         XCTAssertEqual(doc.render(), "Host s\n    HostName h")
     }
+
+    func testRemoveDeletesBlockOnly() {
+        let config = """
+        Host a
+            HostName a.com
+
+        Host b
+            HostName b.com
+        """
+        var doc = SSHConfigDocument(contents: config)
+        doc.remove(alias: "a")
+        XCTAssertEqual(doc.render(), "Host b\n    HostName b.com")
+    }
+
+    func testRemoveLeavesTrailingBlock() {
+        let config = """
+        Host a
+            HostName a.com
+
+        Host b
+            HostName b.com
+        """
+        var doc = SSHConfigDocument(contents: config)
+        doc.remove(alias: "b")
+        XCTAssertEqual(doc.render(), "Host a\n    HostName a.com")
+    }
 }

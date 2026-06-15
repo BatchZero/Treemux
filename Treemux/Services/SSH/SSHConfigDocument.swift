@@ -97,6 +97,33 @@ struct SSHConfigDocument {
         lines.append(contentsOf: block)
     }
 
+    /// Remove a managed block entirely, then collapse blank-line runs.
+    mutating func remove(alias: String) {
+        guard let block = hostBlocks().first(where: { $0.isEditable && $0.alias == alias })
+        else { return }
+        lines.removeSubrange(block.start..<block.end)
+        normalizeBlankRuns()
+    }
+
+    /// Collapse consecutive blank lines to one and drop leading/trailing blanks.
+    private mutating func normalizeBlankRuns() {
+        var result: [String] = []
+        var prevBlank = false
+        for line in lines {
+            let blank = line.trimmingCharacters(in: .whitespaces).isEmpty
+            if blank && prevBlank { continue }
+            result.append(line)
+            prevBlank = blank
+        }
+        while let first = result.first, first.trimmingCharacters(in: .whitespaces).isEmpty {
+            result.removeFirst()
+        }
+        while let last = result.last, last.trimmingCharacters(in: .whitespaces).isEmpty {
+            result.removeLast()
+        }
+        lines = result
+    }
+
     /// Surgically update a managed block's known directives in place.
     mutating func update(alias: String, to draft: SSHServerDraft) {
         guard hostBlocks().contains(where: { $0.isEditable && $0.alias == alias }) else { return }
