@@ -167,10 +167,8 @@ private struct NodeRow: View {
             } else {
                 Color.clear.frame(width: 4, height: 4)
             }
-            Image(systemName: iconName)
-                .font(.system(size: density.fontSize))
-                .foregroundStyle(DesignTokens.muted)
-                .frame(width: density.fontSize + 2)
+            iconView
+                .frame(width: density.fontSize + 3, height: density.fontSize + 3)
             Text(node.name)
                 .font(DesignFonts.dataLayer(size: density.fontSize))
                 .foregroundStyle(DesignTokens.text)
@@ -225,19 +223,14 @@ private struct NodeRow: View {
         }
     }
 
-    private var iconName: String {
-        switch node.kind {
-        case .directory: return isExpanded ? "folder.fill" : "folder"
-        case .symlink: return "arrow.up.right.square"
-        case .file:
-            switch FileTypeClassifier.classifyByName(node.name) {
-            case .text: return "doc.text"
-            case .image: return "photo"
-            case .quickLook: return "doc.richtext"
-            case .binary: return "doc"
-            case .unknown: return "doc"
-            }
-        }
+    @ViewBuilder
+    private var iconView: some View {
+        let icon = FileIconCatalog.icon(for: node, isExpanded: isExpanded)
+        Image(icon.asset)
+            .resizable()
+            .renderingMode(icon.isTemplate ? .template : .original)
+            .scaledToFit()
+            .foregroundStyle(icon.tint ?? DesignTokens.muted)
     }
 
     private func color(for status: FileStatus) -> Color {
