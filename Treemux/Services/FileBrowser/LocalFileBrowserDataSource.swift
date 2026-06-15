@@ -10,12 +10,19 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
 
     func listDirectory(_ path: String) async throws -> [FileNode] {
         try await runOnQueue {
-            let url = URL(fileURLWithPath: path)
+            let parentURL = URL(fileURLWithPath: path)
             let fm = FileManager.default
             let keys: [URLResourceKey] = [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey, .contentModificationDateKey]
-            let contents = try fm.contentsOfDirectory(at: url, includingPropertiesForKeys: keys, options: [])
-            return try contents.map { try Self.makeNode(from: $0) }
-                .sorted(by: Self.naturalOrder)
+            // Use contentsOfDirectory(at:) for resource keys but re-derive each
+            // child's path via appendingPathComponent so that symlinks in the
+            // temporary directory hierarchy (e.g. /var → /private/var on macOS)
+            // are not transparently resolved, keeping paths stable for callers.
+            let contents = try fm.contentsOfDirectory(at: parentURL, includingPropertiesForKeys: keys, options: [])
+            return try contents.map { rawURL -> FileNode in
+                let stableURL = parentURL.appendingPathComponent(rawURL.lastPathComponent)
+                return try Self.makeNode(from: stableURL)
+            }
+            .sorted(by: Self.naturalOrder)
         }
     }
 
