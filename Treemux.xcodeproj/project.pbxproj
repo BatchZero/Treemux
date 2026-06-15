@@ -119,6 +119,7 @@
 		A4E4E36C7436B4F6552F2942 /* AdaptiveFontShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30CC2AAEA217BA6CC93B9774 /* AdaptiveFontShortcutTests.swift */; };
 		A57061F2AD4AB75070122AAB /* GitDiffService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14ADC8D3C7F4C8CE9F1A25F /* GitDiffService.swift */; };
 		A7746DB757BF4458229659E0 /* SessionBackendLaunch.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E24B640A3303D33931EA85 /* SessionBackendLaunch.swift */; };
+		A7A81F4E31835667F4B3D786 /* DirectoryTreeSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B7C1880ADB85D335E5BD1C /* DirectoryTreeSnapshot.swift */; };
 		A9E5418401517BC5CBD9EC92 /* WorkspaceStatePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A99410553280ED6CCCDFEA85 /* WorkspaceStatePersistence.swift */; };
 		AC0D68343F5882A238D02833 /* SFTPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 827594A3628098FC39EC59E0 /* SFTPService.swift */; };
 		AF47FA8C9BDE3F99FB9864B1 /* SidebarNodeItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 195EA28E9C93EE6E874ED6ED /* SidebarNodeItem.swift */; };
@@ -270,6 +271,7 @@
 		9F23062A273124B6BBE28B71 /* SplitDivider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitDivider.swift; sourceTree = "<group>"; };
 		A01C3B62B418371CFF6848D2 /* FileTreeSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreeSettingsTests.swift; sourceTree = "<group>"; };
 		A0703E37A59EB4315587BCEC /* FileBrowserTabState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTabState.swift; sourceTree = "<group>"; };
+		A0B7C1880ADB85D335E5BD1C /* DirectoryTreeSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryTreeSnapshot.swift; sourceTree = "<group>"; };
 		A169E6DF74EAE95F932D40F0 /* ShortcutRecorderButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderButton.swift; sourceTree = "<group>"; };
 		A22F2A407A07989DE172DA3A /* WorkspaceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStore.swift; sourceTree = "<group>"; };
 		A3863AB5298AAC0C830363DD /* WorkspaceTabRecordMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTabRecordMigrationTests.swift; sourceTree = "<group>"; };
@@ -571,6 +573,7 @@
 			children = (
 				78EDFC7E23962DB5BFF6AFED /* AdaptiveFontSizeCalculator.swift */,
 				D8EB47950FCB5E9637572424 /* AppSettings.swift */,
+				A0B7C1880ADB85D335E5BD1C /* DirectoryTreeSnapshot.swift */,
 				A0703E37A59EB4315587BCEC /* FileBrowserTabState.swift */,
 				03F44873E99A802B3C59BE39 /* FileNode.swift */,
 				F028C529027B0CEB4E5A6DA0 /* FileSubTabRecord.swift */,
@@ -847,6 +850,7 @@
 				2FB91E9FD3738C3BFF66832A /* CompletionPopover.swift in Sources */,
 				33BC8BCE132D3D07D4BF1B1B /* DesignFonts.swift in Sources */,
 				39266F5D7448D51A8EBD9B96 /* DesignTokens.swift in Sources */,
+				A7A81F4E31835667F4B3D786 /* DirectoryTreeSnapshot.swift in Sources */,
 				899AD635760CA3F00A191DE8 /* EditorHighlightPolicy.swift in Sources */,
 				CED37FBB27DAA8CBE601AD3C /* EmptyTabStateView.swift in Sources */,
 				E9F945BAB814E46DB9FB34C9 /* FileBrowserDataSource.swift in Sources */,
