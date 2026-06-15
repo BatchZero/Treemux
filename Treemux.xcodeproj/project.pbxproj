@@ -118,6 +118,7 @@
 		A3A9D3AC7CCAEB6DA3B2D92D /* TreemuxGhosttyControllerRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F2AF4BADCEBABA624578341 /* TreemuxGhosttyControllerRegistry.swift */; };
 		A4E4E36C7436B4F6552F2942 /* AdaptiveFontShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30CC2AAEA217BA6CC93B9774 /* AdaptiveFontShortcutTests.swift */; };
 		A57061F2AD4AB75070122AAB /* GitDiffService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14ADC8D3C7F4C8CE9F1A25F /* GitDiffService.swift */; };
+		A708746B29BFBA8388B104CB /* DirectoryTreeCachePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C3FDCC6ADDBDE6835FF006 /* DirectoryTreeCachePersistence.swift */; };
 		A7746DB757BF4458229659E0 /* SessionBackendLaunch.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E24B640A3303D33931EA85 /* SessionBackendLaunch.swift */; };
 		A7A81F4E31835667F4B3D786 /* DirectoryTreeSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B7C1880ADB85D335E5BD1C /* DirectoryTreeSnapshot.swift */; };
 		A9E5418401517BC5CBD9EC92 /* WorkspaceStatePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A99410553280ED6CCCDFEA85 /* WorkspaceStatePersistence.swift */; };
@@ -203,6 +204,7 @@
 		2F2F9B81F4135149F9FD8EF5 /* PhosphorUnderline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhosphorUnderline.swift; sourceTree = "<group>"; };
 		2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
 		307BCBA7FBBD837C1D886367 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		30C3FDCC6ADDBDE6835FF006 /* DirectoryTreeCachePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryTreeCachePersistence.swift; sourceTree = "<group>"; };
 		30CC2AAEA217BA6CC93B9774 /* AdaptiveFontShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveFontShortcutTests.swift; sourceTree = "<group>"; };
 		32F18F29A965B9650B203208 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
 		33DBD7F6E96DFD37B6863693 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
@@ -356,6 +358,7 @@
 			isa = PBXGroup;
 			children = (
 				48405541E0E22A909B92BA03 /* AppSettingsPersistence.swift */,
+				30C3FDCC6ADDBDE6835FF006 /* DirectoryTreeCachePersistence.swift */,
 				A99410553280ED6CCCDFEA85 /* WorkspaceStatePersistence.swift */,
 			);
 			path = Persistence;
@@ -850,6 +853,7 @@
 				2FB91E9FD3738C3BFF66832A /* CompletionPopover.swift in Sources */,
 				33BC8BCE132D3D07D4BF1B1B /* DesignFonts.swift in Sources */,
 				39266F5D7448D51A8EBD9B96 /* DesignTokens.swift in Sources */,
+				A708746B29BFBA8388B104CB /* DirectoryTreeCachePersistence.swift in Sources */,
 				A7A81F4E31835667F4B3D786 /* DirectoryTreeSnapshot.swift in Sources */,
 				899AD635760CA3F00A191DE8 /* EditorHighlightPolicy.swift in Sources */,
 				CED37FBB27DAA8CBE601AD3C /* EmptyTabStateView.swift in Sources */,

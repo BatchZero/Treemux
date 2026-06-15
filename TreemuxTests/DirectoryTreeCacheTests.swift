@@ -33,4 +33,38 @@ final class DirectoryTreeCacheTests: XCTestCase {
         let decoded = try JSONDecoder().decode(DirectoryTreeSnapshot.self, from: data)
         XCTAssertEqual(decoded, snap)
     }
+
+    func test_persistence_saveThenLoad_roundTrips() throws {
+        let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("treemux-treecache-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        let store = DirectoryTreeCachePersistence(baseDirectory: tmp)
+        let snap = DirectoryTreeSnapshot(
+            rootPath: "/r",
+            childrenByPath: ["/r": [FileNode(id: "/r/a", name: "a", path: "/r/a", kind: .file, sizeBytes: 1, modifiedAt: nil)]],
+            truncatedDirs: [],
+            fetchedAt: Date(timeIntervalSince1970: 1_714_000_000)
+        )
+        try store.save(snap, identity: "host:22:me")
+        let loaded = store.load(identity: "host:22:me", rootPath: "/r")
+        XCTAssertEqual(loaded, snap)
+    }
+
+    func test_persistence_load_missingReturnsNil() {
+        let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("treemux-treecache-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        let store = DirectoryTreeCachePersistence(baseDirectory: tmp)
+        XCTAssertNil(store.load(identity: "nope:22:me", rootPath: "/r"))
+    }
+
+    func test_persistence_load_wrongRootReturnsNil() throws {
+        let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("treemux-treecache-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        let store = DirectoryTreeCachePersistence(baseDirectory: tmp)
+        let snap = DirectoryTreeSnapshot(rootPath: "/r", childrenByPath: [:], truncatedDirs: [], fetchedAt: Date())
+        try store.save(snap, identity: "host:22:me")
+        XCTAssertNil(store.load(identity: "host:22:me", rootPath: "/other"))
+    }
 }
