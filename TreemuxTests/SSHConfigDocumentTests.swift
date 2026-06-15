@@ -129,4 +129,27 @@ final class SSHConfigDocumentTests: XCTestCase {
         doc.remove(alias: "b")
         XCTAssertEqual(doc.render(), "Host a\n    HostName a.com")
     }
+
+    func testRemoveOnlyBlockYieldsEmpty() {
+        var doc = SSHConfigDocument(contents: "Host a\n    HostName a.com")
+        doc.remove(alias: "a")
+        XCTAssertEqual(doc.render(), "")
+    }
+
+    func testUpdateNoChangePreservesExactText() {
+        let config = "Host s\n    HostName h.com\n    Port 2222"
+        var doc = SSHConfigDocument(contents: config)
+        doc.update(alias: "s", to: SSHServerDraft(alias: "s", hostName: "h.com", port: 2222))
+        XCTAssertEqual(doc.render(), config)
+    }
+
+    func testParsesEqualsSeparatorSyntax() {
+        let config = "Host=srv\n    HostName=h.com\n    Port=2222"
+        let entries = SSHConfigDocument(contents: config).allEntries()
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertTrue(entries[0].isEditable)
+        XCTAssertEqual(entries[0].draft.alias, "srv")
+        XCTAssertEqual(entries[0].draft.hostName, "h.com")
+        XCTAssertEqual(entries[0].draft.port, 2222)
+    }
 }

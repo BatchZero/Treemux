@@ -33,7 +33,9 @@ struct SSHConfigDocument {
         lines = contents.isEmpty ? [] : contents.components(separatedBy: "\n")
     }
 
-    /// Reconstruct the full file text verbatim.
+    /// Reconstruct the full file text verbatim. Note: after `add()`/`remove()`
+    /// the result may not end in a trailing newline; the file writer is
+    /// responsible for ensuring one.
     func render() -> String {
         lines.joined(separator: "\n")
     }
@@ -52,9 +54,12 @@ struct SSHConfigDocument {
     static func directive(of line: String) -> (keyword: String, value: String)? {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty, !trimmed.hasPrefix("#") else { return nil }
-        if let range = trimmed.rangeOfCharacter(from: .whitespaces) {
+        // ssh_config(5): keyword and value may be separated by whitespace and/or
+        // a single '='.
+        let separators = CharacterSet.whitespaces.union(CharacterSet(charactersIn: "="))
+        if let range = trimmed.rangeOfCharacter(from: separators) {
             let keyword = String(trimmed[..<range.lowerBound]).lowercased()
-            let value = String(trimmed[range.upperBound...]).trimmingCharacters(in: .whitespaces)
+            let value = String(trimmed[range.upperBound...]).trimmingCharacters(in: separators)
             return (keyword, value)
         }
         return (trimmed.lowercased(), "")
@@ -126,7 +131,9 @@ struct SSHConfigDocument {
 
     /// Surgically update a managed block's known directives in place.
     mutating func update(alias: String, to draft: SSHServerDraft) {
-        guard hostBlocks().contains(where: { $0.isEditable && $0.alias == alias }) else { return }
+        // HostName is mandatory; refuse to corrupt the block by clearing it.
+        guard !draft.hostName.isEmpty,
+              hostBlocks().contains(where: { $0.isEditable && $0.alias == alias }) else { return }
         setDirective(blockAlias: alias, keyword: "HostName",
                      value: draft.hostName.isEmpty ? nil : draft.hostName)
         setDirective(blockAlias: alias, keyword: "Port",
