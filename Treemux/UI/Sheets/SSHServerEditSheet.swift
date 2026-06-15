@@ -167,3 +167,12 @@ struct SSHServerEditSheet: View {
         }
     }
 }
+
+extension SSHServerEditSheet.Mode: Identifiable {
+    var id: String {
+        switch self {
+        case .add: return "add"
+        case .edit(let entry): return "edit:\(entry.id)"
+        }
+    }
+}

@@ -20,6 +20,7 @@
 		0E5862A0ECFBA02E71850208 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 307BCBA7FBBD837C1D886367 /* Localizable.xcstrings */; };
 		0E88D8DDF291FE8C82B48BF7 /* FileSubTabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B271B295F2524F5321EDA83 /* FileSubTabBarView.swift */; };
 		11799B542DF852B119E2960A /* SettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 719F86B8BC90BA882B83152E /* SettingsSheet.swift */; };
+		13B9B8CC2251E6814CA4897F /* SSHRawConfigSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0B99362A3FF25C412AB3ED6 /* SSHRawConfigSheet.swift */; };
 		14559BCDE89A0A2CA5FD8022 /* ShellCommandRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 443B856819FD330809E0722A /* ShellCommandRunnerTests.swift */; };
 		17F6E36CAD2008C8EA72726A /* Citadel in Frameworks */ = {isa = PBXBuildFile; productRef = 6A0BCC9E620E634555EA4F1E /* Citadel */; };
 		194928F8929DB9A37A2B9B96 /* TreemuxGhosttyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B99E6A1366954D8A221B273 /* TreemuxGhosttyController.swift */; };
@@ -256,6 +257,7 @@
 		A99410553280ED6CCCDFEA85 /* WorkspaceStatePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStatePersistence.swift; sourceTree = "<group>"; };
 		A9B01277529CEA9D185C95B0 /* TerminalPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPaneView.swift; sourceTree = "<group>"; };
 		AC606574E1DF3045291D300B /* GhosttyKit.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = GhosttyKit.xcframework; path = Treemux/Vendor/GhosttyKit.xcframework; sourceTree = "<group>"; };
+		B0B99362A3FF25C412AB3ED6 /* SSHRawConfigSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHRawConfigSheet.swift; sourceTree = "<group>"; };
 		B3B56AC19B0EF0ED4EF00F4A /* SSHConfigDocumentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigDocumentTests.swift; sourceTree = "<group>"; };
 		B54286475B6DAD0B729F4A46 /* SidebarNodeRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNodeRow.swift; sourceTree = "<group>"; };
 		B8D1D61D212EB4DF71705EEB /* FileBrowserDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserDataSource.swift; sourceTree = "<group>"; };
@@ -452,6 +454,7 @@
 				9250C83EF14A84383E73002A /* RemoteDirectoryBrowser.swift */,
 				3579E21F95E49A08C0BE1E5F /* RemoteDirectoryBrowserViewModel.swift */,
 				2596BF207C9F981D9A0FE02D /* SidebarIconCustomizationSheet.swift */,
+				B0B99362A3FF25C412AB3ED6 /* SSHRawConfigSheet.swift */,
 				FA7F3CF6F855DC00ADAB6764 /* SSHServerEditSheet.swift */,
 			);
 			path = Sheets;
@@ -851,6 +854,7 @@
 				4F797B3482955657212C4A24 /* SSHConfigDocument.swift in Sources */,
 				72AAF9CD646BD3A52B8927C5 /* SSHConfigParser.swift in Sources */,
 				C932ED5A8C19385027F0691D /* SSHConfigService.swift in Sources */,
+				13B9B8CC2251E6814CA4897F /* SSHRawConfigSheet.swift in Sources */,
 				4DE2CEAEC3114FC1C79E784C /* SSHServerEditSheet.swift in Sources */,
 				E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */,
 				4F93E2B9A2A6EC003FCAB4BE /* SessionBackend.swift in Sources */,

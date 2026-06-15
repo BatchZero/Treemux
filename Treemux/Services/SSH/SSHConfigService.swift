@@ -91,39 +91,7 @@ actor SSHConfigService {
     }
 
     private func writeAtomically(_ text: String, to path: String) throws {
-        let url = URL(fileURLWithPath: path)
-        let dir = url.deletingLastPathComponent()
-        let fm = FileManager.default
-
-        if !fm.fileExists(atPath: dir.path) {
-            try fm.createDirectory(at: dir, withIntermediateDirectories: true,
-                                   attributes: [.posixPermissions: 0o700])
-        }
-
-        // Preserve an existing file's permissions; default new files to 0600.
-        let perms = ((try? fm.attributesOfItem(atPath: path))?[.posixPermissions] as? NSNumber)?.intValue ?? 0o600
-
-        var data = Data(text.utf8)
-        if text.last != "\n" { data.append(0x0A) }  // ensure trailing newline
-
-        let tmp = dir.appendingPathComponent(".\(url.lastPathComponent).tmp-\(UUID().uuidString)")
-
-        // Create the temp at 0600 first so its contents are never briefly
-        // world-readable, then write in place (no .atomic — it would recreate
-        // the file under the umask and reopen the window).
-        fm.createFile(atPath: tmp.path, contents: nil, attributes: [.posixPermissions: 0o600])
-        var tmpNeedsCleanup = true
-        defer { if tmpNeedsCleanup { try? fm.removeItem(at: tmp) } }
-
-        try data.write(to: tmp)
-        try fm.setAttributes([.posixPermissions: perms], ofItemAtPath: tmp.path)
-
-        if fm.fileExists(atPath: url.path) {
-            _ = try fm.replaceItemAt(url, withItemAt: tmp)
-        } else {
-            try fm.moveItem(at: tmp, to: url)
-        }
-        tmpNeedsCleanup = false  // rename consumed the temp file
+        try SSHConfigRawWriter.write(text, to: path)
     }
 
     /// Test whether an SSH connection can be established to the target.

@@ -218,3 +218,39 @@ struct SSHConfigDocument {
         return d
     }
 }
+
+/// Standalone atomic writer for SSH config text, reused by `SSHConfigService`
+/// and the raw editor. Creates the temp at 0600 first (never world-readable),
+/// preserves an existing file's permissions, and cleans up the temp on failure.
+enum SSHConfigRawWriter {
+    static func write(_ text: String, to path: String) throws {
+        let url = URL(fileURLWithPath: path)
+        let dir = url.deletingLastPathComponent()
+        let fm = FileManager.default
+
+        if !fm.fileExists(atPath: dir.path) {
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true,
+                                   attributes: [.posixPermissions: 0o700])
+        }
+
+        let perms = ((try? fm.attributesOfItem(atPath: path))?[.posixPermissions] as? NSNumber)?.intValue ?? 0o600
+
+        var data = Data(text.utf8)
+        if text.last != "\n" { data.append(0x0A) }
+
+        let tmp = dir.appendingPathComponent(".\(url.lastPathComponent).tmp-\(UUID().uuidString)")
+        fm.createFile(atPath: tmp.path, contents: nil, attributes: [.posixPermissions: 0o600])
+        var tmpNeedsCleanup = true
+        defer { if tmpNeedsCleanup { try? fm.removeItem(at: tmp) } }
+
+        try data.write(to: tmp)
+        try fm.setAttributes([.posixPermissions: perms], ofItemAtPath: tmp.path)
+
+        if fm.fileExists(atPath: url.path) {
+            _ = try fm.replaceItemAt(url, withItemAt: tmp)
+        } else {
+            try fm.moveItem(at: tmp, to: url)
+        }
+        tmpNeedsCleanup = false
+    }
+}
