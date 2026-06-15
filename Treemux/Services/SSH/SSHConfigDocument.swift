@@ -79,6 +79,24 @@ struct SSHConfigDocument {
         return blocks
     }
 
+    // MARK: - Mutations
+
+    /// Append a well-formatted block at the end of the file.
+    mutating func add(_ draft: SSHServerDraft) {
+        // Trim trailing blank lines, then add exactly one separator if non-empty.
+        while let last = lines.last, last.trimmingCharacters(in: .whitespaces).isEmpty {
+            lines.removeLast()
+        }
+        var block: [String] = []
+        if !lines.isEmpty { block.append("") }
+        block.append("Host \(draft.alias)")
+        block.append("    HostName \(draft.hostName)")
+        if draft.port != 22 { block.append("    Port \(draft.port)") }
+        if !draft.user.isEmpty { block.append("    User \(draft.user)") }
+        if !draft.identityFile.isEmpty { block.append("    IdentityFile \(draft.identityFile)") }
+        lines.append(contentsOf: block)
+    }
+
     private func draft(for block: HostBlock, editable: Bool) -> SSHServerDraft {
         let aliasForDisplay = editable ? block.alias : block.tokens.joined(separator: " ")
         var d = SSHServerDraft(alias: aliasForDisplay, hostName: "")

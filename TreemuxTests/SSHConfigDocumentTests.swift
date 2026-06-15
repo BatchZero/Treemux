@@ -44,4 +44,27 @@ final class SSHConfigDocumentTests: XCTestCase {
         XCTAssertEqual(entries[1].draft.port, 22)
         XCTAssertFalse(entries[2].isEditable)        // multi-pattern
     }
+
+    func testAddAppendsBlockWithSeparator() {
+        var doc = SSHConfigDocument(contents: "Host existing\n    HostName 1.1.1.1")
+        doc.add(SSHServerDraft(alias: "newsrv", hostName: "2.2.2.2", port: 2200,
+                               user: "carol", identityFile: "~/.ssh/k"))
+        let expected = """
+        Host existing
+            HostName 1.1.1.1
+
+        Host newsrv
+            HostName 2.2.2.2
+            Port 2200
+            User carol
+            IdentityFile ~/.ssh/k
+        """
+        XCTAssertEqual(doc.render(), expected)
+    }
+
+    func testAddOmitsDefaultsAndUserOnEmptyFile() {
+        var doc = SSHConfigDocument(contents: "")
+        doc.add(SSHServerDraft(alias: "x", hostName: "h"))
+        XCTAssertEqual(doc.render(), "Host x\n    HostName h")
+    }
 }
