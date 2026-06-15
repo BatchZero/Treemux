@@ -60,6 +60,8 @@ struct SSHServerEditSheet: View {
               // or newlines) so they form a valid single Host/HostName directive
               // and cannot inject extra config lines.
               alias.rangeOfCharacter(from: .whitespacesAndNewlines) == nil,
+              // reject wildcard/pattern aliases — those become read-only entries.
+              alias.rangeOfCharacter(from: CharacterSet(charactersIn: "*?")) == nil,
               host.rangeOfCharacter(from: .whitespacesAndNewlines) == nil,
               let port = Int(portText), (1...65535).contains(port) else { return false }
         let collision = existingAliases.contains { $0 == alias && $0 != originalAlias }

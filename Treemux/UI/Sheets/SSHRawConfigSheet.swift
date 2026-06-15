@@ -12,7 +12,7 @@ struct SSHRawConfigSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var text: String = ""
-    @State private var loadError: String?
+    @State private var errorMessage: String?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -24,8 +24,8 @@ struct SSHRawConfigSheet: View {
                 .frame(minWidth: 520, minHeight: 360)
                 .border(.quaternary)
 
-            if let loadError {
-                Text(loadError).font(.caption).foregroundStyle(.red)
+            if let errorMessage {
+                Text(errorMessage).font(.caption).foregroundStyle(.red)
             }
 
             HStack {
@@ -51,7 +51,7 @@ struct SSHRawConfigSheet: View {
             try SSHConfigRawWriter.write(text, to: path)
             dismiss()
         } catch {
-            loadError = error.localizedDescription
+            errorMessage = error.localizedDescription
         }
     }
 }
