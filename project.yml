@@ -30,8 +30,8 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5"
-    MARKETING_VERSION: "0.0.12"
-    CURRENT_PROJECT_VERSION: "12"
+    MARKETING_VERSION: "0.0.13"
+    CURRENT_PROJECT_VERSION: "13"
 
 targets:
   Treemux:
