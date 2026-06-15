@@ -150,21 +150,11 @@ private struct CodeEditorRepresentable: View {
 
     // MARK: - Language / size guard
 
-    /// Files larger than this open without tree-sitter highlighting.
-    private static let highlightSizeLimit: Int = 2 * 1024 * 1024
-
-    private var fileSizeBytes: Int {
-        let attrs = try? FileManager.default.attributesOfItem(atPath: path)
-        return (attrs?[.size] as? Int) ?? 0
-    }
-
-    private var shouldHighlight: Bool {
-        guard FileTypeClassifier.language(forPath: path) != nil else { return false }
-        return fileSizeBytes <= Self.highlightSizeLimit
-    }
-
     private var language: CodeLanguage {
-        guard shouldHighlight, let lang = FileTypeClassifier.language(forPath: path) else {
+        // Use the in-memory buffer size — never stat the file on the render
+        // path. `content` is the text actually loaded into the editor.
+        guard EditorHighlightPolicy.shouldHighlight(path: path, byteCount: content.utf8.count),
+              let lang = FileTypeClassifier.language(forPath: path) else {
             return .default
         }
         switch lang {

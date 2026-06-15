@@ -95,6 +95,7 @@
 		861758C31CCB50A6B7F1E98F /* CodeEditSourceEditor in Frameworks */ = {isa = PBXBuildFile; productRef = C97849ADC35767BC3DF4C9E6 /* CodeEditSourceEditor */; };
 		86E976461528AC1A196E4DC6 /* ProcessTreeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 081CA32DCF94FDC4583766A2 /* ProcessTreeTests.swift */; };
 		89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */; };
+		899AD635760CA3F00A191DE8 /* EditorHighlightPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AAFE89E9D573ED06FC760D3 /* EditorHighlightPolicy.swift */; };
 		89A2C91A680D947F1C2B176D /* ShortcutRecorderButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A169E6DF74EAE95F932D40F0 /* ShortcutRecorderButton.swift */; };
 		89ACCDC0D0537988BD28B811 /* PhosphorUnderline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2F9B81F4135149F9FD8EF5 /* PhosphorUnderline.swift */; };
 		8B1F02071634EF5A0330144B /* TmuxServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */; };
@@ -148,6 +149,7 @@
 		EDB4207DA8056D870E9EA844 /* TreemuxGhosttyInputSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755FE81839DE8C99362EBC0E /* TreemuxGhosttyInputSupport.swift */; };
 		EEB23B61392CE692436572BB /* RemoteGitDiffService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D14699E82B55E457BE264CE1 /* RemoteGitDiffService.swift */; };
 		F13DEBE0000ABD5FA8DC4A16 /* FileSubTabRecordCodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FA0085E209334A614D18291 /* FileSubTabRecordCodingTests.swift */; };
+		F441E93530FAA2FD7E5E4F38 /* EditorHighlightPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169A224EED50A9EF4A84116F /* EditorHighlightPolicyTests.swift */; };
 		F456345A8C56133D248B5234 /* FileNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03F44873E99A802B3C59BE39 /* FileNode.swift */; };
 		F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */; };
 		F8644091777403C59611547D /* LocalFileBrowserDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E3AB47E2F0BA80F74F955AD /* LocalFileBrowserDataSource.swift */; };
@@ -175,6 +177,7 @@
 		0B6EF0CD7420B8D15E621ADB /* FileTypeClassifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTypeClassifierTests.swift; sourceTree = "<group>"; };
 		146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceModelsTests.swift; sourceTree = "<group>"; };
 		163BD2A45B3BC053FE1997B9 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
+		169A224EED50A9EF4A84116F /* EditorHighlightPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorHighlightPolicyTests.swift; sourceTree = "<group>"; };
 		16FE9D700089232316516F73 /* TreemuxGhosttyBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyBootstrap.swift; sourceTree = "<group>"; };
 		17C1C770D0164AFC6938989F /* TabGrouping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabGrouping.swift; sourceTree = "<group>"; };
 		195EA28E9C93EE6E874ED6ED /* SidebarNodeItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNodeItem.swift; sourceTree = "<group>"; };
@@ -221,6 +224,7 @@
 		4742F4CA09E0C12BCF63C7CD /* PaneLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneLayoutTests.swift; sourceTree = "<group>"; };
 		47F5ADEAB2B0B3461EF7ACA4 /* CompletionPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletionPopover.swift; sourceTree = "<group>"; };
 		48405541E0E22A909B92BA03 /* AppSettingsPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsPersistence.swift; sourceTree = "<group>"; };
+		4AAFE89E9D573ED06FC760D3 /* EditorHighlightPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorHighlightPolicy.swift; sourceTree = "<group>"; };
 		559FB2C5F6FB9562E55C31AB /* FileBrowserTabController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTabController.swift; sourceTree = "<group>"; };
 		562B8C6A2EC32280F3C88E13 /* SidebarContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarContainerView.swift; sourceTree = "<group>"; };
 		56CFE929900AA3468AB1BA5B /* SSHConfigService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigService.swift; sourceTree = "<group>"; };
@@ -356,6 +360,7 @@
 				E663E6BCCD39B232086BBA79 /* AdaptiveFontSizeCalculatorTests.swift */,
 				EE469F5267854D1A9BC1F4B9 /* BufferWordIndexTests.swift */,
 				2A74B70DE050B4B90C70D8A1 /* DesignTokensTests.swift */,
+				169A224EED50A9EF4A84116F /* EditorHighlightPolicyTests.swift */,
 				5A8FDDA8554C79E902629B64 /* FileBrowserTabControllerCopyPathTests.swift */,
 				5B1568E12CA7608601340819 /* FileBrowserTabControllerStaleLoadTests.swift */,
 				734F67CDFA2343E303D8CE74 /* FileBrowserTabControllerSubTabTests.swift */,
@@ -609,6 +614,7 @@
 				62A28ABD1501991FC6757F16 /* BatchUnsavedChangesSheet.swift */,
 				3A646F19B6F1E577EC25ED47 /* BinaryInfoView.swift */,
 				47F5ADEAB2B0B3461EF7ACA4 /* CompletionPopover.swift */,
+				4AAFE89E9D573ED06FC760D3 /* EditorHighlightPolicy.swift */,
 				DE041DEC968A6F2C064FFDC3 /* FileBrowserTabContentView.swift */,
 				559FB2C5F6FB9562E55C31AB /* FileBrowserTabController.swift */,
 				2B271B295F2524F5321EDA83 /* FileSubTabBarView.swift */,
@@ -832,6 +838,7 @@
 				2FB91E9FD3738C3BFF66832A /* CompletionPopover.swift in Sources */,
 				33BC8BCE132D3D07D4BF1B1B /* DesignFonts.swift in Sources */,
 				39266F5D7448D51A8EBD9B96 /* DesignTokens.swift in Sources */,
+				899AD635760CA3F00A191DE8 /* EditorHighlightPolicy.swift in Sources */,
 				CED37FBB27DAA8CBE601AD3C /* EmptyTabStateView.swift in Sources */,
 				E9F945BAB814E46DB9FB34C9 /* FileBrowserDataSource.swift in Sources */,
 				77ACAAA4E29C26D85D9FFDC6 /* FileBrowserTabContentView.swift in Sources */,
@@ -935,6 +942,7 @@
 				0DAB709EEE832E5898E7F570 /* AdaptiveFontSizeCalculatorTests.swift in Sources */,
 				02245B1A70FB0EFD341B4406 /* BufferWordIndexTests.swift in Sources */,
 				23A4AA24DEC71AE56A635168 /* DesignTokensTests.swift in Sources */,
+				F441E93530FAA2FD7E5E4F38 /* EditorHighlightPolicyTests.swift in Sources */,
 				CF064B4D51B08CEFA12296A2 /* FileBrowserTabControllerCopyPathTests.swift in Sources */,
 				3A1311612E18020808E8098A /* FileBrowserTabControllerStaleLoadTests.swift in Sources */,
 				60D39715EBEB63DCE8383660 /* FileBrowserTabControllerSubTabTests.swift in Sources */,
