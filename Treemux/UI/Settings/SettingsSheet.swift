@@ -301,15 +301,127 @@ private struct ThemeSettingsView: View {
 private struct SSHSettingsView: View {
     @Binding var settings: AppSettings
 
+    @State private var entries: [ManagedSSHEntry] = []
+    @State private var editSheet: SSHServerEditSheet.Mode?
+    @State private var showRawEditor = false
+    @State private var pendingDelete: ManagedSSHEntry?
+    @State private var deleteError: String?
+
+    private var service: SSHConfigService {
+        SSHConfigService(configPaths: settings.ssh.configPaths)
+    }
+
+    private var primaryPath: String {
+        ((settings.ssh.configPaths.first ?? "~/.ssh/config") as NSString).expandingTildeInPath
+    }
+
     var body: some View {
         Form {
+            Section("SSH Servers") {
+                if entries.isEmpty {
+                    Text("No SSH hosts found")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(entries) { entry in
+                    serverRow(entry)
+                }
+                Button {
+                    editSheet = .add
+                } label: {
+                    Label("New Server", systemImage: "plus")
+                }
+            }
+
             Section("SSH Config Paths") {
                 ForEach(settings.ssh.configPaths.indices, id: \.self) { index in
                     TextField("Path", text: $settings.ssh.configPaths[index])
                 }
             }
+
+            Section("Advanced") {
+                Button("Edit Raw Config File…") { showRawEditor = true }
+            }
         }
         .formStyle(.grouped)
+        .task { await reload() }
+        .sheet(item: $editSheet) { mode in
+            SSHServerEditSheet(
+                mode: mode,
+                existingAliases: entries.map { $0.draft.alias },
+                service: service
+            ) { _ in
+                Task { await reload() }
+            }
+        }
+        .sheet(isPresented: $showRawEditor, onDismiss: { Task { await reload() } }) {
+            SSHRawConfigSheet(path: primaryPath)
+        }
+        .confirmationDialog(
+            "Delete this server?",
+            isPresented: Binding(get: { pendingDelete != nil },
+                                 set: { if !$0 { pendingDelete = nil } }),
+            presenting: pendingDelete
+        ) { entry in
+            Button("Delete", role: .destructive) {
+                Task {
+                    do {
+                        try await service.remove(alias: entry.draft.alias, atSourcePath: entry.sourcePath)
+                    } catch {
+                        deleteError = error.localizedDescription
+                    }
+                    await reload()
+                }
+            }
+        }
+        .alert("Delete failed",
+               isPresented: Binding(get: { deleteError != nil },
+                                    set: { if !$0 { deleteError = nil } }),
+               presenting: deleteError) { _ in
+            Button("OK", role: .cancel) { }
+        } message: { msg in
+            Text(verbatim: msg)
+        }
+    }
+
+    @ViewBuilder
+    private func serverRow(_ entry: ManagedSSHEntry) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.draft.alias)
+                    .font(.system(size: 13, weight: .medium))
+                Text(subtitle(for: entry))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if entry.isEditable {
+                Button("Edit") { editSheet = .edit(entry) }
+                    .buttonStyle(.borderless)
+                Button(role: .destructive) { pendingDelete = entry } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.borderless)
+            } else {
+                Text("Read-only · edit in raw file")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .opacity(entry.isEditable ? 1 : 0.55)
+    }
+
+    private func subtitle(for entry: ManagedSSHEntry) -> String {
+        let d = entry.draft
+        let host = d.hostName.isEmpty ? d.alias : d.hostName
+        var parts: [String] = []
+        if !d.user.isEmpty { parts.append("\(d.user)@\(host)") } else { parts.append(host) }
+        if d.port != 22 { parts.append("Port \(d.port)") }
+        if !d.identityFile.isEmpty { parts.append(d.identityFile) }
+        return parts.joined(separator: " · ")
+    }
+
+    private func reload() async {
+        entries = await service.loadManagedEntries()
     }
 }
 

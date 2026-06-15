@@ -1940,6 +1940,236 @@
           }
         }
       }
+    },
+    "New Server": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建服务器"
+          }
+        }
+      }
+    },
+    "Edit Server": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑服务器"
+          }
+        }
+      }
+    },
+    "Alias (Host)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "别名 (Host)"
+          }
+        }
+      }
+    },
+    "Host (HostName)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主机 (HostName)"
+          }
+        }
+      }
+    },
+    "User": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用户"
+          }
+        }
+      }
+    },
+    "Port": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "端口"
+          }
+        }
+      }
+    },
+    "Identity File": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥文件"
+          }
+        }
+      }
+    },
+    "Test Connection": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "测试连接"
+          }
+        }
+      }
+    },
+    "Testing…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "测试中…"
+          }
+        }
+      }
+    },
+    "Connected": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接成功"
+          }
+        }
+      }
+    },
+    "Authentication required": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要认证"
+          }
+        }
+      }
+    },
+    "Unreachable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法连接"
+          }
+        }
+      }
+    },
+    "SSH Servers": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH 服务器"
+          }
+        }
+      }
+    },
+    "No SSH hosts found": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到 SSH 主机"
+          }
+        }
+      }
+    },
+    "Advanced": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高级"
+          }
+        }
+      }
+    },
+    "Edit Raw Config File…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "直接编辑原始配置文件…"
+          }
+        }
+      }
+    },
+    "Edit Raw Config File": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑原始配置文件"
+          }
+        }
+      }
+    },
+    "Read-only · edit in raw file": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只读 · 请用原文编辑"
+          }
+        }
+      }
+    },
+    "Delete this server?": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确定删除该服务器？"
+          }
+        }
+      }
+    },
+    "Delete failed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除失败"
+          }
+        }
+      }
+    },
+    "New": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建"
+          }
+        }
+      }
+    },
+    "Edit": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "好"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

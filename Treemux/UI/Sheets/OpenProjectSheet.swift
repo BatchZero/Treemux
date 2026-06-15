@@ -28,6 +28,8 @@ struct OpenProjectSheet: View {
     @State private var remotePath: String = ""
     @State private var isLoadingTargets = false
     @State private var showRemoteBrowser = false
+    @State private var managedEntries: [ManagedSSHEntry] = []
+    @State private var serverEditMode: SSHServerEditSheet.Mode?
 
     var body: some View {
         VStack(spacing: 16) {
@@ -133,6 +135,21 @@ struct OpenProjectSheet: View {
                     .disabled(sshTargets.isEmpty)
                 }
             }
+
+            HStack {
+                Button {
+                    serverEditMode = .add
+                } label: {
+                    Label("New", systemImage: "plus")
+                }
+                Button("Edit") {
+                    if let entry = selectedManagedEntry() {
+                        serverEditMode = .edit(entry)
+                    }
+                }
+                .disabled(selectedManagedEntry()?.isEditable != true)
+                Spacer()
+            }
         }
         .sheet(isPresented: $showRemoteBrowser) {
             if selectedTargetIndex < sshTargets.count {
@@ -142,6 +159,15 @@ struct OpenProjectSheet: View {
                     remotePath = selectedPath
                 }
                 .environment(\.locale, languageManager.locale)
+            }
+        }
+        .sheet(item: $serverEditMode) { editMode in
+            SSHServerEditSheet(
+                mode: editMode,
+                existingAliases: managedEntries.map { $0.draft.alias },
+                service: SSHConfigService(configPaths: store.settings.ssh.configPaths)
+            ) { savedTarget in
+                Task { await loadSSHTargets(selecting: savedTarget.displayName) }
             }
         }
     }
@@ -198,11 +224,24 @@ struct OpenProjectSheet: View {
         }
     }
 
-    private func loadSSHTargets() async {
+    private func loadSSHTargets(selecting alias: String? = nil) async {
         isLoadingTargets = true
         let service = SSHConfigService(configPaths: store.settings.ssh.configPaths)
         sshTargets = await service.loadSSHConfig()
+        managedEntries = await service.loadManagedEntries()
+        if let alias, let idx = sshTargets.firstIndex(where: { $0.displayName == alias }) {
+            selectedTargetIndex = idx
+        } else if selectedTargetIndex >= sshTargets.count {
+            selectedTargetIndex = 0
+        }
         isLoadingTargets = false
+    }
+
+    /// The managed entry corresponding to the currently selected picker target.
+    private func selectedManagedEntry() -> ManagedSSHEntry? {
+        guard selectedTargetIndex < sshTargets.count else { return nil }
+        let alias = sshTargets[selectedTargetIndex].displayName
+        return managedEntries.first { $0.draft.alias == alias }
     }
 
     private func targetLabel(_ target: SSHTarget) -> String {
