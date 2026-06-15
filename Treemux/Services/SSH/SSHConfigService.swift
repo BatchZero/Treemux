@@ -30,6 +30,86 @@ actor SSHConfigService {
         return allTargets
     }
 
+    // MARK: - Managed entries (editing)
+
+    /// Load all host blocks across config files, tagged with source path.
+    /// First occurrence of an alias wins (mirrors load ordering).
+    func loadManagedEntries() -> [ManagedSSHEntry] {
+        var result: [ManagedSSHEntry] = []
+        var seen = Set<String>()
+        for path in configPaths {
+            let expanded = (path as NSString).expandingTildeInPath
+            guard let contents = try? String(contentsOfFile: expanded, encoding: .utf8) else { continue }
+            for entry in SSHConfigDocument(contents: contents).allEntries() {
+                let alias = entry.draft.alias
+                guard !seen.contains(alias) else { continue }
+                seen.insert(alias)
+                result.append(ManagedSSHEntry(
+                    id: "\(expanded)::\(alias)",
+                    draft: entry.draft,
+                    sourcePath: expanded,
+                    isEditable: entry.isEditable
+                ))
+            }
+        }
+        return result
+    }
+
+    /// Add a new server to the primary config file.
+    func add(_ draft: SSHServerDraft) throws {
+        let primary = ((configPaths.first ?? "~/.ssh/config") as NSString).expandingTildeInPath
+        try mutate(path: primary) { $0.add(draft) }
+    }
+
+    /// Update an existing server in its source file.
+    func update(_ draft: SSHServerDraft, originalAlias: String, atSourcePath sourcePath: String) throws {
+        try mutate(path: (sourcePath as NSString).expandingTildeInPath) {
+            $0.update(alias: originalAlias, to: draft)
+        }
+    }
+
+    /// Remove a server from its source file.
+    func remove(alias: String, atSourcePath sourcePath: String) throws {
+        try mutate(path: (sourcePath as NSString).expandingTildeInPath) {
+            $0.remove(alias: alias)
+        }
+    }
+
+    // MARK: - File IO
+
+    private func mutate(path: String, _ transform: (inout SSHConfigDocument) -> Void) throws {
+        let existing = (try? String(contentsOfFile: path, encoding: .utf8)) ?? ""
+        var doc = SSHConfigDocument(contents: existing)
+        transform(&doc)
+        try writeAtomically(doc.render(), to: path)
+    }
+
+    private func writeAtomically(_ text: String, to path: String) throws {
+        let url = URL(fileURLWithPath: path)
+        let dir = url.deletingLastPathComponent()
+        let fm = FileManager.default
+
+        if !fm.fileExists(atPath: dir.path) {
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true,
+                                   attributes: [.posixPermissions: 0o700])
+        }
+
+        let perms = ((try? fm.attributesOfItem(atPath: path))?[.posixPermissions] as? NSNumber)?.intValue ?? 0o600
+
+        var data = Data(text.utf8)
+        if text.last != "\n" { data.append(0x0A) }  // ensure trailing newline
+
+        let tmp = dir.appendingPathComponent(".\(url.lastPathComponent).tmp-\(UUID().uuidString)")
+        try data.write(to: tmp, options: .atomic)
+        try fm.setAttributes([.posixPermissions: perms], ofItemAtPath: tmp.path)
+
+        if fm.fileExists(atPath: url.path) {
+            _ = try fm.replaceItemAt(url, withItemAt: tmp)
+        } else {
+            try fm.moveItem(at: tmp, to: url)
+        }
+    }
+
     /// Test whether an SSH connection can be established to the target.
     func testConnection(_ target: SSHTarget) async -> SSHConnectionStatus {
         let process = Process()
