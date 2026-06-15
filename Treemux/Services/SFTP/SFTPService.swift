@@ -245,6 +245,29 @@ actor SFTPService {
         }
     }
 
+    /// Whether the active connection can run arbitrary shell commands (system-SSH
+    /// path). Citadel password-auth cannot, so callers fall back to per-dir BFS.
+    var supportsBulkCommand: Bool {
+        if case .ssh = mode { return true }
+        return false
+    }
+
+    /// Bulk-fetch a directory tree in one SSH round-trip. Only valid on the
+    /// system-SSH path (`supportsBulkCommand == true`). Returns each directory's
+    /// children keyed by parent path, plus the set of directories whose listing
+    /// was capped at `entryCap`.
+    func listTreeViaCommand(root: String, maxDepth: Int, entryCap: Int)
+        async throws -> (childrenByPath: [String: [SFTPRichEntry]], truncated: Set<String>) {
+        let output = try await runCommand(Self.bulkListCommand(maxDepth: maxDepth), in: root)
+        var grouped = Self.parseRecursiveListing(output: output, root: root)
+        var truncated: Set<String> = []
+        for (dir, entries) in grouped where entries.count > entryCap {
+            grouped[dir] = Array(entries.prefix(entryCap))
+            truncated.insert(dir)
+        }
+        return (grouped, truncated)
+    }
+
     private static func shellQuote(_ s: String) -> String {
         "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
