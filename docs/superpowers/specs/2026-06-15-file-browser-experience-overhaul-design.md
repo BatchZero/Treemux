@@ -2,7 +2,9 @@
 
 **Date:** 2026-06-15
 **Author:** 卡皮巴拉 (via brainstorming with Claude)
-**Status:** Approved for implementation (phased; one plan per phase, except P1 which splits into P1a/P1b)
+**Status:** In progress (phased; one plan per phase, except P1 which splits into P1a/P1b)
+
+**Progress (2026-06-15):** **P1a** (design-system foundation) ✅ and **P1b** (visual surfaces — features 0/1/2/5/7: hover button, Files/Shell tab grouping + phosphor underline, colorful file-tree icons, density sizing) ✅ implemented (TDD, two-stage subagent review, 273/273 tests), merged into this branch. **Remaining: P2** (editor smoothness — feature 3), **P3** (remote acceleration — feature 4), **P4** (markdown/HTML rendering — feature 6). Tracked follow-up: light-theme variants for the dark-tuned Phosphor tokens.
 
 > **Reading note:** sections below are ordered by implementation grouping, not feature number. Each
 > heading is tagged with its phase (`[P1a]`/`[P1b]`/`[P2]`/`[P3]`/`[P4]`). See the Phasing table at the end.
