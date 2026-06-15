@@ -6,8 +6,8 @@ import Foundation
 
 /// One entry in a file browser directory listing. Trees are loaded lazily —
 /// `children` is nil for unexpanded directories, and `[]` for empty / loaded.
-struct FileNode: Identifiable, Equatable {
-    enum Kind: Equatable {
+struct FileNode: Identifiable, Equatable, Codable, Sendable {
+    enum Kind: Equatable, Codable, Sendable {
         case directory
         case file
         case symlink(target: String?)
