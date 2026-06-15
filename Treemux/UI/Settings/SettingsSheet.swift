@@ -186,8 +186,28 @@ private struct GeneralSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Section {
+                Picker("File Tree Density", selection: $settings.fileTree.density) {
+                    ForEach(TreeDensity.allCases) { density in
+                        Text(densityTitle(density)).tag(density)
+                    }
+                }
+            } footer: {
+                Text("Row height and font size in the file browser tree.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
+    }
+
+    private func densityTitle(_ density: TreeDensity) -> LocalizedStringKey {
+        switch density {
+        case .compact: return "Compact"
+        case .comfortable: return "Comfortable"
+        case .spacious: return "Spacious"
+        }
     }
 }
 
