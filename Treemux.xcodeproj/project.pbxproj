@@ -94,6 +94,7 @@
 		86E976461528AC1A196E4DC6 /* ProcessTreeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 081CA32DCF94FDC4583766A2 /* ProcessTreeTests.swift */; };
 		89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */; };
 		89A2C91A680D947F1C2B176D /* ShortcutRecorderButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A169E6DF74EAE95F932D40F0 /* ShortcutRecorderButton.swift */; };
+		89ACCDC0D0537988BD28B811 /* PhosphorUnderline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2F9B81F4135149F9FD8EF5 /* PhosphorUnderline.swift */; };
 		8B1F02071634EF5A0330144B /* TmuxServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */; };
 		8D1CEE3F5DC9DCD02F0BD4F6 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AECC7D7718049E6DE71D772 /* Notifications.swift */; };
 		8D26A31A9A417D3D41DA60C6 /* WorkspaceOutlineSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5FB45C7299B44CB5A534F28 /* WorkspaceOutlineSidebar.swift */; };
@@ -184,6 +185,7 @@
 		2B271B295F2524F5321EDA83 /* FileSubTabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSubTabBarView.swift; sourceTree = "<group>"; };
 		2BECE531477D114732B3DB1E /* SidebarInfoBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarInfoBadge.swift; sourceTree = "<group>"; };
 		2DE947981856776881A910EE /* HookDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookDiff.swift; sourceTree = "<group>"; };
+		2F2F9B81F4135149F9FD8EF5 /* PhosphorUnderline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhosphorUnderline.swift; sourceTree = "<group>"; };
 		2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
 		307BCBA7FBBD837C1D886367 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		30CC2AAEA217BA6CC93B9774 /* AdaptiveFontShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveFontShortcutTests.swift; sourceTree = "<group>"; };
@@ -403,6 +405,7 @@
 			isa = PBXGroup;
 			children = (
 				2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */,
+				2F2F9B81F4135149F9FD8EF5 /* PhosphorUnderline.swift */,
 				5C2110A46976203DDBF9D707 /* TerminalHostView.swift */,
 			);
 			path = Components;
@@ -842,6 +845,7 @@
 				9E3EDA87C6172DCC23C14AFE /* OpenProjectSheet.swift in Sources */,
 				78942DBCD13BA394E9AC92CD /* PaneLayout.swift in Sources */,
 				634F5C15FC031D133DEA6DC1 /* PathFormatting.swift in Sources */,
+				89ACCDC0D0537988BD28B811 /* PhosphorUnderline.swift in Sources */,
 				D2D97673DE196B9D5B0B826E /* ProcessTree.swift in Sources */,
 				344951E9D097935A9989D02D /* QuickLookViewerView.swift in Sources */,
 				093FE0959D31BD1AE6676D1A /* RemoteDirectoryBrowser.swift in Sources */,
