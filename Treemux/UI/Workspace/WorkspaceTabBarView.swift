@@ -13,51 +13,27 @@ struct WorkspaceTabBarView: View {
     @State private var hoveredTabID: UUID?
     @State private var draggedTabID: UUID?
 
+    private var groups: (files: [WorkspaceTabStateRecord], shell: [WorkspaceTabStateRecord]) {
+        TabGrouping.partition(workspace.tabs) { $0.kind }
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 1) {
-                    ForEach(workspace.tabs) { tab in
-                        if renamingTabID == tab.id {
-                            TabRenameField(
-                                text: $renameText,
-                                onCommit: {
-                                    workspace.renameTab(tab.id, title: renameText)
-                                    renamingTabID = nil
-                                },
-                                onCancel: {
-                                    renamingTabID = nil
-                                }
-                            )
-                            .frame(width: TreemuxTabSizing.width(for: renameText.isEmpty ? "Tab name" : renameText, paneCount: paneCount(for: tab)))
-                        } else {
-                            TabButton(
-                                tab: tab,
-                                isSelected: tab.id == workspace.activeTabID,
-                                isHovered: hoveredTabID == tab.id,
-                                paneCount: paneCount(for: tab),
-                                isDirty: dirtyState(for: tab),
-                                dotKind: dotKind(for: tab),
-                                onSelect: { workspace.selectTab(tab.id) },
-                                onClose: { workspace.requestCloseTab(tab.id) },
-                                onRename: {
-                                    renameText = tab.title
-                                    renamingTabID = tab.id
-                                }
-                            )
-                            .onHover { isHovered in
-                                hoveredTabID = isHovered ? tab.id : nil
-                            }
-                            .onDrag {
-                                draggedTabID = tab.id
-                                return NSItemProvider(object: tab.id.uuidString as NSString)
-                            }
-                            .onDrop(of: [.text], delegate: TabDropDelegate(
-                                targetTabID: tab.id,
-                                workspace: workspace,
-                                draggedTabID: $draggedTabID
-                            ))
-                        }
+                    if !groups.files.isEmpty {
+                        TabGroupEyebrow(title: "Files", color: DesignTokens.files)
+                        ForEach(groups.files) { tab in tabView(tab) }
+                    }
+                    if !groups.files.isEmpty && !groups.shell.isEmpty {
+                        Rectangle()
+                            .fill(DesignTokens.line)
+                            .frame(width: 1, height: 18)
+                            .padding(.horizontal, 5)
+                    }
+                    if !groups.shell.isEmpty {
+                        TabGroupEyebrow(title: "Shell", color: DesignTokens.shell)
+                        ForEach(groups.shell) { tab in tabView(tab) }
                     }
                 }
                 .padding(.horizontal, 8)
@@ -83,6 +59,50 @@ struct WorkspaceTabBarView: View {
             Rectangle()
                 .fill(.white.opacity(0.08))
                 .frame(height: 1)
+        }
+    }
+
+    @ViewBuilder
+    private func tabView(_ tab: WorkspaceTabStateRecord) -> some View {
+        if renamingTabID == tab.id {
+            TabRenameField(
+                text: $renameText,
+                onCommit: {
+                    workspace.renameTab(tab.id, title: renameText)
+                    renamingTabID = nil
+                },
+                onCancel: {
+                    renamingTabID = nil
+                }
+            )
+            .frame(width: TreemuxTabSizing.width(for: renameText.isEmpty ? "Tab name" : renameText, paneCount: paneCount(for: tab)))
+        } else {
+            TabButton(
+                tab: tab,
+                isSelected: tab.id == workspace.activeTabID,
+                isHovered: hoveredTabID == tab.id,
+                paneCount: paneCount(for: tab),
+                isDirty: dirtyState(for: tab),
+                dotKind: dotKind(for: tab),
+                onSelect: { workspace.selectTab(tab.id) },
+                onClose: { workspace.requestCloseTab(tab.id) },
+                onRename: {
+                    renameText = tab.title
+                    renamingTabID = tab.id
+                }
+            )
+            .onHover { isHovered in
+                hoveredTabID = isHovered ? tab.id : nil
+            }
+            .onDrag {
+                draggedTabID = tab.id
+                return NSItemProvider(object: tab.id.uuidString as NSString)
+            }
+            .onDrop(of: [.text], delegate: TabDropDelegate(
+                targetTabID: tab.id,
+                workspace: workspace,
+                draggedTabID: $draggedTabID
+            ))
         }
     }
 
@@ -165,19 +185,12 @@ private struct TabButton: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(
-                isSelected ? AnyShapeStyle(.white.opacity(0.15))
+                isSelected ? AnyShapeStyle(DesignTokens.surface)
                 : isHovered ? AnyShapeStyle(.white.opacity(0.08))
                 : AnyShapeStyle(.white.opacity(0.05))
             )
             .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(alignment: .bottom) {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(Color.accentColor)
-                        .frame(height: 3)
-                        .padding(.horizontal, 6)
-                }
-            }
+            .phosphorUnderline(DesignTokens.tabAccent(for: tab.kind), active: isSelected)
         }
         .buttonStyle(.plain)
         .frame(width: TreemuxTabSizing.width(for: tab.title, paneCount: paneCount, hasDot: dotKind != nil))
@@ -202,6 +215,23 @@ private struct TabActivityDot: View {
             .fill(Color.orange)
             .frame(width: 6, height: 6)
             .opacity(0.8)
+    }
+}
+
+// MARK: - Group Eyebrow
+
+/// Tiny uppercase monospace label marking a tab-kind group ("Files" / "Shell").
+private struct TabGroupEyebrow: View {
+    let title: LocalizedStringKey
+    let color: Color
+
+    var body: some View {
+        Text(title)
+            .font(DesignFonts.dataLayer(size: 9, weight: .semibold))
+            .textCase(.uppercase)
+            .kerning(0.8)
+            .foregroundStyle(color)
+            .padding(.horizontal, 6)
     }
 }
 
@@ -266,6 +296,10 @@ private struct TabDropDelegate: DropDelegate {
               dragged != targetTabID,
               let fromIndex = workspace.tabs.firstIndex(where: { $0.id == dragged }),
               let toIndex = workspace.tabs.firstIndex(where: { $0.id == targetTabID }) else { return }
+        // The tab bar groups by kind; only allow reordering within the same kind
+        // group so a cross-group drag can't silently interleave kinds in the
+        // canonical workspace.tabs order.
+        guard workspace.tabs[fromIndex].kind == workspace.tabs[toIndex].kind else { return }
         withAnimation(.easeInOut(duration: 0.2)) {
             workspace.moveTab(
                 fromOffsets: IndexSet(integer: fromIndex),
