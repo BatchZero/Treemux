@@ -160,6 +160,31 @@ final class FileBrowserTabControllerTests: XCTestCase {
         } else { XCTFail() }
     }
 
+    func test_saveCurrentFile_writesAndClearsDirtyOnReturn() async throws {
+        let mock = MockFileBrowserDataSource()
+        mock.fileMetas["/r/a.txt"] = FileMetadata(path: "/r/a.txt", sizeBytes: 5, modifiedAt: nil,
+                                                  isDirectory: false, isSymbolicLink: false)
+        mock.fileContents["/r/a.txt"] = "hello".data(using: .utf8)!
+        let ctrl = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
+        await ctrl.openInTree("/r/a.txt")
+
+        // Mark the active buffer dirty with new content.
+        ctrl.updateBuffer(content: "hello world", forSubTab: ctrl.activeSubTabID!)
+
+        try await ctrl.saveCurrentFile()
+
+        // On return: disk write happened and dirty is already cleared.
+        XCTAssertEqual(mock.writes.last.flatMap { String(data: $0.data, encoding: .utf8) },
+                       "hello world")
+        if case .text(_, let content, _, let dirty) = ctrl.openFile {
+            XCTAssertEqual(content, "hello world")
+            XCTAssertFalse(dirty, "dirty must be cleared synchronously on save return")
+        } else {
+            XCTFail("expected .text")
+        }
+    }
+
     func testIsDirty() async {
         let mock = MockFileBrowserDataSource()
         mock.fileMetas["/r/a.txt"] = FileMetadata(path: "/r/a.txt", sizeBytes: 1, modifiedAt: nil, isDirectory: false, isSymbolicLink: false)

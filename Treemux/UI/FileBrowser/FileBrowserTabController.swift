@@ -577,7 +577,9 @@ final class FileBrowserTabController: ObservableObject {
         subTabs[idx].openFile = .text(path: path, content: content, encoding: encoding, dirty: true)
     }
 
-    /// Saves the current buffer back to disk via the data source.
+    /// Saves the current buffer back to disk via the data source. Returns as
+    /// soon as the write completes and `dirty` is cleared; the git-status and
+    /// diff refresh run off the save path so saving never blocks on `git`.
     func saveCurrentFile() async throws {
         guard case .text(let path, let content, let encoding, _) = activeOpenFile else {
             return
@@ -585,8 +587,13 @@ final class FileBrowserTabController: ObservableObject {
         let data = content.data(using: encoding) ?? Data()
         try await dataSource.writeFile(path, data: data)
         setActiveOpenFile(.text(path: path, content: content, encoding: encoding, dirty: false))
-        await refreshDiffForActive()
-        await refreshGitStatus()
+        // Fire-and-forget: diff + git status are non-essential to the save
+        // completing and each is a `git` subprocess round-trip. Mirrors the
+        // detached refresh already used after tree mutations.
+        Task { [weak self] in
+            await self?.refreshDiffForActive()
+            await self?.refreshGitStatus()
+        }
     }
 
     // MARK: - Error mapping & password retry
