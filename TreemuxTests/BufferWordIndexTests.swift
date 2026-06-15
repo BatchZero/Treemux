@@ -57,4 +57,22 @@ final class BufferWordIndexTests: XCTestCase {
         let s = await idx.suggestions(prefix: "c", limit: 10)
         XCTAssertEqual(s.first, "common")
     }
+
+    func test_snapshotMatchesActorAfterUpdate() async {
+        let index = BufferWordIndex()
+        let id = UUID()
+        await index.update(bufferID: id, contents: "counter counting countdown")
+        let viaActor = await index.suggestions(prefix: "count", limit: 10)
+        let viaSnapshot = index.snapshot.suggestions(prefix: "count", limit: 10)
+        XCTAssertEqual(viaSnapshot, viaActor)
+        XCTAssertFalse(viaSnapshot.isEmpty)
+    }
+
+    func test_snapshotClearsAfterRemove() async {
+        let index = BufferWordIndex()
+        let id = UUID()
+        await index.update(bufferID: id, contents: "counter counting")
+        await index.remove(bufferID: id)
+        XCTAssertEqual(index.snapshot.suggestions(prefix: "count", limit: 10), [])
+    }
 }

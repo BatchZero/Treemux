@@ -98,6 +98,7 @@
 		899AD635760CA3F00A191DE8 /* EditorHighlightPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AAFE89E9D573ED06FC760D3 /* EditorHighlightPolicy.swift */; };
 		89A2C91A680D947F1C2B176D /* ShortcutRecorderButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A169E6DF74EAE95F932D40F0 /* ShortcutRecorderButton.swift */; };
 		89ACCDC0D0537988BD28B811 /* PhosphorUnderline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2F9B81F4135149F9FD8EF5 /* PhosphorUnderline.swift */; };
+		8A424C110ED8A1A00452E2E0 /* WordIndexSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFDA549FCEE1005FA34DBC2 /* WordIndexSnapshotStore.swift */; };
 		8B1F02071634EF5A0330144B /* TmuxServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */; };
 		8D1CEE3F5DC9DCD02F0BD4F6 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AECC7D7718049E6DE71D772 /* Notifications.swift */; };
 		8D26A31A9A417D3D41DA60C6 /* WorkspaceOutlineSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5FB45C7299B44CB5A534F28 /* WorkspaceOutlineSidebar.swift */; };
@@ -136,6 +137,7 @@
 		CDB05808B946D402F0D9385D /* SidebarCellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF28F45ACFC8C05BE9BD98A9 /* SidebarCellView.swift */; };
 		CED37FBB27DAA8CBE601AD3C /* EmptyTabStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 383CC60F01FDAD8B71C8EF65 /* EmptyTabStateView.swift */; };
 		CF064B4D51B08CEFA12296A2 /* FileBrowserTabControllerCopyPathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A8FDDA8554C79E902629B64 /* FileBrowserTabControllerCopyPathTests.swift */; };
+		D28A8434A7ED5469EA3D2E14 /* WordIndexSnapshotStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D66279CB21EA721C605457C /* WordIndexSnapshotStoreTests.swift */; };
 		D29712364C194E7F95DCD544 /* GitDiffServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E586BC73709B3E51989859 /* GitDiffServiceTests.swift */; };
 		D2D97673DE196B9D5B0B826E /* ProcessTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFCB1FCCBAF466E03F7A8DD8 /* ProcessTree.swift */; };
 		D489C4C4FC19FD474C946FCB /* TabGroupingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF9D68F15831BDF7B565B500 /* TabGroupingTests.swift */; };
@@ -175,6 +177,7 @@
 		081CA32DCF94FDC4583766A2 /* ProcessTreeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTreeTests.swift; sourceTree = "<group>"; };
 		09B0AB9E9ADD916200DE62AE /* QuickLookViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLookViewerView.swift; sourceTree = "<group>"; };
 		0B6EF0CD7420B8D15E621ADB /* FileTypeClassifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTypeClassifierTests.swift; sourceTree = "<group>"; };
+		0D66279CB21EA721C605457C /* WordIndexSnapshotStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordIndexSnapshotStoreTests.swift; sourceTree = "<group>"; };
 		146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceModelsTests.swift; sourceTree = "<group>"; };
 		163BD2A45B3BC053FE1997B9 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		169A224EED50A9EF4A84116F /* EditorHighlightPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorHighlightPolicyTests.swift; sourceTree = "<group>"; };
@@ -184,6 +187,7 @@
 		1B7DBEF3A8FDA651804A6D8A /* TreemuxKeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxKeyboardShortcuts.swift; sourceTree = "<group>"; };
 		1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneLayout.swift; sourceTree = "<group>"; };
 		1E3AB47E2F0BA80F74F955AD /* LocalFileBrowserDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFileBrowserDataSource.swift; sourceTree = "<group>"; };
+		1FFDA549FCEE1005FA34DBC2 /* WordIndexSnapshotStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordIndexSnapshotStore.swift; sourceTree = "<group>"; };
 		20079BE9FA1D7054C79699F2 /* WorkspaceSessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSessionController.swift; sourceTree = "<group>"; };
 		2290B3E587177F8B10B05395 /* ShellSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellSession.swift; sourceTree = "<group>"; };
 		24A323012CE09C4999DF9E08 /* TerminalSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
@@ -387,6 +391,7 @@
 				3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */,
 				E9B87785B633D3E01905E33E /* TreemuxTabSizingTests.swift */,
 				3477DE6F674F94B9457073F4 /* TreemuxTests.swift */,
+				0D66279CB21EA721C605457C /* WordIndexSnapshotStoreTests.swift */,
 				146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */,
 				39ADDF2DEBC6DA37E13F759D /* WorkspaceModelTabKindTests.swift */,
 				E2036C4C917DE175BEEF342C /* WorkspaceStoreBuiltInTests.swift */,
@@ -642,6 +647,7 @@
 			isa = PBXGroup;
 			children = (
 				E9C397C881AF1E9C2590736E /* BufferWordIndex.swift */,
+				1FFDA549FCEE1005FA34DBC2 /* WordIndexSnapshotStore.swift */,
 			);
 			path = Editor;
 			sourceTree = "<group>";
@@ -920,6 +926,7 @@
 				527270F31405E3CCEFE8CF79 /* TreemuxGhosttyShellIntegration.swift in Sources */,
 				DDB379227505CCDD96BB62C1 /* TreemuxKeyboardShortcuts.swift in Sources */,
 				04885DA006A7F9D402450132 /* WindowContext.swift in Sources */,
+				8A424C110ED8A1A00452E2E0 /* WordIndexSnapshotStore.swift in Sources */,
 				320E9CBA68B37DFD4F22711A /* WorkspaceDetailView.swift in Sources */,
 				BF6AC7D0EC7DBA0469366D91 /* WorkspaceMetadataWatchService.swift in Sources */,
 				F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */,
@@ -969,6 +976,7 @@
 				8B1F02071634EF5A0330144B /* TmuxServiceTests.swift in Sources */,
 				FC0884EBD132C797A61FC4A1 /* TreemuxTabSizingTests.swift in Sources */,
 				CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */,
+				D28A8434A7ED5469EA3D2E14 /* WordIndexSnapshotStoreTests.swift in Sources */,
 				A04CA84B2C50B4E52EC8B119 /* WorkspaceModelTabKindTests.swift in Sources */,
 				8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */,
 				DDDEF7B960C5F076099D8E86 /* WorkspaceStoreBuiltInTests.swift in Sources */,

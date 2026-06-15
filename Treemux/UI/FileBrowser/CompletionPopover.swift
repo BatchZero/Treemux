@@ -113,12 +113,10 @@ final class WordCompletionDelegate: CodeSuggestionDelegate {
         }
         guard prefixInfo.prefix.count >= Self.minPrefixLength else { return nil }
 
-        // Snapshot the index synchronously by spinning a brief blocking
-        // dispatch. Acceptable here because the lookup is O(N) over an
-        // in-memory dictionary of identifiers, sub-millisecond in practice;
-        // `completionOnCursorMove` is documented as needing to be snappy and
-        // does not afford an `await`.
-        let words = blockingSuggestions(prefix: prefixInfo.prefix)
+        // Read the published snapshot directly on the main thread — O(N) over an
+        // in-memory dictionary, no actor await, no semaphore, no blocking wait.
+        let words = wordIndex.snapshot.suggestions(prefix: prefixInfo.prefix,
+                                                   limit: Self.suggestionLimit)
         guard !words.isEmpty else { return nil }
 
         return words.map { WordCompletionEntry(label: $0, prefixRange: prefixInfo.range) }
@@ -207,30 +205,6 @@ final class WordCompletionDelegate: CodeSuggestionDelegate {
         guard let scalar = string.unicodeScalars.first else { return false }
         if scalar == "_" { return true }
         return CharacterSet.letters.contains(scalar) || CharacterSet.decimalDigits.contains(scalar)
-    }
-
-    /// Drains the actor's `suggestions(prefix:)` synchronously. Used by the
-    /// non-async `completionOnCursorMove` hook. The semaphore is bounded by a
-    /// short timeout so a wedged actor can never deadlock the main thread.
-    private func blockingSuggestions(prefix: String) -> [String] {
-        let semaphore = DispatchSemaphore(value: 0)
-        let box = ResultBox()
-        Task.detached { [wordIndex] in
-            let words = await wordIndex.suggestions(prefix: prefix, limit: Self.suggestionLimit)
-            box.value = words
-            semaphore.signal()
-        }
-        // 50ms is two orders of magnitude longer than a typical lookup; if we
-        // ever hit this, falling back to "no suggestions" is the right move.
-        _ = semaphore.wait(timeout: .now() + .milliseconds(50))
-        return box.value
-    }
-
-    /// Mutable reference container so the detached Task can hand a result back
-    /// to the calling thread without tripping Swift 5's concurrency checker on
-    /// captured `var` locals.
-    private final class ResultBox: @unchecked Sendable {
-        var value: [String] = []
     }
 }
 
