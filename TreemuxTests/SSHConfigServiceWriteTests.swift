@@ -57,4 +57,17 @@ final class SSHConfigServiceWriteTests: XCTestCase {
         content = try String(contentsOfFile: path, encoding: .utf8)
         XCTAssertFalse(content.contains("Host s"))
     }
+
+    func testUpdatePreservesExistingFilePermissions() async throws {
+        let path = try makeTempConfigPath()
+        try "Host s\n    HostName old".write(toFile: path, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: path)
+
+        let service = SSHConfigService(configPaths: [path])
+        try await service.update(SSHServerDraft(alias: "s", hostName: "new"),
+                                 originalAlias: "s", atSourcePath: path)
+
+        let perms = (try FileManager.default.attributesOfItem(atPath: path)[.posixPermissions] as? NSNumber)?.intValue
+        XCTAssertEqual(perms, 0o644)   // preserved, not hardcoded to 0600
+    }
 }

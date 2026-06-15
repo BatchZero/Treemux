@@ -78,7 +78,13 @@ actor SSHConfigService {
     // MARK: - File IO
 
     private func mutate(path: String, _ transform: (inout SSHConfigDocument) -> Void) throws {
-        let existing = (try? String(contentsOfFile: path, encoding: .utf8)) ?? ""
+        let fm = FileManager.default
+        let existing: String
+        if fm.fileExists(atPath: path) {
+            existing = try String(contentsOfFile: path, encoding: .utf8)
+        } else {
+            existing = ""
+        }
         var doc = SSHConfigDocument(contents: existing)
         transform(&doc)
         try writeAtomically(doc.render(), to: path)
@@ -94,13 +100,22 @@ actor SSHConfigService {
                                    attributes: [.posixPermissions: 0o700])
         }
 
+        // Preserve an existing file's permissions; default new files to 0600.
         let perms = ((try? fm.attributesOfItem(atPath: path))?[.posixPermissions] as? NSNumber)?.intValue ?? 0o600
 
         var data = Data(text.utf8)
         if text.last != "\n" { data.append(0x0A) }  // ensure trailing newline
 
         let tmp = dir.appendingPathComponent(".\(url.lastPathComponent).tmp-\(UUID().uuidString)")
-        try data.write(to: tmp, options: .atomic)
+
+        // Create the temp at 0600 first so its contents are never briefly
+        // world-readable, then write in place (no .atomic — it would recreate
+        // the file under the umask and reopen the window).
+        fm.createFile(atPath: tmp.path, contents: nil, attributes: [.posixPermissions: 0o600])
+        var tmpNeedsCleanup = true
+        defer { if tmpNeedsCleanup { try? fm.removeItem(at: tmp) } }
+
+        try data.write(to: tmp)
         try fm.setAttributes([.posixPermissions: perms], ofItemAtPath: tmp.path)
 
         if fm.fileExists(atPath: url.path) {
@@ -108,6 +123,7 @@ actor SSHConfigService {
         } else {
             try fm.moveItem(at: tmp, to: url)
         }
+        tmpNeedsCleanup = false  // rename consumed the temp file
     }
 
     /// Test whether an SSH connection can be established to the target.
