@@ -155,34 +155,14 @@ final class FileBrowserTabControllerTests: XCTestCase {
         try await ctrl.saveCurrentFile()
         XCTAssertEqual(mock.writes.count, 1)
         XCTAssertEqual(String(data: mock.writes[0].data, encoding: .utf8), "edited")
-        if case .text(_, _, _, let dirty) = ctrl.openFile {
+        if case .text(_, let content, _, let dirty) = ctrl.openFile {
+            // The saved buffer content must survive the save.
+            XCTAssertEqual(content, "edited")
+            // Also guards the non-blocking-save contract: the git/diff refresh is
+            // detached, so `dirty` must be cleared synchronously before
+            // saveCurrentFile() returns.
             XCTAssertFalse(dirty)
         } else { XCTFail() }
-    }
-
-    func test_saveCurrentFile_writesAndClearsDirtyOnReturn() async throws {
-        let mock = MockFileBrowserDataSource()
-        mock.fileMetas["/r/a.txt"] = FileMetadata(path: "/r/a.txt", sizeBytes: 5, modifiedAt: nil,
-                                                  isDirectory: false, isSymbolicLink: false)
-        mock.fileContents["/r/a.txt"] = "hello".data(using: .utf8)!
-        let ctrl = FileBrowserTabController(
-            initial: FileBrowserTabState(rootPath: "/r", rootKind: .worktree), dataSource: mock)
-        await ctrl.openInTree("/r/a.txt")
-
-        // Mark the active buffer dirty with new content.
-        ctrl.updateBuffer(content: "hello world", forSubTab: ctrl.activeSubTabID!)
-
-        try await ctrl.saveCurrentFile()
-
-        // On return: disk write happened and dirty is already cleared.
-        XCTAssertEqual(mock.writes.last.flatMap { String(data: $0.data, encoding: .utf8) },
-                       "hello world")
-        if case .text(_, let content, _, let dirty) = ctrl.openFile {
-            XCTAssertEqual(content, "hello world")
-            XCTAssertFalse(dirty, "dirty must be cleared synchronously on save return")
-        } else {
-            XCTFail("expected .text")
-        }
     }
 
     func testIsDirty() async {
