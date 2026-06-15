@@ -31,13 +31,13 @@ cd .worktrees/feat+ssh-config-editing
 - 运行某个测试类：
   ```bash
   xcodebuild test -project Treemux.xcodeproj -scheme Treemux \
-    -destination 'platform=macOS' \
+    -destination 'platform=macOS' -skipPackagePluginValidation \
     -only-testing:TreemuxTests/SSHConfigDocumentTests 2>&1 | tail -30
   ```
 - 编译（UI 任务用）：
   ```bash
   xcodebuild build -project Treemux.xcodeproj -scheme Treemux \
-    -destination 'platform=macOS' 2>&1 | tail -30
+    -destination 'platform=macOS' -skipPackagePluginValidation 2>&1 | tail -30
   ```
 
 ## 文件结构
@@ -96,7 +96,7 @@ struct ManagedSSHEntry: Identifiable, Hashable {
 
 Run:
 ```bash
-xcodebuild build -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' 2>&1 | tail -15
+xcodebuild build -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation 2>&1 | tail -15
 ```
 Expected: `** BUILD SUCCEEDED **`
 
@@ -174,7 +174,7 @@ final class SSHConfigDocumentTests: XCTestCase {
 Run:
 ```bash
 xcodegen generate && xcodebuild test -project Treemux.xcodeproj -scheme Treemux \
-  -destination 'platform=macOS' -only-testing:TreemuxTests/SSHConfigDocumentTests 2>&1 | tail -20
+  -destination 'platform=macOS' -skipPackagePluginValidation -only-testing:TreemuxTests/SSHConfigDocumentTests 2>&1 | tail -20
 ```
 Expected: 编译失败 / `cannot find 'SSHConfigDocument' in scope`
 
@@ -287,7 +287,7 @@ struct SSHConfigDocument {
 Run:
 ```bash
 xcodegen generate && xcodebuild test -project Treemux.xcodeproj -scheme Treemux \
-  -destination 'platform=macOS' -only-testing:TreemuxTests/SSHConfigDocumentTests 2>&1 | tail -20
+  -destination 'platform=macOS' -skipPackagePluginValidation -only-testing:TreemuxTests/SSHConfigDocumentTests 2>&1 | tail -20
 ```
 Expected: `** TEST SUCCEEDED **`
 
@@ -339,7 +339,7 @@ git commit -m "feat(ssh): add SSHConfigDocument parse/render/classify"
 
 Run:
 ```bash
-xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' \
+xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation \
   -only-testing:TreemuxTests/SSHConfigDocumentTests/testAddAppendsBlockWithSeparator 2>&1 | tail -15
 ```
 Expected: 编译失败 / `value of type 'SSHConfigDocument' has no member 'add'`
@@ -372,7 +372,7 @@ Expected: 编译失败 / `value of type 'SSHConfigDocument' has no member 'add'`
 
 Run:
 ```bash
-xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' \
+xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation \
   -only-testing:TreemuxTests/SSHConfigDocumentTests 2>&1 | tail -15
 ```
 Expected: `** TEST SUCCEEDED **`
@@ -438,7 +438,7 @@ git commit -m "feat(ssh): SSHConfigDocument.add appends formatted block"
 
 Run:
 ```bash
-xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' \
+xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation \
   -only-testing:TreemuxTests/SSHConfigDocumentTests/testUpdateInPlacePreservesUnknownDirectives 2>&1 | tail -15
 ```
 Expected: 编译失败 / `no member 'update'`
@@ -524,7 +524,7 @@ Expected: 编译失败 / `no member 'update'`
 
 Run:
 ```bash
-xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' \
+xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation \
   -only-testing:TreemuxTests/SSHConfigDocumentTests 2>&1 | tail -15
 ```
 Expected: `** TEST SUCCEEDED **`
@@ -580,7 +580,7 @@ git commit -m "feat(ssh): SSHConfigDocument.update surgical in-place edit"
 
 Run:
 ```bash
-xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' \
+xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation \
   -only-testing:TreemuxTests/SSHConfigDocumentTests/testRemoveDeletesBlockOnly 2>&1 | tail -15
 ```
 Expected: 编译失败 / `no member 'remove'`
@@ -619,7 +619,7 @@ Expected: 编译失败 / `no member 'remove'`
 
 Run:
 ```bash
-xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' \
+xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation \
   -only-testing:TreemuxTests/SSHConfigDocumentTests 2>&1 | tail -15
 ```
 Expected: `** TEST SUCCEEDED **`
@@ -711,7 +711,7 @@ final class SSHConfigServiceWriteTests: XCTestCase {
 Run:
 ```bash
 xcodegen generate && xcodebuild test -project Treemux.xcodeproj -scheme Treemux \
-  -destination 'platform=macOS' -only-testing:TreemuxTests/SSHConfigServiceWriteTests 2>&1 | tail -20
+  -destination 'platform=macOS' -skipPackagePluginValidation -only-testing:TreemuxTests/SSHConfigServiceWriteTests 2>&1 | tail -20
 ```
 Expected: 编译失败 / `no member 'add'`
 
@@ -811,7 +811,7 @@ Expected: 编译失败 / `no member 'add'`
 
 Run:
 ```bash
-xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' \
+xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation \
   -only-testing:TreemuxTests/SSHConfigServiceWriteTests 2>&1 | tail -20
 ```
 Expected: `** TEST SUCCEEDED **`
@@ -820,7 +820,7 @@ Expected: `** TEST SUCCEEDED **`
 
 Run:
 ```bash
-xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' \
+xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation \
   -only-testing:TreemuxTests/SSHConfigDocumentTests \
   -only-testing:TreemuxTests/SSHConfigServiceWriteTests \
   -only-testing:TreemuxTests/SSHConfigParserTests 2>&1 | tail -15
@@ -1015,7 +1015,7 @@ struct SSHServerEditSheet: View {
 Run:
 ```bash
 xcodegen generate && xcodebuild build -project Treemux.xcodeproj -scheme Treemux \
-  -destination 'platform=macOS' 2>&1 | tail -20
+  -destination 'platform=macOS' -skipPackagePluginValidation 2>&1 | tail -20
 ```
 Expected: `** BUILD SUCCEEDED **`
 
@@ -1279,7 +1279,7 @@ extension SSHServerEditSheet.Mode: Identifiable {
 Run:
 ```bash
 xcodegen generate && xcodebuild build -project Treemux.xcodeproj -scheme Treemux \
-  -destination 'platform=macOS' 2>&1 | tail -20
+  -destination 'platform=macOS' -skipPackagePluginValidation 2>&1 | tail -20
 ```
 Expected: `** BUILD SUCCEEDED **`
 
@@ -1417,7 +1417,7 @@ git commit -m "feat(ssh): rework Settings SSH with server list, delete, raw edit
 
 Run:
 ```bash
-xcodebuild build -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' 2>&1 | tail -20
+xcodebuild build -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation 2>&1 | tail -20
 ```
 Expected: `** BUILD SUCCEEDED **`
 
@@ -1509,7 +1509,7 @@ Expected: 打印出四个中文翻译，无异常。
 
 Run:
 ```bash
-xcodebuild build -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' 2>&1 | tail -10
+xcodebuild build -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation 2>&1 | tail -10
 ```
 Expected: `** BUILD SUCCEEDED **`
 
@@ -1530,7 +1530,7 @@ git commit -m "i18n(ssh): add zh-Hans translations for SSH editing UI"
 
 Run:
 ```bash
-xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' 2>&1 | tail -25
+xcodebuild test -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation 2>&1 | tail -25
 ```
 Expected: `** TEST SUCCEEDED **`，无失败用例。
 
