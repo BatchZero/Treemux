@@ -588,8 +588,10 @@ final class FileBrowserTabController: ObservableObject {
         try await dataSource.writeFile(path, data: data)
         setActiveOpenFile(.text(path: path, content: content, encoding: encoding, dirty: false))
         // Fire-and-forget: diff + git status are non-essential to the save
-        // completing and each is a `git` subprocess round-trip. Mirrors the
-        // detached refresh already used after tree mutations.
+        // completing and each is a `git` subprocess round-trip. This is a plain
+        // (MainActor-inherited, not `Task.detached`) Task so the refreshes still
+        // mutate `@Published` state on the main actor — same pattern used after
+        // tree mutations.
         Task { [weak self] in
             await self?.refreshDiffForActive()
             await self?.refreshGitStatus()
