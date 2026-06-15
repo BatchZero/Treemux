@@ -305,6 +305,7 @@ private struct SSHSettingsView: View {
     @State private var editSheet: SSHServerEditSheet.Mode?
     @State private var showRawEditor = false
     @State private var pendingDelete: ManagedSSHEntry?
+    @State private var deleteError: String?
 
     private var service: SSHConfigService {
         SSHConfigService(configPaths: settings.ssh.configPaths)
@@ -363,10 +364,22 @@ private struct SSHSettingsView: View {
         ) { entry in
             Button("Delete", role: .destructive) {
                 Task {
-                    try? await service.remove(alias: entry.draft.alias, atSourcePath: entry.sourcePath)
+                    do {
+                        try await service.remove(alias: entry.draft.alias, atSourcePath: entry.sourcePath)
+                    } catch {
+                        deleteError = error.localizedDescription
+                    }
                     await reload()
                 }
             }
+        }
+        .alert("Delete failed",
+               isPresented: Binding(get: { deleteError != nil },
+                                    set: { if !$0 { deleteError = nil } }),
+               presenting: deleteError) { _ in
+            Button("OK", role: .cancel) { }
+        } message: { msg in
+            Text(verbatim: msg)
         }
     }
 
@@ -402,7 +415,7 @@ private struct SSHSettingsView: View {
         let host = d.hostName.isEmpty ? d.alias : d.hostName
         var parts: [String] = []
         if !d.user.isEmpty { parts.append("\(d.user)@\(host)") } else { parts.append(host) }
-        parts.append("Port \(d.port)")
+        if d.port != 22 { parts.append("Port \(d.port)") }
         if !d.identityFile.isEmpty { parts.append(d.identityFile) }
         return parts.joined(separator: " · ")
     }

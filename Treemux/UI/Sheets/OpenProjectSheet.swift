@@ -161,9 +161,9 @@ struct OpenProjectSheet: View {
                 .environment(\.locale, languageManager.locale)
             }
         }
-        .sheet(item: $serverEditMode) { mode in
+        .sheet(item: $serverEditMode) { editMode in
             SSHServerEditSheet(
-                mode: mode,
+                mode: editMode,
                 existingAliases: managedEntries.map { $0.draft.alias },
                 service: SSHConfigService(configPaths: store.settings.ssh.configPaths)
             ) { savedTarget in
