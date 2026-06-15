@@ -154,7 +154,7 @@ struct WorktreeRowContent: View {
             } label: {
                 Image(systemName: "folder.badge.plus")
                     .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(theme.textSecondary.opacity(isHovered ? 1.0 : 0.5))
+                    .foregroundStyle(theme.textSecondary.opacity(isHovered ? 1.0 : 0))
             }
             .buttonStyle(.plain)
             .help(LocalizedStringKey("Open File Browser"))
