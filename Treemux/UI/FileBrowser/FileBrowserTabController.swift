@@ -247,12 +247,25 @@ final class FileBrowserTabController: ObservableObject {
                 rawChildrenByPath[path] = kids
                 childrenByPath[path] = filtered(kids)
                 expandedDirs.insert(path)
+                Task { [weak self] in await self?.prefetchChildren(of: path) }
             } catch {
                 // Leave collapsed on error; surface via loadError so the UI banner can show.
                 loadError = mapError(error)
             }
         }
         onPersistableStateChanged?()
+    }
+
+    /// Background-prefetch a directory's grandchildren so expanding its children
+    /// is instant. Internal (not private) so it is unit-testable directly.
+    func prefetchChildren(of path: String) async {
+        guard let fetch = try? await dataSource.listTree(
+            path, maxDepth: Self.treeFetchDepth, entryCap: Self.treeEntryCap) else { return }
+        for (p, kids) in fetch.childrenByPath where rawChildrenByPath[p] != kids {
+            rawChildrenByPath[p] = kids
+            childrenByPath[p] = filtered(kids)
+        }
+        truncatedDirs.formUnion(fetch.truncatedDirs)
     }
 
     func setShowsHiddenFiles(_ show: Bool) {

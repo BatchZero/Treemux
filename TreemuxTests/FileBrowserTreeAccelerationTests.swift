@@ -57,4 +57,25 @@ final class FileBrowserTreeAccelerationTests: XCTestCase {
         let snap = store.load(identity: "h:22:me", rootPath: "/r")
         XCTAssertEqual(snap?.childrenByPath["/r"]?.map(\.name), ["live.txt"])
     }
+
+    func test_prefetchChildren_populatesGrandchildren() async {
+        let mock = MockFileBrowserDataSource()
+        mock.directoryListings["/r"] = [
+            FileNode(id: "/r/sub", name: "sub", path: "/r/sub", kind: .directory, sizeBytes: nil, modifiedAt: nil)
+        ]
+        mock.directoryListings["/r/sub"] = [
+            FileNode(id: "/r/sub/inner", name: "inner", path: "/r/sub/inner", kind: .directory, sizeBytes: nil, modifiedAt: nil)
+        ]
+        mock.directoryListings["/r/sub/inner"] = [
+            FileNode(id: "/r/sub/inner/leaf.txt", name: "leaf.txt", path: "/r/sub/inner/leaf.txt", kind: .file, sizeBytes: 1, modifiedAt: nil)
+        ]
+        let ctrl = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/r", rootKind: .project),
+            dataSource: mock)
+        await ctrl.loadRoot()
+
+        await ctrl.toggleExpand("/r/sub")
+        await ctrl.prefetchChildren(of: "/r/sub")
+        XCTAssertEqual(ctrl.childrenByPath["/r/sub/inner"]?.map(\.name), ["leaf.txt"])
+    }
 }
