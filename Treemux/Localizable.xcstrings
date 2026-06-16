@@ -2010,6 +2010,16 @@
           }
         }
       }
+    },
+    "Load more": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加载更多"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
