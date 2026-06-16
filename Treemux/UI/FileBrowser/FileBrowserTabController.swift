@@ -693,6 +693,29 @@ final class FileBrowserTabController: ObservableObject {
         }
     }
 
+    // MARK: - Load more (truncated directories)
+
+    /// Re-fetches a truncated directory's **full** (uncapped) listing via the
+    /// normal per-directory call and clears its truncation marker. Backs the
+    /// file-tree "Load more" row.
+    func loadMore(_ path: String) async {
+        do {
+            let kids = try await dataSource.listDirectory(path)
+            rawChildrenByPath[path] = kids
+            childrenByPath[path] = filtered(kids)
+            truncatedDirs.remove(path)
+            if path == rootPath { rootChildren = childrenByPath[path] ?? [] }
+        } catch {
+            loadError = mapError(error)
+        }
+    }
+
+    #if DEBUG
+    /// Test seam: lets unit tests drive the truncated-directory UI path without
+    /// constructing a 500+ entry directory.
+    func markTruncatedForTesting(_ path: String) { truncatedDirs.insert(path) }
+    #endif
+
     // MARK: - Copy path
 
     /// Writes either the absolute or root-relative form of `path` to the system
