@@ -30,22 +30,47 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
         try await service.connectWithPassword(target: sshTarget, password: password)
     }
 
+    /// Maps an SFTP rich entry to a file-tree node. Shared by `listDirectory`
+    /// and the bulk `listTree` path so both produce identical node shapes.
+    static func node(from entry: SFTPRichEntry) -> FileNode {
+        let kind: FileNode.Kind
+        switch entry.kind {
+        case .directory: kind = .directory
+        case .file: kind = .file
+        case .symlink(let target): kind = .symlink(target: target)
+        }
+        return FileNode(id: entry.path, name: entry.name, path: entry.path,
+                        kind: kind, sizeBytes: entry.sizeBytes, modifiedAt: entry.modifiedAt)
+    }
+
     func listDirectory(_ path: String) async throws -> [FileNode] {
         try await ensureConnected()
         let rich = try await service.listAllEntries(at: path)
-        return rich.map { entry in
-            let kind: FileNode.Kind
-            switch entry.kind {
-            case .directory: kind = .directory
-            case .file: kind = .file
-            case .symlink(let target): kind = .symlink(target: target)
-            }
-            return FileNode(id: entry.path, name: entry.name, path: entry.path,
-                            kind: kind, sizeBytes: entry.sizeBytes, modifiedAt: entry.modifiedAt)
-        }.sorted { a, b in
+        return rich.map(Self.node(from:)).sorted { a, b in
             if a.isDirectory != b.isDirectory { return a.isDirectory }
             return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
         }
+    }
+
+    /// Host/port/user-scoped cache identity. Stable across sessions so a project
+    /// reopens from the same on-disk cache file.
+    var treeCacheIdentity: String? {
+        "\(sshTarget.host):\(sshTarget.port):\(sshTarget.user ?? NSUserName())"
+    }
+
+    func listTree(_ root: String, maxDepth: Int, entryCap: Int) async throws -> DirectoryTreeFetch {
+        try await ensureConnected()
+        if await service.supportsBulkCommand {
+            let (grouped, truncated) = try await service.listTreeViaCommand(
+                root: root, maxDepth: maxDepth, entryCap: entryCap)
+            var byPath: [String: [FileNode]] = [:]
+            for (dir, entries) in grouped {
+                byPath[dir] = entries.map(Self.node(from:))
+            }
+            return DirectoryTreeFetch(childrenByPath: byPath, truncatedDirs: truncated)
+        }
+        // Citadel password path: no arbitrary exec → sequential per-dir BFS.
+        return try await BFSTreeLister.list(using: self, root: root, maxDepth: maxDepth, entryCap: entryCap)
     }
 
     func fileMetadata(_ path: String) async throws -> FileMetadata {
