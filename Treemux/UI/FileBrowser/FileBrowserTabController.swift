@@ -185,11 +185,12 @@ final class FileBrowserTabController: ObservableObject {
     /// reached, then persist the snapshot. Refresh errors are swallowed when a
     /// cache is already on screen.
     func refreshTree() async {
+        loadError = nil
         do {
             let fetch = try await dataSource.listTree(
                 rootPath, maxDepth: Self.treeFetchDepth, entryCap: Self.treeEntryCap)
             applyFetch(fetch)
-            for path in expandedDirs where path != rootPath && childrenByPath[path] == nil {
+            for path in expandedDirs where path != rootPath && fetch.childrenByPath[path] == nil {
                 if let kids = try? await dataSource.listDirectory(path) {
                     rawChildrenByPath[path] = kids
                     childrenByPath[path] = filtered(kids)
@@ -198,7 +199,12 @@ final class FileBrowserTabController: ObservableObject {
             persistTree()
             await refreshGitStatus()
         } catch {
-            if rootChildren.isEmpty { loadError = mapError(error) }
+            let mapped = mapError(error)
+            if case .needsPassword = mapped {
+                loadError = mapped
+            } else if rootChildren.isEmpty {
+                loadError = mapped
+            }
         }
     }
 
@@ -219,7 +225,8 @@ final class FileBrowserTabController: ObservableObject {
             rawChildrenByPath[path] = kids
             childrenByPath[path] = filtered(kids)
         }
-        truncatedDirs = fetch.truncatedDirs
+        for dir in fetch.childrenByPath.keys { truncatedDirs.remove(dir) }
+        truncatedDirs.formUnion(fetch.truncatedDirs)
         rootChildren = childrenByPath[rootPath] ?? []
     }
 
@@ -261,6 +268,7 @@ final class FileBrowserTabController: ObservableObject {
     func prefetchChildren(of path: String) async {
         guard let fetch = try? await dataSource.listTree(
             path, maxDepth: Self.treeFetchDepth, entryCap: Self.treeEntryCap) else { return }
+        guard expandedDirs.contains(path) else { return }
         for (p, kids) in fetch.childrenByPath where rawChildrenByPath[p] != kids {
             rawChildrenByPath[p] = kids
             childrenByPath[p] = filtered(kids)
