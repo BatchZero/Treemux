@@ -152,4 +152,25 @@ enum ProcessTree {
             return (clientPID: pid, sessionName: String(parts[1]))
         }
     }
+
+    /// Returns the tmux session a specific pane is attached to, by finding the
+    /// client whose process environment carries `TREEMUX_PANE_ID == paneID`.
+    ///
+    /// We match against the *client* process's environment rather than walking
+    /// from the pane's shell, because macOS hides the environment of SIP-protected
+    /// platform binaries (`/bin/zsh`, `/usr/bin/login`) from `KERN_PROCARGS2` for
+    /// non-root callers — so the login shell's `TREEMUX_PANE_ID` is unreadable.
+    /// The tmux client (a Homebrew binary) inherits the same variable and its
+    /// environment *is* readable, making it a reliable, per-pane-unique anchor.
+    /// `env` is injected for testability.
+    static func tmuxSessionForPane(
+        paneID: String,
+        clients: [(clientPID: pid_t, sessionName: String)],
+        env: (pid_t) -> [String: String]?
+    ) -> String? {
+        for client in clients where env(client.clientPID)?["TREEMUX_PANE_ID"] == paneID {
+            return client.sessionName
+        }
+        return nil
+    }
 }

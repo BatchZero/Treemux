@@ -435,43 +435,35 @@ final class ShellSession: ObservableObject, Identifiable {
         return nil
     }
 
-    /// When bare `tmux` is detected, resolve the exact session by finding the tmux
-    /// client process that is a descendant of this pane's shell in the process tree.
+    /// When bare `tmux` is detected, resolve the exact session by matching the
+    /// tmux client whose process environment carries this pane's `TREEMUX_PANE_ID`.
+    ///
+    /// This deliberately does NOT walk the process tree from the shell PID: the
+    /// pane's login shell (`/bin/zsh` via `/usr/bin/login`) is a SIP-protected
+    /// platform binary whose environment macOS hides from `KERN_PROCARGS2` for
+    /// non-root callers, so the shell can never be located by `TREEMUX_PANE_ID`.
+    /// The tmux client is a Homebrew binary whose environment *is* readable and
+    /// inherits `TREEMUX_PANE_ID`, so we anchor on the client directly.
     private func resolveExactTmuxSession() {
+        let paneID = id.uuidString
         Task { [weak self] in
-            // Step 1: Wait for shell PID to be resolved.
-            var shellPID: pid_t?
-            for _ in 0..<15 {  // 15 × 200ms = 3s
-                try? await Task.sleep(nanoseconds: 200_000_000)
-                shellPID = await MainActor.run { self?.pid }
-                if shellPID != nil { break }
-            }
-
-            guard let shellPID else { return }
-
-            // Step 2: Poll for a tmux client descendant of the shell.
-            var sessionName: String?
-            for _ in 0..<10 {  // 10 × 300ms = 3s
+            // Poll for our tmux client to register, then match it by env.
+            for _ in 0..<15 {  // 15 × 300ms = 4.5s
                 try? await Task.sleep(nanoseconds: 300_000_000)
-                let desc = ProcessTree.descendants(of: shellPID)
-                if desc.isEmpty { continue }
 
-                // Query tmux for all connected clients.
-                let result = await Self.queryTmuxClients()
-                guard let result else { continue }
-
+                guard let result = await Self.queryTmuxClients() else { continue }
                 let clients = ProcessTree.parseTmuxClientList(result)
-                // Find the client whose PID is a descendant of our shell.
-                if let match = clients.first(where: { desc.contains($0.clientPID) }) {
-                    sessionName = match.sessionName
-                    break
-                }
-            }
+                guard let sessionName = ProcessTree.tmuxSessionForPane(
+                    paneID: paneID,
+                    clients: clients,
+                    env: ProcessTree.processEnvironment
+                ) else { continue }
 
-            guard let sessionName else { return }
-            await MainActor.run { [weak self] in
-                guard let self, self.detectedTmuxSession == "tmux" else { return }
-                self.detectedTmuxSession = sessionName
+                await MainActor.run { [weak self] in
+                    guard let self, self.detectedTmuxSession == "tmux" else { return }
+                    self.detectedTmuxSession = sessionName
+                }
+                return
             }
         }
     }
