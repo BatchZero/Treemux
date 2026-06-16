@@ -54,10 +54,14 @@ final class FileBrowserTabController: ObservableObject {
     static let textReadLimit: Int = 5 * 1024 * 1024       // 5 MB
     static let largeFileThreshold: Int64 = 5 * 1024 * 1024 // 5 MB
     static let quickLookOnlyThreshold: Int64 = 100 * 1024 * 1024 // 100 MB
+    static let treeFetchDepth: Int = 2
+    static let treeEntryCap: Int = 500
 
     let dataSource: any FileBrowserDataSource
     let gitDiffService: GitDiffService?
     let repoRoot: String?
+    let treeCache: DirectoryTreeCachePersistence
+    @Published private(set) var truncatedDirs: Set<String> = []
 
     /// Shared word index for editor completion across this tab's sub-tabs.
     /// Lazily populated by `WordCompletionCoordinator` as buffers open.
@@ -71,7 +75,8 @@ final class FileBrowserTabController: ObservableObject {
         initial state: FileBrowserTabState,
         dataSource: any FileBrowserDataSource,
         gitDiffService: GitDiffService? = nil,
-        repoRoot: String? = nil
+        repoRoot: String? = nil,
+        treeCache: DirectoryTreeCachePersistence = DirectoryTreeCachePersistence()
     ) {
         self.rootPath = state.rootPath
         self.rootKind = state.rootKind
@@ -81,6 +86,7 @@ final class FileBrowserTabController: ObservableObject {
         self.dataSource = dataSource
         self.gitDiffService = gitDiffService
         self.repoRoot = repoRoot
+        self.treeCache = treeCache
         self.subTabs = state.subTabs.map {
             SubTabRuntime(id: $0.id, path: $0.path, isPinned: $0.isPinned, openFile: .empty)
         }
@@ -165,25 +171,67 @@ final class FileBrowserTabController: ObservableObject {
 
     func loadRoot() async {
         loadError = nil
+        // 1. Instant render from the on-disk cache if present.
+        if let identity = dataSource.treeCacheIdentity,
+           let snap = treeCache.load(identity: identity, rootPath: rootPath) {
+            applySnapshot(snap)
+        }
+        // 2. Background-refresh via bulk fetch (also the only fetch path on a cache miss).
+        await refreshTree()
+    }
+
+    /// Bulk-fetch the tree, diff/apply it onto the live state without collapsing
+    /// the user's expansion, restore any expanded dirs deeper than the fetch
+    /// reached, then persist the snapshot. Refresh errors are swallowed when a
+    /// cache is already on screen.
+    func refreshTree() async {
         do {
-            let children = try await dataSource.listDirectory(rootPath)
-            rawChildrenByPath[rootPath] = children
-            childrenByPath[rootPath] = filtered(children)
-            rootChildren = childrenByPath[rootPath] ?? []
-            // Restore previously-expanded dirs (best effort; missing dirs are silently skipped).
-            for path in expandedDirs where path != rootPath {
+            let fetch = try await dataSource.listTree(
+                rootPath, maxDepth: Self.treeFetchDepth, entryCap: Self.treeEntryCap)
+            applyFetch(fetch)
+            for path in expandedDirs where path != rootPath && childrenByPath[path] == nil {
                 if let kids = try? await dataSource.listDirectory(path) {
                     rawChildrenByPath[path] = kids
                     childrenByPath[path] = filtered(kids)
                 }
             }
-            // One-shot status refresh after the listing settles. Failures are
-            // swallowed inside `refreshGitStatus` so the tree still renders.
+            persistTree()
             await refreshGitStatus()
         } catch {
-            rootChildren = []
-            loadError = mapError(error)
+            if rootChildren.isEmpty { loadError = mapError(error) }
         }
+    }
+
+    private func applySnapshot(_ snap: DirectoryTreeSnapshot) {
+        for (path, kids) in snap.childrenByPath {
+            rawChildrenByPath[path] = kids
+            childrenByPath[path] = filtered(kids)
+        }
+        truncatedDirs = Set(snap.truncatedDirs)
+        rootChildren = childrenByPath[rootPath] ?? []
+    }
+
+    /// Applies a fresh bulk fetch, only re-binding directories whose contents
+    /// actually changed (cheap `Equatable` compare) so SwiftUI churn stays low.
+    /// `expandedDirs` is left untouched, so the tree keeps its open state.
+    private func applyFetch(_ fetch: DirectoryTreeFetch) {
+        for (path, kids) in fetch.childrenByPath where rawChildrenByPath[path] != kids {
+            rawChildrenByPath[path] = kids
+            childrenByPath[path] = filtered(kids)
+        }
+        truncatedDirs = fetch.truncatedDirs
+        rootChildren = childrenByPath[rootPath] ?? []
+    }
+
+    private func persistTree() {
+        guard let identity = dataSource.treeCacheIdentity else { return }
+        let snap = DirectoryTreeSnapshot(
+            rootPath: rootPath,
+            childrenByPath: rawChildrenByPath,
+            truncatedDirs: Array(truncatedDirs),
+            fetchedAt: Date()
+        )
+        try? treeCache.save(snap, identity: identity)
     }
 
     func toggleExpand(_ path: String) async {

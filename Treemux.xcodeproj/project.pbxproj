@@ -164,6 +164,7 @@
 		FBA39534A25C607A48314803 /* GhosttyKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = AC606574E1DF3045291D300B /* GhosttyKit.xcframework */; };
 		FC0884EBD132C797A61FC4A1 /* TreemuxTabSizingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9B87785B633D3E01905E33E /* TreemuxTabSizingTests.swift */; };
 		FD887F150996252DCF338CEE /* AdaptiveFontSizeCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78EDFC7E23962DB5BFF6AFED /* AdaptiveFontSizeCalculator.swift */; };
+		FE9822AA382F00FAA78C4FDF /* FileBrowserTreeAccelerationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 327C1AAEDC6474147999425B /* FileBrowserTreeAccelerationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -209,6 +210,7 @@
 		307BCBA7FBBD837C1D886367 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		30C3FDCC6ADDBDE6835FF006 /* DirectoryTreeCachePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryTreeCachePersistence.swift; sourceTree = "<group>"; };
 		30CC2AAEA217BA6CC93B9774 /* AdaptiveFontShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveFontShortcutTests.swift; sourceTree = "<group>"; };
+		327C1AAEDC6474147999425B /* FileBrowserTreeAccelerationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTreeAccelerationTests.swift; sourceTree = "<group>"; };
 		32F18F29A965B9650B203208 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
 		33DBD7F6E96DFD37B6863693 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
 		33DD9FC5B9123331053A340B /* OpenFileState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenFileState.swift; sourceTree = "<group>"; };
@@ -385,6 +387,7 @@
 				734F67CDFA2343E303D8CE74 /* FileBrowserTabControllerSubTabTests.swift */,
 				DC45A45117E3662286FF3B32 /* FileBrowserTabControllerTests.swift */,
 				D3C9EABA8F49976F4327BA6D /* FileBrowserTabStateCodingTests.swift */,
+				327C1AAEDC6474147999425B /* FileBrowserTreeAccelerationTests.swift */,
 				2AB7BEBA22EDD063B0C5F951 /* FileIconCatalogTests.swift */,
 				3FA0085E209334A614D18291 /* FileSubTabRecordCodingTests.swift */,
 				A01C3B62B418371CFF6848D2 /* FileTreeSettingsTests.swift */,
@@ -978,6 +981,7 @@
 				60D39715EBEB63DCE8383660 /* FileBrowserTabControllerSubTabTests.swift in Sources */,
 				0A139D0EB15791E8C4BB4DE3 /* FileBrowserTabControllerTests.swift in Sources */,
 				98BBB295D98A3BC13A807E63 /* FileBrowserTabStateCodingTests.swift in Sources */,
+				FE9822AA382F00FAA78C4FDF /* FileBrowserTreeAccelerationTests.swift in Sources */,
 				13520499F56541EF75682DCF /* FileIconCatalogTests.swift in Sources */,
 				F13DEBE0000ABD5FA8DC4A16 /* FileSubTabRecordCodingTests.swift in Sources */,
 				2B446FB1CDE3729E4D7645E1 /* FileTreeSettingsTests.swift in Sources */,

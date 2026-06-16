@@ -245,6 +245,8 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
     var writes: [(path: String, data: Data)] = []
     /// When non-nil, `listDirectory` throws this error before returning.
     var listError: Error?
+    var cacheIdentity: String? = nil
+    var treeCacheIdentity: String? { cacheIdentity }
 
     func listDirectory(_ path: String) async throws -> [FileNode] {
         if let listError { throw listError }
