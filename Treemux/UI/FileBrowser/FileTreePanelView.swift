@@ -18,6 +18,9 @@ struct FileTreePanelView: View {
                     ForEach(controller.rootChildren, id: \.id) { node in
                         NodeRow(node: node, depth: 0, density: store.settings.fileTree.density, controller: controller)
                     }
+                    if controller.truncatedDirs.contains(controller.rootPath) {
+                        LoadMoreRow(path: controller.rootPath, depth: 0, controller: controller)
+                    }
                 }
                 .padding(.vertical, 4)
             }
@@ -37,10 +40,7 @@ private struct FileTreeToolbar: View {
                 .truncationMode(.middle)
             Spacer()
             Button {
-                Task {
-                    await controller.refresh(controller.rootPath)
-                    await controller.refreshGitStatus()
-                }
+                Task { await controller.refreshTree() }
             } label: {
                 Image(systemName: "arrow.clockwise")
             }
@@ -137,6 +137,9 @@ private struct NodeRow: View {
             if isExpanded, let kids = children {
                 ForEach(kids, id: \.id) { child in
                     NodeRow(node: child, depth: depth + 1, density: density, controller: controller)
+                }
+                if controller.truncatedDirs.contains(node.path) {
+                    LoadMoreRow(path: node.path, depth: depth + 1, controller: controller)
                 }
             }
         }
@@ -240,5 +243,38 @@ private struct NodeRow: View {
         case .added: return .green
         case .deleted: return .red
         }
+    }
+}
+
+private struct LoadMoreRow: View {
+    let path: String
+    let depth: Int
+    @ObservedObject var controller: FileBrowserTabController
+
+    var body: some View {
+        Button {
+            Task { await controller.loadMore(path) }
+        } label: {
+            HStack(spacing: 4) {
+                // Mirror NodeRow's depth guide lines so "Load more" lines up with siblings.
+                ForEach(0..<depth, id: \.self) { _ in
+                    Rectangle()
+                        .fill(DesignTokens.line)
+                        .frame(width: 1, height: 20)
+                        .padding(.trailing, 13)
+                }
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Text(LocalizedStringKey("Load more"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+        }
+        .buttonStyle(.plain)
     }
 }
