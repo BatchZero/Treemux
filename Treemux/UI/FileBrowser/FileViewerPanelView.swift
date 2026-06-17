@@ -58,8 +58,16 @@ struct FileViewerPanelView: View {
                                  onConfirm: { Task { await controller.confirmLargeFileLoad() } },
                                  onCancel: { controller.cancelLargeFileLoad() })
         case .text(let path, let content, let encoding, let dirty):
-            TextEditorView(subTabID: subTab.id, path: path, content: content,
-                           encoding: encoding, dirty: dirty, controller: controller)
+            // Route renderable file types (Markdown, HTML) to DocumentViewerView;
+            // fall back to plain TextEditorView for everything else.
+            if let kind = RenderedDocumentPolicy.renderKind(forPath: path) {
+                DocumentViewerView(subTabID: subTab.id, path: path, content: content,
+                                   encoding: encoding, dirty: dirty, kind: kind,
+                                   controller: controller)
+            } else {
+                TextEditorView(subTabID: subTab.id, path: path, content: content,
+                               encoding: encoding, dirty: dirty, controller: controller)
+            }
         case .image(let path, let img):
             ImagePreviewView(path: path, image: img)
         case .quickLook(let path, let url):

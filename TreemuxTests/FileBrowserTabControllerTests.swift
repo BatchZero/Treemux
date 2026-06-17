@@ -155,7 +155,12 @@ final class FileBrowserTabControllerTests: XCTestCase {
         try await ctrl.saveCurrentFile()
         XCTAssertEqual(mock.writes.count, 1)
         XCTAssertEqual(String(data: mock.writes[0].data, encoding: .utf8), "edited")
-        if case .text(_, _, _, let dirty) = ctrl.openFile {
+        if case .text(_, let content, _, let dirty) = ctrl.openFile {
+            // The saved buffer content must survive the save.
+            XCTAssertEqual(content, "edited")
+            // Also guards the non-blocking-save contract: the git/diff refresh is
+            // detached, so `dirty` must be cleared synchronously before
+            // saveCurrentFile() returns.
             XCTAssertFalse(dirty)
         } else { XCTFail() }
     }
@@ -240,6 +245,8 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
     var writes: [(path: String, data: Data)] = []
     /// When non-nil, `listDirectory` throws this error before returning.
     var listError: Error?
+    var cacheIdentity: String? = nil
+    var treeCacheIdentity: String? { cacheIdentity }
 
     func listDirectory(_ path: String) async throws -> [FileNode] {
         if let listError { throw listError }

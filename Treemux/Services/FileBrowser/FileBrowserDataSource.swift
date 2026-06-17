@@ -30,6 +30,17 @@ enum FileBrowserError: LocalizedError {
 protocol FileBrowserDataSource: AnyObject {
     var supportsWrite: Bool { get }
 
+    /// A stable identity for the on-disk directory-tree cache, or `nil` to
+    /// disable caching for this source. Local sources return `nil` (the local
+    /// FS is already fast); remote sources return a host/port/user-scoped key.
+    var treeCacheIdentity: String? { get }
+
+    /// Bulk-fetch multiple directory levels in as few round-trips as possible.
+    /// Returns each visited directory's immediate children keyed by directory
+    /// path (including `root`). Listings exceeding `entryCap` are truncated and
+    /// the directory is added to `truncatedDirs`.
+    func listTree(_ root: String, maxDepth: Int, entryCap: Int) async throws -> DirectoryTreeFetch
+
     func listDirectory(_ path: String) async throws -> [FileNode]
     func fileMetadata(_ path: String) async throws -> FileMetadata
 
@@ -51,4 +62,12 @@ protocol FileBrowserDataSource: AnyObject {
     /// Returns a URL to a local file usable by Quick Look. For local sources
     /// this is the original path; for remote, downloads to NSTemporaryDirectory.
     func downloadForQuickLook(_ path: String, progress: @escaping (Double) -> Void) async throws -> URL
+}
+
+extension FileBrowserDataSource {
+    var treeCacheIdentity: String? { nil }
+
+    func listTree(_ root: String, maxDepth: Int, entryCap: Int) async throws -> DirectoryTreeFetch {
+        try await BFSTreeLister.list(using: self, root: root, maxDepth: maxDepth, entryCap: entryCap)
+    }
 }

@@ -4,6 +4,42 @@
 //
 
 import Foundation
+import CoreGraphics
+
+// MARK: - File-Tree Density
+
+/// File-tree row sizing density. Pure value type so the size maps are unit-testable.
+enum TreeDensity: String, Codable, CaseIterable, Identifiable, Equatable {
+    case compact
+    case comfortable
+    case spacious
+
+    var id: String { rawValue }
+
+    /// Row height in points.
+    var rowHeight: CGFloat {
+        switch self {
+        case .compact: return 28
+        case .comfortable: return 32
+        case .spacious: return 38
+        }
+    }
+
+    /// File-name font size in points.
+    var fontSize: CGFloat {
+        switch self {
+        case .compact: return 12
+        case .comfortable: return 13
+        case .spacious: return 15
+        }
+    }
+}
+
+/// File-browser appearance settings. Distinct from the top-level
+/// `AppSettings.appearance` (system/dark/light) selector.
+struct FileTreeSettings: Codable, Equatable {
+    var density: TreeDensity = .comfortable
+}
 
 // MARK: - Application Settings
 
@@ -29,10 +65,13 @@ struct AppSettings: Codable, Equatable {
     /// completion is deferred to P2.
     var enableCodeCompletion: Bool = true
 
+    /// File-browser tree appearance (row density). See `FileTreeSettings`.
+    var fileTree: FileTreeSettings = FileTreeSettings()
+
     enum CodingKeys: String, CodingKey {
         case version, language, activeThemeID, appearance, terminal, startup, ssh,
              shortcutOverrides, defaultLocalTerminalIcon, updates, showDefaultTerminal,
-             enableCodeCompletion
+             enableCodeCompletion, fileTree
     }
 
     init() {}
@@ -51,6 +90,7 @@ struct AppSettings: Codable, Equatable {
         updates = try container.decodeIfPresent(UpdateSettings.self, forKey: .updates) ?? UpdateSettings()
         showDefaultTerminal = try container.decodeIfPresent(Bool.self, forKey: .showDefaultTerminal) ?? true
         enableCodeCompletion = try container.decodeIfPresent(Bool.self, forKey: .enableCodeCompletion) ?? true
+        fileTree = try container.decodeIfPresent(FileTreeSettings.self, forKey: .fileTree) ?? FileTreeSettings()
     }
 }
 

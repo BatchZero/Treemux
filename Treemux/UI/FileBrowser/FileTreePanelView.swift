@@ -6,6 +6,7 @@ import SwiftUI
 
 struct FileTreePanelView: View {
     @ObservedObject var controller: FileBrowserTabController
+    @EnvironmentObject private var store: WorkspaceStore
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,13 +16,16 @@ struct FileTreePanelView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(controller.rootChildren, id: \.id) { node in
-                        NodeRow(node: node, depth: 0, controller: controller)
+                        NodeRow(node: node, depth: 0, density: store.settings.fileTree.density, controller: controller)
+                    }
+                    if controller.truncatedDirs.contains(controller.rootPath) {
+                        LoadMoreRow(path: controller.rootPath, depth: 0, controller: controller)
                     }
                 }
                 .padding(.vertical, 4)
             }
         }
-        .background(Color(nsColor: .controlBackgroundColor))
+        .background(DesignTokens.panel)
     }
 }
 
@@ -36,10 +40,7 @@ private struct FileTreeToolbar: View {
                 .truncationMode(.middle)
             Spacer()
             Button {
-                Task {
-                    await controller.refresh(controller.rootPath)
-                    await controller.refreshGitStatus()
-                }
+                Task { await controller.refreshTree() }
             } label: {
                 Image(systemName: "arrow.clockwise")
             }
@@ -122,6 +123,7 @@ private struct FileTreeErrorBanner: View {
 private struct NodeRow: View {
     let node: FileNode
     let depth: Int
+    let density: TreeDensity
     @ObservedObject var controller: FileBrowserTabController
     @State private var isHovered = false
 
@@ -134,7 +136,10 @@ private struct NodeRow: View {
             row
             if isExpanded, let kids = children {
                 ForEach(kids, id: \.id) { child in
-                    NodeRow(node: child, depth: depth + 1, controller: controller)
+                    NodeRow(node: child, depth: depth + 1, density: density, controller: controller)
+                }
+                if controller.truncatedDirs.contains(node.path) {
+                    LoadMoreRow(path: node.path, depth: depth + 1, controller: controller)
                 }
             }
         }
@@ -142,16 +147,22 @@ private struct NodeRow: View {
 
     private var row: some View {
         HStack(spacing: 4) {
-            Spacer().frame(width: CGFloat(depth) * 14)
+            // One hairline per depth level (14pt per level: 1pt line + 13pt trailing).
+            ForEach(0..<depth, id: \.self) { _ in
+                Rectangle()
+                    .fill(DesignTokens.line)
+                    .frame(width: 1, height: density.rowHeight)
+                    .padding(.trailing, 13)
+            }
             if node.isDirectory {
                 Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                     .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(DesignTokens.faint)
                     .frame(width: 12)
             } else {
                 Spacer().frame(width: 12)
             }
-            // 4×4 git-status dot. A clear-color placeholder of the same size
-            // keeps name alignment stable while status loads asynchronously.
+            // 4×4 git-status dot (clear placeholder keeps name alignment stable).
             if let status = controller.fileStatusByPath[node.path] {
                 Circle()
                     .fill(color(for: status))
@@ -159,30 +170,35 @@ private struct NodeRow: View {
             } else {
                 Color.clear.frame(width: 4, height: 4)
             }
-            Image(systemName: iconName)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
+            iconView
+                .frame(width: density.fontSize + 3, height: density.fontSize + 3)
             Text(node.name)
-                .font(.system(size: 12))
+                .font(DesignFonts.dataLayer(size: density.fontSize))
+                .foregroundStyle(DesignTokens.text)
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer()
         }
+        .frame(height: density.rowHeight)
         .padding(.horizontal, 8)
-        .padding(.vertical, 3)
+        // NOTE: these Phosphor tokens are dark-tuned; light-theme support is a
+        // later phase (tracked). On the light theme this panel renders dark.
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(isSelected ? Color.accentColor.opacity(0.25)
-                      : isHovered ? Color.primary.opacity(0.06)
+                .fill(isSelected ? DesignTokens.surface
+                      : isHovered ? DesignTokens.text.opacity(0.06)
                       : Color.clear)
         )
+        .overlay(alignment: .leading) {
+            if isSelected {
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(DesignTokens.files)
+                    .frame(width: 2.5)
+                    .padding(.vertical, 3)
+            }
+        }
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
-        // VSCode-style click routing: single-click opens (or replaces) a
-        // preview sub-tab; double-click pins. When SwiftUI fires both a
-        // single-tap and then a double-tap on a real double-click, the result
-        // is still the same — `pinFile` finds the existing preview tab and
-        // promotes `isPinned`.
         .gesture(
             TapGesture(count: 2).onEnded {
                 if !node.isDirectory {
@@ -210,19 +226,14 @@ private struct NodeRow: View {
         }
     }
 
-    private var iconName: String {
-        switch node.kind {
-        case .directory: return isExpanded ? "folder.fill" : "folder"
-        case .symlink: return "arrow.up.right.square"
-        case .file:
-            switch FileTypeClassifier.classifyByName(node.name) {
-            case .text: return "doc.text"
-            case .image: return "photo"
-            case .quickLook: return "doc.richtext"
-            case .binary: return "doc"
-            case .unknown: return "doc"
-            }
-        }
+    @ViewBuilder
+    private var iconView: some View {
+        let icon = FileIconCatalog.icon(for: node, isExpanded: isExpanded)
+        Image(icon.asset)
+            .resizable()
+            .renderingMode(icon.isTemplate ? .template : .original)
+            .scaledToFit()
+            .foregroundStyle(icon.tint ?? DesignTokens.muted)
     }
 
     private func color(for status: FileStatus) -> Color {
@@ -232,5 +243,38 @@ private struct NodeRow: View {
         case .added: return .green
         case .deleted: return .red
         }
+    }
+}
+
+private struct LoadMoreRow: View {
+    let path: String
+    let depth: Int
+    @ObservedObject var controller: FileBrowserTabController
+
+    var body: some View {
+        Button {
+            Task { await controller.loadMore(path) }
+        } label: {
+            HStack(spacing: 4) {
+                // Mirror NodeRow's depth guide lines so "Load more" lines up with siblings.
+                ForEach(0..<depth, id: \.self) { _ in
+                    Rectangle()
+                        .fill(DesignTokens.line)
+                        .frame(width: 1, height: 20)
+                        .padding(.trailing, 13)
+                }
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Text(LocalizedStringKey("Load more"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+        }
+        .buttonStyle(.plain)
     }
 }

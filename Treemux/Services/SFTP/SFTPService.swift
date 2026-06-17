@@ -245,6 +245,29 @@ actor SFTPService {
         }
     }
 
+    /// Whether the active connection can run arbitrary shell commands (system-SSH
+    /// path). Citadel password-auth cannot, so callers fall back to per-dir BFS.
+    var supportsBulkCommand: Bool {
+        if case .ssh = mode { return true }
+        return false
+    }
+
+    /// Bulk-fetch a directory tree in one SSH round-trip. Only valid on the
+    /// system-SSH path (`supportsBulkCommand == true`). Returns each directory's
+    /// children keyed by parent path, plus the set of directories whose listing
+    /// was capped at `entryCap`.
+    func listTreeViaCommand(root: String, maxDepth: Int, entryCap: Int)
+        async throws -> (childrenByPath: [String: [SFTPRichEntry]], truncated: Set<String>) {
+        let output = try await runCommand(Self.bulkListCommand(maxDepth: maxDepth), in: root)
+        var grouped = Self.parseRecursiveListing(output: output, root: root)
+        var truncated: Set<String> = []
+        for (dir, entries) in grouped where entries.count > entryCap {
+            grouped[dir] = Array(entries.prefix(entryCap))
+            truncated.insert(dir)
+        }
+        return (grouped, truncated)
+    }
+
     private static func shellQuote(_ s: String) -> String {
         "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
@@ -559,6 +582,101 @@ actor SFTPService {
 
         entries.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         return entries
+    }
+
+    // MARK: - Recursive (bulk) listing helpers
+
+    /// Builds the portable bulk-listing command run on the system-SSH path.
+    /// One `find` enumerates entries to `maxDepth`, then `ls -ld` stats each in
+    /// a batched `-exec … +`. GNU `--time-style=+%s` is tried first; on BSD/macOS
+    /// (which lacks it) the `||` fallback uses `ls -ldnT`. `-n` keeps owner/group
+    /// numeric so they never introduce spaces that would break tokenization.
+    /// The leading `cd <root>` is supplied by `runCommand(_:in:)`, so names come
+    /// back relative (`./sub/file`).
+    static func bulkListCommand(maxDepth: Int) -> String {
+        let sel = "\\( -type d -o -type f -o -type l \\)"
+        let gnu = "find . -mindepth 1 -maxdepth \(maxDepth) \(sel) -exec ls -ldn --time-style=+%s {} +"
+        let bsd = "find . -mindepth 1 -maxdepth \(maxDepth) \(sel) -exec ls -ldnT {} +"
+        return "\(gnu) 2>/dev/null || \(bsd)"
+    }
+
+    /// Parses the recursive `ls -ld` output produced by `bulkListCommand`.
+    /// Names arrive as paths relative to `root` (`./a/b.txt`); each entry is
+    /// reassembled into an absolute path and grouped under its parent directory.
+    /// Each group is sorted directories-first, then case-insensitive by name —
+    /// matching `RemoteFileBrowserDataSource.listDirectory`'s ordering.
+    static func parseRecursiveListing(output: String, root: String) -> [String: [SFTPRichEntry]] {
+        let normalizedRoot = root.hasSuffix("/") ? String(root.dropLast()) : root
+        var grouped: [String: [SFTPRichEntry]] = [:]
+
+        for line in output.components(separatedBy: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty || trimmed.hasPrefix("total ") { continue }
+
+            let tokens = trimmed.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
+            guard tokens.count >= 7 else { continue }
+
+            let perms = tokens[0]
+            guard let typeChar = perms.first else { continue }
+            let baseKind: SFTPRichEntry.Kind
+            switch typeChar {
+            case "d": baseKind = .directory
+            case "l": baseKind = .symlink(target: nil)
+            default:  baseKind = .file
+            }
+
+            guard let size = Int64(tokens[4]) else { continue }
+
+            let mtime: Date?
+            let nameStartIdx: Int
+            if let epoch = Int64(tokens[5]) {
+                mtime = Date(timeIntervalSince1970: TimeInterval(epoch))
+                nameStartIdx = 6
+            } else if tokens.count >= 10 {
+                let stamp = "\(tokens[5]) \(tokens[6]) \(tokens[7]) \(tokens[8])"
+                let fmt = DateFormatter()
+                fmt.locale = Locale(identifier: "en_US_POSIX")
+                fmt.dateFormat = "MMM d HH:mm:ss yyyy"
+                mtime = fmt.date(from: stamp)
+                nameStartIdx = 9
+            } else {
+                continue
+            }
+
+            let rest = tokens[nameStartIdx...].joined(separator: " ")
+            let (relName, linkTarget): (String, String?) = {
+                if case .symlink = baseKind, let arrow = rest.range(of: " -> ") {
+                    return (String(rest[..<arrow.lowerBound]), String(rest[arrow.upperBound...]))
+                }
+                return (rest, nil)
+            }()
+
+            var rel = relName
+            if rel.hasPrefix("./") { rel.removeFirst(2) }
+            if rel.isEmpty || rel == "." || rel == ".." { continue }
+
+            let absolutePath = normalizedRoot + "/" + rel
+            let name = (absolutePath as NSString).lastPathComponent
+            let parent = (absolutePath as NSString).deletingLastPathComponent
+
+            let kind: SFTPRichEntry.Kind = {
+                if case .symlink = baseKind { return .symlink(target: linkTarget) }
+                return baseKind
+            }()
+
+            grouped[parent, default: []].append(
+                SFTPRichEntry(name: name, path: absolutePath, kind: kind, sizeBytes: size, modifiedAt: mtime)
+            )
+        }
+
+        for (parent, entries) in grouped {
+            grouped[parent] = entries.sorted { a, b in
+                let aDir = a.isDirectory, bDir = b.isDirectory
+                if aDir != bDir { return aDir }
+                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            }
+        }
+        return grouped
     }
 
     // MARK: - SFTP rich listing (Citadel)

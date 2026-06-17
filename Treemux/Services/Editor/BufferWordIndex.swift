@@ -26,6 +26,12 @@ actor BufferWordIndex {
     private var wordsByBuffer: [UUID: Set<String>] = [:]
     private var freq: [String: Int] = [:]
 
+    /// Synchronously-readable mirror of `freq`, published after every mutation.
+    /// Declared `nonisolated` so the main-thread cursor hook can read it without
+    /// awaiting the actor; safe because `WordIndexSnapshotStore` is `Sendable`
+    /// and does its own internal locking.
+    nonisolated let snapshot = WordIndexSnapshotStore()
+
     private static let identifierRegex: NSRegularExpression = {
         // \b[\p{L}_][\p{L}\p{N}_]+\b — a unicode-aware identifier of length >= 2.
         // Force-try is safe: the pattern is a constant.
@@ -65,6 +71,7 @@ actor BufferWordIndex {
         for word in newWords {
             freq[word, default: 0] += 1
         }
+        snapshot.replace(freq)
     }
 
     /// Drops a buffer from the index. Use when a sub-tab closes so the
@@ -79,24 +86,12 @@ actor BufferWordIndex {
                 freq[word] = next
             }
         }
+        snapshot.replace(freq)
     }
 
     /// Returns up to `limit` indexed words starting with `prefix`
     /// (case-insensitive), excluding any exact match for `prefix` itself.
     func suggestions(prefix: String, limit: Int = 20) -> [String] {
-        guard !prefix.isEmpty else { return [] }
-        let lower = prefix.lowercased()
-        let candidates = freq.keys.filter {
-            $0.lowercased().hasPrefix(lower) && $0 != prefix
-        }
-        return candidates
-            .sorted { lhs, rhs in
-                let lhsFreq = freq[lhs] ?? 0
-                let rhsFreq = freq[rhs] ?? 0
-                if lhsFreq != rhsFreq { return lhsFreq > rhsFreq }
-                return lhs < rhs
-            }
-            .prefix(limit)
-            .map { $0 }
+        rankedWordSuggestions(from: freq, prefix: prefix, limit: limit)
     }
 }

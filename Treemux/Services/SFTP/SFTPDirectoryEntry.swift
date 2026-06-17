@@ -41,6 +41,11 @@ struct SFTPRichEntry: Equatable {
     let kind: Kind
     let sizeBytes: Int64?
     let modifiedAt: Date?
+
+    var isDirectory: Bool {
+        if case .directory = kind { return true }
+        return false
+    }
 }
 
 /// Result of a stat() call on a single remote path.

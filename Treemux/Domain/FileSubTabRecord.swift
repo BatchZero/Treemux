@@ -12,10 +12,14 @@ struct FileSubTabRecord: Codable, Equatable, Identifiable {
     var id: UUID
     var path: String
     var isPinned: Bool
+    /// Per-file rendering mode. `nil` means "use the default for this file kind".
+    /// Optional so legacy JSON without the key decodes to `nil` automatically.
+    var viewMode: FileViewMode?
 
-    init(id: UUID = UUID(), path: String, isPinned: Bool) {
+    init(id: UUID = UUID(), path: String, isPinned: Bool, viewMode: FileViewMode? = nil) {
         self.id = id
         self.path = path
         self.isPinned = isPinned
+        self.viewMode = viewMode
     }
 }

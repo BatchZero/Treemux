@@ -18,6 +18,9 @@ struct SubTabRuntime: Identifiable, Equatable {
     var path: String
     var isPinned: Bool
     var openFile: OpenFileState
+    /// Per-file rendering mode, mirrored from `FileSubTabRecord.viewMode`.
+    /// `nil` means "use the default for this file kind".
+    var viewMode: FileViewMode?
 }
 
 @MainActor
@@ -54,10 +57,14 @@ final class FileBrowserTabController: ObservableObject {
     static let textReadLimit: Int = 5 * 1024 * 1024       // 5 MB
     static let largeFileThreshold: Int64 = 5 * 1024 * 1024 // 5 MB
     static let quickLookOnlyThreshold: Int64 = 100 * 1024 * 1024 // 100 MB
+    static let treeFetchDepth: Int = 2
+    static let treeEntryCap: Int = 500
 
     let dataSource: any FileBrowserDataSource
     let gitDiffService: GitDiffService?
     let repoRoot: String?
+    let treeCache: DirectoryTreeCachePersistence
+    @Published private(set) var truncatedDirs: Set<String> = []
 
     /// Shared word index for editor completion across this tab's sub-tabs.
     /// Lazily populated by `WordCompletionCoordinator` as buffers open.
@@ -71,7 +78,8 @@ final class FileBrowserTabController: ObservableObject {
         initial state: FileBrowserTabState,
         dataSource: any FileBrowserDataSource,
         gitDiffService: GitDiffService? = nil,
-        repoRoot: String? = nil
+        repoRoot: String? = nil,
+        treeCache: DirectoryTreeCachePersistence = DirectoryTreeCachePersistence()
     ) {
         self.rootPath = state.rootPath
         self.rootKind = state.rootKind
@@ -81,15 +89,17 @@ final class FileBrowserTabController: ObservableObject {
         self.dataSource = dataSource
         self.gitDiffService = gitDiffService
         self.repoRoot = repoRoot
+        self.treeCache = treeCache
         self.subTabs = state.subTabs.map {
-            SubTabRuntime(id: $0.id, path: $0.path, isPinned: $0.isPinned, openFile: .empty)
+            SubTabRuntime(id: $0.id, path: $0.path, isPinned: $0.isPinned, openFile: .empty,
+                          viewMode: $0.viewMode)
         }
         self.activeSubTabID = state.activeSubTabID ?? self.subTabs.first?.id
     }
 
     func snapshot() -> FileBrowserTabState {
         let pinned = subTabs.filter { $0.isPinned }.map {
-            FileSubTabRecord(id: $0.id, path: $0.path, isPinned: true)
+            FileSubTabRecord(id: $0.id, path: $0.path, isPinned: true, viewMode: $0.viewMode)
         }
         let activeID: UUID? = {
             if let active = activeSubTab, active.isPinned { return active.id }
@@ -165,25 +175,74 @@ final class FileBrowserTabController: ObservableObject {
 
     func loadRoot() async {
         loadError = nil
+        // 1. Instant render from the on-disk cache if present.
+        if let identity = dataSource.treeCacheIdentity,
+           let snap = treeCache.load(identity: identity, rootPath: rootPath) {
+            applySnapshot(snap)
+        }
+        // 2. Background-refresh via bulk fetch (also the only fetch path on a cache miss).
+        await refreshTree()
+    }
+
+    /// Bulk-fetch the tree, diff/apply it onto the live state without collapsing
+    /// the user's expansion, restore any expanded dirs deeper than the fetch
+    /// reached, then persist the snapshot. Refresh errors are swallowed when a
+    /// cache is already on screen.
+    func refreshTree() async {
+        loadError = nil
         do {
-            let children = try await dataSource.listDirectory(rootPath)
-            rawChildrenByPath[rootPath] = children
-            childrenByPath[rootPath] = filtered(children)
-            rootChildren = childrenByPath[rootPath] ?? []
-            // Restore previously-expanded dirs (best effort; missing dirs are silently skipped).
-            for path in expandedDirs where path != rootPath {
+            let fetch = try await dataSource.listTree(
+                rootPath, maxDepth: Self.treeFetchDepth, entryCap: Self.treeEntryCap)
+            applyFetch(fetch)
+            for path in expandedDirs where path != rootPath && fetch.childrenByPath[path] == nil {
                 if let kids = try? await dataSource.listDirectory(path) {
                     rawChildrenByPath[path] = kids
                     childrenByPath[path] = filtered(kids)
                 }
             }
-            // One-shot status refresh after the listing settles. Failures are
-            // swallowed inside `refreshGitStatus` so the tree still renders.
+            persistTree()
             await refreshGitStatus()
         } catch {
-            rootChildren = []
-            loadError = mapError(error)
+            let mapped = mapError(error)
+            if case .needsPassword = mapped {
+                loadError = mapped
+            } else if rootChildren.isEmpty {
+                loadError = mapped
+            }
         }
+    }
+
+    private func applySnapshot(_ snap: DirectoryTreeSnapshot) {
+        for (path, kids) in snap.childrenByPath {
+            rawChildrenByPath[path] = kids
+            childrenByPath[path] = filtered(kids)
+        }
+        truncatedDirs = Set(snap.truncatedDirs)
+        rootChildren = childrenByPath[rootPath] ?? []
+    }
+
+    /// Applies a fresh bulk fetch, only re-binding directories whose contents
+    /// actually changed (cheap `Equatable` compare) so SwiftUI churn stays low.
+    /// `expandedDirs` is left untouched, so the tree keeps its open state.
+    private func applyFetch(_ fetch: DirectoryTreeFetch) {
+        for (path, kids) in fetch.childrenByPath where rawChildrenByPath[path] != kids {
+            rawChildrenByPath[path] = kids
+            childrenByPath[path] = filtered(kids)
+        }
+        for dir in fetch.childrenByPath.keys { truncatedDirs.remove(dir) }
+        truncatedDirs.formUnion(fetch.truncatedDirs)
+        rootChildren = childrenByPath[rootPath] ?? []
+    }
+
+    private func persistTree() {
+        guard let identity = dataSource.treeCacheIdentity else { return }
+        let snap = DirectoryTreeSnapshot(
+            rootPath: rootPath,
+            childrenByPath: rawChildrenByPath,
+            truncatedDirs: Array(truncatedDirs),
+            fetchedAt: Date()
+        )
+        try? treeCache.save(snap, identity: identity)
     }
 
     func toggleExpand(_ path: String) async {
@@ -199,12 +258,26 @@ final class FileBrowserTabController: ObservableObject {
                 rawChildrenByPath[path] = kids
                 childrenByPath[path] = filtered(kids)
                 expandedDirs.insert(path)
+                Task { [weak self] in await self?.prefetchChildren(of: path) }
             } catch {
                 // Leave collapsed on error; surface via loadError so the UI banner can show.
                 loadError = mapError(error)
             }
         }
         onPersistableStateChanged?()
+    }
+
+    /// Background-prefetch a directory's grandchildren so expanding its children
+    /// is instant. Internal (not private) so it is unit-testable directly.
+    func prefetchChildren(of path: String) async {
+        guard let fetch = try? await dataSource.listTree(
+            path, maxDepth: Self.treeFetchDepth, entryCap: Self.treeEntryCap) else { return }
+        guard expandedDirs.contains(path) else { return }
+        for (p, kids) in fetch.childrenByPath where rawChildrenByPath[p] != kids {
+            rawChildrenByPath[p] = kids
+            childrenByPath[p] = filtered(kids)
+        }
+        truncatedDirs.formUnion(fetch.truncatedDirs)
     }
 
     func setShowsHiddenFiles(_ show: Bool) {
@@ -577,7 +650,9 @@ final class FileBrowserTabController: ObservableObject {
         subTabs[idx].openFile = .text(path: path, content: content, encoding: encoding, dirty: true)
     }
 
-    /// Saves the current buffer back to disk via the data source.
+    /// Saves the current buffer back to disk via the data source. Returns as
+    /// soon as the write completes and `dirty` is cleared; the git-status and
+    /// diff refresh run off the save path so saving never blocks on `git`.
     func saveCurrentFile() async throws {
         guard case .text(let path, let content, let encoding, _) = activeOpenFile else {
             return
@@ -585,8 +660,15 @@ final class FileBrowserTabController: ObservableObject {
         let data = content.data(using: encoding) ?? Data()
         try await dataSource.writeFile(path, data: data)
         setActiveOpenFile(.text(path: path, content: content, encoding: encoding, dirty: false))
-        await refreshDiffForActive()
-        await refreshGitStatus()
+        // Fire-and-forget: diff + git status are non-essential to the save
+        // completing and each is a `git` subprocess round-trip. This is a plain
+        // (MainActor-inherited, not `Task.detached`) Task so the refreshes still
+        // mutate `@Published` state on the main actor — same pattern used after
+        // tree mutations.
+        Task { [weak self] in
+            await self?.refreshDiffForActive()
+            await self?.refreshGitStatus()
+        }
     }
 
     // MARK: - Error mapping & password retry
@@ -621,6 +703,38 @@ final class FileBrowserTabController: ObservableObject {
         } catch {
             loadError = mapError(error)
         }
+    }
+
+    // MARK: - Load more (truncated directories)
+
+    /// Re-fetches a truncated directory's **full** (uncapped) listing via the
+    /// normal per-directory call and clears its truncation marker. Backs the
+    /// file-tree "Load more" row.
+    func loadMore(_ path: String) async {
+        do {
+            let kids = try await dataSource.listDirectory(path)
+            rawChildrenByPath[path] = kids
+            childrenByPath[path] = filtered(kids)
+            truncatedDirs.remove(path)
+            if path == rootPath { rootChildren = childrenByPath[path] ?? [] }
+        } catch {
+            loadError = mapError(error)
+        }
+    }
+
+    #if DEBUG
+    /// Test seam: lets unit tests drive the truncated-directory UI path without
+    /// constructing a 500+ entry directory.
+    func markTruncatedForTesting(_ path: String) { truncatedDirs.insert(path) }
+    #endif
+
+    // MARK: - View mode
+
+    /// Update the persisted view mode for a sub-tab (used by the document viewer's mode picker).
+    func setViewMode(_ mode: FileViewMode, forSubTab id: UUID) {
+        guard let index = subTabs.firstIndex(where: { $0.id == id }) else { return }
+        subTabs[index].viewMode = mode
+        onPersistableStateChanged?()
     }
 
     // MARK: - Copy path
