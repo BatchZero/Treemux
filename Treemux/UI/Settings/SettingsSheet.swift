@@ -5,6 +5,7 @@
 
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Sidebar-based settings sheet following macOS System Settings pattern.
 struct SettingsSheet: View {
@@ -295,24 +296,94 @@ private struct ThemeSettingsView: View {
     @Binding var settings: AppSettings
     @ObservedObject var themeManager: ThemeManager
 
+    @State private var importError: String?
+
     var body: some View {
         Form {
-            Picker("Active Theme", selection: $settings.activeThemeID) {
+            Section {
                 ForEach(themeManager.availableThemes) { theme in
-                    Text(theme.name).tag(theme.id)
+                    HStack {
+                        Image(systemName: settings.activeThemeID == theme.id
+                              ? "largecircle.fill.circle" : "circle")
+                            .foregroundStyle(settings.activeThemeID == theme.id
+                                             ? Color.accentColor : Color.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(theme.name)
+                            if let author = theme.author {
+                                Text(author)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        if !BuiltInThemes.ids.contains(theme.id) {
+                            Button(role: .destructive) {
+                                try? themeManager.deleteTheme(theme.id)
+                                settings.activeThemeID = themeManager.activeTheme.id
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.borderless)
+                            .help("Delete theme")
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        settings.activeThemeID = theme.id
+                        themeManager.setActiveTheme(theme.id)
+                    }
                 }
-            }
-            .onChange(of: settings.activeThemeID) { _, newID in
-                themeManager.setActiveTheme(newID)
+            } header: {
+                Text("Themes")
             }
 
             Section {
-                Text("Place custom theme JSON files in ~/.treemux/themes/")
+                Button("Import Theme…") { importTheme() }
+                Button("Restore Built-in Themes") {
+                    themeManager.resetBuiltIns()
+                    settings.activeThemeID = themeManager.activeTheme.id
+                }
+                Text("Theme files are stored as YAML in ~/.treemux/themes/")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            if let importError {
+                Section {
+                    Label(importError, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                }
+            }
+
+            if !themeManager.loadErrors.isEmpty {
+                Section {
+                    ForEach(themeManager.loadErrors, id: \.fileName) { err in
+                        Label("\(err.fileName): \(err.message)",
+                              systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.orange)
+                            .font(.caption)
+                    }
+                } header: {
+                    Text("Theme Load Errors")
+                }
+            }
         }
         .formStyle(.grouped)
+    }
+
+    private func importTheme() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType(filenameExtension: "yaml")!]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try themeManager.importTheme(from: url)
+            importError = nil
+        } catch {
+            importError = error.localizedDescription
+        }
     }
 }
 
