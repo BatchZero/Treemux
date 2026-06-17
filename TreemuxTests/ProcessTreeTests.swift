@@ -125,4 +125,39 @@ final class ProcessTreeTests: XCTestCase {
         XCTAssertEqual(clients[0].sessionName, "ok")
         XCTAssertEqual(clients[1].sessionName, "fine")
     }
+
+    // MARK: - tmuxSessionForPane
+
+    func testTmuxSessionForPaneMatchesClientByEnv() {
+        let clients: [(clientPID: pid_t, sessionName: String)] = [
+            (90475, "2"),
+            (91092, "4")
+        ]
+        let env: (pid_t) -> [String: String]? = { pid in
+            switch pid {
+            case 90475: return ["TREEMUX_PANE_ID": "pane-A"]
+            case 91092: return ["TREEMUX_PANE_ID": "pane-B"]
+            default: return nil
+            }
+        }
+        XCTAssertEqual(ProcessTree.tmuxSessionForPane(paneID: "pane-B", clients: clients, env: env), "4")
+        XCTAssertEqual(ProcessTree.tmuxSessionForPane(paneID: "pane-A", clients: clients, env: env), "2")
+    }
+
+    func testTmuxSessionForPaneReturnsNilWhenNoEnvMatch() {
+        let clients: [(clientPID: pid_t, sessionName: String)] = [(1, "s")]
+        let env: (pid_t) -> [String: String]? = { _ in ["TREEMUX_PANE_ID": "other"] }
+        XCTAssertNil(ProcessTree.tmuxSessionForPane(paneID: "mine", clients: clients, env: env))
+    }
+
+    func testTmuxSessionForPaneSkipsUnreadableEnv() {
+        // Simulates a client whose environment can't be read (nil), followed by a
+        // readable client that matches — mirrors the real case where some processes'
+        // env is hidden from KERN_PROCARGS2.
+        let clients: [(clientPID: pid_t, sessionName: String)] = [(10, "x"), (20, "y")]
+        let env: (pid_t) -> [String: String]? = { pid in
+            pid == 20 ? ["TREEMUX_PANE_ID": "mine"] : nil
+        }
+        XCTAssertEqual(ProcessTree.tmuxSessionForPane(paneID: "mine", clients: clients, env: env), "y")
+    }
 }
