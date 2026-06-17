@@ -92,4 +92,26 @@ final class ThemeModelTests: XCTestCase {
         XCTAssertFalse(HexColor.isValid("#GG0000"))
         XCTAssertFalse(HexColor.isValid("#FF"))
     }
+
+    func testValidateRejectsBadAppearance() throws {
+        // "drak" is a typo — neither "dark" nor "light"
+        let badAppearanceYAML = validYAML.replacingOccurrences(
+            of: "appearance: dark", with: "appearance: drak")
+        let theme = try YAMLDecoder().decode(Theme.self, from: badAppearanceYAML)
+        XCTAssertThrowsError(try theme.validate()) { error in
+            XCTAssertEqual(error as? ThemeValidationError, .badAppearance("drak"))
+        }
+    }
+
+    func testValidateAcceptsDarkAndLight() throws {
+        // "dark" is valid
+        let darkTheme = try YAMLDecoder().decode(Theme.self, from: validYAML)
+        XCTAssertNoThrow(try darkTheme.validate())
+
+        // "light" is also valid
+        let lightYAML = validYAML.replacingOccurrences(
+            of: "appearance: dark", with: "appearance: light")
+        let lightTheme = try YAMLDecoder().decode(Theme.self, from: lightYAML)
+        XCTAssertNoThrow(try lightTheme.validate())
+    }
 }

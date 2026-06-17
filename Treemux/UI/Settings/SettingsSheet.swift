@@ -324,7 +324,7 @@ private struct ThemeSettingsView: View {
                                 Image(systemName: "trash")
                             }
                             .buttonStyle(.borderless)
-                            .help("Delete theme")
+                            .help(Text("Delete theme"))
                         }
                     }
                     .contentShape(Rectangle())

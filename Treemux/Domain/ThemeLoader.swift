@@ -68,6 +68,8 @@ enum ThemeLoader {
             return "invalid hex color in \(field): '\(value)'"
         case let .wrongAnsiCount(count):
             return "terminal.ansi must have exactly 16 entries (found \(count))"
+        case let .badAppearance(value):
+            return "appearance must be 'dark' or 'light' (found '\(value)')"
         }
     }
 }

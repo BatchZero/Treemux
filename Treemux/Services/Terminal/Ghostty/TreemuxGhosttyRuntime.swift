@@ -15,6 +15,10 @@ final class TreemuxGhosttyRuntime: NSObject {
     var config: ghostty_config_t!
     var app: ghostty_app_t!
 
+    /// Overrides disk resolution when a live theme switch posts a Theme via notification.object.
+    /// Nil at startup so the init path falls through to disk-based resolution.
+    private var activeThemeTerminalColors: ThemeTerminalColors?
+
     var needsConfirmQuit: Bool {
         guard let app else { return false }
         return ghostty_app_needs_confirm_quit(app)
@@ -65,9 +69,11 @@ final class TreemuxGhosttyRuntime: NSObject {
     /// `font_size` at creation and on every screen change, derived from the
     /// active display's PPI via `AdaptiveFontSizeCalculator`. Pushing a single
     /// global `font-size` would fight with the per-surface override.
-    /// Resolves the active theme's terminal colors from disk + persisted id.
-    /// Falls back to the built-in dark theme if nothing valid is found.
+    /// Resolves the active theme's terminal colors.
+    /// Returns the in-memory override (set during a live theme switch) when present;
+    /// otherwise falls back to disk-based resolution using the persisted active theme id.
     private func resolveActiveTerminalColors() -> ThemeTerminalColors {
+        if let override = activeThemeTerminalColors { return override }
         let themesDir = treemuxStateDirectoryURL()
             .appendingPathComponent("themes", isDirectory: true)
         try? BuiltInThemes.ensureInstalled(in: themesDir)
@@ -150,8 +156,13 @@ final class TreemuxGhosttyRuntime: NSObject {
     }
 
     @objc private func themeDidChange(_ notification: Notification) {
-        // Reuse the existing reload path with the current terminal settings;
-        // the new theme colors are picked up via resolveActiveTerminalColors().
+        // If the notification carries the new Theme, cache its terminal colors so
+        // resolveActiveTerminalColors() returns them even before the id is persisted
+        // (live preview path). Terminal non-color settings (cursor style, etc.) still
+        // come from the persisted AppSettings.
+        if let theme = notification.object as? Theme {
+            activeThemeTerminalColors = theme.terminal
+        }
         let terminal = AppSettingsPersistence().load().terminal
         reloadGhosttyConfig(with: terminal)
     }

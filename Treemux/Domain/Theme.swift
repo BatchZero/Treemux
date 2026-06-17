@@ -66,11 +66,16 @@ struct Theme: Codable, Identifiable, Equatable {
 enum ThemeValidationError: Error, Equatable {
     case badHex(field: String, value: String)
     case wrongAnsiCount(Int)
+    case badAppearance(String)
 }
 
 extension Theme {
-    /// Validates every color field and the ansi count. Throws on first problem.
+    /// Validates every color field, the appearance value, and the ansi count. Throws on first problem.
     func validate() throws {
+        guard appearance == "dark" || appearance == "light" else {
+            throw ThemeValidationError.badAppearance(appearance)
+        }
+
         let uiFields: [(String, String)] = [
             ("ui.accent", ui.accent),
             ("ui.accentOnDark", ui.accentOnDark),
