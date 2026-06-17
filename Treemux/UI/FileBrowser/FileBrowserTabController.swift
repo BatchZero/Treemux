@@ -728,6 +728,14 @@ final class FileBrowserTabController: ObservableObject {
     func markTruncatedForTesting(_ path: String) { truncatedDirs.insert(path) }
     #endif
 
+    // MARK: - View mode
+
+    /// Update the persisted view mode for a sub-tab (used by the document viewer's mode picker).
+    func setViewMode(_ mode: FileViewMode, forSubTab id: UUID) {
+        guard let index = subTabs.firstIndex(where: { $0.id == id }) else { return }
+        subTabs[index].viewMode = mode
+    }
+
     // MARK: - Copy path
 
     /// Writes either the absolute or root-relative form of `path` to the system
