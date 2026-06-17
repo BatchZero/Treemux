@@ -29,6 +29,9 @@ packages:
   MarkdownUI:
     url: https://github.com/gonzalezreal/swift-markdown-ui
     from: "2.4.0"
+  Yams:
+    url: https://github.com/jpsim/Yams
+    from: "5.1.0"
 
 settings:
   base:
@@ -61,6 +64,8 @@ targets:
         product: CodeEditSourceEditor
       - package: MarkdownUI
         product: MarkdownUI
+      - package: Yams
+        product: Yams
     postBuildScripts:
       - name: Copy Ghostty Resources
         script: |

@@ -66,6 +66,7 @@
 		44D9A39F7E62E88E88ED2DAD /* TerminalHostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C2110A46976203DDBF9D707 /* TerminalHostView.swift */; };
 		44F22E50FB5925ABD08DD1F1 /* SidebarItemIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD730723C379BFA4C7D00F8 /* SidebarItemIconView.swift */; };
 		4603CCA2E939A7EE37183995 /* LocalFileBrowserDataSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 013F880772F0D64DBCEC5CC7 /* LocalFileBrowserDataSourceTests.swift */; };
+		4CFD874B8E87B31CFEBAA0B9 /* Yams in Frameworks */ = {isa = PBXBuildFile; productRef = CF2838B8CB12C8D289D7352A /* Yams */; };
 		4DE2CEAEC3114FC1C79E784C /* SSHServerEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA7F3CF6F855DC00ADAB6764 /* SSHServerEditSheet.swift */; };
 		4F797B3482955657212C4A24 /* SSHConfigDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDABEBA6E29676427AB96F34 /* SSHConfigDocument.swift */; };
 		4F93E2B9A2A6EC003FCAB4BE /* SessionBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */; };
@@ -171,6 +172,7 @@
 		D5D2DCD282AEEBB8C4A6F532 /* ShellCommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */; };
 		D61BE17F0FC9B10A76AD6B09 /* HookDiffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C6F71627903561B3A75A4A3 /* HookDiffTests.swift */; };
 		DB86BA29857E1BF63F9B694B /* DocumentViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFFA26AEDAD07B69571B36D5 /* DocumentViewerView.swift */; };
+		DC090F5DAC4E6A049EC586C2 /* ThemeLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952DFCA114D8DE9B65E79BCC /* ThemeLoaderTests.swift */; };
 		DC7D5637E530F011CDDD2B28 /* MarkdownCodeSyntaxHighlighterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23E8273C2D170F424026FDA /* MarkdownCodeSyntaxHighlighterTests.swift */; };
 		DDB379227505CCDD96BB62C1 /* TreemuxKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7DBEF3A8FDA651804A6D8A /* TreemuxKeyboardShortcuts.swift */; };
 		DDDEF7B960C5F076099D8E86 /* WorkspaceStoreBuiltInTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2036C4C917DE175BEEF342C /* WorkspaceStoreBuiltInTests.swift */; };
@@ -310,6 +312,7 @@
 		92B0D1DFEE9B34109844D751 /* TreemuxGhosttyLogFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyLogFilter.swift; sourceTree = "<group>"; };
 		92B183417582C15AE89A8698 /* SidebarIconCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIconCatalog.swift; sourceTree = "<group>"; };
 		952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellCommandRunner.swift; sourceTree = "<group>"; };
+		952DFCA114D8DE9B65E79BCC /* ThemeLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeLoaderTests.swift; sourceTree = "<group>"; };
 		9D8662706F495A0DA4CCB1F0 /* WindowContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowContext.swift; sourceTree = "<group>"; };
 		9F006E95E6DE6BBA75B635AF /* DirectoryTreeCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryTreeCacheTests.swift; sourceTree = "<group>"; };
 		9F23062A273124B6BBE28B71 /* SplitDivider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitDivider.swift; sourceTree = "<group>"; };
@@ -398,6 +401,7 @@
 				29F835B65E91D82E36B87BAC /* Sparkle in Frameworks */,
 				861758C31CCB50A6B7F1E98F /* CodeEditSourceEditor in Frameworks */,
 				C564CC7C44A3B30D2C8B96E8 /* MarkdownUI in Frameworks */,
+				4CFD874B8E87B31CFEBAA0B9 /* Yams in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -469,6 +473,7 @@
 				FB0ABA0B08B1F2185D6C82B5 /* SSHConfigParserTests.swift */,
 				E2A3167157DB1ABD5C9461ED /* SSHConfigServiceWriteTests.swift */,
 				AF9D68F15831BDF7B565B500 /* TabGroupingTests.swift */,
+				952DFCA114D8DE9B65E79BCC /* ThemeLoaderTests.swift */,
 				33DBD7F6E96DFD37B6863693 /* ThemeTests.swift */,
 				3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */,
 				E9B87785B633D3E01905E33E /* TreemuxTabSizingTests.swift */,
@@ -856,6 +861,7 @@
 				0BA0168B1395D9FAD0C21BA8 /* Sparkle */,
 				C97849ADC35767BC3DF4C9E6 /* CodeEditSourceEditor */,
 				37BDF2850494D8742F465CC8 /* MarkdownUI */,
+				CF2838B8CB12C8D289D7352A /* Yams */,
 			);
 			productName = Treemux;
 			productReference = 6DD2CC0A8B9D60B36E1F8105 /* Treemux.app */;
@@ -888,6 +894,7 @@
 				663AA795585A6D01BBB2A94E /* XCRemoteSwiftPackageReference "CodeEditTextView" */,
 				6641A0484CA3006B17161D22 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 				2C9A2C63248A592DF46B4F85 /* XCRemoteSwiftPackageReference "Sparkle" */,
+				5330727A76EAB669BD9AD4C1 /* XCRemoteSwiftPackageReference "Yams" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BBE024A13718132377BA6B12 /* Products */;
@@ -1111,6 +1118,7 @@
 				14559BCDE89A0A2CA5FD8022 /* ShellCommandRunnerTests.swift in Sources */,
 				01CDE66498B869D0064757AC /* SidebarContextMenuTests.swift in Sources */,
 				D489C4C4FC19FD474C946FCB /* TabGroupingTests.swift in Sources */,
+				DC090F5DAC4E6A049EC586C2 /* ThemeLoaderTests.swift in Sources */,
 				C009122F97AB2808837169E1 /* ThemeTests.swift in Sources */,
 				8B1F02071634EF5A0330144B /* TmuxServiceTests.swift in Sources */,
 				D19A23C46D175B48CE53A9E4 /* TreeSitterCodeHighlighterTests.swift in Sources */,
@@ -1398,6 +1406,14 @@
 				version = 2.7.3;
 			};
 		};
+		5330727A76EAB669BD9AD4C1 /* XCRemoteSwiftPackageReference "Yams" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/jpsim/Yams";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.1.0;
+			};
+		};
 		663AA795585A6D01BBB2A94E /* XCRemoteSwiftPackageReference "CodeEditTextView" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/BatchZero/CodeEditTextView";
@@ -1444,6 +1460,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 007B26EA960650C68D5CAC88 /* XCRemoteSwiftPackageReference "CodeEditSourceEditor" */;
 			productName = CodeEditSourceEditor;
+		};
+		CF2838B8CB12C8D289D7352A /* Yams */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5330727A76EAB669BD9AD4C1 /* XCRemoteSwiftPackageReference "Yams" */;
+			productName = Yams;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
