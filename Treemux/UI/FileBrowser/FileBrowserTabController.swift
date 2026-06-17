@@ -734,6 +734,7 @@ final class FileBrowserTabController: ObservableObject {
     func setViewMode(_ mode: FileViewMode, forSubTab id: UUID) {
         guard let index = subTabs.firstIndex(where: { $0.id == id }) else { return }
         subTabs[index].viewMode = mode
+        onPersistableStateChanged?()
     }
 
     // MARK: - Copy path

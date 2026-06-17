@@ -12,6 +12,10 @@ struct DataURIInlineImageProvider: InlineImageProvider {
         }
         // Non-data: URLs: throw to signal failure — MarkdownUI renders nothing.
         // This is the mandatory no-network guarantee for inline images.
+        // NOTE: throwing here causes MarkdownUI's inline-image task group to drop ALL inline
+        // images in the same paragraph (not just the offending one). This is acceptable because
+        // it only ever removes images (no security impact), and is a MarkdownUI task-group
+        // behavior — not something fixable inside this provider.
         throw URLError(.unsupportedURL)
     }
 }

@@ -75,4 +75,33 @@ final class DocumentViewerViewTests: XCTestCase {
         XCTAssertEqual(snap.subTabs.first?.viewMode, .source,
                        "viewMode set via setViewMode must survive snapshot() for pinned tabs")
     }
+
+    func test_setViewModeFiresPersistenceCallback() {
+        // Verifies that setViewMode triggers onPersistableStateChanged so the persistence
+        // layer is notified without needing an explicit snapshot() call.
+        let record = FileSubTabRecord(id: UUID(), path: "/r/readme.md", isPinned: true, viewMode: nil)
+        let initial = FileBrowserTabState(
+            rootPath: "/r",
+            rootKind: .project,
+            subTabs: [record],
+            activeSubTabID: record.id
+        )
+        let mock = MockFileBrowserDataSource()
+        mock.directoryListings["/r"] = []
+        let controller = FileBrowserTabController(initial: initial, dataSource: mock)
+
+        // Wire persistence callback.
+        var callbackCount = 0
+        controller.onPersistableStateChanged = { callbackCount += 1 }
+
+        // Act: known id — callback must fire.
+        controller.setViewMode(.render, forSubTab: record.id)
+        XCTAssertEqual(callbackCount, 1,
+                       "setViewMode with a known id must fire onPersistableStateChanged exactly once")
+
+        // Act: unknown id — callback must NOT fire again.
+        controller.setViewMode(.source, forSubTab: UUID())
+        XCTAssertEqual(callbackCount, 1,
+                       "setViewMode with an unknown id must not fire onPersistableStateChanged")
+    }
 }
