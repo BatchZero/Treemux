@@ -16,6 +16,11 @@ extension Color {
 
         let r, g, b, a: Double
         switch cleaned.count {
+        case 3:
+            r = Double((rgba >> 8) & 0xF) / 15.0
+            g = Double((rgba >> 4) & 0xF) / 15.0
+            b = Double(rgba & 0xF) / 15.0
+            a = 1.0
         case 6:
             r = Double((rgba >> 16) & 0xFF) / 255.0
             g = Double((rgba >> 8) & 0xFF) / 255.0

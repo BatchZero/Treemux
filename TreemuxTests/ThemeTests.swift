@@ -8,52 +8,37 @@ import XCTest
 
 final class ThemeTests: XCTestCase {
 
-    func testThemeDefinitionCodableRoundTrip() throws {
-        let theme = ThemeDefinition.treemuxDark
-        let encoder = JSONEncoder()
-        let data = try encoder.encode(theme)
-        let decoded = try JSONDecoder().decode(ThemeDefinition.self, from: data)
-        XCTAssertEqual(decoded.id, "treemux-dark")
-        XCTAssertEqual(decoded.name, "Treemux Dark")
-        XCTAssertEqual(decoded.terminal.ansi.count, 16)
-    }
-
-    func testLightThemeCodableRoundTrip() throws {
-        let theme = ThemeDefinition.treemuxLight
-        let data = try JSONEncoder().encode(theme)
-        let decoded = try JSONDecoder().decode(ThemeDefinition.self, from: data)
-        XCTAssertEqual(decoded.id, "treemux-light")
-        XCTAssertEqual(decoded.ui.paneBackground, "#FFFFFF")
-    }
-
-    func testBuiltInThemesContainsBoth() {
-        let themes = ThemeDefinition.builtInThemes
-        XCTAssertEqual(themes.count, 2)
-        XCTAssertTrue(themes.contains(where: { $0.id == "treemux-dark" }))
-        XCTAssertTrue(themes.contains(where: { $0.id == "treemux-light" }))
-    }
-
-    func testTerminalColorsHas16AnsiEntries() {
-        XCTAssertEqual(ThemeDefinition.treemuxDark.terminal.ansi.count, 16)
-        XCTAssertEqual(ThemeDefinition.treemuxLight.terminal.ansi.count, 16)
-    }
-
     @MainActor
-    func testThemeManagerDefaultsToDark() {
+    func testDefaultsToDark() {
         let manager = ThemeManager()
         XCTAssertEqual(manager.activeTheme.id, "treemux-dark")
     }
 
     @MainActor
-    func testThemeManagerSwitchTheme() {
+    func testSwitchTheme() {
         let manager = ThemeManager()
         manager.setActiveTheme("treemux-light")
         XCTAssertEqual(manager.activeTheme.id, "treemux-light")
     }
 
     @MainActor
-    func testThemeManagerFallbackForUnknownID() {
+    func testFallbackForUnknownID() {
         let manager = ThemeManager(activeThemeID: "nonexistent")
         XCTAssertEqual(manager.activeTheme.id, "treemux-dark")
+    }
+
+    @MainActor
+    func testAvailableThemesIncludeBuiltIns() {
+        let manager = ThemeManager()
+        XCTAssertTrue(manager.availableThemes.contains(where: { $0.id == "treemux-dark" }))
+        XCTAssertTrue(manager.availableThemes.contains(where: { $0.id == "treemux-light" }))
+    }
+
+    @MainActor
+    func testSetActiveThemePostsNotification() {
+        let manager = ThemeManager()
+        let expectation = expectation(forNotification: .themeDidChange, object: nil)
+        manager.setActiveTheme("treemux-light")
+        wait(for: [expectation], timeout: 1.0)
     }
 }

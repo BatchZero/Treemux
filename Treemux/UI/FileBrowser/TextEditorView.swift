@@ -210,17 +210,17 @@ private struct CodeEditorRepresentable: View {
 /// effective at assignment time, then *caches* it on the layer — so dynamic
 /// system colors freeze on first paint and never follow the window's
 /// `effectiveAppearance`. By feeding concrete RGB colors derived from the
-/// active `ThemeDefinition`, the editor background tracks the in-app theme
+/// active theme, the editor background tracks the in-app theme
 /// directly and re-renders correctly when the user switches themes (the
 /// editor's `Equatable` config diff fires because the NSColor values differ).
 private enum TreemuxEditorTheme {
-    static func from(uiColors ui: UIColors) -> EditorTheme {
+    static func from(uiColors ui: ThemeUIColors) -> EditorTheme {
         let textPrimary = NSColor(Color(hex: ui.textPrimary)).editorThemeColor
         let textSecondary = NSColor(Color(hex: ui.textSecondary)).editorThemeColor
         let textMuted = NSColor(Color(hex: ui.textMuted)).editorThemeColor
-        let background = NSColor(Color(hex: ui.paneBackground)).editorThemeColor
-        let lineHighlight = NSColor(Color(hex: ui.paneHeaderBackground)).editorThemeColor
-        let selection = NSColor.sRGBSelection(fromHex: ui.accentColor, alpha: 0.45)
+        let background = NSColor(Color(hex: ui.pane)).editorThemeColor
+        let lineHighlight = NSColor(Color(hex: ui.paneHeader)).editorThemeColor
+        let selection = NSColor.sRGBSelection(fromHex: ui.accent, alpha: 0.45)
 
         return EditorTheme(
             text: .init(color: textPrimary),

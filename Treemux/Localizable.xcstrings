@@ -571,6 +571,16 @@
         }
       }
     },
+    "Delete theme": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除主题"
+          }
+        }
+      }
+    },
     "Delete this server?": {
       "localizations": {
         "zh-Hans": {
@@ -797,6 +807,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "安装 %@"
+          }
+        }
+      }
+    },
+    "Import Theme…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入主题…"
           }
         }
       }
@@ -1561,6 +1581,16 @@
         }
       }
     },
+    "Restore Built-in Themes": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复内置主题"
+          }
+        }
+      }
+    },
     "Restore Last Session": {
       "localizations": {
         "zh-Hans": {
@@ -2112,6 +2142,36 @@
       }
     },
     "Theme": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主题"
+          }
+        }
+      }
+    },
+    "Theme files are stored as YAML in ~/.treemux/themes/": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主题文件以 YAML 形式存放在 ~/.treemux/themes/"
+          }
+        }
+      }
+    },
+    "Theme Load Errors": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主题加载错误"
+          }
+        }
+      }
+    },
+    "Themes": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {

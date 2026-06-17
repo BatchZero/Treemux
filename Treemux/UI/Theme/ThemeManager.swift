@@ -6,62 +6,106 @@
 import AppKit
 import Foundation
 import SwiftUI
+import Yams
 
-/// Manages theme loading, selection, and color publishing for the entire app.
+/// Manages YAML theme loading, selection, and color publishing for the app.
 @MainActor
 final class ThemeManager: ObservableObject {
 
-    /// Currently active theme.
-    @Published private(set) var activeTheme: ThemeDefinition
+    @Published private(set) var activeTheme: Theme
+    @Published private(set) var availableThemes: [Theme] = []
+    @Published private(set) var loadErrors: [ThemeLoadError] = []
 
-    /// All available themes (built-in + user custom).
-    @Published private(set) var availableThemes: [ThemeDefinition] = []
-
-    /// Directory for user custom themes.
-    private let themesDirectory: URL
+    /// Directory holding all theme `.yaml` files.
+    let themesDirectory: URL
 
     init(activeThemeID: String = "treemux-dark") {
-        let baseDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".treemux/themes", isDirectory: true)
-        self.themesDirectory = baseDir
+        self.themesDirectory = treemuxStateDirectoryURL()
+            .appendingPathComponent("themes", isDirectory: true)
 
-        // Start with the requested built-in theme (or fallback to dark)
-        self.activeTheme = ThemeDefinition.builtInThemes.first { $0.id == activeThemeID }
-            ?? .treemuxDark
+        // Make sure built-ins exist on disk, then load.
+        try? BuiltInThemes.ensureInstalled(in: themesDirectory)
+        let result = ThemeLoader.load(from: themesDirectory)
+        self.availableThemes = result.themes
+        self.loadErrors = result.errors
 
-        loadAvailableThemes()
+        self.activeTheme = ThemeManager.resolve(
+            id: activeThemeID, in: result.themes)
     }
 
-    // MARK: - Public API
+    // MARK: - Loading
 
-    /// Switch active theme by ID.
-    func setActiveTheme(_ themeID: String) {
-        if let theme = availableThemes.first(where: { $0.id == themeID }) {
-            activeTheme = theme
-        }
+    private static func resolve(id: String, in themes: [Theme]) -> Theme {
+        if let match = themes.first(where: { $0.id == id }) { return match }
+        if let dark = themes.first(where: { $0.id == "treemux-dark" }) { return dark }
+        if let first = themes.first { return first }
+        return BuiltInThemes.fallbackDark()
     }
 
-    /// Reload themes from disk.
     func reloadThemes() {
-        ensureBuiltInThemesExist()
-        loadAvailableThemes()
-        // Re-resolve active theme in case it was updated on disk
-        if let refreshed = availableThemes.first(where: { $0.id == activeTheme.id }) {
-            activeTheme = refreshed
-        }
+        let result = ThemeLoader.load(from: themesDirectory)
+        availableThemes = result.themes
+        loadErrors = result.errors
+        // Re-resolve active theme (it may have been deleted/edited).
+        activeTheme = ThemeManager.resolve(id: activeTheme.id, in: result.themes)
     }
 
-    // MARK: - Resolved SwiftUI Colors
+    func ensureBuiltInThemesExist() {
+        try? BuiltInThemes.ensureInstalled(in: themesDirectory)
+    }
 
-    var sidebarBackground: Color { Color(hex: activeTheme.ui.sidebarBackground) }
-    var sidebarForeground: Color { Color(hex: activeTheme.ui.sidebarForeground) }
-    var sidebarSelection: Color { Color(hex: activeTheme.ui.sidebarSelection) }
-    var tabBarBackground: Color { Color(hex: activeTheme.ui.tabBarBackground) }
-    var paneBackground: Color { Color(hex: activeTheme.ui.paneBackground) }
-    var paneHeaderBackground: Color { Color(hex: activeTheme.ui.paneHeaderBackground) }
-    var dividerColor: Color { Color(hex: activeTheme.ui.dividerColor) }
-    var accentColor: Color { Color(hex: activeTheme.ui.accentColor) }
-    var statusBarBackground: Color { Color(hex: activeTheme.ui.statusBarBackground) }
+    // MARK: - Switching
+
+    func setActiveTheme(_ id: String) {
+        let resolved = ThemeManager.resolve(id: id, in: availableThemes)
+        activeTheme = resolved
+        NotificationCenter.default.post(name: .themeDidChange, object: resolved)
+    }
+
+    // MARK: - Management
+
+    func importTheme(from url: URL) throws {
+        let text = try String(contentsOf: url, encoding: .utf8)
+        let theme = try YAMLDecoderShim.decode(text)   // throws on parse/validation
+        let destination = themesDirectory
+            .appendingPathComponent("\(theme.id).yaml")
+        try FileManager.default.createDirectory(
+            at: themesDirectory, withIntermediateDirectories: true)
+        try text.write(to: destination, atomically: true, encoding: .utf8)
+        reloadThemes()
+    }
+
+    func deleteTheme(_ id: String) throws {
+        // Delete every file in the directory that declares this id
+        // (file names are not guaranteed to equal the theme id).
+        let entries = (try? FileManager.default.contentsOfDirectory(
+            at: themesDirectory, includingPropertiesForKeys: nil)) ?? []
+        for file in entries where ["yaml", "yml"].contains(file.pathExtension.lowercased()) {
+            if let text = try? String(contentsOf: file, encoding: .utf8),
+               let theme = try? YAMLDecoderShim.decodeWithoutValidation(text),
+               theme.id == id {
+                try FileManager.default.removeItem(at: file)
+            }
+        }
+        reloadThemes()
+    }
+
+    func resetBuiltIns() {
+        try? BuiltInThemes.restore(in: themesDirectory)
+        reloadThemes()
+    }
+
+    // MARK: - Resolved SwiftUI Colors (accessor names kept stable for views)
+
+    var sidebarBackground: Color { Color(hex: activeTheme.ui.sidebar) }
+    var sidebarForeground: Color { Color(hex: activeTheme.ui.textPrimary) }
+    var sidebarSelection: Color { Color(hex: activeTheme.ui.selection) }
+    var tabBarBackground: Color { Color(hex: activeTheme.ui.tabBar) }
+    var paneBackground: Color { Color(hex: activeTheme.ui.pane) }
+    var paneHeaderBackground: Color { Color(hex: activeTheme.ui.paneHeader) }
+    var dividerColor: Color { Color(hex: activeTheme.ui.hairline) }
+    var accentColor: Color { Color(hex: activeTheme.ui.accent) }
+    var statusBarBackground: Color { Color(hex: activeTheme.ui.statusBar) }
     var textPrimary: Color { Color(hex: activeTheme.ui.textPrimary) }
     var textSecondary: Color { Color(hex: activeTheme.ui.textSecondary) }
     var textMuted: Color { Color(hex: activeTheme.ui.textMuted) }
@@ -69,78 +113,38 @@ final class ThemeManager: ObservableObject {
     var warningColor: Color { Color(hex: activeTheme.ui.warning) }
     var dangerColor: Color { Color(hex: activeTheme.ui.danger) }
 
-    // MARK: - Resolved AppKit Colors (for NSOutlineView sidebar)
+    // MARK: - Resolved AppKit Colors (NSOutlineView sidebar)
 
     var sidebarSelectionFillNS: NSColor { NSColor(sidebarSelection) }
     var sidebarSelectionStrokeNS: NSColor {
-        if let hex = activeTheme.ui.sidebarSelectionStroke {
+        if let hex = activeTheme.ui.selectionStroke {
             return NSColor(Color(hex: hex)).withAlphaComponent(0.9)
         }
         return NSColor(accentColor).withAlphaComponent(0.9)
     }
 
-    // MARK: - Window Appearance
+    // MARK: - Window appearance
 
-    /// The NSAppearance corresponding to the active theme.
     var windowAppearance: NSAppearance? {
         switch activeTheme.appearance {
-        case "light":
-            return NSAppearance(named: .aqua)
-        default:
-            return NSAppearance(named: .darkAqua)
+        case "light": return NSAppearance(named: .aqua)
+        default: return NSAppearance(named: .darkAqua)
         }
     }
 
-    /// The NSColor for NSWindow.backgroundColor derived from the active theme.
     var nsWindowBackgroundColor: NSColor {
-        NSColor(Color(hex: activeTheme.ui.windowBackground))
+        NSColor(Color(hex: activeTheme.ui.window))
     }
+}
 
-    // MARK: - Private
-
-    private func loadAvailableThemes() {
-        var themes = ThemeDefinition.builtInThemes
-
-        // Load user custom themes from disk
-        let fm = FileManager.default
-        if fm.fileExists(atPath: themesDirectory.path) {
-            if let files = try? fm.contentsOfDirectory(
-                at: themesDirectory,
-                includingPropertiesForKeys: nil
-            ) {
-                let decoder = JSONDecoder()
-                for file in files where file.pathExtension == "json" {
-                    if let data = try? Data(contentsOf: file),
-                       let theme = try? decoder.decode(ThemeDefinition.self, from: data) {
-                        // Replace built-in if same ID, or append
-                        if let idx = themes.firstIndex(where: { $0.id == theme.id }) {
-                            themes[idx] = theme
-                        } else {
-                            themes.append(theme)
-                        }
-                    }
-                }
-            }
-        }
-
-        availableThemes = themes
+/// Small wrapper so ThemeManager doesn't import Yams directly at call sites.
+private enum YAMLDecoderShim {
+    static func decode(_ text: String) throws -> Theme {
+        let theme = try decodeWithoutValidation(text)
+        try theme.validate()
+        return theme
     }
-
-    /// Write built-in theme JSON files to ~/.treemux/themes/ if they don't exist.
-    func ensureBuiltInThemesExist() {
-        let fm = FileManager.default
-        try? fm.createDirectory(at: themesDirectory, withIntermediateDirectories: true)
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-
-        for theme in ThemeDefinition.builtInThemes {
-            let file = themesDirectory.appendingPathComponent("\(theme.id).json")
-            if !fm.fileExists(atPath: file.path) {
-                if let data = try? encoder.encode(theme) {
-                    try? data.write(to: file)
-                }
-            }
-        }
+    static func decodeWithoutValidation(_ text: String) throws -> Theme {
+        try YAMLDecoder().decode(Theme.self, from: text)
     }
 }
