@@ -18,6 +18,9 @@ struct SubTabRuntime: Identifiable, Equatable {
     var path: String
     var isPinned: Bool
     var openFile: OpenFileState
+    /// Per-file rendering mode, mirrored from `FileSubTabRecord.viewMode`.
+    /// `nil` means "use the default for this file kind".
+    var viewMode: FileViewMode?
 }
 
 @MainActor
@@ -88,14 +91,15 @@ final class FileBrowserTabController: ObservableObject {
         self.repoRoot = repoRoot
         self.treeCache = treeCache
         self.subTabs = state.subTabs.map {
-            SubTabRuntime(id: $0.id, path: $0.path, isPinned: $0.isPinned, openFile: .empty)
+            SubTabRuntime(id: $0.id, path: $0.path, isPinned: $0.isPinned, openFile: .empty,
+                          viewMode: $0.viewMode)
         }
         self.activeSubTabID = state.activeSubTabID ?? self.subTabs.first?.id
     }
 
     func snapshot() -> FileBrowserTabState {
         let pinned = subTabs.filter { $0.isPinned }.map {
-            FileSubTabRecord(id: $0.id, path: $0.path, isPinned: true)
+            FileSubTabRecord(id: $0.id, path: $0.path, isPinned: true, viewMode: $0.viewMode)
         }
         let activeID: UUID? = {
             if let active = activeSubTab, active.isPinned { return active.id }
