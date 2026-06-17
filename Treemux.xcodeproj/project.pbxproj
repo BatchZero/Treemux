@@ -89,6 +89,7 @@
 		77ACAAA4E29C26D85D9FFDC6 /* FileBrowserTabContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE041DEC968A6F2C064FFDC3 /* FileBrowserTabContentView.swift */; };
 		7803245FCCD483D88942C81F /* BufferWordIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9C397C881AF1E9C2590736E /* BufferWordIndex.swift */; };
 		78942DBCD13BA394E9AC92CD /* PaneLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */; };
+		789B43256222F56E9CAF71DA /* FileViewMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4125F331086ABA70D1524809 /* FileViewMode.swift */; };
 		7BAFFB86D4EE2F43992E4808 /* AppSettingsPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48405541E0E22A909B92BA03 /* AppSettingsPersistence.swift */; };
 		7C890E7C842699E9E4E18606 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */; };
 		7DAFA3057CBB618258D561C4 /* FileViewerPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 597C1CF15FDBE05E8C17339E /* FileViewerPanelView.swift */; };
@@ -105,6 +106,7 @@
 		8B1F02071634EF5A0330144B /* TmuxServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */; };
 		8D1CEE3F5DC9DCD02F0BD4F6 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AECC7D7718049E6DE71D772 /* Notifications.swift */; };
 		8D26A31A9A417D3D41DA60C6 /* WorkspaceOutlineSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5FB45C7299B44CB5A534F28 /* WorkspaceOutlineSidebar.swift */; };
+		8F8A057EFD1FED6C26EFEA4C /* FileViewModeCodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F04CC27D705CD0274D08465 /* FileViewModeCodingTests.swift */; };
 		8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */; };
 		9294D5EADAA99AD4F7DA564F /* DirectoryTreeCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F006E95E6DE6BBA75B635AF /* DirectoryTreeCacheTests.swift */; };
 		9522E1F5358CF0C642D88DD6 /* SidebarRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74852C7BACA536876045BD7A /* SidebarRowView.swift */; };
@@ -136,6 +138,7 @@
 		BF9448F0B1E9C5D3B71C956C /* TerminalPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B01277529CEA9D185C95B0 /* TerminalPaneView.swift */; };
 		C009122F97AB2808837169E1 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DBD7F6E96DFD37B6863693 /* ThemeTests.swift */; };
 		C4F36751F92FBAB7CB76B329 /* BatchUnsavedChangesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62A28ABD1501991FC6757F16 /* BatchUnsavedChangesSheet.swift */; };
+		C564CC7C44A3B30D2C8B96E8 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 37BDF2850494D8742F465CC8 /* MarkdownUI */; };
 		C8CF939E271138CC0721952C /* SidebarIconCustomizationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2596BF207C9F981D9A0FE02D /* SidebarIconCustomizationSheet.swift */; };
 		C932ED5A8C19385027F0691D /* SSHConfigService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56CFE929900AA3468AB1BA5B /* SSHConfigService.swift */; };
 		CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3477DE6F674F94B9457073F4 /* TreemuxTests.swift */; };
@@ -226,6 +229,7 @@
 		3E4EF6D7547B58727542BA5A /* StoredShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoredShortcut.swift; sourceTree = "<group>"; };
 		3F2AF4BADCEBABA624578341 /* TreemuxGhosttyControllerRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyControllerRegistry.swift; sourceTree = "<group>"; };
 		3FA0085E209334A614D18291 /* FileSubTabRecordCodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSubTabRecordCodingTests.swift; sourceTree = "<group>"; };
+		4125F331086ABA70D1524809 /* FileViewMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileViewMode.swift; sourceTree = "<group>"; };
 		41730B3CCAF114169789A087 /* TmuxService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxService.swift; sourceTree = "<group>"; };
 		4243A3471A4DF010C611D196 /* ShortcutAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutAction.swift; sourceTree = "<group>"; };
 		42FCFF0878EDD3C9AB6D566C /* String+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Helpers.swift"; sourceTree = "<group>"; };
@@ -247,6 +251,7 @@
 		5B1568E12CA7608601340819 /* FileBrowserTabControllerStaleLoadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTabControllerStaleLoadTests.swift; sourceTree = "<group>"; };
 		5C2110A46976203DDBF9D707 /* TerminalHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalHostView.swift; sourceTree = "<group>"; };
 		5C4F64E16954A106E36D7073 /* SidebarContextMenuTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarContextMenuTests.swift; sourceTree = "<group>"; };
+		5F04CC27D705CD0274D08465 /* FileViewModeCodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileViewModeCodingTests.swift; sourceTree = "<group>"; };
 		62A28ABD1501991FC6757F16 /* BatchUnsavedChangesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchUnsavedChangesSheet.swift; sourceTree = "<group>"; };
 		62EB76FEF501CC1380FB2607 /* SidebarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarCoordinator.swift; sourceTree = "<group>"; };
 		656D4A17827E564EDD5A8918 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
@@ -346,6 +351,7 @@
 				17F6E36CAD2008C8EA72726A /* Citadel in Frameworks */,
 				29F835B65E91D82E36B87BAC /* Sparkle in Frameworks */,
 				861758C31CCB50A6B7F1E98F /* CodeEditSourceEditor in Frameworks */,
+				C564CC7C44A3B30D2C8B96E8 /* MarkdownUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -392,6 +398,7 @@
 				3FA0085E209334A614D18291 /* FileSubTabRecordCodingTests.swift */,
 				A01C3B62B418371CFF6848D2 /* FileTreeSettingsTests.swift */,
 				0B6EF0CD7420B8D15E621ADB /* FileTypeClassifierTests.swift */,
+				5F04CC27D705CD0274D08465 /* FileViewModeCodingTests.swift */,
 				85E586BC73709B3E51989859 /* GitDiffServiceTests.swift */,
 				C328A5FB842A00D096906EE3 /* GitRepositoryServiceTests.swift */,
 				3C6F71627903561B3A75A4A3 /* HookDiffTests.swift */,
@@ -592,6 +599,7 @@
 				A0703E37A59EB4315587BCEC /* FileBrowserTabState.swift */,
 				03F44873E99A802B3C59BE39 /* FileNode.swift */,
 				F028C529027B0CEB4E5A6DA0 /* FileSubTabRecord.swift */,
+				4125F331086ABA70D1524809 /* FileViewMode.swift */,
 				1D0958D01CB9E5CC3964FD64 /* PaneLayout.swift */,
 				BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */,
 				4243A3471A4DF010C611D196 /* ShortcutAction.swift */,
@@ -770,6 +778,7 @@
 				6A0BCC9E620E634555EA4F1E /* Citadel */,
 				0BA0168B1395D9FAD0C21BA8 /* Sparkle */,
 				C97849ADC35767BC3DF4C9E6 /* CodeEditSourceEditor */,
+				37BDF2850494D8742F465CC8 /* MarkdownUI */,
 			);
 			productName = Treemux;
 			productReference = 6DD2CC0A8B9D60B36E1F8105 /* Treemux.app */;
@@ -800,6 +809,7 @@
 				8DA7ACE1A0101A1A2B6EE7DA /* XCRemoteSwiftPackageReference "Citadel" */,
 				007B26EA960650C68D5CAC88 /* XCRemoteSwiftPackageReference "CodeEditSourceEditor" */,
 				663AA795585A6D01BBB2A94E /* XCRemoteSwiftPackageReference "CodeEditTextView" */,
+				6641A0484CA3006B17161D22 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 				2C9A2C63248A592DF46B4F85 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -880,6 +890,7 @@
 				74A1B2B5904284E31DAC2CD4 /* FileSubTabRecord.swift in Sources */,
 				61D6EB6E02C98ADB788DBEA3 /* FileTreePanelView.swift in Sources */,
 				5ACC14D2306154601EC15D70 /* FileTypeClassifier.swift in Sources */,
+				789B43256222F56E9CAF71DA /* FileViewMode.swift in Sources */,
 				7DAFA3057CBB618258D561C4 /* FileViewerPanelView.swift in Sources */,
 				A57061F2AD4AB75070122AAB /* GitDiffService.swift in Sources */,
 				89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */,
@@ -986,6 +997,7 @@
 				F13DEBE0000ABD5FA8DC4A16 /* FileSubTabRecordCodingTests.swift in Sources */,
 				2B446FB1CDE3729E4D7645E1 /* FileTreeSettingsTests.swift in Sources */,
 				264259A0E6E918DF5ACF68F9 /* FileTypeClassifierTests.swift in Sources */,
+				8F8A057EFD1FED6C26EFEA4C /* FileViewModeCodingTests.swift in Sources */,
 				D29712364C194E7F95DCD544 /* GitDiffServiceTests.swift in Sources */,
 				9C689BD0883C82F0D099878B /* GitRepositoryServiceTests.swift in Sources */,
 				D61BE17F0FC9B10A76AD6B09 /* HookDiffTests.swift in Sources */,
@@ -1294,6 +1306,14 @@
 				revision = a2922cef1ef6b1972549f1f7d02f4e40a8e34a78;
 			};
 		};
+		6641A0484CA3006B17161D22 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.0;
+			};
+		};
 		8DA7ACE1A0101A1A2B6EE7DA /* XCRemoteSwiftPackageReference "Citadel" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/orlandos-nl/Citadel";
@@ -1309,6 +1329,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 2C9A2C63248A592DF46B4F85 /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
+		};
+		37BDF2850494D8742F465CC8 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6641A0484CA3006B17161D22 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
 		};
 		6A0BCC9E620E634555EA4F1E /* Citadel */ = {
 			isa = XCSwiftPackageProductDependency;

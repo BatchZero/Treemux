@@ -26,6 +26,9 @@ packages:
   CodeEditTextView:
     url: https://github.com/BatchZero/CodeEditTextView
     revision: a2922cef1ef6b1972549f1f7d02f4e40a8e34a78
+  MarkdownUI:
+    url: https://github.com/gonzalezreal/swift-markdown-ui
+    from: "2.4.0"
 
 settings:
   base:
@@ -56,6 +59,8 @@ targets:
         product: Sparkle
       - package: CodeEditSourceEditor
         product: CodeEditSourceEditor
+      - package: MarkdownUI
+        product: MarkdownUI
     postBuildScripts:
       - name: Copy Ghostty Resources
         script: |
