@@ -100,33 +100,60 @@ struct OpenProjectSheet: View {
     // MARK: - Remote Mode
 
     private var remoteModeView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if isLoadingTargets {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-            } else if sshTargets.isEmpty {
-                Text("No SSH hosts found in ~/.ssh/config")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-            } else {
+        VStack(alignment: .leading, spacing: 12) {
+            // Server section: picker and its management buttons share one row so
+            // New/Edit sit next to the thing they operate on.
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Server:")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                Picker("", selection: $selectedTargetIndex) {
-                    ForEach(sshTargets.indices, id: \.self) { index in
-                        let target = sshTargets[index]
-                        Text(targetLabel(target))
-                            .tag(index)
+                HStack(spacing: 8) {
+                    if isLoadingTargets {
+                        ProgressView()
+                            .controlSize(.small)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else if sshTargets.isEmpty {
+                        Text("No SSH hosts found in ~/.ssh/config")
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        Picker("", selection: $selectedTargetIndex) {
+                            ForEach(sshTargets.indices, id: \.self) { index in
+                                let target = sshTargets[index]
+                                Text(targetLabel(target))
+                                    .tag(index)
+                            }
+                        }
+                        .labelsHidden()
                     }
-                }
-                .labelsHidden()
 
+                    Button {
+                        serverEditMode = .add
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .help(LocalizedStringKey("New Server"))
+
+                    Button {
+                        if let entry = selectedManagedEntry() {
+                            serverEditMode = .edit(entry)
+                        }
+                    } label: {
+                        Image(systemName: "pencil")
+                    }
+                    .help(LocalizedStringKey("Edit Server"))
+                    .disabled(selectedManagedEntry()?.isEditable != true)
+                }
+            }
+
+            // Remote path section.
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Remote Path:")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                HStack {
+                HStack(spacing: 8) {
                     TextField("/home/user/project", text: $remotePath)
                         .textFieldStyle(.roundedBorder)
                     Button("Choose…") {
@@ -135,21 +162,7 @@ struct OpenProjectSheet: View {
                     .disabled(sshTargets.isEmpty)
                 }
             }
-
-            HStack {
-                Button {
-                    serverEditMode = .add
-                } label: {
-                    Label("New", systemImage: "plus")
-                }
-                Button("Edit") {
-                    if let entry = selectedManagedEntry() {
-                        serverEditMode = .edit(entry)
-                    }
-                }
-                .disabled(selectedManagedEntry()?.isEditable != true)
-                Spacer()
-            }
+            .disabled(sshTargets.isEmpty)
         }
         .sheet(isPresented: $showRemoteBrowser) {
             if selectedTargetIndex < sshTargets.count {

@@ -73,26 +73,55 @@ struct SSHServerEditSheet: View {
             Text(mode == .add ? "New Server" : "Edit Server")
                 .font(.headline)
 
-            Form {
-                TextField("Alias (Host)", text: $draft.alias)
-                TextField("Host (HostName)", text: $draft.hostName)
-                HStack {
-                    TextField("User", text: $draft.user)
-                    TextField("Port", text: $portText)
-                        .frame(width: 80)
+            // Left-aligned persistent labels paired with their fields in an
+            // aligned grid. Placeholders are demoted to in-field hints so the
+            // user always knows which field is which.
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 12) {
+                GridRow {
+                    Text("Alias (Host)")
+                        .gridColumnAlignment(.trailing)
+                        .foregroundStyle(.secondary)
+                    TextField("e.g. my-server", text: $draft.alias)
                 }
-                HStack {
-                    TextField("Identity File", text: $draft.identityFile)
-                    Button("Choose…") { chooseIdentityFile() }
+                GridRow {
+                    Text("Host (HostName)")
+                        .foregroundStyle(.secondary)
+                    TextField("example.com or 10.0.0.1", text: $draft.hostName)
+                }
+                GridRow {
+                    Text("User")
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        TextField("Optional", text: $draft.user)
+                        Text("Port")
+                            .foregroundStyle(.secondary)
+                        TextField("22", text: $portText)
+                            .frame(width: 56)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                GridRow {
+                    Text("Identity File")
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        TextField("Optional", text: $draft.identityFile)
+                        Button("Choose…") { chooseIdentityFile() }
+                    }
                 }
             }
-            .formStyle(.grouped)
+            .textFieldStyle(.roundedBorder)
 
             if let testResult {
-                Text(testResult).font(.caption).foregroundStyle(.secondary)
+                Text(testResult)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             if let saveError {
-                Text(saveError).font(.caption).foregroundStyle(.red)
+                Text(saveError)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             HStack {
