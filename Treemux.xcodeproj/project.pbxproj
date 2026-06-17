@@ -176,6 +176,7 @@
 		DB86BA29857E1BF63F9B694B /* DocumentViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFFA26AEDAD07B69571B36D5 /* DocumentViewerView.swift */; };
 		DC090F5DAC4E6A049EC586C2 /* ThemeLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952DFCA114D8DE9B65E79BCC /* ThemeLoaderTests.swift */; };
 		DC7D5637E530F011CDDD2B28 /* MarkdownCodeSyntaxHighlighterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23E8273C2D170F424026FDA /* MarkdownCodeSyntaxHighlighterTests.swift */; };
+		DCA2B428177A4F1160393A30 /* ThemeLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF7573B19B3EC961B740564F /* ThemeLoader.swift */; };
 		DDB379227505CCDD96BB62C1 /* TreemuxKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7DBEF3A8FDA651804A6D8A /* TreemuxKeyboardShortcuts.swift */; };
 		DDDEF7B960C5F076099D8E86 /* WorkspaceStoreBuiltInTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2036C4C917DE175BEEF342C /* WorkspaceStoreBuiltInTests.swift */; };
 		E1DE0D95217E95CD1EB1A02D /* FileIconCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B7D707F4CF11D6790D042C0 /* FileIconCatalog.swift */; };
@@ -346,6 +347,7 @@
 		BC87AA3FDA394146CBAB1546 /* SessionBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBackend.swift; sourceTree = "<group>"; };
 		BE43F77B5BDC0AB70604EC9B /* TreemuxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxApp.swift; sourceTree = "<group>"; };
 		BF28F45ACFC8C05BE9BD98A9 /* SidebarCellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarCellView.swift; sourceTree = "<group>"; };
+		BF7573B19B3EC961B740564F /* ThemeLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeLoader.swift; sourceTree = "<group>"; };
 		BFCB1FCCBAF466E03F7A8DD8 /* ProcessTree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTree.swift; sourceTree = "<group>"; };
 		BFFA26AEDAD07B69571B36D5 /* DocumentViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentViewerView.swift; sourceTree = "<group>"; };
 		C10F279A8881CC75D99EA492 /* HardenedWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardenedWebView.swift; sourceTree = "<group>"; };
@@ -678,6 +680,7 @@
 				3E4EF6D7547B58727542BA5A /* StoredShortcut.swift */,
 				1D785A9B26AEA5938D1D1759 /* Theme.swift */,
 				4395952ABD9D2EEC212FD8C3 /* ThemeDefinition.swift */,
+				BF7573B19B3EC961B740564F /* ThemeLoader.swift */,
 				1B7DBEF3A8FDA651804A6D8A /* TreemuxKeyboardShortcuts.swift */,
 				BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */,
 				D2054644AE5A8CE04F07FCF2 /* WorkspaceTabKind.swift */,
@@ -1049,6 +1052,7 @@
 				2809D4D799F01CA8ECDC252D /* TextEditorView.swift in Sources */,
 				185B0A8FE78E63F77309318D /* Theme.swift in Sources */,
 				B59CF4748DD593CD50B8EDE1 /* ThemeDefinition.swift in Sources */,
+				DCA2B428177A4F1160393A30 /* ThemeLoader.swift in Sources */,
 				5F96AB0D170D545A2C558022 /* ThemeManager.swift in Sources */,
 				29B9BE6617E084063B96EFD7 /* TmuxService.swift in Sources */,
 				B840AF41A36001568C69698A /* TreeSitterCodeHighlighter.swift in Sources */,
