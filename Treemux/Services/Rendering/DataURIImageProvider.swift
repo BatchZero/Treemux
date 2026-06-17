@@ -7,6 +7,8 @@ enum DataURIImage {
     static func decode(_ url: URL?) -> NSImage? {
         guard let url, url.scheme == "data" else { return nil }
         let raw = url.absoluteString
+        // Reject non-image data URIs (e.g., data:application/pdf, data:text/html).
+        guard raw.lowercased().hasPrefix("data:image/") else { return nil }
         guard let commaIndex = raw.firstIndex(of: ","),
               raw[..<commaIndex].contains(";base64") else { return nil }
         let base64 = String(raw[raw.index(after: commaIndex)...])

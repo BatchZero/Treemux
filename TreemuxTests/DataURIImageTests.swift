@@ -26,4 +26,11 @@ final class DataURIImageTests: XCTestCase {
     func test_malformedDataURIReturnsNil() {
         XCTAssertNil(DataURIImage.decode(URL(string: "data:image/png;base64,!!!notbase64")))
     }
+
+    func test_nonImageDataURIReturnsNil() {
+        // A valid base64 data URI but with a non-image MIME type must be rejected.
+        let html = "PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==" // <script>alert(1)</script>
+        XCTAssertNil(DataURIImage.decode(URL(string: "data:text/html;base64,\(html)")))
+        XCTAssertNil(DataURIImage.decode(URL(string: "data:application/pdf;base64,\(html)")))
+    }
 }
