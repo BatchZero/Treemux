@@ -105,4 +105,50 @@ final class LocalFileBrowserDataSourceTests: XCTestCase {
         try await ds.writeFile(file.path, data: "beta".data(using: .utf8)!)
         XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), "beta")
     }
+
+    // MARK: - buildNodes (skip-unreadable robustness)
+
+    private func fileNode(_ url: URL) -> FileNode {
+        FileNode(id: url.path, name: url.lastPathComponent, path: url.path,
+                 kind: .file, sizeBytes: nil, modifiedAt: nil)
+    }
+
+    private func dirNode(_ url: URL) -> FileNode {
+        FileNode(id: url.path, name: url.lastPathComponent, path: url.path,
+                 kind: .directory, sizeBytes: nil, modifiedAt: nil)
+    }
+
+    // Core of the bug fix: one entry whose node-build throws (e.g. the
+    // TCC-protected ~/.Trash) must NOT abort the whole listing.
+    func testBuildNodesSkipsEntriesThatThrow() {
+        let parent = URL(fileURLWithPath: "/parent")
+        let raw = ["a.txt", ".Trash", "b.txt"].map { parent.appendingPathComponent($0) }
+
+        let nodes = LocalFileBrowserDataSource.buildNodes(from: raw, parent: parent) { url in
+            if url.lastPathComponent == ".Trash" {
+                throw NSError(domain: NSCocoaErrorDomain, code: NSFileReadNoPermissionError)
+            }
+            return self.fileNode(url)
+        }
+
+        XCTAssertEqual(nodes.map(\.name), ["a.txt", "b.txt"])
+    }
+
+    func testBuildNodesSortsDirectoriesFirstThenAlpha() {
+        let parent = URL(fileURLWithPath: "/parent")
+        let raw = ["zebra.txt", "alpha", "beta.txt"].map { parent.appendingPathComponent($0) }
+
+        let nodes = LocalFileBrowserDataSource.buildNodes(from: raw, parent: parent) { url in
+            url.lastPathComponent == "alpha" ? self.dirNode(url) : self.fileNode(url)
+        }
+
+        XCTAssertEqual(nodes.map(\.name), ["alpha", "beta.txt", "zebra.txt"])
+    }
+
+    func testBuildNodesAllSucceedReturnsAll() {
+        let parent = URL(fileURLWithPath: "/parent")
+        let raw = ["one", "two"].map { parent.appendingPathComponent($0) }
+        let nodes = LocalFileBrowserDataSource.buildNodes(from: raw, parent: parent) { self.fileNode($0) }
+        XCTAssertEqual(Set(nodes.map(\.name)), Set(["one", "two"]))
+    }
 }

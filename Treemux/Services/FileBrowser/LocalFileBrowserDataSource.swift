@@ -18,11 +18,7 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
             // temporary directory hierarchy (e.g. /var → /private/var on macOS)
             // are not transparently resolved, keeping paths stable for callers.
             let contents = try fm.contentsOfDirectory(at: parentURL, includingPropertiesForKeys: keys, options: [])
-            return try contents.map { rawURL -> FileNode in
-                let stableURL = parentURL.appendingPathComponent(rawURL.lastPathComponent)
-                return try Self.makeNode(from: stableURL)
-            }
-            .sorted(by: Self.naturalOrder)
+            return Self.buildNodes(from: contents, parent: parentURL, make: Self.makeNode)
         }
     }
 
@@ -84,6 +80,25 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
     }
 
     // MARK: - helpers
+
+    /// Builds `FileNode`s from raw directory entries, skipping any entry whose
+    /// node cannot be built. A single un-stattable entry — e.g. the
+    /// TCC-protected `~/.Trash`, whose `resourceValues` throws a permission
+    /// error — must not abort the whole listing. `make` is injectable for tests.
+    static func buildNodes(
+        from rawURLs: [URL],
+        parent: URL,
+        make: (URL) throws -> FileNode
+    ) -> [FileNode] {
+        rawURLs.compactMap { rawURL -> FileNode? in
+            // Re-derive each child's path via the parent so symlinks in the
+            // hierarchy (e.g. /var → /private/var) are not transparently
+            // resolved, keeping paths stable for callers.
+            let stableURL = parent.appendingPathComponent(rawURL.lastPathComponent)
+            return try? make(stableURL)
+        }
+        .sorted(by: naturalOrder)
+    }
 
     private static func makeNode(from url: URL) throws -> FileNode {
         let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey, .contentModificationDateKey])
