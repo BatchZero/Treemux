@@ -46,17 +46,6 @@ struct MainWindowView: View {
                 .help("Toggle Sidebar")
             }
 
-            ToolbarItem(placement: .principal) {
-                if let name = store.selectedWorkspace?.name {
-                    Text(name)
-                        .font(DesignFonts.dialogTitle)
-                        .tracking(DesignFonts.dialogTitleTracking)
-                        .foregroundStyle(theme.textPrimary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-            }
-
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
                     if let sc = store.activeSessionController,

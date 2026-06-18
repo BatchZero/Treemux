@@ -24,6 +24,9 @@ struct SidebarItemIconView: View {
     var activityIndicator: SidebarIconActivityIndicator = .none
     var activityPalette: SidebarIconPalette = .amber
     var isEmphasized: Bool = false
+    /// Ring color for the activity badge. Threaded from the row (which holds the
+    /// theme) because this subtree is NSHostingView-hosted without ThemeManager.
+    var activityRingColor: Color = .clear
 
     private var palette: SidebarIconPaletteDescriptor {
         icon.palette.descriptor
@@ -50,7 +53,7 @@ struct SidebarItemIconView: View {
                 )
 
             if activityIndicator == .working {
-                SidebarIconActivityBadge(size: size, palette: activityPalette)
+                SidebarIconActivityBadge(size: size, palette: activityPalette, ringColor: activityRingColor)
                     .offset(x: 2, y: 2)
             }
         }
@@ -79,9 +82,14 @@ struct SidebarItemIconView: View {
 /// Static dot shown at the bottom-right of a sidebar icon when the node has
 /// at least one running terminal session.
 struct SidebarIconActivityBadge: View {
-    @EnvironmentObject private var theme: ThemeManager
     let size: CGFloat
     let palette: SidebarIconPalette
+    /// Ring color separating the dot from the icon tile. Passed in (NOT via
+    /// @EnvironmentObject): this view is hosted inside `SidebarCellView`'s
+    /// NSHostingView, which does not inject `ThemeManager` — see `SidebarNodeRow`'s
+    /// "no @EnvironmentObject" contract. Using @EnvironmentObject here crashes
+    /// the app whenever an activity badge renders.
+    var ringColor: Color = .clear
 
     private var activityColor: Color {
         palette.descriptor.gradientEnd
@@ -95,6 +103,6 @@ struct SidebarIconActivityBadge: View {
         Circle()
             .fill(activityColor)
             .frame(width: badgeSize, height: badgeSize)
-            .overlay(Circle().stroke(theme.sidebarBackground, lineWidth: 1))
+            .overlay(Circle().stroke(ringColor, lineWidth: 1))
     }
 }

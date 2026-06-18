@@ -71,7 +71,8 @@ struct WorkspaceRowContent: View {
                 icon: store.sidebarIcon(for: workspace),
                 size: 22,
                 activityIndicator: activityIndicator,
-                isEmphasized: isSelected
+                isEmphasized: isSelected,
+                activityRingColor: theme.sidebarBackground
             )
             VStack(alignment: .leading, spacing: 2) {
                 Text(workspace.name)
@@ -136,7 +137,8 @@ struct WorktreeRowContent: View {
                 size: 16,
                 usesCircularShape: true,
                 activityIndicator: activityIndicator,
-                isEmphasized: isSelected
+                isEmphasized: isSelected,
+                activityRingColor: theme.sidebarBackground
             )
             .frame(width: 24, alignment: .leading)
             Text(worktree.branch ?? worktree.path.lastPathComponent)
