@@ -38,7 +38,7 @@ struct SSHRawConfigSheet: View {
                     .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
                 Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(PillButtonStyle(accent: theme.accentColor, onAccent: theme.onAccentColor))
+                    .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor, fill: theme.accentColor, onFill: theme.onAccentColor))
             }
         }
         .padding(Spacing.lg)
