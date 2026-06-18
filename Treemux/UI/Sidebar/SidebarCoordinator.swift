@@ -45,6 +45,30 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
             self?.toggleExpansionForSelection()
         }
 
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(themeDidChangeRefresh(_:)),
+            name: .themeDidChange,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    // MARK: - Theme Refresh
+
+    @objc private func themeDidChangeRefresh(_ notification: Notification) {
+        guard let theme, let outlineView = container?.outlineView else { return }
+        let fill = theme.sidebarSelectionFillNS
+        let stroke = theme.sidebarSelectionStrokeNS
+        outlineView.enumerateAvailableRowViews { rowView, _ in
+            guard let row = rowView as? SidebarRowView else { return }
+            row.selectionFillColor = fill
+            row.selectionStrokeColor = stroke
+            row.needsDisplay = true
+        }
     }
 
     // MARK: - Apply (Diff + Rebuild)

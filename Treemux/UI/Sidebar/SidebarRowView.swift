@@ -6,8 +6,8 @@ import AppKit
 
 /// Custom row view that draws an inset rounded-rectangle selection.
 final class SidebarRowView: NSTableRowView {
-    var selectionFillColor: NSColor = NSColor(calibratedRed: 0.10, green: 0.16, blue: 0.26, alpha: 1)
-    var selectionStrokeColor: NSColor = NSColor(calibratedRed: 0.25, green: 0.54, blue: 0.87, alpha: 0.9)
+    var selectionFillColor: NSColor = .selectedContentBackgroundColor
+    var selectionStrokeColor: NSColor = .clear
 
     override func drawBackground(in dirtyRect: NSRect) {}
 
