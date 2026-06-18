@@ -7,6 +7,7 @@ import SwiftUI
 /// Tab bar displayed above the terminal area when 2+ tabs exist.
 /// Shows tab buttons with title, pane count badge, close button, and drag-to-reorder.
 struct WorkspaceTabBarView: View {
+    @EnvironmentObject private var theme: ThemeManager
     @ObservedObject var workspace: WorkspaceModel
     @State private var renamingTabID: UUID?
     @State private var renameText: String = ""
@@ -22,17 +23,17 @@ struct WorkspaceTabBarView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 1) {
                     if !groups.files.isEmpty {
-                        TabGroupEyebrow(title: "Files", color: DesignTokens.files)
+                        TabGroupEyebrow(title: "Files", color: theme.accentColor)
                         ForEach(groups.files) { tab in tabView(tab) }
                     }
                     if !groups.files.isEmpty && !groups.shell.isEmpty {
                         Rectangle()
-                            .fill(DesignTokens.line)
+                            .fill(theme.dividerColor)
                             .frame(width: 1, height: 18)
                             .padding(.horizontal, 5)
                     }
                     if !groups.shell.isEmpty {
-                        TabGroupEyebrow(title: "Shell", color: DesignTokens.shell)
+                        TabGroupEyebrow(title: "Shell", color: theme.shellAccent)
                         ForEach(groups.shell) { tab in tabView(tab) }
                     }
                 }
@@ -54,10 +55,10 @@ struct WorkspaceTabBarView: View {
             .padding(.trailing, 8)
         }
         .frame(height: 38)
-        .background(Color(nsColor: .windowBackgroundColor).opacity(0.6))
+        .background(theme.tabBarBackground)
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(.white.opacity(0.08))
+                .fill(theme.dividerColor)
                 .frame(height: 1)
         }
     }
@@ -124,6 +125,7 @@ struct WorkspaceTabBarView: View {
 // MARK: - Tab Button
 
 private struct TabButton: View {
+    @EnvironmentObject private var theme: ThemeManager
     let tab: WorkspaceTabStateRecord
     let isSelected: Bool
     let isHovered: Bool
@@ -185,12 +187,12 @@ private struct TabButton: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(
-                isSelected ? AnyShapeStyle(DesignTokens.surface)
-                : isHovered ? AnyShapeStyle(.white.opacity(0.08))
-                : AnyShapeStyle(.white.opacity(0.05))
+                isSelected ? AnyShapeStyle(theme.sidebarSelection)
+                : isHovered ? AnyShapeStyle(theme.textPrimary.opacity(0.08))
+                : AnyShapeStyle(theme.textPrimary.opacity(0.05))
             )
             .clipShape(RoundedRectangle(cornerRadius: 6))
-            .phosphorUnderline(DesignTokens.tabAccent(for: tab.kind), active: isSelected)
+            .phosphorUnderline(tab.kind == .fileBrowser ? theme.accentColor : theme.shellAccent, active: isSelected)
         }
         .buttonStyle(.plain)
         .frame(width: TreemuxTabSizing.width(for: tab.title, paneCount: paneCount, hasDot: dotKind != nil))
