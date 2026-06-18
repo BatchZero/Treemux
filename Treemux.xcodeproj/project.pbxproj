@@ -123,6 +123,8 @@
 		8F8A057EFD1FED6C26EFEA4C /* FileViewModeCodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F04CC27D705CD0274D08465 /* FileViewModeCodingTests.swift */; };
 		8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */; };
 		9294D5EADAA99AD4F7DA564F /* DirectoryTreeCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F006E95E6DE6BBA75B635AF /* DirectoryTreeCacheTests.swift */; };
+		9367C75DB97EF0A3574D5C3F /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016EA51D24EE56C065C1F31C /* DesignSystem.swift */; };
+		94A2A033154EB20A645A2D9F /* DesignSystemTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE85F72255F7C6106008EAC /* DesignSystemTests.swift */; };
 		9522E1F5358CF0C642D88DD6 /* SidebarRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74852C7BACA536876045BD7A /* SidebarRowView.swift */; };
 		955F5B8946B3F80A7AACDC6D /* SidebarCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62EB76FEF501CC1380FB2607 /* SidebarCoordinator.swift */; };
 		98BBB295D98A3BC13A807E63 /* FileBrowserTabStateCodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3C9EABA8F49976F4327BA6D /* FileBrowserTabStateCodingTests.swift */; };
@@ -213,6 +215,7 @@
 
 /* Begin PBXFileReference section */
 		013F880772F0D64DBCEC5CC7 /* LocalFileBrowserDataSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFileBrowserDataSourceTests.swift; sourceTree = "<group>"; };
+		016EA51D24EE56C065C1F31C /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		03F44873E99A802B3C59BE39 /* FileNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileNode.swift; sourceTree = "<group>"; };
 		07F078C6D132852EC60F4A72 /* LocalGitDiffService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalGitDiffService.swift; sourceTree = "<group>"; };
 		081CA32DCF94FDC4583766A2 /* ProcessTreeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTreeTests.swift; sourceTree = "<group>"; };
@@ -283,6 +286,7 @@
 		581FDA0779784EFB231AAF34 /* AppUpdaterController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdaterController.swift; sourceTree = "<group>"; };
 		597C1CF15FDBE05E8C17339E /* FileViewerPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileViewerPanelView.swift; sourceTree = "<group>"; };
 		5A8FDDA8554C79E902629B64 /* FileBrowserTabControllerCopyPathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTabControllerCopyPathTests.swift; sourceTree = "<group>"; };
+		5AE85F72255F7C6106008EAC /* DesignSystemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystemTests.swift; sourceTree = "<group>"; };
 		5B1568E12CA7608601340819 /* FileBrowserTabControllerStaleLoadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTabControllerStaleLoadTests.swift; sourceTree = "<group>"; };
 		5C2110A46976203DDBF9D707 /* TerminalHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalHostView.swift; sourceTree = "<group>"; };
 		5C4F64E16954A106E36D7073 /* SidebarContextMenuTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarContextMenuTests.swift; sourceTree = "<group>"; };
@@ -451,6 +455,7 @@
 				B65974A71E50B592A362DDD9 /* CodeHighlightThemeTests.swift */,
 				D2CE396B207DE6754165C047 /* CodeHighlightThemeThemingTests.swift */,
 				C2F0D656CE9E8DF5B129EB01 /* DataURIImageTests.swift */,
+				5AE85F72255F7C6106008EAC /* DesignSystemTests.swift */,
 				9F006E95E6DE6BBA75B635AF /* DirectoryTreeCacheTests.swift */,
 				EC53BD4B085E43BD378C78DE /* DocumentViewerViewTests.swift */,
 				169A224EED50A9EF4A84116F /* EditorHighlightPolicyTests.swift */,
@@ -539,6 +544,7 @@
 			isa = PBXGroup;
 			children = (
 				DFBE7611F1166CF021903373 /* DesignFonts.swift */,
+				016EA51D24EE56C065C1F31C /* DesignSystem.swift */,
 				8B7D707F4CF11D6790D042C0 /* FileIconCatalog.swift */,
 				2816C1F90B7E4C359D63033F /* ThemeManager.swift */,
 			);
@@ -979,6 +985,7 @@
 				2FB91E9FD3738C3BFF66832A /* CompletionPopover.swift in Sources */,
 				AD6B9C66B911B134F8DF9FF4 /* DataURIImageProvider.swift in Sources */,
 				33BC8BCE132D3D07D4BF1B1B /* DesignFonts.swift in Sources */,
+				9367C75DB97EF0A3574D5C3F /* DesignSystem.swift in Sources */,
 				A708746B29BFBA8388B104CB /* DirectoryTreeCachePersistence.swift in Sources */,
 				3CE12C1E3DF620B8D18564C0 /* DirectoryTreeFetch.swift in Sources */,
 				A7A81F4E31835667F4B3D786 /* DirectoryTreeSnapshot.swift in Sources */,
@@ -1104,6 +1111,7 @@
 				A3BED711A68999E889F12944 /* CodeHighlightThemeTests.swift in Sources */,
 				6A5F5F8B6080A06391EC7D99 /* CodeHighlightThemeThemingTests.swift in Sources */,
 				12E5873E9CA6FC4FB8CFB188 /* DataURIImageTests.swift in Sources */,
+				94A2A033154EB20A645A2D9F /* DesignSystemTests.swift in Sources */,
 				9294D5EADAA99AD4F7DA564F /* DirectoryTreeCacheTests.swift in Sources */,
 				C617D5918ABF279BCD715063 /* DocumentViewerViewTests.swift in Sources */,
 				F441E93530FAA2FD7E5E4F38 /* EditorHighlightPolicyTests.swift in Sources */,
@@ -1264,7 +1272,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 13;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -1283,7 +1291,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.0.14;
+				MARKETING_VERSION = 0.0.13;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1329,7 +1337,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 13;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -1342,7 +1350,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.0.14;
+				MARKETING_VERSION = 0.0.13;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
