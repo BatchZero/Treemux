@@ -41,7 +41,11 @@ final class WindowContext {
         // workspace controls we actually use.
         window.tabbingMode = .disallowed
 
-        window.titlebarAppearsTransparent = false
+        // Transparent titlebar lets the themed window background show through the
+        // toolbar area, so the title bar shares the app's surface tone instead of
+        // the opaque system material (which reads as a stark white strip in light
+        // themes and breaks the single-surface look against the sidebar).
+        window.titlebarAppearsTransparent = true
         window.toolbarStyle = .unifiedCompact
         window.center()
         applyThemeAppearance(to: window)
