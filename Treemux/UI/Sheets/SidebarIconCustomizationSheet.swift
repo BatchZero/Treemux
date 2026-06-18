@@ -9,6 +9,7 @@ import SwiftUI
 
 /// A reusable card that lets the user pick a symbol, palette, and fill style for a sidebar icon.
 struct SidebarIconEditorCard: View {
+    @EnvironmentObject private var theme: ThemeManager
     let title: LocalizedStringKey
     let subtitle: LocalizedStringKey?
     @Binding var icon: SidebarItemIcon
@@ -30,6 +31,7 @@ struct SidebarIconEditorCard: View {
                 }
                 Spacer()
                 Button("Random") { icon = randomizer() }
+                    .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
             }
 
             // Row 2: Symbol picker dropdown
@@ -56,7 +58,7 @@ struct SidebarIconEditorCard: View {
                         Button {
                             icon.palette = palette
                         } label: {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
                                 .fill(
                                     LinearGradient(
                                         colors: [palette.descriptor.gradientStart, palette.descriptor.gradientEnd],
@@ -65,9 +67,9 @@ struct SidebarIconEditorCard: View {
                                     )
                                 )
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
                                         .stroke(
-                                            icon.palette == palette ? Color.white.opacity(0.9) : palette.descriptor.border,
+                                            icon.palette == palette ? theme.accentColor : palette.descriptor.border,
                                             lineWidth: icon.palette == palette ? 2 : 1
                                         )
                                 )
@@ -79,8 +81,8 @@ struct SidebarIconEditorCard: View {
                 }
             }
         }
-        .padding(12)
-        .background(Color.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .padding(Spacing.sm)
+        .background(theme.sidebarSelection.opacity(0.5), in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
     }
 }
 
@@ -90,6 +92,7 @@ struct SidebarIconEditorCard: View {
 struct SidebarIconCustomizationSheet: View {
     let request: SidebarIconCustomizationRequest
     @EnvironmentObject private var store: WorkspaceStore
+    @EnvironmentObject private var theme: ThemeManager
     @Environment(\.dismiss) private var dismiss
     @State private var icon = SidebarItemIcon(symbolName: "arrow.triangle.branch", palette: .blue)
 
@@ -100,10 +103,11 @@ struct SidebarIconCustomizationSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Customize Sidebar Icon")
-                .font(.system(size: 20, weight: .semibold))
+                .font(DesignFonts.dialogTitle)
+                .tracking(DesignFonts.dialogTitleTracking)
 
             Text(title)
-                .font(.system(size: 12, weight: .medium))
+                .font(DesignFonts.chromeCaption)
                 .foregroundStyle(.secondary)
 
             SidebarIconEditorCard(
@@ -119,17 +123,19 @@ struct SidebarIconCustomizationSheet: View {
                     store.resetSidebarIcon(for: request.target)
                     dismiss()
                 }
+                .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
                 Button("Cancel") {
                     dismiss()
                 }
+                .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
                 Button("Save") {
                     store.updateSidebarIcon(icon, for: request.target)
                     dismiss()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PillButtonStyle(accent: theme.accentColor, onAccent: theme.onAccentColor))
             }
         }
-        .padding(20)
+        .padding(Spacing.lg)
         .frame(width: 480)
         .task {
             icon = store.sidebarIconSelection(for: request.target)

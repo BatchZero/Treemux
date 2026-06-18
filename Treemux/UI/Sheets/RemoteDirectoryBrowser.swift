@@ -7,6 +7,7 @@ import SwiftUI
 
 /// Sheet that displays a tree-style remote directory browser via SFTP.
 struct RemoteDirectoryBrowser: View {
+    @EnvironmentObject private var theme: ThemeManager
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: RemoteDirectoryBrowserViewModel
 
@@ -23,12 +24,12 @@ struct RemoteDirectoryBrowser: View {
     var body: some View {
         VStack(spacing: 0) {
             titleBar
-            Divider()
             pathBar
-            Divider()
+                .hairline(.top)
+                .hairline(.bottom)
             directoryContent
-            Divider()
             bottomBar
+                .hairline(.top)
         }
         .frame(width: 480, height: 420)
         .task {
@@ -44,17 +45,18 @@ struct RemoteDirectoryBrowser: View {
     private var titleBar: some View {
         HStack {
             Text("Select Remote Directory")
-                .font(.headline)
+                .font(DesignFonts.dialogTitle)
+                .tracking(DesignFonts.dialogTitleTracking)
             Spacer()
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.sm)
     }
 
     // MARK: - Path Bar
 
     private var pathBar: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.xs) {
             Image(systemName: "folder")
                 .foregroundStyle(.secondary)
             TextField("/path/to/directory", text: $viewModel.pathBarText)
@@ -63,7 +65,7 @@ struct RemoteDirectoryBrowser: View {
                     Task { await viewModel.navigateTo(path: viewModel.pathBarText) }
                 }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, Spacing.lg)
         .padding(.vertical, 10)
     }
 
@@ -120,6 +122,7 @@ struct RemoteDirectoryBrowser: View {
             }
             .keyboardShortcut(.defaultAction)
             .disabled(viewModel.password.isEmpty)
+            .buttonStyle(PillButtonStyle(accent: theme.accentColor, onAccent: theme.onAccentColor))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -165,19 +168,19 @@ struct RemoteDirectoryBrowser: View {
     // MARK: - Bottom Bar
 
     private var bottomBar: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.xs) {
             if let selected = viewModel.selectedPath {
                 Image(systemName: "folder.fill")
-                    .font(.system(size: 11))
+                    .font(DesignFonts.chromeCaption)
                     .foregroundStyle(.secondary)
                 Text(selected)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(DesignFonts.chromeStrong)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             } else {
                 Text("No directory selected")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(DesignFonts.chromeStrong)
                     .foregroundStyle(.tertiary)
             }
 
@@ -187,6 +190,7 @@ struct RemoteDirectoryBrowser: View {
                 dismiss()
             }
             .keyboardShortcut(.cancelAction)
+            .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
 
             Button("Open") {
                 if let path = viewModel.selectedPath {
@@ -196,9 +200,10 @@ struct RemoteDirectoryBrowser: View {
             }
             .keyboardShortcut(.defaultAction)
             .disabled(viewModel.selectedPath == nil)
+            .buttonStyle(PillButtonStyle(accent: theme.accentColor, onAccent: theme.onAccentColor))
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.sm)
     }
 }
 

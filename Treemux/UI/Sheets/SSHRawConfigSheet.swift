@@ -8,6 +8,7 @@ import SwiftUI
 /// Advanced raw-text editor for the primary SSH config file. Saves atomically
 /// via the shared writer (same fidelity / permission guarantees).
 struct SSHRawConfigSheet: View {
+    @EnvironmentObject private var theme: ThemeManager
     let path: String                 // expanded absolute path
     @Environment(\.dismiss) private var dismiss
 
@@ -15,29 +16,32 @@ struct SSHRawConfigSheet: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        VStack(spacing: 12) {
-            Text("Edit Raw Config File").font(.headline)
-            Text(path).font(.caption).foregroundStyle(.secondary)
+        VStack(spacing: Spacing.sm) {
+            Text("Edit Raw Config File")
+                .font(DesignFonts.dialogTitle)
+                .tracking(DesignFonts.dialogTitleTracking)
+            Text(path).font(DesignFonts.chromeCaption).foregroundStyle(.secondary)
 
             TextEditor(text: $text)
-                .font(.system(.body, design: .monospaced))
+                .font(.system(.body, design: .monospaced))   // intentional monospaced: data layer
                 .frame(minWidth: 520, minHeight: 360)
                 .border(.quaternary)
 
             if let errorMessage {
-                Text(errorMessage).font(.caption).foregroundStyle(.red)
+                Text(errorMessage).font(DesignFonts.chromeCaption).foregroundStyle(.red)
             }
 
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
+                    .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
                 Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PillButtonStyle(accent: theme.accentColor, onAccent: theme.onAccentColor))
             }
         }
-        .padding(20)
+        .padding(Spacing.lg)
         .frame(width: 600, height: 480)
         .task { load() }
     }

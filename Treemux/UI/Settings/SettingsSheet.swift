@@ -74,24 +74,23 @@ struct SettingsSheet: View {
             }
             .listStyle(.sidebar)
             .frame(width: 180)
-
-            Divider()
+            .hairline(.trailing)
 
             // Detail
             VStack(spacing: 0) {
                 // Header
                 VStack(alignment: .leading, spacing: 4) {
                     Text(selection.title)
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(DesignFonts.dialogTitle)
+                        .tracking(DesignFonts.dialogTitleTracking)
                     Text(selection.subtitle)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(DesignFonts.chromeCaption)
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, 18)
-
-                Divider()
+                .hairline(.bottom)
 
                 // Content
                 ScrollView {
@@ -100,7 +99,6 @@ struct SettingsSheet: View {
                 }
 
                 // Footer with Save / Cancel
-                Divider()
                 HStack {
                     Spacer()
                     Button("Cancel") {
@@ -111,17 +109,19 @@ struct SettingsSheet: View {
                         dismiss()
                     }
                     .keyboardShortcut(.cancelAction)
+                    .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
 
                     Button("Save") {
                         store.updateSettings(draft)
                         languageManager.apply(languageCode: draft.language)
                         dismiss()
                     }
-                    .buttonStyle(.borderedProminent)
                     .disabled(!hasChanges)
                     .keyboardShortcut(.defaultAction)
+                    .buttonStyle(PillButtonStyle(accent: theme.accentColor, onAccent: theme.onAccentColor))
                 }
-                .padding(20)
+                .padding(Spacing.lg)
+                .hairline(.top)
             }
         }
         .frame(width: 640, height: 460)

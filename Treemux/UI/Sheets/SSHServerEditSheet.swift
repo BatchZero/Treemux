@@ -9,6 +9,7 @@ import SwiftUI
 /// Shared add/edit form for an SSH server. Presented identically from both the
 /// Settings → SSH list and the Open Project → Remote dialog.
 struct SSHServerEditSheet: View {
+    @EnvironmentObject private var theme: ThemeManager
     enum Mode: Equatable {
         case add
         case edit(ManagedSSHEntry)
@@ -106,6 +107,7 @@ struct SSHServerEditSheet: View {
                     HStack(spacing: 8) {
                         TextField("Optional", text: $draft.identityFile)
                         Button("Choose…") { chooseIdentityFile() }
+                            .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
                     }
                 }
             }
@@ -127,16 +129,18 @@ struct SSHServerEditSheet: View {
             HStack {
                 Button("Test Connection") { Task { await testConnection() } }
                     .disabled(isTesting || draft.hostName.isEmpty)
+                    .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
                 Spacer()
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
+                    .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
                 Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
                     .disabled(!isValid)
+                    .buttonStyle(PillButtonStyle(accent: theme.accentColor, onAccent: theme.onAccentColor))
             }
         }
-        .padding(20)
+        .padding(Spacing.lg)
         .frame(width: 420)
     }
 

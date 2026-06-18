@@ -10,21 +10,23 @@
 import SwiftUI
 
 struct BatchUnsavedChangesSheet: View {
+    @EnvironmentObject private var theme: ThemeManager
     let dirtyRelativePaths: [String]
     let onSaveAll: () -> Void
     let onDiscardAll: () -> Void
     let onCancel: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             Text(String.localizedStringWithFormat(
                 String(localized: "%lld files have unsaved changes:"),
                 dirtyRelativePaths.count))
-                .font(.headline)
+                .font(DesignFonts.dialogTitle)
+                .tracking(DesignFonts.dialogTitleTracking)
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(dirtyRelativePaths, id: \.self) { p in
-                        Text(p).font(.system(size: 12, design: .monospaced))
+                        Text(p).font(.system(size: 12, design: .monospaced))   // intentional monospaced: data layer
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -32,13 +34,16 @@ struct BatchUnsavedChangesSheet: View {
             .frame(minHeight: 80, maxHeight: 200)
             HStack {
                 Button(LocalizedStringKey("Cancel")) { onCancel() }
+                    .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
                 Spacer()
                 Button(LocalizedStringKey("Don't Save")) { onDiscardAll() }
+                    .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
                 Button(LocalizedStringKey("Save All")) { onSaveAll() }
                     .keyboardShortcut(.defaultAction)
+                    .buttonStyle(PillButtonStyle(accent: theme.accentColor, onAccent: theme.onAccentColor))
             }
         }
-        .padding(20)
+        .padding(Spacing.lg)
         .frame(width: 420)
     }
 }

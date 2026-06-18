@@ -57,6 +57,7 @@ struct OpenProjectSheet: View {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
+                .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
 
                 Button("Open") {
                     openProject()
@@ -64,9 +65,10 @@ struct OpenProjectSheet: View {
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(!canOpen)
+                .buttonStyle(PillButtonStyle(accent: theme.accentColor, onAccent: theme.onAccentColor))
             }
         }
-        .padding(20)
+        .padding(Spacing.lg)
         .frame(width: 420)
         .task {
             await loadSSHTargets()
@@ -76,7 +78,7 @@ struct OpenProjectSheet: View {
     // MARK: - Local Mode
 
     private var localModeView: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
             Text("Choose a local folder:")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -90,8 +92,9 @@ struct OpenProjectSheet: View {
                 Button("Choose…") {
                     chooseLocalFolder()
                 }
+                .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
             }
-            .padding(8)
+            .padding(Spacing.xs)
             .background(.quaternary.opacity(0.5))
             .clipShape(RoundedRectangle(cornerRadius: 6))
         }
@@ -100,7 +103,7 @@ struct OpenProjectSheet: View {
     // MARK: - Remote Mode
 
     private var remoteModeView: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             // Server section: picker and its management buttons share one row so
             // New/Edit sit next to the thing they operate on.
             VStack(alignment: .leading, spacing: 6) {
