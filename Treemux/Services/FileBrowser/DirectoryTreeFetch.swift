@@ -38,7 +38,19 @@ enum BFSTreeLister {
         while !frontier.isEmpty && depth < maxDepth {
             var next: [String] = []
             for dir in frontier {
-                let kids = try await source.listDirectory(dir)
+                let kids: [FileNode]
+                do {
+                    kids = try await source.listDirectory(dir)
+                } catch {
+                    // A directory we can't enumerate (e.g. the TCC-protected
+                    // ~/.Trash, or ~/Desktop without Full Disk Access) must not
+                    // abort the entire tree fetch. Skip it: it gets no children
+                    // entry and we don't recurse into it. The root the user
+                    // explicitly opened is the exception — a root we cannot read
+                    // is a real, surfaceable error.
+                    if dir == root { throw error }
+                    continue
+                }
                 let capped: [FileNode]
                 if kids.count > entryCap {
                     capped = Array(kids.prefix(entryCap))
