@@ -250,6 +250,13 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
             return AnyView(EmptyView())
         }
         let activity = activityIndicator(for: node)
+        // `SidebarNodeRow` takes `theme` as a plain value (not @ObservedObject),
+        // so SwiftUI cannot see that its body depends on `theme.activeTheme`.
+        // When only the theme changes, a re-applied row is structurally equal to
+        // the previous one and SwiftUI skips re-evaluating `body` (text/icon
+        // colors stay stale until a hover forces a re-render). Tag the row with
+        // the active theme id so a theme switch changes its identity and forces
+        // a rebuild with the new colors.
         return AnyView(
             SidebarNodeRow(
                 node: node,
@@ -258,6 +265,7 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
                 isSelected: isSelected,
                 activityIndicator: activity
             )
+            .id(theme.activeTheme.id)
         )
     }
 
