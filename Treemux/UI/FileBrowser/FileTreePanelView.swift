@@ -7,6 +7,7 @@ import SwiftUI
 struct FileTreePanelView: View {
     @ObservedObject var controller: FileBrowserTabController
     @EnvironmentObject private var store: WorkspaceStore
+    @EnvironmentObject private var theme: ThemeManager
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,7 +26,7 @@ struct FileTreePanelView: View {
                 .padding(.vertical, 4)
             }
         }
-        .background(DesignTokens.panel)
+        .background(theme.paneBackground)
     }
 }
 
@@ -125,6 +126,7 @@ private struct NodeRow: View {
     let depth: Int
     let density: TreeDensity
     @ObservedObject var controller: FileBrowserTabController
+    @EnvironmentObject private var theme: ThemeManager
     @State private var isHovered = false
 
     private var isSelected: Bool { controller.selectedFilePath == node.path }
@@ -150,14 +152,14 @@ private struct NodeRow: View {
             // One hairline per depth level (14pt per level: 1pt line + 13pt trailing).
             ForEach(0..<depth, id: \.self) { _ in
                 Rectangle()
-                    .fill(DesignTokens.line)
+                    .fill(theme.dividerColor)
                     .frame(width: 1, height: density.rowHeight)
                     .padding(.trailing, 13)
             }
             if node.isDirectory {
                 Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                     .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(DesignTokens.faint)
+                    .foregroundStyle(theme.textMuted)
                     .frame(width: 12)
             } else {
                 Spacer().frame(width: 12)
@@ -174,25 +176,23 @@ private struct NodeRow: View {
                 .frame(width: density.fontSize + 3, height: density.fontSize + 3)
             Text(node.name)
                 .font(DesignFonts.dataLayer(size: density.fontSize))
-                .foregroundStyle(DesignTokens.text)
+                .foregroundStyle(theme.textPrimary)
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer()
         }
         .frame(height: density.rowHeight)
         .padding(.horizontal, 8)
-        // NOTE: these Phosphor tokens are dark-tuned; light-theme support is a
-        // later phase (tracked). On the light theme this panel renders dark.
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(isSelected ? DesignTokens.surface
-                      : isHovered ? DesignTokens.text.opacity(0.06)
+                .fill(isSelected ? theme.sidebarSelection
+                      : isHovered ? theme.textPrimary.opacity(0.06)
                       : Color.clear)
         )
         .overlay(alignment: .leading) {
             if isSelected {
                 RoundedRectangle(cornerRadius: 1.5)
-                    .fill(DesignTokens.files)
+                    .fill(theme.accentColor)
                     .frame(width: 2.5)
                     .padding(.vertical, 3)
             }
@@ -233,7 +233,7 @@ private struct NodeRow: View {
             .resizable()
             .renderingMode(icon.isTemplate ? .template : .original)
             .scaledToFit()
-            .foregroundStyle(icon.tint ?? DesignTokens.muted)
+            .foregroundStyle(icon.tintRole.map { theme.fileIconTint($0) } ?? theme.textSecondary)
     }
 
     private func color(for status: FileStatus) -> Color {
@@ -250,6 +250,7 @@ private struct LoadMoreRow: View {
     let path: String
     let depth: Int
     @ObservedObject var controller: FileBrowserTabController
+    @EnvironmentObject private var theme: ThemeManager
 
     var body: some View {
         Button {
@@ -259,7 +260,7 @@ private struct LoadMoreRow: View {
                 // Mirror NodeRow's depth guide lines so "Load more" lines up with siblings.
                 ForEach(0..<depth, id: \.self) { _ in
                     Rectangle()
-                        .fill(DesignTokens.line)
+                        .fill(theme.dividerColor)
                         .frame(width: 1, height: 20)
                         .padding(.trailing, 13)
                 }

@@ -25,6 +25,7 @@ struct DataURIInlineImageProvider: InlineImageProvider {
 /// - links limited to http/https/mailto and opened in the system browser,
 /// - code blocks highlighted via tree-sitter.
 struct RenderedMarkdownView: View {
+    @EnvironmentObject private var theme: ThemeManager
     let content: String
 
     var body: some View {
@@ -32,14 +33,18 @@ struct RenderedMarkdownView: View {
             Markdown(content)
                 .markdownImageProvider(DataURIImageProvider())
                 .markdownInlineImageProvider(DataURIInlineImageProvider())
-                .markdownCodeSyntaxHighlighter(MarkdownCodeSyntaxHighlighter.treeSitter)
+                .markdownCodeSyntaxHighlighter(MarkdownCodeSyntaxHighlighter(
+                    captureColors: CodeHighlightTheme.table(
+                        ansi: theme.activeTheme.terminal.ansi,
+                        ui: theme.activeTheme.ui),
+                    font: DesignFonts.dataLayer(size: 12)))
                 .markdownTextStyle {
-                    ForegroundColor(DesignTokens.text)
+                    ForegroundColor(theme.textPrimary)
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(DesignTokens.panel)
+        .background(theme.paneBackground)
         .environment(\.openURL, OpenURLAction { url in
             guard RenderedDocumentPolicy.isAllowedLinkScheme(url.scheme) else {
                 return .discarded // block javascript:/file:/custom schemes

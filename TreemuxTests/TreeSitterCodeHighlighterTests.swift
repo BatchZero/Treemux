@@ -4,13 +4,13 @@ import XCTest
 
 final class TreeSitterCodeHighlighterTests: XCTestCase {
     func test_unknownLanguageReturnsPlainAttributedString() {
-        let h = TreeSitterCodeHighlighter()
+        let h = TreeSitterCodeHighlighter(captureColors: [:])
         let out = h.attributed(code: "hello world", languageName: "no-such-lang")
         XCTAssertEqual(String(out.characters), "hello world")
     }
 
     func test_nilLanguageReturnsPlainAttributedString() {
-        let h = TreeSitterCodeHighlighter()
+        let h = TreeSitterCodeHighlighter(captureColors: [:])
         let out = h.attributed(code: "x = 1", languageName: nil)
         XCTAssertEqual(String(out.characters), "x = 1")
     }
@@ -23,7 +23,11 @@ final class TreeSitterCodeHighlighterTests: XCTestCase {
     }
 
     func test_swiftCodeProducesAtLeastOneColoredRun() {
-        let h = TreeSitterCodeHighlighter()
+        // Provide a minimal capture-color table so keyword tokens are colored.
+        // (Empty captureColors means no colors are applied — this verifies the
+        // highlighting pipeline actually works when colors are injected.)
+        let captureColors: [String: Color] = ["keyword": .purple, "function": .blue]
+        let h = TreeSitterCodeHighlighter(captureColors: captureColors)
         let out = h.attributed(code: "func main() {}", languageName: "swift")
         // The full text is preserved...
         XCTAssertEqual(String(out.characters), "func main() {}")

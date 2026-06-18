@@ -18,15 +18,15 @@ enum FileIconCatalog {
     struct Icon: Equatable {
         let asset: String
         let isTemplate: Bool
-        let tint: Color?
+        let tintRole: FileIconTintRole?
     }
 
     static func directoryIcon(isExpanded: Bool) -> Icon {
-        Icon(asset: isExpanded ? "folder-open" : "folder", isTemplate: true, tint: DesignTokens.files)
+        Icon(asset: isExpanded ? "folder-open" : "folder", isTemplate: true, tintRole: .folder)
     }
 
-    static let symlinkIcon = Icon(asset: "link-variant", isTemplate: true, tint: DesignTokens.muted)
-    static let defaultFileIcon = Icon(asset: "file-document-outline", isTemplate: true, tint: DesignTokens.muted)
+    static let symlinkIcon = Icon(asset: "link-variant", isTemplate: true, tintRole: .muted)
+    static let defaultFileIcon = Icon(asset: "file-document-outline", isTemplate: true, tintRole: .muted)
 
     static func icon(for node: FileNode, isExpanded: Bool) -> Icon {
         switch node.kind {
@@ -37,7 +37,7 @@ enum FileIconCatalog {
             return symlinkIcon
         case .file:
             if let asset = assetForFile(named: node.name) {
-                return Icon(asset: asset, isTemplate: false, tint: nil)
+                return Icon(asset: asset, isTemplate: false, tintRole: nil)
             }
             return defaultFileIcon
         }

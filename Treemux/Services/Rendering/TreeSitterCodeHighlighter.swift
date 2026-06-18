@@ -21,6 +21,13 @@ final class TreeSitterCodeHighlighter {
         }
     }
 
+    /// Capture → color table built from the active theme (injected at construction).
+    private let captureColors: [String: Color]
+
+    init(captureColors: [String: Color]) {
+        self.captureColors = captureColors
+    }
+
     /// Cache loaded queries per language to avoid re-reading the .scm on every code block.
     private var queryCache: [String: Query] = [:]
 
@@ -45,7 +52,7 @@ final class TreeSitterCodeHighlighter {
 
         let nsString = code as NSString
         for named in highlights {
-            guard let color = CodeHighlightTheme.color(forCapture: named.name) else { continue }
+            guard let color = CodeHighlightTheme.color(forCapture: named.name, in: captureColors) else { continue }
             let nsRange = named.range
             guard nsRange.location != NSNotFound,
                   nsRange.location + nsRange.length <= nsString.length,

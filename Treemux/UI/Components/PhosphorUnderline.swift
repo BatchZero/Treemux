@@ -3,7 +3,7 @@
 //  Treemux
 //
 //  The "Phosphor Instrument" signature: a glowing accent underline marking the
-//  selected tab. Color is supplied by the caller (e.g. DesignTokens.tabAccent);
+//  selected tab. Color is supplied by the caller (e.g. theme.accentColor);
 //  inactive tabs draw nothing. Reuses the existing CodeEdit-style bottom stripe.
 //
 
@@ -39,19 +39,19 @@ extension View {
         Text("README.md")
             .font(DesignFonts.dataLayer(size: 12.5))
             .padding(8)
-            .background(DesignTokens.surface)
-            .phosphorUnderline(DesignTokens.files, active: true)
+            .background(Color(hex: "#232936"))
+            .phosphorUnderline(Color(hex: "#5BA6F2"), active: true)
         Text("zsh")
             .font(DesignFonts.dataLayer(size: 12.5))
             .padding(8)
-            .background(DesignTokens.surface)
-            .phosphorUnderline(DesignTokens.shell, active: true)
+            .background(Color(hex: "#232936"))
+            .phosphorUnderline(Color(hex: "#54D38B"), active: true)
         Text("other.md")
             .font(DesignFonts.dataLayer(size: 12.5))
             .padding(8)
-            .background(DesignTokens.surface)
-            .phosphorUnderline(DesignTokens.files, active: false)
+            .background(Color(hex: "#232936"))
+            .phosphorUnderline(Color(hex: "#5BA6F2"), active: false)
     }
     .padding(24)
-    .background(DesignTokens.panel)
+    .background(Color(hex: "#191D26"))
 }

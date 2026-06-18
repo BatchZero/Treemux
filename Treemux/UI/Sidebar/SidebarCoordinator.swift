@@ -45,6 +45,35 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
             self?.toggleExpansionForSelection()
         }
 
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(themeDidChangeRefresh(_:)),
+            name: .themeDidChange,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    // MARK: - Theme Refresh
+
+    @objc private func themeDidChangeRefresh(_ notification: Notification) {
+        guard let theme, let outlineView = container?.outlineView else { return }
+        let fill = theme.sidebarSelectionFillNS
+        let stroke = theme.sidebarSelectionStrokeNS
+        outlineView.enumerateAvailableRowViews { rowView, _ in
+            guard let row = rowView as? SidebarRowView else { return }
+            row.selectionFillColor = fill
+            row.selectionStrokeColor = stroke
+            row.needsDisplay = true
+        }
+        // Cell content is a SwiftUI `SidebarNodeRow` that takes `theme` as a
+        // plain value (not @ObservedObject), so it does not re-render on a
+        // theme switch by itself. Re-apply cell content so text/icon colors
+        // pick up the new theme immediately instead of waiting for a hover.
+        refreshVisibleRows(on: outlineView)
     }
 
     // MARK: - Apply (Diff + Rebuild)
@@ -221,6 +250,13 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
             return AnyView(EmptyView())
         }
         let activity = activityIndicator(for: node)
+        // `SidebarNodeRow` takes `theme` as a plain value (not @ObservedObject),
+        // so SwiftUI cannot see that its body depends on `theme.activeTheme`.
+        // When only the theme changes, a re-applied row is structurally equal to
+        // the previous one and SwiftUI skips re-evaluating `body` (text/icon
+        // colors stay stale until a hover forces a re-render). Tag the row with
+        // the active theme id so a theme switch changes its identity and forces
+        // a rebuild with the new colors.
         return AnyView(
             SidebarNodeRow(
                 node: node,
@@ -229,6 +265,7 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
                 isSelected: isSelected,
                 activityIndicator: activity
             )
+            .id(theme.activeTheme.id)
         )
     }
 
