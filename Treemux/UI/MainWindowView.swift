@@ -7,6 +7,7 @@ import SwiftUI
 
 /// Main window view with a NavigationSplitView containing a sidebar and detail pane.
 struct MainWindowView: View {
+    @EnvironmentObject private var theme: ThemeManager
     @EnvironmentObject private var store: WorkspaceStore
     @EnvironmentObject private var languageManager: LanguageManager
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -45,6 +46,17 @@ struct MainWindowView: View {
                 .help("Toggle Sidebar")
             }
 
+            ToolbarItem(placement: .principal) {
+                if let name = store.selectedWorkspace?.name {
+                    Text(name)
+                        .font(DesignFonts.dialogTitle)
+                        .tracking(DesignFonts.dialogTitleTracking)
+                        .foregroundStyle(theme.textPrimary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
                     if let sc = store.activeSessionController,
@@ -55,6 +67,10 @@ struct MainWindowView: View {
                     Image(systemName: "rectangle.split.1x2")
                 }
                 .help("Split Down (⌘D)")
+                .buttonStyle(UtilityButtonStyle(
+                    tint: theme.textSecondary,
+                    activeTint: theme.accentColor,
+                    border: .clear))
 
                 Button {
                     if let sc = store.activeSessionController,
@@ -65,6 +81,10 @@ struct MainWindowView: View {
                     Image(systemName: "rectangle.split.2x1")
                 }
                 .help("Split Right (⌘⇧D)")
+                .buttonStyle(UtilityButtonStyle(
+                    tint: theme.textSecondary,
+                    activeTint: theme.accentColor,
+                    border: .clear))
 
                 Button {
                     store.selectedWorkspace?.createTab()
@@ -72,6 +92,10 @@ struct MainWindowView: View {
                     Image(systemName: "plus.rectangle")
                 }
                 .help("New Terminal (⌘T)")
+                .buttonStyle(UtilityButtonStyle(
+                    tint: theme.textSecondary,
+                    activeTint: theme.accentColor,
+                    border: .clear))
 
                 Button {
                     store.showSettings = true
@@ -79,6 +103,11 @@ struct MainWindowView: View {
                     Image(systemName: "gearshape")
                 }
                 .help("Settings (⌘,)")
+                .buttonStyle(UtilityButtonStyle(
+                    tint: theme.textSecondary,
+                    activeTint: theme.accentColor,
+                    border: .clear,
+                    isActive: store.showSettings))
             }
         }
         .sheet(isPresented: $store.showSettings) {
