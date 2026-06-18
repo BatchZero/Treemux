@@ -66,7 +66,7 @@ struct RemoteDirectoryBrowser: View {
                 }
         }
         .padding(.horizontal, Spacing.lg)
-        .padding(.vertical, 10)
+        .padding(.vertical, Spacing.sm)
     }
 
     // MARK: - Directory Content
@@ -140,7 +140,7 @@ struct RemoteDirectoryBrowser: View {
             Button("Retry") {
                 Task { await viewModel.connect() }
             }
-            .controlSize(.small)
+            .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

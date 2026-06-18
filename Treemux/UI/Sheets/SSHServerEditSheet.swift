@@ -72,7 +72,8 @@ struct SSHServerEditSheet: View {
     var body: some View {
         VStack(spacing: 16) {
             Text(mode == .add ? "New Server" : "Edit Server")
-                .font(.headline)
+                .font(DesignFonts.dialogTitle)
+                .tracking(DesignFonts.dialogTitleTracking)
 
             // Left-aligned persistent labels paired with their fields in an
             // aligned grid. Placeholders are demoted to in-field hints so the
@@ -115,13 +116,13 @@ struct SSHServerEditSheet: View {
 
             if let testResult {
                 Text(testResult)
-                    .font(.caption)
+                    .font(DesignFonts.chromeCaption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             if let saveError {
                 Text(saveError)
-                    .font(.caption)
+                    .font(DesignFonts.chromeCaption)
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

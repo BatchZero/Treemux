@@ -35,7 +35,8 @@ struct OpenProjectSheet: View {
         VStack(spacing: 16) {
             // Title
             Text("Open Project")
-                .font(.headline)
+                .font(DesignFonts.dialogTitle)
+                .tracking(DesignFonts.dialogTitleTracking)
 
             // Mode picker
             Picker("", selection: $mode) {
@@ -162,6 +163,7 @@ struct OpenProjectSheet: View {
                     Button("Choose…") {
                         showRemoteBrowser = true
                     }
+                    .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
                     .disabled(sshTargets.isEmpty)
                 }
             }
