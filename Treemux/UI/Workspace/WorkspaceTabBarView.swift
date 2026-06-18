@@ -192,7 +192,7 @@ private struct TabButton: View {
                 : AnyShapeStyle(theme.textPrimary.opacity(0.05))
             )
             .clipShape(RoundedRectangle(cornerRadius: 6))
-            .phosphorUnderline(tab.kind == .fileBrowser ? theme.accentColor : theme.shellAccent, active: isSelected)
+            .tabAccentIndicator(theme.accentColor, active: isSelected)
         }
         .buttonStyle(.plain)
         .frame(width: TreemuxTabSizing.width(for: tab.title, paneCount: paneCount, hasDot: dotKind != nil))

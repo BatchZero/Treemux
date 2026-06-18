@@ -119,7 +119,6 @@
 		89007B331EC98C61510D046C /* GitRepositoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */; };
 		899AD635760CA3F00A191DE8 /* EditorHighlightPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AAFE89E9D573ED06FC760D3 /* EditorHighlightPolicy.swift */; };
 		89A2C91A680D947F1C2B176D /* ShortcutRecorderButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A169E6DF74EAE95F932D40F0 /* ShortcutRecorderButton.swift */; };
-		89ACCDC0D0537988BD28B811 /* PhosphorUnderline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2F9B81F4135149F9FD8EF5 /* PhosphorUnderline.swift */; };
 		8A424C110ED8A1A00452E2E0 /* WordIndexSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFDA549FCEE1005FA34DBC2 /* WordIndexSnapshotStore.swift */; };
 		8B1F02071634EF5A0330144B /* TmuxServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */; };
 		8D1CEE3F5DC9DCD02F0BD4F6 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AECC7D7718049E6DE71D772 /* Notifications.swift */; };
@@ -189,6 +188,7 @@
 		DDB379227505CCDD96BB62C1 /* TreemuxKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7DBEF3A8FDA651804A6D8A /* TreemuxKeyboardShortcuts.swift */; };
 		DDDEF7B960C5F076099D8E86 /* WorkspaceStoreBuiltInTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2036C4C917DE175BEEF342C /* WorkspaceStoreBuiltInTests.swift */; };
 		E1DE0D95217E95CD1EB1A02D /* FileIconCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B7D707F4CF11D6790D042C0 /* FileIconCatalog.swift */; };
+		E2C72C794E93E57094D67663 /* TabAccentIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36FB4E7DCC3318B7E1832016 /* TabAccentIndicator.swift */; };
 		E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8629D2D5813F897F85840289 /* SSHTarget.swift */; };
 		E7BAC53680D60DCBDFB74EB8 /* HardenedWebContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF482F8A5D19B5272822AEBF /* HardenedWebContent.swift */; };
 		E92F6879AA1ED4C640482B6B /* RenderedMarkdownViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1268822711C015C7535F8B2B /* RenderedMarkdownViewTests.swift */; };
@@ -250,7 +250,6 @@
 		2B271B295F2524F5321EDA83 /* FileSubTabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSubTabBarView.swift; sourceTree = "<group>"; };
 		2BECE531477D114732B3DB1E /* SidebarInfoBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarInfoBadge.swift; sourceTree = "<group>"; };
 		2DE947981856776881A910EE /* HookDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookDiff.swift; sourceTree = "<group>"; };
-		2F2F9B81F4135149F9FD8EF5 /* PhosphorUnderline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhosphorUnderline.swift; sourceTree = "<group>"; };
 		2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
 		307BCBA7FBBD837C1D886367 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		30C3FDCC6ADDBDE6835FF006 /* DirectoryTreeCachePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryTreeCachePersistence.swift; sourceTree = "<group>"; };
@@ -262,6 +261,7 @@
 		3477DE6F674F94B9457073F4 /* TreemuxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxTests.swift; sourceTree = "<group>"; };
 		353A1A1130509D2930C26D93 /* WorkspaceTabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTabBarView.swift; sourceTree = "<group>"; };
 		3579E21F95E49A08C0BE1E5F /* RemoteDirectoryBrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDirectoryBrowserViewModel.swift; sourceTree = "<group>"; };
+		36FB4E7DCC3318B7E1832016 /* TabAccentIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabAccentIndicator.swift; sourceTree = "<group>"; };
 		3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TmuxServiceTests.swift; sourceTree = "<group>"; };
 		383CC60F01FDAD8B71C8EF65 /* EmptyTabStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyTabStateView.swift; sourceTree = "<group>"; };
 		39ADDF2DEBC6DA37E13F759D /* WorkspaceModelTabKindTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceModelTabKindTests.swift; sourceTree = "<group>"; };
@@ -549,7 +549,7 @@
 				076410C949B44BB7C357EBF0 /* ButtonStyles.swift */,
 				2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */,
 				860BE08474960AA84EB76155 /* Hairline.swift */,
-				2F2F9B81F4135149F9FD8EF5 /* PhosphorUnderline.swift */,
+				36FB4E7DCC3318B7E1832016 /* TabAccentIndicator.swift */,
 				5C2110A46976203DDBF9D707 /* TerminalHostView.swift */,
 			);
 			path = Components;
@@ -1039,7 +1039,6 @@
 				9E3EDA87C6172DCC23C14AFE /* OpenProjectSheet.swift in Sources */,
 				78942DBCD13BA394E9AC92CD /* PaneLayout.swift in Sources */,
 				634F5C15FC031D133DEA6DC1 /* PathFormatting.swift in Sources */,
-				89ACCDC0D0537988BD28B811 /* PhosphorUnderline.swift in Sources */,
 				D2D97673DE196B9D5B0B826E /* ProcessTree.swift in Sources */,
 				344951E9D097935A9989D02D /* QuickLookViewerView.swift in Sources */,
 				093FE0959D31BD1AE6676D1A /* RemoteDirectoryBrowser.swift in Sources */,
@@ -1079,6 +1078,7 @@
 				3342176CAA82F4D5A9EA3AC0 /* SplitNodeView.swift in Sources */,
 				385A3EF810559BD598E183D9 /* StoredShortcut.swift in Sources */,
 				7405B7C02F6B819CB0A772E5 /* String+Helpers.swift in Sources */,
+				E2C72C794E93E57094D67663 /* TabAccentIndicator.swift in Sources */,
 				430EEC769877E62F8575D557 /* TabGrouping.swift in Sources */,
 				44D9A39F7E62E88E88ED2DAD /* TerminalHostView.swift in Sources */,
 				BF9448F0B1E9C5D3B71C956C /* TerminalPaneView.swift in Sources */,
