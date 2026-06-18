@@ -66,6 +66,12 @@ final class FileBrowserTabController: ObservableObject {
     let treeCache: DirectoryTreeCachePersistence
     @Published private(set) var truncatedDirs: Set<String> = []
 
+    /// Last known vertical scroll offset of the file tree. Cached in-memory so
+    /// the tree restores its position when the tab is re-mounted (e.g. after
+    /// switching to a terminal tab and back). NOT @Published — it must not
+    /// trigger a re-render, and it is intentionally never persisted to disk.
+    var treeScrollOffset: CGFloat = 0
+
     /// Shared word index for editor completion across this tab's sub-tabs.
     /// Lazily populated by `WordCompletionCoordinator` as buffers open.
     let wordIndex = BufferWordIndex()

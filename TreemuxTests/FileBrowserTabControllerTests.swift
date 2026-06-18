@@ -235,6 +235,16 @@ final class FileBrowserTabControllerTests: XCTestCase {
         await ctrl.loadRoot()  // resets to nil on entry, succeeds
         XCTAssertNil(ctrl.loadError)
     }
+
+    func test_treeScrollOffset_defaultsToZeroAndPersists() {
+        let ctrl = FileBrowserTabController(
+            initial: .init(rootPath: "/r", rootKind: .project),
+            dataSource: GatedFileBrowserDataSource())
+        XCTAssertEqual(ctrl.treeScrollOffset, 0)
+
+        ctrl.treeScrollOffset = 142.5
+        XCTAssertEqual(ctrl.treeScrollOffset, 142.5)
+    }
 }
 
 final class MockFileBrowserDataSource: FileBrowserDataSource {
