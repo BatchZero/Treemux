@@ -40,7 +40,7 @@ struct TextEditorView: View {
         HStack {
             Text(URL(fileURLWithPath: path).lastPathComponent)
             if dirty {
-                Circle().fill(Color.accentColor).frame(width: 6, height: 6)
+                Circle().fill(themeManager.accentColor).frame(width: 6, height: 6)
             }
             Spacer()
             Text(encodingDisplay).foregroundStyle(.secondary)

@@ -151,7 +151,7 @@ private struct TabButton: View {
                 // Dirty marker for unsaved file-browser edits.
                 if isDirty {
                     Circle()
-                        .fill(Color.accentColor)
+                        .fill(theme.accentColor)
                         .frame(width: 5, height: 5)
                 }
                 Text(tab.title)

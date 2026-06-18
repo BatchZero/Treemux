@@ -2,10 +2,9 @@
 //  DesignFonts.swift
 //  Treemux
 //
-//  Typography roles for the "Phosphor Instrument" language. The data layer
-//  (file names, tab titles, tree rows, eyebrow labels) is monospaced — reusing
-//  the terminal's monospaced feel; chrome (menus, settings, dialogs) stays on
-//  the system font.
+//  Typography roles: a monospaced data layer (file names, tab titles, tree rows,
+//  eyebrow labels) reusing the terminal's feel; chrome (menus, settings, dialogs)
+//  on SF Pro.
 //
 
 import SwiftUI

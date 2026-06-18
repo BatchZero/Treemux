@@ -12,7 +12,7 @@ struct FileViewerPanelView: View {
         VStack(spacing: 0) {
             if !controller.subTabs.isEmpty {
                 FileSubTabBarView(controller: controller)
-                Divider()
+                    .hairline(.bottom)
             }
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

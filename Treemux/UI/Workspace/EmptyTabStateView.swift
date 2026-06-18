@@ -7,6 +7,7 @@ import SwiftUI
 /// Empty state shown when all tabs have been closed.
 /// Displays an icon, message, and "New Terminal" button.
 struct EmptyTabStateView: View {
+    @EnvironmentObject private var theme: ThemeManager
     let onCreateTab: () -> Void
 
     var body: some View {
@@ -22,7 +23,7 @@ struct EmptyTabStateView: View {
             Button(action: onCreateTab) {
                 Label("New Terminal", systemImage: "plus")
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(PillButtonStyle(accent: theme.accentColor, onAccent: theme.onAccentColor))
             .controlSize(.large)
 
             Text("⌘T to create a new tab")

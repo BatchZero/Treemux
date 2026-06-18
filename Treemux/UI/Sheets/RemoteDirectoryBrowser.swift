@@ -157,6 +157,7 @@ struct RemoteDirectoryBrowser: View {
             DirectoryNodeRow(
                 node: node,
                 selectedPath: $viewModel.selectedPath,
+                accentColor: theme.accentColor,
                 expandAction: { n in
                     Task { await viewModel.expandNode(n) }
                 }
@@ -213,6 +214,9 @@ struct RemoteDirectoryBrowser: View {
 struct DirectoryNodeRow: View {
     @ObservedObject var node: DirectoryNode
     @Binding var selectedPath: String?
+    /// Passed in from the parent that owns `ThemeManager` so this struct
+    /// avoids an `@EnvironmentObject` dependency while still using the themed color.
+    var accentColor: Color = .accentColor
     let expandAction: (DirectoryNode) -> Void
 
     private var isSelected: Bool {
@@ -260,6 +264,7 @@ struct DirectoryNodeRow: View {
                 DirectoryNodeRow(
                     node: child,
                     selectedPath: $selectedPath,
+                    accentColor: accentColor,
                     expandAction: expandAction
                 )
             }
@@ -288,7 +293,7 @@ struct DirectoryNodeRow: View {
         .contentShape(Rectangle())
         .background(
             RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
+                .fill(isSelected ? accentColor.opacity(0.2) : Color.clear)
         )
         .onTapGesture {
             selectedPath = node.path

@@ -306,7 +306,7 @@ private struct ThemeSettingsView: View {
                         Image(systemName: settings.activeThemeID == theme.id
                               ? "largecircle.fill.circle" : "circle")
                             .foregroundStyle(settings.activeThemeID == theme.id
-                                             ? Color.accentColor : Color.secondary)
+                                             ? themeManager.accentColor : Color.secondary)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(theme.name)
                             if let author = theme.author {
