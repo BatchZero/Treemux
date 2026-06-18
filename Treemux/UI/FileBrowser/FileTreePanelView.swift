@@ -9,7 +9,36 @@ struct FileTreePanelView: View {
     @EnvironmentObject private var store: WorkspaceStore
     @EnvironmentObject private var theme: ThemeManager
 
-    @State private var scrollPosition = ScrollPosition()
+    @State private var scrollPosition: ScrollPosition
+    /// The offset we're restoring to, captured at mount.
+    @State private var restoreTarget: CGFloat
+    /// Live mirror of the scroll offset. Persisted to the controller only on
+    /// disappear — never continuously — so a transient reflow value during the
+    /// restore window can never corrupt the saved offset.
+    @State private var liveOffset: CGFloat
+    /// True while still restoring. Ends only once the offset converges on the
+    /// target *after* the content has settled.
+    @State private var restoring: Bool
+    /// Set when the first full reload settles. The seed briefly lands on the
+    /// target before the remote tree reflows, so convergence must not be
+    /// accepted until content is settled — otherwise we'd finish early and the
+    /// later reflow would be mistaken for the user's position.
+    @State private var contentSettled = false
+
+    init(controller: FileBrowserTabController) {
+        _controller = ObservedObject(wrappedValue: controller)
+        let target = controller.treeScrollOffset
+        _restoreTarget = State(initialValue: target)
+        _liveOffset = State(initialValue: target)
+        // Nothing to restore when already at the top.
+        _restoring = State(initialValue: target > 0)
+        // Seed the position with the cached offset so the restore happens
+        // during the first layout pass — not afterwards in onAppear, where a
+        // transient 0 would race it and win.
+        var initial = ScrollPosition()
+        initial.scrollTo(y: target)
+        _scrollPosition = State(initialValue: initial)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,7 +46,14 @@ struct FileTreePanelView: View {
             FileTreeToolbar(controller: controller)
             Divider()
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
+                // A plain VStack (not LazyVStack) gives the ScrollView a
+                // deterministic content height, so offset-based scroll
+                // restoration is reliable. A lazy stack can't scroll to an
+                // offset beyond its currently-realized rows, which made restore
+                // clamp short for positions further down. The tree's nested
+                // rows are already rendered eagerly and the root list is capped
+                // by truncation (Load more), so eager layout is bounded.
+                VStack(alignment: .leading, spacing: 0) {
                     ForEach(controller.rootChildren, id: \.id) { node in
                         NodeRow(node: node, depth: 0, density: store.settings.fileTree.density, controller: controller)
                     }
@@ -28,15 +64,41 @@ struct FileTreePanelView: View {
                 .padding(.vertical, 4)
             }
             .scrollPosition($scrollPosition)
-            // Persist the live offset so it survives a view rebuild (tab switch).
+            // Mirror the live offset locally. We persist it to the controller
+            // only on disappear (below), so a transient offset during the
+            // restore window can never clobber the saved value.
             .onScrollGeometryChange(for: CGFloat.self) { geometry in
                 geometry.contentOffset.y
             } action: { _, newValue in
-                controller.treeScrollOffset = newValue
+                liveOffset = newValue
+                // Finish restoring only when the offset reaches the target
+                // AFTER content has settled — never during the initial reflow,
+                // when the seed momentarily hits the target before the remote
+                // tree grows.
+                if restoring, contentSettled, abs(newValue - restoreTarget) <= 1 {
+                    restoring = false
+                }
             }
-            // Restore the cached offset when this view is (re-)mounted.
+            // Each full reload settles the content; re-assert the target until
+            // the restore converges. A bounded fallback ends the restore in the
+            // rare case the target is no longer reachable (content shrank).
+            .onChange(of: controller.treeContentGeneration) { _, _ in
+                guard restoring else { return }
+                contentSettled = true
+                scrollPosition.scrollTo(y: restoreTarget)
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(500))
+                    restoring = false
+                }
+            }
+            // Seed the restore during the first layout pass for the instant
+            // (local, cached) case where content is already present.
             .onAppear {
-                scrollPosition.scrollTo(y: controller.treeScrollOffset)
+                if restoring { scrollPosition.scrollTo(y: restoreTarget) }
+            }
+            // Persist where the user actually ended up, captured on leave.
+            .onDisappear {
+                controller.treeScrollOffset = liveOffset
             }
         }
         .background(theme.paneBackground)
