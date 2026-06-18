@@ -47,6 +47,12 @@ struct MainWindowView: View {
             }
 
             ToolbarItemGroup(placement: .primaryAction) {
+                // Native (default) toolbar buttons: let the Tahoe glass capsule own
+                // sizing and vertical centering via the symbol's alignment rect.
+                // A custom ButtonStyle (font + manual padding + frame) places the
+                // glyph by its text layout box, which carries descender space and
+                // pushes the icon visually upward — so we drop it here and only
+                // tint via foregroundStyle.
                 Button {
                     if let sc = store.activeSessionController,
                        let focused = sc.focusedPaneID {
@@ -54,12 +60,9 @@ struct MainWindowView: View {
                     }
                 } label: {
                     Image(systemName: "rectangle.split.1x2")
+                        .foregroundStyle(theme.textSecondary)
                 }
                 .help("Split Down (⌘D)")
-                .buttonStyle(UtilityButtonStyle(
-                    tint: theme.textSecondary,
-                    activeTint: theme.accentColor,
-                    border: .clear))
 
                 Button {
                     if let sc = store.activeSessionController,
@@ -68,35 +71,25 @@ struct MainWindowView: View {
                     }
                 } label: {
                     Image(systemName: "rectangle.split.2x1")
+                        .foregroundStyle(theme.textSecondary)
                 }
                 .help("Split Right (⌘⇧D)")
-                .buttonStyle(UtilityButtonStyle(
-                    tint: theme.textSecondary,
-                    activeTint: theme.accentColor,
-                    border: .clear))
 
                 Button {
                     store.selectedWorkspace?.createTab()
                 } label: {
                     Image(systemName: "plus.rectangle")
+                        .foregroundStyle(theme.textSecondary)
                 }
                 .help("New Terminal (⌘T)")
-                .buttonStyle(UtilityButtonStyle(
-                    tint: theme.textSecondary,
-                    activeTint: theme.accentColor,
-                    border: .clear))
 
                 Button {
                     store.showSettings = true
                 } label: {
                     Image(systemName: "gearshape")
+                        .foregroundStyle(store.showSettings ? theme.accentColor : theme.textSecondary)
                 }
                 .help("Settings (⌘,)")
-                .buttonStyle(UtilityButtonStyle(
-                    tint: theme.textSecondary,
-                    activeTint: theme.accentColor,
-                    border: .clear,
-                    isActive: store.showSettings))
             }
         }
         .sheet(isPresented: $store.showSettings) {
