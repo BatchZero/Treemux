@@ -24,7 +24,7 @@ final class TreeSitterCodeHighlighter {
     /// Capture → color table built from the active theme (injected at construction).
     private let captureColors: [String: Color]
 
-    init(captureColors: [String: Color] = [:]) {
+    init(captureColors: [String: Color]) {
         self.captureColors = captureColors
     }
 

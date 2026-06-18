@@ -4,13 +4,13 @@ import XCTest
 
 final class TreeSitterCodeHighlighterTests: XCTestCase {
     func test_unknownLanguageReturnsPlainAttributedString() {
-        let h = TreeSitterCodeHighlighter()
+        let h = TreeSitterCodeHighlighter(captureColors: [:])
         let out = h.attributed(code: "hello world", languageName: "no-such-lang")
         XCTAssertEqual(String(out.characters), "hello world")
     }
 
     func test_nilLanguageReturnsPlainAttributedString() {
-        let h = TreeSitterCodeHighlighter()
+        let h = TreeSitterCodeHighlighter(captureColors: [:])
         let out = h.attributed(code: "x = 1", languageName: nil)
         XCTAssertEqual(String(out.characters), "x = 1")
     }
@@ -23,7 +23,7 @@ final class TreeSitterCodeHighlighterTests: XCTestCase {
     }
 
     func test_swiftCodeProducesAtLeastOneColoredRun() {
-        let h = TreeSitterCodeHighlighter()
+        let h = TreeSitterCodeHighlighter(captureColors: [:])
         let out = h.attributed(code: "func main() {}", languageName: "swift")
         // The full text is preserved...
         XCTAssertEqual(String(out.characters), "func main() {}")
