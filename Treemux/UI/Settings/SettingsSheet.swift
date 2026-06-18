@@ -109,7 +109,10 @@ struct SettingsSheet: View {
                         dismiss()
                     }
                     .keyboardShortcut(.cancelAction)
-                    .buttonStyle(UtilityButtonStyle(tint: theme.textSecondary, activeTint: theme.accentColor, border: theme.dividerColor))
+                    .buttonStyle(UtilityButtonStyle(
+                        tint: theme.textSecondary,
+                        activeTint: theme.accentColor,
+                        border: theme.dividerColor))
 
                     Button("Save") {
                         store.updateSettings(draft)
@@ -118,7 +121,12 @@ struct SettingsSheet: View {
                     }
                     .disabled(!hasChanges)
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(PillButtonStyle(accent: theme.accentColor, onAccent: theme.onAccentColor))
+                    .buttonStyle(UtilityButtonStyle(
+                        tint: theme.textSecondary,
+                        activeTint: theme.accentColor,
+                        border: theme.dividerColor,
+                        fill: theme.accentColor,
+                        onFill: theme.onAccentColor))
                 }
                 .padding(Spacing.lg)
                 .hairline(.top)
