@@ -23,4 +23,23 @@ final class ButtonStylesTests: XCTestCase {
         XCTAssertEqual(style.activeTint, Color(hex: "#0066CC"))
         XCTAssertFalse(style.isActive)
     }
+
+    func testUtilityFillDefaultsNil() {
+        let style = UtilityButtonStyle(
+            tint: Color(hex: "#C5C8C6"),
+            activeTint: Color(hex: "#0066CC"),
+            border: Color(hex: "#FFFFFF1A"))
+        XCTAssertNil(style.fill)
+    }
+
+    func testUtilityStoresFillVariant() {
+        let style = UtilityButtonStyle(
+            tint: Color(hex: "#C5C8C6"),
+            activeTint: Color(hex: "#0066CC"),
+            border: Color(hex: "#FFFFFF1A"),
+            fill: Color(hex: "#0066CC"),
+            onFill: Color(hex: "#FFFFFF"))
+        XCTAssertEqual(style.fill, Color(hex: "#0066CC"))
+        XCTAssertEqual(style.onFill, Color(hex: "#FFFFFF"))
+    }
 }

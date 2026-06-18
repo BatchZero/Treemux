@@ -66,6 +66,20 @@ final class FileBrowserTabController: ObservableObject {
     let treeCache: DirectoryTreeCachePersistence
     @Published private(set) var truncatedDirs: Set<String> = []
 
+    /// Last known vertical scroll offset of the file tree. Cached in-memory so
+    /// the tree restores its position when the tab is re-mounted (e.g. after
+    /// switching to a terminal tab and back). NOT @Published — it must not
+    /// trigger a re-render, and it is intentionally never persisted to disk.
+    var treeScrollOffset: CGFloat = 0
+
+    /// Bumped whenever a full tree reload settles (bulk fetch + any async
+    /// deeper expanded directories applied). The tree view observes this to
+    /// re-assert a restored scroll offset once remote children have arrived —
+    /// otherwise the offset is applied against a shorter, still-loading tree
+    /// and lands in the wrong place. Local trees render instantly from cache,
+    /// so they settle on the first bump.
+    @Published private(set) var treeContentGeneration: Int = 0
+
     /// Shared word index for editor completion across this tab's sub-tabs.
     /// Lazily populated by `WordCompletionCoordinator` as buffers open.
     let wordIndex = BufferWordIndex()
@@ -201,6 +215,9 @@ final class FileBrowserTabController: ObservableObject {
                 }
             }
             persistTree()
+            // The full tree (bulk fetch + async deeper expanded dirs) is now
+            // applied; signal the view so it can re-assert a restored offset.
+            treeContentGeneration &+= 1
             await refreshGitStatus()
         } catch {
             let mapped = mapError(error)
