@@ -10,6 +10,7 @@ import SwiftUI
 /// a close affordance; right-click exposes copy-path and close-set commands;
 /// drag reorders.
 struct FileSubTabBarView: View {
+    @EnvironmentObject private var theme: ThemeManager
     @ObservedObject var controller: FileBrowserTabController
     @State private var hoveredID: UUID?
     @State private var draggedID: UUID?
@@ -44,10 +45,10 @@ struct FileSubTabBarView: View {
                     ))
                 }
             }
-            .padding(.horizontal, 6)
+            .padding(.horizontal, Spacing.xs)
         }
         .frame(height: 32)
-        .background(.thickMaterial)
+        .background(theme.tabBarBackground)
     }
 
     private func dirtyState(for tab: SubTabRuntime) -> Bool {
@@ -98,6 +99,7 @@ private struct SubTabDropDelegate: DropDelegate {
 // MARK: - Sub-tab button
 
 private struct SubTabButton: View {
+    @EnvironmentObject private var theme: ThemeManager
     let tab: SubTabRuntime
     let isActive: Bool
     let isHovered: Bool
@@ -123,7 +125,7 @@ private struct SubTabButton: View {
                     .foregroundStyle(isActive ? .primary : .secondary)
                 if isDirty {
                     Circle()
-                        .fill(Color.accentColor)
+                        .fill(theme.accentColor)
                         .frame(width: 5, height: 5)
                 }
                 if isHovered || isActive {
@@ -138,22 +140,15 @@ private struct SubTabButton: View {
                     Color.clear.frame(width: 14, height: 14)
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.horizontal, Spacing.xs)
+            .padding(.vertical, Spacing.xxs)
             .background(
-                isActive ? AnyShapeStyle(.white.opacity(0.12))
-                : isHovered ? AnyShapeStyle(.white.opacity(0.06))
+                isActive ? AnyShapeStyle(theme.sidebarSelection)
+                : isHovered ? AnyShapeStyle(theme.textPrimary.opacity(0.06))
                 : AnyShapeStyle(Color.clear)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-            .overlay(alignment: .bottom) {
-                if isActive {
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(Color.accentColor)
-                        .frame(height: 2)
-                        .padding(.horizontal, 4)
-                }
-            }
+            .clipShape(RoundedRectangle(cornerRadius: Radius.xs))
+            .tabAccentIndicator(theme.accentColor, active: isActive, inset: Spacing.xxs)
         }
         .buttonStyle(.plain)
         .contextMenu {
