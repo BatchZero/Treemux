@@ -107,6 +107,7 @@
 		7C890E7C842699E9E4E18606 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */; };
 		7DAFA3057CBB618258D561C4 /* FileViewerPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 597C1CF15FDBE05E8C17339E /* FileViewerPanelView.swift */; };
 		7DE56E0C99F7ED3EB64B5055 /* SFTPServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F1C3A585525B45A2CED48F /* SFTPServiceTests.swift */; };
+		7F08C4629B13145CF7419682 /* ThemeManagerOnAccentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A819DB0837783D1D2411CB8 /* ThemeManagerOnAccentTests.swift */; };
 		850CC38A621639ECDA370B07 /* ImagePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B420B3E15F447FDA5E8053 /* ImagePreviewView.swift */; };
 		8549BFC4F8F972BE26BEC4F3 /* WorkspaceTabKindCodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71FCB95357127BEE31A3AC96 /* WorkspaceTabKindCodingTests.swift */; };
 		861758C31CCB50A6B7F1E98F /* CodeEditSourceEditor in Frameworks */ = {isa = PBXBuildFile; productRef = C97849ADC35767BC3DF4C9E6 /* CodeEditSourceEditor */; };
@@ -297,6 +298,7 @@
 		62EB76FEF501CC1380FB2607 /* SidebarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarCoordinator.swift; sourceTree = "<group>"; };
 		656D4A17827E564EDD5A8918 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 		68300DAD2E46A8B3E6E11839 /* FileTreePanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreePanelView.swift; sourceTree = "<group>"; };
+		6A819DB0837783D1D2411CB8 /* ThemeManagerOnAccentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManagerOnAccentTests.swift; sourceTree = "<group>"; };
 		6AECC7D7718049E6DE71D772 /* Notifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Notifications.swift; sourceTree = "<group>"; };
 		6C319BEBFF08316768F7BEBB /* ThemeModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeModelTests.swift; sourceTree = "<group>"; };
 		6DD2CC0A8B9D60B36E1F8105 /* Treemux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Treemux.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -497,6 +499,7 @@
 				AF9D68F15831BDF7B565B500 /* TabGroupingTests.swift */,
 				952DFCA114D8DE9B65E79BCC /* ThemeLoaderTests.swift */,
 				C737F9B167BD4376CBDA66A4 /* ThemeManagerDerivedColorTests.swift */,
+				6A819DB0837783D1D2411CB8 /* ThemeManagerOnAccentTests.swift */,
 				6C319BEBFF08316768F7BEBB /* ThemeModelTests.swift */,
 				33DBD7F6E96DFD37B6863693 /* ThemeTests.swift */,
 				3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */,
@@ -1154,6 +1157,7 @@
 				D489C4C4FC19FD474C946FCB /* TabGroupingTests.swift in Sources */,
 				DC090F5DAC4E6A049EC586C2 /* ThemeLoaderTests.swift in Sources */,
 				06E22E43AD282436F95AD810 /* ThemeManagerDerivedColorTests.swift in Sources */,
+				7F08C4629B13145CF7419682 /* ThemeManagerOnAccentTests.swift in Sources */,
 				C2DD27252465B30D8318C175 /* ThemeModelTests.swift in Sources */,
 				C009122F97AB2808837169E1 /* ThemeTests.swift in Sources */,
 				8B1F02071634EF5A0330144B /* TmuxServiceTests.swift in Sources */,

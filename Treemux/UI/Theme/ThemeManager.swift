@@ -112,6 +112,7 @@ final class ThemeManager: ObservableObject {
     var paneHeaderBackground: Color { Color(hex: activeTheme.ui.paneHeader) }
     var dividerColor: Color { Color(hex: activeTheme.ui.hairline) }
     var accentColor: Color { Color(hex: activeTheme.ui.accent) }
+    var onAccentColor: Color { Color(hex: activeTheme.ui.onAccent) }
     var statusBarBackground: Color { Color(hex: activeTheme.ui.statusBar) }
     var textPrimary: Color { Color(hex: activeTheme.ui.textPrimary) }
     var textSecondary: Color { Color(hex: activeTheme.ui.textSecondary) }
