@@ -5,6 +5,7 @@
 import SwiftUI
 
 struct FileViewerPanelView: View {
+    @EnvironmentObject private var theme: ThemeManager
     @ObservedObject var controller: FileBrowserTabController
 
     var body: some View {
@@ -20,7 +21,7 @@ struct FileViewerPanelView: View {
                 // leak above the sub-tab bar into the window toolbar.
                 .clipped()
         }
-        .background(Color(nsColor: .textBackgroundColor))
+        .background(theme.paneBackground)
     }
 
     /// Renders every sub-tab's viewer in a ZStack and toggles visibility via

@@ -79,6 +79,7 @@ struct SidebarItemIconView: View {
 /// Static dot shown at the bottom-right of a sidebar icon when the node has
 /// at least one running terminal session.
 struct SidebarIconActivityBadge: View {
+    @EnvironmentObject private var theme: ThemeManager
     let size: CGFloat
     let palette: SidebarIconPalette
 
@@ -94,6 +95,6 @@ struct SidebarIconActivityBadge: View {
         Circle()
             .fill(activityColor)
             .frame(width: badgeSize, height: badgeSize)
-            .overlay(Circle().stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 1))
+            .overlay(Circle().stroke(theme.sidebarBackground, lineWidth: 1))
     }
 }

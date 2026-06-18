@@ -8,6 +8,7 @@ import SwiftUI
 /// A draggable divider between two panes in a split layout.
 /// Supports both horizontal and vertical orientations with drag-to-resize.
 struct SplitDivider: View {
+    @EnvironmentObject private var theme: ThemeManager
     let axis: SplitAxis
     let fraction: Double
     let availableLength: CGFloat
@@ -25,7 +26,7 @@ struct SplitDivider: View {
 
             // Visible divider handle
             Capsule(style: .continuous)
-                .fill(Color(nsColor: .separatorColor).opacity(0.4))
+                .fill(theme.dividerColor.opacity(0.4))
                 .frame(
                     width: axis == .horizontal ? 4 : 44,
                     height: axis == .vertical ? 4 : 44
@@ -33,7 +34,7 @@ struct SplitDivider: View {
 
             // Inner accent line
             Capsule(style: .continuous)
-                .fill(Color(nsColor: .separatorColor))
+                .fill(theme.dividerColor)
                 .frame(
                     width: axis == .horizontal ? 2 : 16,
                     height: axis == .vertical ? 2 : 16

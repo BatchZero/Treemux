@@ -5,6 +5,7 @@
 import SwiftUI
 
 struct ImagePreviewView: View {
+    @EnvironmentObject private var theme: ThemeManager
     let path: String
     let image: NSImage
     var body: some View {
@@ -12,6 +13,6 @@ struct ImagePreviewView: View {
             .resizable()
             .scaledToFit()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.black.opacity(0.05))
+            .background(theme.paneBackground)
     }
 }
