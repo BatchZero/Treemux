@@ -69,6 +69,11 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
             row.selectionStrokeColor = stroke
             row.needsDisplay = true
         }
+        // Cell content is a SwiftUI `SidebarNodeRow` that takes `theme` as a
+        // plain value (not @ObservedObject), so it does not re-render on a
+        // theme switch by itself. Re-apply cell content so text/icon colors
+        // pick up the new theme immediately instead of waiting for a hover.
+        refreshVisibleRows(on: outlineView)
     }
 
     // MARK: - Apply (Diff + Rebuild)
