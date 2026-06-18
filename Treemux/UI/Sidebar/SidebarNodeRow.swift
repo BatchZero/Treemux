@@ -66,7 +66,7 @@ struct WorkspaceRowContent: View {
     private static let contentMinHeight: CGFloat = 24
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.xs) {
             SidebarItemIconView(
                 icon: store.sidebarIcon(for: workspace),
                 size: 22,
@@ -75,12 +75,12 @@ struct WorkspaceRowContent: View {
             )
             VStack(alignment: .leading, spacing: 2) {
                 Text(workspace.name)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(DesignFonts.sectionTitle)
                     .foregroundStyle(theme.sidebarForeground)
                     .lineLimit(1)
                 if workspace.worktrees.count <= 1, let branch = workspace.currentBranch, !branch.isEmpty {
                     Text(branch)
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .font(DesignFonts.dataLayer(size: 11, weight: .medium))
                         .foregroundStyle(theme.textSecondary)
                         .lineLimit(1)
                 }
@@ -93,7 +93,7 @@ struct WorkspaceRowContent: View {
                                               title: workspace.name)
             } label: {
                 Image(systemName: "folder.badge.plus")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(DesignFonts.chrome(size: 11, weight: .medium))
                     // Hidden until the row is hovered, then revealed.
                     .foregroundStyle(theme.textSecondary.opacity(isHovered ? 1.0 : 0.0))
             }
@@ -101,11 +101,11 @@ struct WorkspaceRowContent: View {
             .help(LocalizedStringKey("Open File Browser"))
             .padding(.trailing, 2)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, Spacing.xs)
         .padding(.leading, 2)
-        .padding(.trailing, 4)
+        .padding(.trailing, Spacing.xxs)
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: Radius.sm)
                 .fill(isHovered && !isSelected ? theme.sidebarSelection.opacity(0.3) : Color.clear)
         )
         .onHover { hovering in
@@ -130,7 +130,7 @@ struct WorktreeRowContent: View {
     @State private var isHovered = false
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.xs) {
             SidebarItemIconView(
                 icon: store.sidebarIcon(for: worktree, in: workspace),
                 size: 16,
@@ -140,7 +140,7 @@ struct WorktreeRowContent: View {
             )
             .frame(width: 24, alignment: .leading)
             Text(worktree.branch ?? worktree.path.lastPathComponent)
-                .font(.system(size: 10, weight: .medium))
+                .font(DesignFonts.chrome(size: 11, weight: .medium))
                 .foregroundStyle(theme.sidebarForeground)
                 .lineLimit(1)
             Spacer()
@@ -154,7 +154,7 @@ struct WorktreeRowContent: View {
                                               title: worktree.path.lastPathComponent)
             } label: {
                 Image(systemName: "folder.badge.plus")
-                    .font(.system(size: 9, weight: .medium))
+                    .font(DesignFonts.chrome(size: 11, weight: .medium))
                     // Hidden until the row is hovered, then revealed.
                     .foregroundStyle(theme.textSecondary.opacity(isHovered ? 1.0 : 0.0))
             }
@@ -162,12 +162,12 @@ struct WorktreeRowContent: View {
             .help(LocalizedStringKey("Open File Browser"))
             .padding(.trailing, 2)
         }
-        .padding(.vertical, 1)
-        .padding(.leading, 5)
-        .padding(.trailing, 4)
+        .padding(.vertical, Spacing.xxs)
+        .padding(.leading, Spacing.xxs)
+        .padding(.trailing, Spacing.xxs)
         .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: Radius.sm)
                 .fill(isHovered && !isSelected ? theme.sidebarSelection.opacity(0.3) : Color.clear)
         )
         .onHover { hovering in
@@ -195,12 +195,12 @@ struct SectionHeaderRow: View {
     var body: some View {
         HStack {
             Text(title)
-                .font(.system(size: 11, weight: .semibold))
+                .font(DesignFonts.chromeStrong)
                 .foregroundStyle(theme.textSecondary)
                 .lineLimit(1)
             Spacer()
         }
         .padding(.leading, 2)
-        .padding(.vertical, 2)
+        .padding(.vertical, Spacing.xxs)
     }
 }
