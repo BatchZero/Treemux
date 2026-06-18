@@ -3,6 +3,7 @@
 //  Treemux
 //
 
+import AppKit
 import Foundation
 import Sparkle
 
@@ -10,6 +11,22 @@ import Sparkle
 private final class SparkleUpdaterDelegate: NSObject, SPUUpdaterDelegate {
     nonisolated func feedURLString(for updater: SPUUpdater) -> String? {
         AppUpdaterController.resolveFeedURLString(infoDictionary: Bundle.main.infoDictionary)
+    }
+
+    /// Just before Sparkle relaunches to install an update, tear down any
+    /// open window-modal sheet (most often the Settings sheet). A presented
+    /// sheet keeps a modal session alive on its parent window, which prevents
+    /// the app from terminating cleanly and stalls Sparkle's quit-and-relaunch
+    /// handshake — the relaunch only succeeds if the sheet is closed first.
+    /// Sparkle invokes this on the main thread.
+    nonisolated func updaterWillRelaunchApplication(_ updater: SPUUpdater) {
+        MainActor.assumeIsolated {
+            for window in NSApp.windows {
+                if let sheet = window.attachedSheet {
+                    window.endSheet(sheet)
+                }
+            }
+        }
     }
 }
 
