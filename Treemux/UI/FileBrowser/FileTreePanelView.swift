@@ -9,6 +9,8 @@ struct FileTreePanelView: View {
     @EnvironmentObject private var store: WorkspaceStore
     @EnvironmentObject private var theme: ThemeManager
 
+    @State private var scrollPosition = ScrollPosition()
+
     var body: some View {
         VStack(spacing: 0) {
             FileTreeErrorBanner(controller: controller)
@@ -24,6 +26,17 @@ struct FileTreePanelView: View {
                     }
                 }
                 .padding(.vertical, 4)
+            }
+            .scrollPosition($scrollPosition)
+            // Persist the live offset so it survives a view rebuild (tab switch).
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.y
+            } action: { _, newValue in
+                controller.treeScrollOffset = newValue
+            }
+            // Restore the cached offset when this view is (re-)mounted.
+            .onAppear {
+                scrollPosition.scrollTo(y: controller.treeScrollOffset)
             }
         }
         .background(theme.paneBackground)
