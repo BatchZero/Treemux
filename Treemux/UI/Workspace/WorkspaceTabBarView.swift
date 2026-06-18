@@ -30,14 +30,14 @@ struct WorkspaceTabBarView: View {
                         Rectangle()
                             .fill(theme.dividerColor)
                             .frame(width: 1, height: 18)
-                            .padding(.horizontal, 5)
+                            .padding(.horizontal, Spacing.xxs)
                     }
                     if !groups.shell.isEmpty {
-                        TabGroupEyebrow(title: "Shell", color: theme.shellAccent)
+                        TabGroupEyebrow(title: "Shell", color: theme.accentColor)
                         ForEach(groups.shell) { tab in tabView(tab) }
                     }
                 }
-                .padding(.horizontal, 8)
+                .padding(.horizontal, Spacing.xs)
             }
 
             // New tab button
@@ -52,7 +52,7 @@ struct WorkspaceTabBarView: View {
             }
             .buttonStyle(.plain)
             .help("New Tab (⌘T)")
-            .padding(.trailing, 8)
+            .padding(.trailing, Spacing.xs)
         }
         .frame(height: 38)
         .background(theme.tabBarBackground)
@@ -229,7 +229,7 @@ private struct TabGroupEyebrow: View {
 
     var body: some View {
         Text(title)
-            .font(DesignFonts.dataLayer(size: 9, weight: .semibold))
+            .font(DesignFonts.eyebrow)
             .textCase(.uppercase)
             .kerning(0.8)
             .foregroundStyle(color)
