@@ -8,6 +8,13 @@ import Foundation
 import SwiftUI
 import Yams
 
+/// Tint role for monochrome (template) file-tree icons. Resolved to a theme
+/// color by `ThemeManager.fileIconTint(_:)`. Colorful asset icons carry no role.
+enum FileIconTintRole: Equatable {
+    case folder
+    case muted
+}
+
 /// Manages YAML theme loading, selection, and color publishing for the app.
 @MainActor
 final class ThemeManager: ObservableObject {
@@ -112,6 +119,26 @@ final class ThemeManager: ObservableObject {
     var successColor: Color { Color(hex: activeTheme.ui.success) }
     var warningColor: Color { Color(hex: activeTheme.ui.warning) }
     var dangerColor: Color { Color(hex: activeTheme.ui.danger) }
+
+    // MARK: - Derived palette (file browser / syntax)
+
+    /// A color from the active theme's 16-entry ANSI palette, bounds-safe.
+    func ansiColor(_ index: Int) -> Color {
+        let ansi = activeTheme.terminal.ansi
+        guard ansi.indices.contains(index) else { return textPrimary }
+        return Color(hex: ansi[index])
+    }
+
+    /// Accent for terminal/shell affordances (ANSI green slot).
+    var shellAccent: Color { ansiColor(2) }
+
+    /// Resolves a file-tree icon tint role to a theme color.
+    func fileIconTint(_ role: FileIconTintRole) -> Color {
+        switch role {
+        case .folder: return accentColor
+        case .muted: return textSecondary
+        }
+    }
 
     // MARK: - Resolved AppKit Colors (NSOutlineView sidebar)
 
