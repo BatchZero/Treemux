@@ -15,6 +15,20 @@ final class SFTPRecursiveListingTests: XCTestCase {
         XCTAssertTrue(cmd.contains("||"))
     }
 
+    func test_bulkListCommand_appliesServerSideEntryCap() {
+        let cmd = SFTPService.bulkListCommand(maxDepth: 2, maxEntries: 1234)
+        // The whole GNU||BSD listing must be bounded, so it is wrapped and piped
+        // through `head` — the safety valve that stops a huge remote tree from
+        // streaming unbounded output back to the client (which spun forever).
+        XCTAssertTrue(cmd.contains("head -n 1234"), "expected server-side line cap, got: \(cmd)")
+        XCTAssertTrue(cmd.contains("||"), "both GNU and BSD branches must remain")
+    }
+
+    func test_bulkListCommand_defaultCapMatchesConstant() {
+        let cmd = SFTPService.bulkListCommand(maxDepth: 2)
+        XCTAssertTrue(cmd.contains("head -n \(SFTPService.bulkListMaxEntries)"))
+    }
+
     func test_parseRecursive_GNU_nestedPaths_groupedByParent() {
         let output = """
         drwxr-xr-x 2 0 0 4096 1714000000 ./src

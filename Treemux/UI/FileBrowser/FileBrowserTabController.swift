@@ -214,7 +214,7 @@ final class FileBrowserTabController: ObservableObject {
                     childrenByPath[path] = filtered(kids)
                 }
             }
-            persistTree()
+            await persistTree()
             // The full tree (bulk fetch + async deeper expanded dirs) is now
             // applied; signal the view so it can re-assert a restored offset.
             treeContentGeneration &+= 1
@@ -251,15 +251,24 @@ final class FileBrowserTabController: ObservableObject {
         rootChildren = childrenByPath[rootPath] ?? []
     }
 
-    private func persistTree() {
+    private func persistTree() async {
         guard let identity = dataSource.treeCacheIdentity else { return }
+        // Snapshot the (value-type) tree on the main actor, then JSON-encode and
+        // write it to disk off the main thread. For a large remote tree the
+        // encode + atomic write took long enough to visibly freeze the UI while
+        // the fetch settled. Awaiting a detached task moves the work off the
+        // main actor (the UI keeps ticking during the await) while still
+        // finishing the write before the caller continues.
         let snap = DirectoryTreeSnapshot(
             rootPath: rootPath,
             childrenByPath: rawChildrenByPath,
             truncatedDirs: Array(truncatedDirs),
             fetchedAt: Date()
         )
-        try? treeCache.save(snap, identity: identity)
+        let cache = treeCache
+        await Task.detached(priority: .utility) {
+            try? cache.save(snap, identity: identity)
+        }.value
     }
 
     func toggleExpand(_ path: String) async {

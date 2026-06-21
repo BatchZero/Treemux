@@ -150,6 +150,52 @@ final class SFTPServiceTests: XCTestCase {
         XCTAssertEqual(result.exitCode, 0)
         XCTAssertEqual(result.output.count, 100_000)
     }
+
+    // MARK: - runProcessAndCaptureOutput: command timeout
+
+    /// A listing command that stalls must surface a timeout error instead of
+    /// hanging the file browser forever (the "remote large folder spins
+    /// forever" bug). A 5 s sleep with a 0.3 s timeout must throw promptly and
+    /// leave no orphaned child process behind.
+    func test_runProcessAndCaptureOutput_timeout_throwsAndKillsChild() async throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", "sleep 5"]
+
+        do {
+            _ = try await withTimeout(seconds: 3) {
+                try await SFTPService.runProcessAndCaptureOutput(process, timeout: 0.3)
+            }
+            XCTFail("expected a timeout error")
+        } catch is TestTimeoutError {
+            XCTFail("command timeout did not fire — outer harness timed out instead")
+        } catch {
+            // Expected: SFTPServiceError.commandTimedOut surfaced quickly.
+        }
+        // `terminate()` is asynchronous — SIGTERM is delivered, but the child
+        // takes a moment to actually exit. Poll briefly rather than racing it.
+        var stillRunning = process.isRunning
+        for _ in 0..<20 where stillRunning {
+            try await Task.sleep(nanoseconds: 50_000_000)
+            stillRunning = process.isRunning
+        }
+        XCTAssertFalse(stillRunning, "timed-out child must be terminated")
+    }
+
+    /// A fast command finishing well inside its timeout returns normally —
+    /// the timeout must not corrupt the success path.
+    func test_runProcessAndCaptureOutput_withTimeout_fastCommandSucceeds() async throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/echo")
+        process.arguments = ["ok"]
+
+        let result = try await withTimeout(seconds: 5) {
+            try await SFTPService.runProcessAndCaptureOutput(process, timeout: 5)
+        }
+
+        XCTAssertEqual(result.exitCode, 0)
+        XCTAssertEqual(result.output, "ok\n")
+    }
 }
 
 // MARK: - Test helpers

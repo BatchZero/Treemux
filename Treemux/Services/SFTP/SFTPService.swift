@@ -17,6 +17,7 @@ enum SFTPServiceError: LocalizedError {
     case unsupportedKeyType(String)
     case authenticationFailed
     case commandFailed(String)
+    case commandTimedOut(TimeInterval)
 
     var errorDescription: String? {
         switch self {
@@ -32,6 +33,8 @@ enum SFTPServiceError: LocalizedError {
             return "SSH authentication failed"
         case .commandFailed(let detail):
             return "SSH command failed: \(detail)"
+        case .commandTimedOut(let seconds):
+            return "SSH command timed out after \(Int(seconds))s"
         }
     }
 }
@@ -63,6 +66,23 @@ fileprivate final class DataAccumulator: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return buffer
+    }
+}
+
+/// Lets exactly one of several racing callbacks (process termination, a
+/// timeout, or a launch failure) resume a `CheckedContinuation`. The first
+/// `claim()` returns `true`; every later one returns `false`, so the
+/// continuation is resumed once and only once.
+fileprivate final class ResumeGuard: @unchecked Sendable {
+    private let lock = NSLock()
+    private var claimed = false
+
+    func claim() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if claimed { return false }
+        claimed = true
+        return true
     }
 }
 
@@ -228,14 +248,14 @@ actor SFTPService {
     /// In `.ssh` mode, executes via the existing system-ssh path.
     /// In `.citadel` mode, throws — Citadel's API for arbitrary command exec
     /// isn't wired and is not needed by file-browser flows in P1.
-    func runCommand(_ command: String, in cwd: String? = nil) async throws -> String {
+    func runCommand(_ command: String, in cwd: String? = nil, timeout: TimeInterval? = nil) async throws -> String {
         guard let mode else { throw SFTPServiceError.notConnected }
         switch mode {
         case .ssh(let target):
             let full: String
             if let cwd { full = "cd \(Self.shellQuote(cwd)) && \(command)" }
             else { full = command }
-            let result = try await runSSH(target: target, command: full)
+            let result = try await runSSH(target: target, command: full, timeout: timeout)
             guard result.exitCode == 0 else {
                 throw SFTPServiceError.commandFailed("exit \(result.exitCode): \(result.output)")
             }
@@ -258,7 +278,8 @@ actor SFTPService {
     /// was capped at `entryCap`.
     func listTreeViaCommand(root: String, maxDepth: Int, entryCap: Int)
         async throws -> (childrenByPath: [String: [SFTPRichEntry]], truncated: Set<String>) {
-        let output = try await runCommand(Self.bulkListCommand(maxDepth: maxDepth), in: root)
+        let output = try await runCommand(
+            Self.bulkListCommand(maxDepth: maxDepth), in: root, timeout: Self.listingCommandTimeout)
         var grouped = Self.parseRecursiveListing(output: output, root: root)
         var truncated: Set<String> = []
         for (dir, entries) in grouped where entries.count > entryCap {
@@ -290,7 +311,8 @@ actor SFTPService {
     private func listDirectoriesViaSSH(target: SSHTarget, path: String) async throws -> [SFTPDirectoryEntry] {
         // Use ls -1paL: one-per-line, append / to dirs, include hidden, dereference symlinks
         let escapedPath = shellEscape(path)
-        let result = try await runSSH(target: target, command: "ls -1pa \(escapedPath)")
+        let result = try await runSSH(
+            target: target, command: "ls -1pa \(escapedPath)", timeout: Self.listingCommandTimeout)
 
         guard result.exitCode == 0 else {
             throw SFTPServiceError.commandFailed("ls failed at \(path)")
@@ -356,11 +378,11 @@ actor SFTPService {
         let output: String
     }
 
-    private func runSSH(target: SSHTarget, command: String) async throws -> SSHResult {
+    private func runSSH(target: SSHTarget, command: String, timeout: TimeInterval? = nil) async throws -> SSHResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
         process.arguments = Self.sshArgs(target: target, command: command)
-        return try await Self.runProcessAndCaptureOutput(process)
+        return try await Self.runProcessAndCaptureOutput(process, timeout: timeout)
     }
 
     private func shellEscape(_ path: String) -> String {
@@ -408,7 +430,7 @@ actor SFTPService {
     /// Optionally writes `stdin` to the child and closes it. The write runs
     /// off the cooperative pool so a backpressured ssh process can't stall
     /// the awaiting Task while a large payload drains.
-    static func runProcessAndCaptureOutput(_ process: Process, stdin: Data? = nil) async throws -> SSHResult {
+    static func runProcessAndCaptureOutput(_ process: Process, stdin: Data? = nil, timeout: TimeInterval? = nil) async throws -> SSHResult {
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
         process.standardOutput = stdoutPipe
@@ -437,7 +459,31 @@ actor SFTPService {
         }
 
         return try await withCheckedThrowingContinuation { continuation in
+            // `terminationHandler`, the timeout, and a launch failure all race
+            // to resume the continuation; the guard ensures exactly one wins.
+            let resume = ResumeGuard()
+
+            // Optional wall-clock ceiling. A stalled remote command (a huge
+            // listing, a dead connection) would otherwise leave the awaiting
+            // Task — and the file browser's spinner — hung forever. On expiry we
+            // kill the child and surface a timeout error.
+            var timeoutItem: DispatchWorkItem?
+            if let timeout {
+                let item = DispatchWorkItem {
+                    guard resume.claim() else { return }
+                    stdoutPipe.fileHandleForReading.readabilityHandler = nil
+                    stderrPipe.fileHandleForReading.readabilityHandler = nil
+                    process.terminationHandler = nil
+                    if process.isRunning { process.terminate() }
+                    continuation.resume(throwing: SFTPServiceError.commandTimedOut(timeout))
+                }
+                timeoutItem = item
+                DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + timeout, execute: item)
+            }
+
             process.terminationHandler = { _ in
+                guard resume.claim() else { return }
+                timeoutItem?.cancel()
                 // Detach handlers and grab any final bytes synchronously. The
                 // child's write end is closed by the kernel on exit, so these
                 // reads see EOF promptly even if a chunk arrived between the
@@ -459,6 +505,8 @@ actor SFTPService {
                     }
                 }
             } catch {
+                guard resume.claim() else { return }
+                timeoutItem?.cancel()
                 continuation.resume(throwing: error)
             }
         }
@@ -478,7 +526,7 @@ actor SFTPService {
         let bsdCmd = "ls -lAT -- \(escapedPath)"
         let combined = "\(gnuCmd) 2>/dev/null || \(bsdCmd)"
 
-        let result = try await runSSH(target: target, command: combined)
+        let result = try await runSSH(target: target, command: combined, timeout: Self.listingCommandTimeout)
         guard result.exitCode == 0 else {
             throw SFTPServiceError.commandFailed("ls failed at \(path)")
         }
@@ -491,6 +539,9 @@ actor SFTPService {
     /// Exposed at internal scope (and as a static function) so unit tests can drive it directly.
     static func parseListing(output: String, parentPath: String) -> [SFTPRichEntry] {
         var entries: [SFTPRichEntry] = []
+        // Hoisted out of the loop — see `parseRecursiveListing` for why per-line
+        // `DateFormatter` allocation is a performance problem on big listings.
+        let bsdFormatter = makeBSDDateFormatter()
 
         let lines = output.components(separatedBy: "\n")
         for line in lines {
@@ -534,10 +585,7 @@ actor SFTPService {
             } else if tokens.count >= 10 {
                 // BSD `ls -lAT`: month, day, time, year — 4 tokens.
                 let stamp = "\(tokens[5]) \(tokens[6]) \(tokens[7]) \(tokens[8])"
-                let formatter = DateFormatter()
-                formatter.locale = Locale(identifier: "en_US_POSIX")
-                formatter.dateFormat = "MMM d HH:mm:ss yyyy"
-                mtime = formatter.date(from: stamp)
+                mtime = bsdFormatter.date(from: stamp)
                 nameStartIdx = 9
             } else {
                 continue
@@ -584,6 +632,17 @@ actor SFTPService {
         return entries
     }
 
+    /// Builds a `DateFormatter` for BSD `ls -lAT` timestamps
+    /// (`Mon DD HH:MM:SS YYYY`). Callers create one per parse and reuse it
+    /// across lines — allocating one per entry was a real perf cost on large
+    /// remote listings.
+    static func makeBSDDateFormatter() -> DateFormatter {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "MMM d HH:mm:ss yyyy"
+        return f
+    }
+
     // MARK: - Recursive (bulk) listing helpers
 
     /// Builds the portable bulk-listing command run on the system-SSH path.
@@ -593,11 +652,31 @@ actor SFTPService {
     /// numeric so they never introduce spaces that would break tokenization.
     /// The leading `cd <root>` is supplied by `runCommand(_:in:)`, so names come
     /// back relative (`./sub/file`).
-    static func bulkListCommand(maxDepth: Int) -> String {
+    /// Hard upper bound on lines (≈ entries) the bulk tree listing transfers
+    /// and parses in one fetch, independent of the remote tree's real size. A
+    /// safety valve against catastrophically large remote directories: without
+    /// it the client streamed and parsed every entry (hundreds of thousands on
+    /// a big tree) before the per-directory `entryCap` truncated anything, so
+    /// the file browser just spun forever. Expanding a node re-lists it, so a
+    /// capped fetch is never the last word on a directory's contents.
+    static let bulkListMaxEntries = 50_000
+
+    /// Wall-clock ceiling for directory-listing SSH commands. Listings are
+    /// bounded by `bulkListMaxEntries`, so they should return quickly; this
+    /// converts a stalled connection or pathological remote FS into an error
+    /// banner instead of an infinite spinner. File *reads* deliberately pass no
+    /// timeout — a large transfer can legitimately exceed this.
+    static let listingCommandTimeout: TimeInterval = 25
+
+    static func bulkListCommand(maxDepth: Int, maxEntries: Int = bulkListMaxEntries) -> String {
         let sel = "\\( -type d -o -type f -o -type l \\)"
         let gnu = "find . -mindepth 1 -maxdepth \(maxDepth) \(sel) -exec ls -ldn --time-style=+%s {} +"
         let bsd = "find . -mindepth 1 -maxdepth \(maxDepth) \(sel) -exec ls -ldnT {} +"
-        return "\(gnu) 2>/dev/null || \(bsd)"
+        // Wrap the GNU||BSD listing in a subshell and pipe through `head` so the
+        // cap applies whichever branch runs. `head` closing the pipe also makes
+        // `find` stop early via SIGPIPE, so the server doesn't keep walking the
+        // tree after the cap is reached.
+        return "( \(gnu) 2>/dev/null || \(bsd) ) | head -n \(maxEntries)"
     }
 
     /// Parses the recursive `ls -ld` output produced by `bulkListCommand`.
@@ -608,6 +687,12 @@ actor SFTPService {
     static func parseRecursiveListing(output: String, root: String) -> [String: [SFTPRichEntry]] {
         let normalizedRoot = root.hasSuffix("/") ? String(root.dropLast()) : root
         var grouped: [String: [SFTPRichEntry]] = [:]
+        // Hoisted out of the per-line loop: `DateFormatter` init + locale setup
+        // is expensive, and the bulk listing parses one line per remote entry.
+        // Allocating a formatter per line turned large remote trees into a
+        // multi-second parse stall. Reused across lines; only the BSD branch
+        // touches it, and parsing is serialized on the SFTPService actor.
+        let bsdFormatter = Self.makeBSDDateFormatter()
 
         for line in output.components(separatedBy: "\n") {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -634,10 +719,7 @@ actor SFTPService {
                 nameStartIdx = 6
             } else if tokens.count >= 10 {
                 let stamp = "\(tokens[5]) \(tokens[6]) \(tokens[7]) \(tokens[8])"
-                let fmt = DateFormatter()
-                fmt.locale = Locale(identifier: "en_US_POSIX")
-                fmt.dateFormat = "MMM d HH:mm:ss yyyy"
-                mtime = fmt.date(from: stamp)
+                mtime = bsdFormatter.date(from: stamp)
                 nameStartIdx = 9
             } else {
                 continue
