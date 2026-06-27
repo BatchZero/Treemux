@@ -42,6 +42,16 @@ final class GhosttyTerminalConfigTests: XCTestCase {
         XCTAssertTrue(lines.contains("cursor-style = bar"))
     }
 
+    func testLinesEnforceMinimumContrast() {
+        // Light themes map "bright white" (ANSI 15) to a dark color so white text
+        // stays visible on the light background. When a program paints that bright
+        // white onto a dark fill (e.g. Claude Code's reverse-video user message box)
+        // the result is dark-on-dark and unreadable. minimum-contrast lets ghostty
+        // bump the foreground at render time to guarantee readability.
+        let lines = GhosttyTerminalConfig.lines(for: sampleColors(), cursorStyle: "bar")
+        XCTAssertTrue(lines.contains("minimum-contrast = 1.4"))
+    }
+
     func testLinesContainSixteenPaletteEntries() {
         let lines = GhosttyTerminalConfig.lines(for: sampleColors(), cursorStyle: "bar")
         for i in 0..<16 {
