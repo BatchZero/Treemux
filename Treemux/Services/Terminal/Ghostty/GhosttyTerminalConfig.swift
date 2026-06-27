@@ -35,6 +35,16 @@ enum GhosttyTerminalConfig {
         for (i, hex) in colors.ansi.enumerated() {
             lines.append("palette = \(i)=\(GhosttyHex.normalize(hex))")
         }
+        // Light themes intentionally map "bright white" (ANSI 15) and the default
+        // foreground to the same dark color so white text stays readable on the light
+        // background. The downside: when a program paints bright white onto a dark fill
+        // (e.g. Claude Code's reverse-video user message box) the cell becomes
+        // dark-on-dark (contrast ratio 1.0) and unreadable. A static palette cannot
+        // satisfy both cases, so we let ghostty raise the foreground at render time to
+        // guarantee a minimum contrast ratio against whatever the actual cell background
+        // is. Normal dark-on-light text is already well above this threshold and stays
+        // untouched.
+        lines.append("minimum-contrast = 1.4")
         lines.append("cursor-style = \(cursorStyle)")
         return lines
     }
