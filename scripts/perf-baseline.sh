@@ -10,6 +10,28 @@ APP="${1:?usage: perf-baseline.sh <Treemux.app>}"
 FIXTURE="$HOME/.treemux-perf-fixture"
 STATE_DIR="$HOME/.treemux-debug"
 OUT_DIR="$(mktemp -d)"
+PID=""
+
+# --- 0. Safety net: make sure we never leave a debug Treemux process running,
+# even if `sample` fails or the script is interrupted mid-way.
+cleanup() {
+  if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+    kill "$PID" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+
+# Poll `pgrep -f "$1"` until it reports no match, up to "$2" seconds
+# (0.3s interval). Returns 0 once gone, 1 on timeout (caller decides severity).
+wait_for_gone() {
+  local pattern="$1" timeout_s="$2" tries
+  tries=$(( (timeout_s * 10 + 2) / 3 ))
+  for ((i = 0; i < tries; i++)); do
+    pgrep -f "$pattern" >/dev/null 2>&1 || return 0
+    sleep 0.3
+  done
+  return 1
+}
 
 # --- 1. Synthetic repo: 10 dirs x 100 files = 1000 tree rows, deterministic.
 if [ ! -d "$FIXTURE/.git" ]; then
@@ -24,7 +46,9 @@ if [ ! -d "$FIXTURE/.git" ]; then
 fi
 
 # --- 2. Seed debug state: fileBrowser tab with all 10 dirs expanded.
-pkill -f "$APP/Contents/MacOS/Treemux" 2>/dev/null || true; sleep 1
+pkill -f "$APP/Contents/MacOS/Treemux" 2>/dev/null || true
+wait_for_gone "$APP/Contents/MacOS/Treemux" 5 || \
+  echo "warn: old Treemux process still around after 5s, continuing anyway" >&2
 rm -rf "$STATE_DIR"; mkdir -p "$STATE_DIR"
 python3 - "$FIXTURE" "$STATE_DIR" <<'PY'
 import json, sys, uuid
@@ -46,8 +70,16 @@ json.dump(state, open(f"{state_dir}/workspace-state.json", "w"), indent=2)
 PY
 
 # --- 3. Scenario A: launch + 10s sample.
-open "$APP"; sleep 1
-PID=$(pgrep -nf "$APP/Contents/MacOS/Treemux")
+open "$APP"
+for ((i = 0; i < 50; i++)); do  # 50 * 0.3s = 15s
+  PID=$(pgrep -nf "$APP/Contents/MacOS/Treemux" 2>/dev/null || true)
+  [ -n "$PID" ] && break
+  sleep 0.3
+done
+if [ -z "$PID" ]; then
+  echo "error: Treemux did not launch within 15s (no process matched $APP/Contents/MacOS/Treemux)" >&2
+  exit 1
+fi
 sample "$PID" 10 -file "$OUT_DIR/a.txt" >/dev/null 2>&1
 RSS_A=$(ps -o rss= -p "$PID" | tr -d ' ')
 
@@ -64,13 +96,18 @@ report() {
 import re, sys
 path, label, rss = sys.argv[1], sys.argv[2], sys.argv[3]
 lines = open(path, errors="ignore").read().splitlines()
-main, out, depth0 = [], None, None
+main, out = [], None
 for l in lines:
     m = re.match(r"^    (\d+) Thread_\d+.*(Main Thread|DispatchQueue_1)", l)
     if m: out = int(m.group(1)); main = []; continue
     if out is not None:
         if re.match(r"^    \d+ Thread_", l): break
         main.append(l)
+if out is None:
+    print(f"error: no main-thread sample block found in {path} (label={label}); "
+          f"'sample' output format may have changed, or the process exited before sampling",
+          file=sys.stderr)
+    sys.exit(1)
 body = "\n".join(main)
 def count(pat):
     # NOTE: pat may contain alternation ("A|B"); wrap it in a non-capturing
