@@ -142,4 +142,107 @@ final class FileTreeRowModelTests: XCTestCase {
 
         XCTAssertEqual(c.visibleRowsComputeCount, countBefore + 1)
     }
+
+    /// `activateSubTab(_:)` flips `activeSubTabID`, which feeds `selectedFilePath`
+    /// (and therefore each row's `isSelected`) independently of any `subTabs`
+    /// mutation — pin two files first so both stay resident, then switch the
+    /// active one without touching `subTabs` itself.
+    func testVisibleRowsCacheInvalidatesOnActiveSubTabChange() async throws {
+        let root = try makeTempTree()
+        let c = makeController(root: root)
+        await c.loadRoot()
+        await c.toggleExpand(root + "/sub") // so b.txt's row is visible for the isSelected checks below
+        await c.pinFile(root + "/a.txt")
+        guard let firstID = c.activeSubTabID else {
+            XCTFail("expected an active sub-tab after pinFile")
+            return
+        }
+        await c.pinFile(root + "/sub/b.txt")
+        guard let secondID = c.activeSubTabID, secondID != firstID else {
+            XCTFail("expected a second, distinct active sub-tab after pinFile")
+            return
+        }
+
+        _ = c.visibleRows() // prime the cache
+        let countBefore = c.visibleRowsComputeCount
+        _ = c.visibleRows() // repeat call before the change must stay cached
+        XCTAssertEqual(c.visibleRowsComputeCount, countBefore,
+                        "repeat call with no state change must not recompute")
+
+        c.activateSubTab(firstID)
+        let rows = c.visibleRows()
+
+        XCTAssertEqual(c.visibleRowsComputeCount, countBefore + 1)
+        XCTAssertEqual(rows.first(where: { $0.id == root + "/a.txt" })?.isSelected, true)
+        XCTAssertEqual(rows.first(where: { $0.id == root + "/sub/b.txt" })?.isSelected, false)
+    }
+
+    /// `markTruncatedForTesting` mutates `truncatedDirs` directly — the same
+    /// property `refreshTree`/`applyFetch` populate from a real capped
+    /// listing — so it must invalidate the cache on its own, independent of
+    /// any expand/collapse or sub-tab change.
+    func testVisibleRowsCacheInvalidatesOnTruncatedDirsChange() async throws {
+        let root = try makeTempTree()
+        let c = makeController(root: root)
+        await c.loadRoot()
+        await c.toggleExpand(root + "/sub")
+
+        _ = c.visibleRows() // prime the cache
+        let countBefore = c.visibleRowsComputeCount
+        _ = c.visibleRows() // repeat call before the change must stay cached
+        XCTAssertEqual(c.visibleRowsComputeCount, countBefore,
+                        "repeat call with no state change must not recompute")
+
+        c.markTruncatedForTesting(root + "/sub")
+        let rows = c.visibleRows()
+
+        XCTAssertEqual(c.visibleRowsComputeCount, countBefore + 1)
+        XCTAssertTrue(rows.map(\.id).contains("loadMore:" + root + "/sub"))
+    }
+
+    /// `refreshGitStatus()` writes `fileStatusByPath`, which feeds each row's
+    /// `status` badge. Wires a stub `GitDiffService` so the refresh is
+    /// isolated from any other published-state mutation.
+    func testVisibleRowsCacheInvalidatesOnGitStatusRefresh() async throws {
+        let root = try makeTempTree()
+        let stub = StubGitDiffService()
+        let c = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: root, rootKind: .project),
+            dataSource: LocalFileBrowserDataSource(),
+            gitDiffService: stub,
+            repoRoot: root
+        )
+        // loadRoot() -> refreshTree() already calls refreshGitStatus() once
+        // internally; let that settle (with an empty stub status map) before
+        // priming the cache so it isn't mistaken for the change under test.
+        await c.loadRoot()
+
+        _ = c.visibleRows() // prime the cache
+        let countBefore = c.visibleRowsComputeCount
+        _ = c.visibleRows() // repeat call before the change must stay cached
+        XCTAssertEqual(c.visibleRowsComputeCount, countBefore,
+                        "repeat call with no state change must not recompute")
+
+        stub.statusToReturn = ["a.txt": .modified]
+        await c.refreshGitStatus()
+        let rows = c.visibleRows()
+
+        XCTAssertEqual(c.visibleRowsComputeCount, countBefore + 1)
+        XCTAssertEqual(rows.first(where: { $0.id == root + "/a.txt" })?.status, .modified)
+    }
+}
+
+/// Minimal `GitDiffService` stub for isolating `fileStatusByPath` invalidation
+/// from real `git` subprocess calls. `fileStatus(in:)` returns whatever test
+/// code stashes in `statusToReturn`, keyed by repo-relative path — matching
+/// the porcelain-parsed shape `FileBrowserTabController.refreshGitStatus()`
+/// expects.
+private final class StubGitDiffService: GitDiffService {
+    var statusToReturn: [String: FileStatus] = [:]
+
+    func diffHunks(forFile path: String, repoRoot: String) async throws -> [DiffHunk] { [] }
+
+    func fileStatus(in repoRoot: String) async throws -> [String: FileStatus] {
+        statusToReturn
+    }
 }
