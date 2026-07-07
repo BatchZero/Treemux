@@ -24,6 +24,11 @@ final class WorkspaceStore: ObservableObject {
     @Published var showCommandPalette = false
     @Published var sidebarIconCustomizationRequest: SidebarIconCustomizationRequest?
 
+    /// Bumped whenever git worktree metadata for any workspace is refreshed.
+    /// Replaces a bare objectWillChange.send() so the invalidation survives
+    /// the @Observable migration (which has no objectWillChange).
+    @Published private(set) var workspaceMetadataGeneration: Int = 0
+
     @Published var settings: AppSettings {
         didSet { try? settingsPersistence.save(settings) }
     }
@@ -466,7 +471,7 @@ final class WorkspaceStore: ObservableObject {
             }
 
             // Notify SwiftUI that child model data changed so the sidebar rebuilds.
-            objectWillChange.send()
+            workspaceMetadataGeneration += 1
         } catch {
             // Not a git repository or git command failed — that's acceptable.
         }

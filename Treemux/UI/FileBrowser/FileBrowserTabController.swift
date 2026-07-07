@@ -36,22 +36,36 @@ final class FileBrowserTabController: ObservableObject {
     @Published var rootPath: String
     @Published private(set) var rootKind: FileBrowserRootKind
     @Published var splitRatio: Double
-    @Published var expandedDirs: Set<String>
-    @Published var showsHiddenFiles: Bool
+    @Published var expandedDirs: Set<String> {
+        didSet { visibleRowsCache = nil }
+    }
+    @Published var showsHiddenFiles: Bool {
+        didSet { visibleRowsCache = nil }
+    }
 
     // Runtime state.
-    @Published private(set) var rootChildren: [FileNode] = []
-    @Published private(set) var childrenByPath: [String: [FileNode]] = [:]
+    @Published private(set) var rootChildren: [FileNode] = [] {
+        didSet { visibleRowsCache = nil }
+    }
+    @Published private(set) var childrenByPath: [String: [FileNode]] = [:] {
+        didSet { visibleRowsCache = nil }
+    }
     private var rawChildrenByPath: [String: [FileNode]] = [:]
-    @Published private(set) var subTabs: [SubTabRuntime] = []
-    @Published private(set) var activeSubTabID: UUID?
+    @Published private(set) var subTabs: [SubTabRuntime] = [] {
+        didSet { visibleRowsCache = nil }
+    }
+    @Published private(set) var activeSubTabID: UUID? {
+        didSet { visibleRowsCache = nil }
+    }
     @Published private(set) var loadingPaths: Set<String> = []
     @Published private(set) var loadError: LoadError?
 
     // Git diff/status caches. `diffHunksByPath` keyed by absolute path of the
     // active sub-tab; `fileStatusByPath` keyed by absolute path under `repoRoot`.
     @Published private(set) var diffHunksByPath: [String: [DiffHunk]] = [:]
-    @Published private(set) var fileStatusByPath: [String: FileStatus] = [:]
+    @Published private(set) var fileStatusByPath: [String: FileStatus] = [:] {
+        didSet { visibleRowsCache = nil }
+    }
 
     // Configuration.
     static let textReadLimit: Int = 5 * 1024 * 1024       // 5 MB
@@ -64,7 +78,29 @@ final class FileBrowserTabController: ObservableObject {
     let gitDiffService: GitDiffService?
     let repoRoot: String?
     let treeCache: DirectoryTreeCachePersistence
-    @Published private(set) var truncatedDirs: Set<String> = []
+    @Published private(set) var truncatedDirs: Set<String> = [] {
+        didSet { visibleRowsCache = nil }
+    }
+
+    /// Memoized result of the last `visibleRows()` flatten. Invalidated (set
+    /// to `nil`) via `didSet` on every `@Published` property the flatten
+    /// reads: `rootChildren`, `childrenByPath`, `expandedDirs`,
+    /// `truncatedDirs`, `fileStatusByPath`, `activeSubTabID`, `subTabs`
+    /// (which `selectedFilePath` derives from), and `showsHiddenFiles`
+    /// (belt-and-suspenders — it only actually takes effect by re-deriving
+    /// `childrenByPath`/`rootChildren`, but is included directly in case that
+    /// ever changes). Without this, `FileTreePanelView.body` re-flattened the
+    /// whole tree — O(n) work plus an O(n) Equatable diff against the
+    /// previous `[FileTreeRowModel]` — on every re-render, even ones the
+    /// tree's own state had nothing to do with.
+    private var visibleRowsCache: [FileTreeRowModel]?
+
+    #if DEBUG
+    /// Test seam: counts actual flattens (cache misses), so tests can assert
+    /// the cache is hit/invalidated at the right times without depending on
+    /// timing. Not gated on anything but DEBUG — cheap increment.
+    private(set) var visibleRowsComputeCount = 0
+    #endif
 
     /// Last known vertical scroll offset of the file tree. Cached in-memory so
     /// the tree restores its position when the tab is re-mounted (e.g. after
@@ -341,7 +377,16 @@ final class FileBrowserTabController: ObservableObject {
     /// Flattens the expanded tree into visible rows, depth-first. This is the
     /// single source the tree view renders from; rows are pure values so
     /// SwiftUI can skip unchanged rows via Equatable.
+    ///
+    /// Memoized: the flatten is only recomputed once per actual state change,
+    /// keyed off `visibleRowsCache`. See its doc comment for the full list of
+    /// `@Published` properties whose `didSet` invalidates the cache — every
+    /// property this function reads must be on that list.
     func visibleRows() -> [FileTreeRowModel] {
+        if let cached = visibleRowsCache { return cached }
+        #if DEBUG
+        visibleRowsComputeCount += 1
+        #endif
         var rows: [FileTreeRowModel] = []
         func emit(_ nodes: [FileNode], depth: Int) {
             for node in nodes {
@@ -374,6 +419,7 @@ final class FileBrowserTabController: ObservableObject {
                 depth: 0, isSelected: false, isExpanded: false, status: nil
             ))
         }
+        visibleRowsCache = rows
         return rows
     }
 
