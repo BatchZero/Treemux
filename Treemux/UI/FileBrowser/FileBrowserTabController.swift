@@ -338,6 +338,45 @@ final class FileBrowserTabController: ObservableObject {
         showsHiddenFiles ? nodes : nodes.filter { !$0.isHidden }
     }
 
+    /// Flattens the expanded tree into visible rows, depth-first. This is the
+    /// single source the tree view renders from; rows are pure values so
+    /// SwiftUI can skip unchanged rows via Equatable.
+    func visibleRows() -> [FileTreeRowModel] {
+        var rows: [FileTreeRowModel] = []
+        func emit(_ nodes: [FileNode], depth: Int) {
+            for node in nodes {
+                let expanded = node.isDirectory && expandedDirs.contains(node.path)
+                rows.append(FileTreeRowModel(
+                    id: node.path,
+                    kind: .node(node),
+                    depth: depth,
+                    isSelected: selectedFilePath == node.path,
+                    isExpanded: expanded,
+                    status: fileStatusByPath[node.path]
+                ))
+                if expanded, let kids = childrenByPath[node.path] {
+                    emit(kids, depth: depth + 1)
+                    if truncatedDirs.contains(node.path) {
+                        rows.append(FileTreeRowModel(
+                            id: "loadMore:" + node.path,
+                            kind: .loadMore(parentPath: node.path),
+                            depth: depth + 1,
+                            isSelected: false, isExpanded: false, status: nil
+                        ))
+                    }
+                }
+            }
+        }
+        emit(rootChildren, depth: 0)
+        if truncatedDirs.contains(rootPath) {
+            rows.append(FileTreeRowModel(
+                id: "loadMore:" + rootPath, kind: .loadMore(parentPath: rootPath),
+                depth: 0, isSelected: false, isExpanded: false, status: nil
+            ))
+        }
+        return rows
+    }
+
     // MARK: - Git diff / status
 
     /// Re-pulls `git status --porcelain` for the workspace root. Keys in the
