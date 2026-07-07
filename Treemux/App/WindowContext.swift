@@ -4,6 +4,7 @@
 
 import AppKit
 import Combine
+import OSLog
 import SwiftUI
 
 /// Manages the main NSWindow and hosts the SwiftUI content view.
@@ -16,11 +17,17 @@ final class WindowContext {
     private var themeCancellable: AnyCancellable?
     private var localeCancellable: AnyCancellable?
 
+    /// Interval token spanning ThemeManager construction (init) through
+    /// makeKeyAndOrderFront (show); nil once the interval has been closed.
+    private var windowConstructSignpost: OSSignpostIntervalState?
+
     init(store: WorkspaceStore) {
         self.store = store
+        let sp = PerfSignpost.begin("window-construct")
         self.themeManager = ThemeManager(activeThemeID: store.settings.activeThemeID)
         self.languageManager = LanguageManager(languageCode: store.settings.language)
         themeManager.ensureBuiltInThemesExist()
+        self.windowConstructSignpost = sp
     }
 
     /// Creates and shows the main application window.
@@ -50,6 +57,10 @@ final class WindowContext {
         window.center()
         applyThemeAppearance(to: window)
         window.makeKeyAndOrderFront(nil)
+        if let sp = windowConstructSignpost {
+            PerfSignpost.end("window-construct", sp)
+            windowConstructSignpost = nil
+        }
 
         self.window = window
 

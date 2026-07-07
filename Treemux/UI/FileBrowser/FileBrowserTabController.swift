@@ -217,6 +217,7 @@ final class FileBrowserTabController: ObservableObject {
             await persistTree()
             // The full tree (bulk fetch + async deeper expanded dirs) is now
             // applied; signal the view so it can re-assert a restored offset.
+            PerfSignpost.event("tree-generation-bump")
             treeContentGeneration &+= 1
             await refreshGitStatus()
         } catch {
@@ -344,6 +345,8 @@ final class FileBrowserTabController: ObservableObject {
     /// `node.path` directly. No-op when no `GitDiffService`/`repoRoot` is wired.
     func refreshGitStatus() async {
         guard let svc = gitDiffService, let root = repoRoot else { return }
+        let sp = PerfSignpost.begin("git-status-refresh")
+        defer { PerfSignpost.end("git-status-refresh", sp) }
         let result = (try? await svc.fileStatus(in: root)) ?? [:]
         let prefix = root.hasSuffix("/") ? root : root + "/"
         var byPath: [String: FileStatus] = [:]
