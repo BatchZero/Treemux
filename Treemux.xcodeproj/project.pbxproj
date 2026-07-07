@@ -25,6 +25,7 @@
 		13520499F56541EF75682DCF /* FileIconCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB7BEBA22EDD063B0C5F951 /* FileIconCatalogTests.swift */; };
 		13B9B8CC2251E6814CA4897F /* SSHRawConfigSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0B99362A3FF25C412AB3ED6 /* SSHRawConfigSheet.swift */; };
 		14559BCDE89A0A2CA5FD8022 /* ShellCommandRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 443B856819FD330809E0722A /* ShellCommandRunnerTests.swift */; };
+		14F449CCC50DBC8C51DFDA99 /* WorkspaceStoreIconCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCCCACB793933F9372212395 /* WorkspaceStoreIconCacheTests.swift */; };
 		17F6E36CAD2008C8EA72726A /* Citadel in Frameworks */ = {isa = PBXBuildFile; productRef = 6A0BCC9E620E634555EA4F1E /* Citadel */; };
 		185B0A8FE78E63F77309318D /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D785A9B26AEA5938D1D1759 /* Theme.swift */; };
 		194928F8929DB9A37A2B9B96 /* TreemuxGhosttyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B99E6A1366954D8A221B273 /* TreemuxGhosttyController.swift */; };
@@ -424,6 +425,7 @@
 		FA1B06AC0CE4A491FF9CBF46 /* ShellSessionPublishDedupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellSessionPublishDedupTests.swift; sourceTree = "<group>"; };
 		FA7F3CF6F855DC00ADAB6764 /* SSHServerEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHServerEditSheet.swift; sourceTree = "<group>"; };
 		FB0ABA0B08B1F2185D6C82B5 /* SSHConfigParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParserTests.swift; sourceTree = "<group>"; };
+		FCCCACB793933F9372212395 /* WorkspaceStoreIconCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStoreIconCacheTests.swift; sourceTree = "<group>"; };
 		FCDABAEAB8A96753452954DD /* AIHooks */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AIHooks; path = Treemux/Support/AIHooks; sourceTree = SOURCE_ROOT; };
 		FED0327A7E59732F42304316 /* WorkspaceMetadataWatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceMetadataWatchService.swift; sourceTree = "<group>"; };
 		FF482F8A5D19B5272822AEBF /* HardenedWebContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardenedWebContent.swift; sourceTree = "<group>"; };
@@ -533,6 +535,7 @@
 				146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */,
 				39ADDF2DEBC6DA37E13F759D /* WorkspaceModelTabKindTests.swift */,
 				E2036C4C917DE175BEEF342C /* WorkspaceStoreBuiltInTests.swift */,
+				FCCCACB793933F9372212395 /* WorkspaceStoreIconCacheTests.swift */,
 				71FCB95357127BEE31A3AC96 /* WorkspaceTabKindCodingTests.swift */,
 				A3863AB5298AAC0C830363DD /* WorkspaceTabRecordMigrationTests.swift */,
 			);
@@ -1204,6 +1207,7 @@
 				A04CA84B2C50B4E52EC8B119 /* WorkspaceModelTabKindTests.swift in Sources */,
 				8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */,
 				DDDEF7B960C5F076099D8E86 /* WorkspaceStoreBuiltInTests.swift in Sources */,
+				14F449CCC50DBC8C51DFDA99 /* WorkspaceStoreIconCacheTests.swift in Sources */,
 				8549BFC4F8F972BE26BEC4F3 /* WorkspaceTabKindCodingTests.swift in Sources */,
 				29042CD4DE15469FE716957A /* WorkspaceTabRecordMigrationTests.swift in Sources */,
 			);
