@@ -16,6 +16,13 @@ struct TextEditorView: View {
     let encoding: String.Encoding
     let dirty: Bool
     @ObservedObject var controller: FileBrowserTabController
+    /// Optional side-channel notified with the raw editor text on every
+    /// keystroke, in addition to `controller.updateBuffer`. Lets a host view
+    /// (e.g. `DocumentViewerView`'s debounced Split/Render preview) follow
+    /// live typing without polling the controller's per-tab buffer on a
+    /// timer. `nil` for plain source editing (see `FileViewerPanelView`),
+    /// which has no live-follow consumer.
+    var onLiveChange: ((String) -> Void)? = nil
     @EnvironmentObject private var store: WorkspaceStore
     @EnvironmentObject private var themeManager: ThemeManager
 
@@ -39,7 +46,10 @@ struct TextEditorView: View {
                 wordIndex: controller.wordIndex,
                 isCompletionEnabled: { store.settings.enableCodeCompletion },
                 editorTheme: TreemuxEditorTheme.from(uiColors: themeManager.activeTheme.ui),
-                onChange: { controller.updateBuffer(content: $0, forSubTab: subTabID) }
+                onChange: {
+                    controller.updateBuffer(content: $0, forSubTab: subTabID)
+                    onLiveChange?($0)
+                }
             )
             Divider()
             statusBar

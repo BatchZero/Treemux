@@ -62,25 +62,6 @@ struct DocumentViewerView: View {
         .onChange(of: content) { _, newValue in
             scheduleDebouncedUpdate(to: newValue)
         }
-        // Task 7 stops publishing `openFile.content` on every keystroke (only
-        // the first dirty transition publishes), so `content` alone no longer
-        // tracks live typing. While the buffer is dirty, poll the controller's
-        // per-tab live buffer at the same 300 ms cadence so Split/Render mode
-        // keeps following the user's typing instead of freezing until save.
-        // This task is scoped to this view instance only — it does not add
-        // any new `@Published` fan-out.
-        .task(id: dirty) {
-            guard dirty else { return }
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 300_000_000) // 300 ms
-                guard !Task.isCancelled else { return }
-                await MainActor.run {
-                    if let live = controller.liveBuffer(for: subTabID), live != debouncedContent {
-                        debouncedContent = live
-                    }
-                }
-            }
-        }
     }
 
     private func scheduleDebouncedUpdate(to newValue: String) {
@@ -126,6 +107,12 @@ struct DocumentViewerView: View {
     }
 
     /// The source editor — uses the real TextEditorView init signature.
+    ///
+    /// Passes `onLiveChange` so the debounced Split/Render preview follows
+    /// live typing without a polling timer: every keystroke reschedules the
+    /// same 300 ms debounce used for the `content` (load/save/reload) path,
+    /// so `debouncedContent` settles to whichever update — typing or an
+    /// external reload — landed most recently.
     private var sourceEditor: some View {
         TextEditorView(
             subTabID: subTabID,
@@ -133,7 +120,8 @@ struct DocumentViewerView: View {
             content: content,
             encoding: encoding,
             dirty: dirty,
-            controller: controller
+            controller: controller,
+            onLiveChange: { scheduleDebouncedUpdate(to: $0) }
         )
     }
 

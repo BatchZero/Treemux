@@ -96,4 +96,110 @@ final class EditorBufferIsolationTests: XCTestCase {
         let effectiveText = c.liveBuffer(for: id) ?? openedContent
         XCTAssertEqual(effectiveText, "hello12", "editor must show live content, not the stale opened content")
     }
+
+    /// Regression for the save-window race: `saveCurrentFile` suspends on
+    /// `await dataSource.writeFile`, and the user can keep typing during that
+    /// suspension. The fix must compare the live buffer *after* the write
+    /// completes against what was actually written, and only clear the buffer
+    /// + dirty flag when they still match — otherwise a keystroke landed
+    /// during the save gets silently discarded (buffer wiped, dirty cleared)
+    /// even though it was never persisted.
+    func testConcurrentKeystrokeDuringSaveIsNotDiscarded() async throws {
+        let root = NSTemporaryDirectory() + "bufiso-\(UUID().uuidString)"
+        try FileManager.default.createDirectory(atPath: root, withIntermediateDirectories: true)
+        let filePath = root + "/a.txt"
+        FileManager.default.createFile(atPath: filePath, contents: Data("hello".utf8))
+        let ds = GatedWriteFileBrowserDataSource()
+        let c = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: root, rootKind: .project),
+            dataSource: ds
+        )
+        await c.loadRoot()
+        await c.openInTree(filePath)
+        let id = try XCTUnwrap(c.activeSubTabID)
+
+        c.updateBuffer(content: "v1", forSubTab: id)
+
+        let saveTask = Task { @MainActor in try await c.saveCurrentFile() }
+        await waitForPendingWrite(ds)
+        // The user keeps typing while "v1" is in flight to disk.
+        c.updateBuffer(content: "v2", forSubTab: id)
+        ds.releaseWrite()
+        try await saveTask.value
+
+        XCTAssertEqual(
+            c.liveBuffer(for: id), "v2",
+            "keystrokes typed during the in-flight save must not be discarded")
+        XCTAssertTrue(
+            c.isDirty,
+            "buffer diverged from what was actually saved, so dirty must stay true")
+        let onDisk = try String(contentsOfFile: filePath, encoding: .utf8)
+        XCTAssertEqual(onDisk, "v1", "the in-flight save persisted the pre-race content")
+    }
+
+    private func waitForPendingWrite(
+        _ ds: GatedWriteFileBrowserDataSource,
+        timeoutSeconds: Double = 2.0
+    ) async {
+        let deadline = Date().addingTimeInterval(timeoutSeconds)
+        while ds.pendingWriteCount() < 1 {
+            if Date() > deadline {
+                XCTFail("Timed out waiting for pending writeFile call")
+                return
+            }
+            await Task.yield()
+        }
+    }
+}
+
+/// Test-only wrapper around `LocalFileBrowserDataSource` that suspends
+/// `writeFile` on an explicit continuation until the test calls
+/// `releaseWrite()`. Every other call is forwarded straight through to a real
+/// local data source so the race test exercises an actual disk write, not an
+/// in-memory stand-in.
+final class GatedWriteFileBrowserDataSource: FileBrowserDataSource, @unchecked Sendable {
+    private let inner = LocalFileBrowserDataSource()
+    var supportsWrite: Bool { inner.supportsWrite }
+
+    private let lock = NSLock()
+    private var pendingWrites: [CheckedContinuation<Void, Never>] = []
+
+    func pendingWriteCount() -> Int {
+        lock.lock(); defer { lock.unlock() }
+        return pendingWrites.count
+    }
+
+    func releaseWrite() {
+        lock.lock()
+        let cont = pendingWrites.isEmpty ? nil : pendingWrites.removeFirst()
+        lock.unlock()
+        cont?.resume()
+    }
+
+    func listDirectory(_ path: String) async throws -> [FileNode] {
+        try await inner.listDirectory(path)
+    }
+
+    func fileMetadata(_ path: String) async throws -> FileMetadata {
+        try await inner.fileMetadata(path)
+    }
+
+    func readFile(_ path: String, maxBytes: Int) async throws -> Data {
+        try await inner.readFile(path, maxBytes: maxBytes)
+    }
+
+    func readPrefix(_ path: String, maxBytes: Int) async throws -> Data {
+        try await inner.readPrefix(path, maxBytes: maxBytes)
+    }
+
+    func writeFile(_ path: String, data: Data) async throws {
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            lock.lock(); pendingWrites.append(cont); lock.unlock()
+        }
+        try await inner.writeFile(path, data: data)
+    }
+
+    func downloadForQuickLook(_ path: String, progress: @escaping (Double) -> Void) async throws -> URL {
+        try await inner.downloadForQuickLook(path, progress: progress)
+    }
 }

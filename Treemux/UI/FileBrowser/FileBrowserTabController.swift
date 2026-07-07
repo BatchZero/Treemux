@@ -759,8 +759,21 @@ final class FileBrowserTabController: ObservableObject {
         let content = liveBufferByTab[id] ?? opened
         let data = content.data(using: encoding) ?? Data()
         try await dataSource.writeFile(path, data: data)
-        liveBufferByTab[id] = nil
-        setActiveOpenFile(.text(path: path, content: content, encoding: encoding, dirty: false))
+        // The write above suspends this task; the user can keep typing while
+        // it's in flight, which advances `liveBufferByTab[id]` past `content`.
+        // Only treat the buffer as "saved" (clear it + drop dirty) if it still
+        // matches what we actually wrote to disk. If it diverged, keep the
+        // newer buffer and the dirty flag so those keystrokes are never
+        // silently discarded; `openFile.content` still advances to the
+        // just-saved value so a subsequent switch-away/back round trip has
+        // the right disk-backed baseline to diff against.
+        let bufferAfterWrite = liveBufferByTab[id]
+        if bufferAfterWrite == nil || bufferAfterWrite == content {
+            liveBufferByTab[id] = nil
+            setActiveOpenFile(.text(path: path, content: content, encoding: encoding, dirty: false))
+        } else {
+            setActiveOpenFile(.text(path: path, content: content, encoding: encoding, dirty: true))
+        }
         // Fire-and-forget: diff + git status are non-essential to the save
         // completing and each is a `git` subprocess round-trip. This is a plain
         // (MainActor-inherited, not `Task.detached`) Task so the refreshes still
