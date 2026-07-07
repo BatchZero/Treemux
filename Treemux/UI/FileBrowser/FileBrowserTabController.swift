@@ -420,6 +420,10 @@ final class FileBrowserTabController: ObservableObject {
             return
         }
         if let previewIdx = subTabs.firstIndex(where: { !$0.isPinned }) {
+            // Repurposing swaps in a different file under the same sub-tab id,
+            // so any live (unsaved) buffer for the old file must not leak into
+            // the new one.
+            liveBufferByTab[subTabs[previewIdx].id] = nil
             subTabs[previewIdx].path = path
             subTabs[previewIdx].openFile = .empty
             activeSubTabID = subTabs[previewIdx].id
@@ -478,6 +482,7 @@ final class FileBrowserTabController: ObservableObject {
     func closeSubTabImmediate(_ id: UUID) {
         guard let idx = subTabs.firstIndex(where: { $0.id == id }) else { return }
         let wasActive = (activeSubTabID == id)
+        liveBufferByTab[id] = nil
         subTabs.remove(at: idx)
         if wasActive {
             if idx < subTabs.count {
@@ -705,28 +710,56 @@ final class FileBrowserTabController: ObservableObject {
         return false
     }
 
+    /// Live (per-keystroke) editor buffers, keyed by sub-tab id. Intentionally
+    /// NOT @Published: keystrokes must not fan out to every observer of this
+    /// controller (tree rows, tab bars). The published `openFile` keeps the
+    /// content it had when the tab was opened / last saved; `dirty` is the only
+    /// flag that publishes, exactly once per dirty transition.
+    private(set) var liveBufferByTab: [UUID: String] = [:]
+
+    /// Reads the in-progress (uncommitted-to-`openFile`) buffer for a sub-tab,
+    /// if the user has typed anything since it was opened/saved. Views that
+    /// reconstruct their initial editor text from controller state must prefer
+    /// this over `openFile.content` — see `updateBuffer` for why the two can
+    /// diverge.
+    func liveBuffer(for id: UUID) -> String? { liveBufferByTab[id] }
+
     /// Updates the in-memory buffer for the sub-tab identified by `id`, but
     /// only if that sub-tab still exists, its `path` is unchanged, and its
     /// `openFile` is still `.text` at the same `path`. The path/state guards
     /// are essential because the editor view stays alive across sub-tab
     /// switches (ZStack), so a delayed text-binding setter can fire long
     /// after the user has activated, closed, or repurposed another sub-tab.
+    ///
+    /// Only the *first* keystroke since the buffer was last clean publishes
+    /// (via the `dirty` flip below) — every keystroke after that only updates
+    /// `liveBufferByTab`, which is not `@Published`. This keeps per-key input
+    /// from fanning out to every other observer of this controller (file tree
+    /// rows, tab bars, etc.).
     func updateBuffer(content: String, forSubTab id: UUID) {
         guard let idx = subTabs.firstIndex(where: { $0.id == id }) else { return }
-        guard case .text(let path, _, let encoding, _) = subTabs[idx].openFile else { return }
+        guard case .text(let path, let opened, let encoding, let dirty) = subTabs[idx].openFile else { return }
         guard subTabs[idx].path == path else { return }
-        subTabs[idx].openFile = .text(path: path, content: content, encoding: encoding, dirty: true)
+        liveBufferByTab[id] = content
+        if !dirty {
+            // First divergence from the on-disk content: publish once so the
+            // dirty dot and close-guard update.
+            subTabs[idx].openFile = .text(path: path, content: opened, encoding: encoding, dirty: true)
+        }
     }
 
     /// Saves the current buffer back to disk via the data source. Returns as
     /// soon as the write completes and `dirty` is cleared; the git-status and
     /// diff refresh run off the save path so saving never blocks on `git`.
     func saveCurrentFile() async throws {
-        guard case .text(let path, let content, let encoding, _) = activeOpenFile else {
+        guard let id = activeSubTabID,
+              case .text(let path, let opened, let encoding, _) = activeOpenFile else {
             return
         }
+        let content = liveBufferByTab[id] ?? opened
         let data = content.data(using: encoding) ?? Data()
         try await dataSource.writeFile(path, data: data)
+        liveBufferByTab[id] = nil
         setActiveOpenFile(.text(path: path, content: content, encoding: encoding, dirty: false))
         // Fire-and-forget: diff + git status are non-essential to the save
         // completing and each is a `git` subprocess round-trip. This is a plain

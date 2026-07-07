@@ -56,14 +56,39 @@ struct DocumentViewerView: View {
             Divider()
             viewContent(for: mode)
         }
-        // Kick off the debounce timer whenever the outer content binding changes.
+        // Kick off the debounce timer whenever the outer content binding changes
+        // (covers load / save / external reload — anything that republishes
+        // `openFile.content`).
         .onChange(of: content) { _, newValue in
-            debounceTask?.cancel()
-            debounceTask = Task {
+            scheduleDebouncedUpdate(to: newValue)
+        }
+        // Task 7 stops publishing `openFile.content` on every keystroke (only
+        // the first dirty transition publishes), so `content` alone no longer
+        // tracks live typing. While the buffer is dirty, poll the controller's
+        // per-tab live buffer at the same 300 ms cadence so Split/Render mode
+        // keeps following the user's typing instead of freezing until save.
+        // This task is scoped to this view instance only — it does not add
+        // any new `@Published` fan-out.
+        .task(id: dirty) {
+            guard dirty else { return }
+            while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 300_000_000) // 300 ms
                 guard !Task.isCancelled else { return }
-                await MainActor.run { debouncedContent = newValue }
+                await MainActor.run {
+                    if let live = controller.liveBuffer(for: subTabID), live != debouncedContent {
+                        debouncedContent = live
+                    }
+                }
             }
+        }
+    }
+
+    private func scheduleDebouncedUpdate(to newValue: String) {
+        debounceTask?.cancel()
+        debounceTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000) // 300 ms
+            guard !Task.isCancelled else { return }
+            await MainActor.run { debouncedContent = newValue }
         }
     }
 

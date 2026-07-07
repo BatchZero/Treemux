@@ -136,12 +136,17 @@ final class FileBrowserTabControllerTests: XCTestCase {
         await ctrl.openInTree("/r/a.txt")
         let id = ctrl.activeSubTabID!
         ctrl.updateBuffer(content: "edited", forSubTab: id)
+        // `openFile.content` intentionally stays pinned at the opened value —
+        // Task 7 isolates per-keystroke edits into `liveBuffer(for:)` so they
+        // don't publish through the controller-wide `subTabs` array. `dirty`
+        // is still the one flag that flips (and publishes) on first edit.
         if case .text(_, let content, _, let dirty) = ctrl.openFile {
-            XCTAssertEqual(content, "edited")
+            XCTAssertEqual(content, "x")
             XCTAssertTrue(dirty)
         } else {
             XCTFail()
         }
+        XCTAssertEqual(ctrl.liveBuffer(for: id), "edited")
     }
 
     func testSaveWritesAndClearsDirty() async throws {

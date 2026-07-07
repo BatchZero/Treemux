@@ -19,11 +19,21 @@ struct TextEditorView: View {
     @EnvironmentObject private var store: WorkspaceStore
     @EnvironmentObject private var themeManager: ThemeManager
 
+    /// The content to actually show in the editor: `openFile.content` freezes
+    /// at the value it had when the tab was opened/last saved (Task 7 stops
+    /// publishing on every keystroke), so any unsaved edit lives only in the
+    /// controller's per-tab live buffer. Preferring it here is what keeps a
+    /// switch-away-and-back round trip from appearing to discard the user's
+    /// in-progress edit.
+    private var effectiveContent: String {
+        controller.liveBuffer(for: subTabID) ?? content
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             CodeEditorRepresentable(
                 path: path,
-                content: content,
+                content: effectiveContent,
                 hunks: controller.diffHunksByPath[path] ?? [],
                 bufferID: subTabID,
                 wordIndex: controller.wordIndex,
@@ -79,6 +89,12 @@ private struct CodeEditorRepresentable: View {
 
     @State private var text: String
     @State private var editorState: SourceEditorState = .init()
+    /// Computed once at init from the buffer size available at that point —
+    /// never recomputed on every `body` evaluation. `content.utf8.count` is
+    /// O(n) in the buffer length, and `language` used to recompute it on every
+    /// render (i.e. on every keystroke), which is the exact per-key overhead
+    /// Task 7 removes.
+    private let highlightEligible: Bool
     /// Persisted across view updates so we can push fresh hunks into the
     /// existing overlay without forcing CodeEditSourceEditor to rebuild.
     @StateObject private var stripeCoordinator = DiffStripeCoordinator()
@@ -105,6 +121,9 @@ private struct CodeEditorRepresentable: View {
         self.isCompletionEnabled = isCompletionEnabled
         self.editorTheme = editorTheme
         self.onChange = onChange
+        self.highlightEligible = EditorHighlightPolicy.shouldHighlight(
+            path: path, byteCount: content.utf8.count
+        )
         self._text = State(initialValue: content)
         let delegate = WordCompletionDelegate(wordIndex: wordIndex, isEnabled: isCompletionEnabled)
         self._completionCoordinator = StateObject(
@@ -151,9 +170,8 @@ private struct CodeEditorRepresentable: View {
     // MARK: - Language / size guard
 
     private var language: CodeLanguage {
-        // Use the in-memory buffer size — never stat the file on the render
-        // path. `content` is the text actually loaded into the editor.
-        guard EditorHighlightPolicy.shouldHighlight(path: path, byteCount: content.utf8.count),
+        // `highlightEligible` was computed once in `init` — see its doc comment.
+        guard highlightEligible,
               let lang = FileTypeClassifier.language(forPath: path) else {
             return .default
         }
