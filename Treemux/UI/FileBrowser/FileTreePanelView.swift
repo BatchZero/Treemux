@@ -54,11 +54,13 @@ struct FileTreePanelView: View {
                 // rows are already rendered eagerly and the root list is capped
                 // by truncation (Load more), so eager layout is bounded.
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(controller.rootChildren, id: \.id) { node in
-                        NodeRow(node: node, depth: 0, density: store.settings.fileTree.density, controller: controller)
-                    }
-                    if controller.truncatedDirs.contains(controller.rootPath) {
-                        LoadMoreRow(path: controller.rootPath, depth: 0, controller: controller)
+                    ForEach(controller.visibleRows()) { row in
+                        FileTreeRow(
+                            row: row,
+                            density: store.settings.fileTree.density,
+                            controller: controller
+                        )
+                        .equatable()
                     }
                 }
                 .padding(.vertical, 4)
@@ -196,43 +198,42 @@ private struct FileTreeErrorBanner: View {
     }
 }
 
-private struct NodeRow: View {
-    let node: FileNode
-    let depth: Int
+/// One visible tree row, rendered purely from a FileTreeRowModel value.
+/// `controller` is a plain (unobserved) reference used only for actions —
+/// re-rendering is driven by the parent recomputing `visibleRows()`.
+private struct FileTreeRow: View, Equatable {
+    let row: FileTreeRowModel
     let density: TreeDensity
-    @ObservedObject var controller: FileBrowserTabController
+    let controller: FileBrowserTabController
     @EnvironmentObject private var theme: ThemeManager
     @State private var isHovered = false
 
-    private var isSelected: Bool { controller.selectedFilePath == node.path }
-    private var isExpanded: Bool { controller.expandedDirs.contains(node.path) }
-    private var children: [FileNode]? { controller.childrenByPath[node.path] }
+    // Equality intentionally ignores `controller` (same instance for the
+    // whole tree) and `theme` (rare, environment-driven).
+    nonisolated static func == (lhs: FileTreeRow, rhs: FileTreeRow) -> Bool {
+        lhs.row == rhs.row && lhs.density == rhs.density
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            row
-            if isExpanded, let kids = children {
-                ForEach(kids, id: \.id) { child in
-                    NodeRow(node: child, depth: depth + 1, density: density, controller: controller)
-                }
-                if controller.truncatedDirs.contains(node.path) {
-                    LoadMoreRow(path: node.path, depth: depth + 1, controller: controller)
-                }
-            }
+        switch row.kind {
+        case .node(let node):
+            nodeBody(node)
+        case .loadMore(let parentPath):
+            LoadMoreRow(path: parentPath, depth: row.depth, controller: controller)
         }
     }
 
-    private var row: some View {
+    private func nodeBody(_ node: FileNode) -> some View {
         HStack(spacing: 4) {
             // One hairline per depth level (14pt per level: 1pt line + 13pt trailing).
-            ForEach(0..<depth, id: \.self) { _ in
+            ForEach(0..<row.depth, id: \.self) { _ in
                 Rectangle()
                     .fill(theme.dividerColor)
                     .frame(width: 1, height: density.rowHeight)
                     .padding(.trailing, 13)
             }
             if node.isDirectory {
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                Image(systemName: row.isExpanded ? "chevron.down" : "chevron.right")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(theme.textMuted)
                     .frame(width: 12)
@@ -240,14 +241,14 @@ private struct NodeRow: View {
                 Spacer().frame(width: 12)
             }
             // 4×4 git-status dot (clear placeholder keeps name alignment stable).
-            if let status = controller.fileStatusByPath[node.path] {
+            if let status = row.status {
                 Circle()
                     .fill(color(for: status))
                     .frame(width: 4, height: 4)
             } else {
                 Color.clear.frame(width: 4, height: 4)
             }
-            iconView
+            iconView(node)
                 .frame(width: density.fontSize + 3, height: density.fontSize + 3)
             Text(node.name)
                 .font(DesignFonts.dataLayer(size: density.fontSize))
@@ -260,12 +261,12 @@ private struct NodeRow: View {
         .padding(.horizontal, 8)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(isSelected ? theme.sidebarSelection
+                .fill(row.isSelected ? theme.sidebarSelection
                       : isHovered ? theme.textPrimary.opacity(0.06)
                       : Color.clear)
         )
         .overlay(alignment: .leading) {
-            if isSelected {
+            if row.isSelected {
                 RoundedRectangle(cornerRadius: 1.5)
                     .fill(theme.accentColor)
                     .frame(width: 2.5)
@@ -302,8 +303,8 @@ private struct NodeRow: View {
     }
 
     @ViewBuilder
-    private var iconView: some View {
-        let icon = FileIconCatalog.icon(for: node, isExpanded: isExpanded)
+    private func iconView(_ node: FileNode) -> some View {
+        let icon = FileIconCatalog.icon(for: node, isExpanded: row.isExpanded)
         Image(icon.asset)
             .resizable()
             .renderingMode(icon.isTemplate ? .template : .original)

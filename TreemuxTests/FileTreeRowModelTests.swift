@@ -59,4 +59,35 @@ final class FileTreeRowModelTests: XCTestCase {
         // this is what lets the view layer skip unchanged rows.
         XCTAssertEqual(c.visibleRows(), c.visibleRows())
     }
+
+    /// A truncated expanded directory must surface a `.loadMore` row
+    /// immediately after its children, at depth+1 — this is the row the
+    /// "Load more" button renders in FileTreePanelView. Uses the
+    /// `markTruncatedForTesting` seam rather than constructing a real
+    /// 500+ entry directory (too heavy for a unit test).
+    func testTruncatedExpandedDirInsertsLoadMoreRowAfterChildren() async throws {
+        let root = try makeTempTree()
+        let c = makeController(root: root)
+        await c.loadRoot()
+        await c.toggleExpand(root + "/sub")
+        c.markTruncatedForTesting(root + "/sub")
+
+        let rows = c.visibleRows()
+        let ids = rows.map(\.id)
+        // Depth-first order: sub, sub's child, then sub's load-more row,
+        // then the sibling file at the root.
+        XCTAssertEqual(ids, [
+            root + "/sub",
+            root + "/sub/b.txt",
+            "loadMore:" + root + "/sub",
+            root + "/a.txt",
+        ])
+        let loadMoreRow = rows[2]
+        XCTAssertEqual(loadMoreRow.depth, 1)
+        if case .loadMore(let parentPath) = loadMoreRow.kind {
+            XCTAssertEqual(parentPath, root + "/sub")
+        } else {
+            XCTFail("expected .loadMore kind, got \(loadMoreRow.kind)")
+        }
+    }
 }
