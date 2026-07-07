@@ -37,6 +37,7 @@
 		2378FC48E7C0FDF16337AE95 /* WorkspaceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A22F2A407A07989DE172DA3A /* WorkspaceStore.swift */; };
 		264259A0E6E918DF5ACF68F9 /* FileTypeClassifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B6EF0CD7420B8D15E621ADB /* FileTypeClassifierTests.swift */; };
 		2809D4D799F01CA8ECDC252D /* TextEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1BF453E226988F6BC668C8 /* TextEditorView.swift */; };
+		284F85B3CE22E31C8407BCA5 /* ShellSessionPublishDedupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1B06AC0CE4A491FF9CBF46 /* ShellSessionPublishDedupTests.swift */; };
 		28E15CC897C8BE956B0DCF02 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73E706B2F099E80FFCC6F47D /* main.swift */; };
 		29042CD4DE15469FE716957A /* WorkspaceTabRecordMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3863AB5298AAC0C830363DD /* WorkspaceTabRecordMigrationTests.swift */; };
 		29B9BE6617E084063B96EFD7 /* TmuxService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41730B3CCAF114169789A087 /* TmuxService.swift */; };
@@ -414,6 +415,7 @@
 		F2ABC31C96A9F51C865E1FCD /* SFTPDirectoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPDirectoryEntry.swift; sourceTree = "<group>"; };
 		F3BF3B361C641203D2849F41 /* GhosttyTerminalConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhosttyTerminalConfigTests.swift; sourceTree = "<group>"; };
 		F59B5026A96BF865D41D0890 /* TreemuxGhosttyShellIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyShellIntegration.swift; sourceTree = "<group>"; };
+		FA1B06AC0CE4A491FF9CBF46 /* ShellSessionPublishDedupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellSessionPublishDedupTests.swift; sourceTree = "<group>"; };
 		FA7F3CF6F855DC00ADAB6764 /* SSHServerEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHServerEditSheet.swift; sourceTree = "<group>"; };
 		FB0ABA0B08B1F2185D6C82B5 /* SSHConfigParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParserTests.swift; sourceTree = "<group>"; };
 		FCDABAEAB8A96753452954DD /* AIHooks */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AIHooks; path = Treemux/Support/AIHooks; sourceTree = SOURCE_ROOT; };
@@ -504,6 +506,7 @@
 				7EB6F148CE5B8B354C31106E /* SFTPRecursiveListingTests.swift */,
 				C9F1C3A585525B45A2CED48F /* SFTPServiceTests.swift */,
 				443B856819FD330809E0722A /* ShellCommandRunnerTests.swift */,
+				FA1B06AC0CE4A491FF9CBF46 /* ShellSessionPublishDedupTests.swift */,
 				5C4F64E16954A106E36D7073 /* SidebarContextMenuTests.swift */,
 				B3B56AC19B0EF0ED4EF00F4A /* SSHConfigDocumentTests.swift */,
 				FB0ABA0B08B1F2185D6C82B5 /* SSHConfigParserTests.swift */,
@@ -1173,6 +1176,7 @@
 				5F6991C782CDE560F0F71B06 /* SSHConfigServiceWriteTests.swift in Sources */,
 				2C0D2D1CDB0C7DDD9C2487E9 /* SessionBackendTests.swift in Sources */,
 				14559BCDE89A0A2CA5FD8022 /* ShellCommandRunnerTests.swift in Sources */,
+				284F85B3CE22E31C8407BCA5 /* ShellSessionPublishDedupTests.swift in Sources */,
 				01CDE66498B869D0064757AC /* SidebarContextMenuTests.swift in Sources */,
 				D489C4C4FC19FD474C946FCB /* TabGroupingTests.swift in Sources */,
 				DC090F5DAC4E6A049EC586C2 /* ThemeLoaderTests.swift in Sources */,
