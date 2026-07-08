@@ -813,12 +813,20 @@ final class FileBrowserTabController: ObservableObject {
         // silently discarded; `openFile.content` still advances to the
         // just-saved value so a subsequent switch-away/back round trip has
         // the right disk-backed baseline to diff against.
+        // Write completion must land on the sub-tab we started saving (`id`),
+        // not whatever tab happens to be active now — `writeFile` suspends,
+        // and the user can switch tabs while it's in flight. Using the
+        // `expectingPath`-guarded setter (instead of re-reading
+        // `activeSubTabID` via `setActiveOpenFile`) keeps a slow save from
+        // clobbering a different tab's state after the user has moved on.
         let bufferAfterWrite = liveBufferByTab[id]
         if bufferAfterWrite == nil || bufferAfterWrite == content {
             liveBufferByTab[id] = nil
-            setActiveOpenFile(.text(path: path, content: content, encoding: encoding, dirty: false))
+            setOpenFile(forSubTab: id, expectingPath: path,
+                .text(path: path, content: content, encoding: encoding, dirty: false))
         } else {
-            setActiveOpenFile(.text(path: path, content: content, encoding: encoding, dirty: true))
+            setOpenFile(forSubTab: id, expectingPath: path,
+                .text(path: path, content: content, encoding: encoding, dirty: true))
         }
         // Fire-and-forget: diff + git status are non-essential to the save
         // completing and each is a `git` subprocess round-trip. This is a plain

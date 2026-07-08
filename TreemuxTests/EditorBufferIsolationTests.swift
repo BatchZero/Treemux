@@ -137,6 +137,80 @@ final class EditorBufferIsolationTests: XCTestCase {
         XCTAssertEqual(onDisk, "v1", "the in-flight save persisted the pre-race content")
     }
 
+    /// Regression for the save-completion race: `saveCurrentFile` captures
+    /// `activeSubTabID` at the start (into `id`) and awaits `writeFile`, but
+    /// the completion previously wrote the result back via
+    /// `setActiveOpenFile`, which *re-reads* `activeSubTabID` rather than
+    /// using the captured `id`. If the user switches the active sub-tab while
+    /// the write is in flight, that re-read points at the new tab, so the
+    /// save's result (dirty == false, saved content) lands on the wrong
+    /// sub-tab instead of the one actually being saved — and the tab the
+    /// user switched to gets silently overwritten with tab A's state.
+    func testSaveCompletionAppliesToCapturedSubTabNotWhicheverIsActive() async throws {
+        let root = NSTemporaryDirectory() + "bufiso-\(UUID().uuidString)"
+        try FileManager.default.createDirectory(atPath: root, withIntermediateDirectories: true)
+        let pathA = root + "/a.txt"
+        let pathB = root + "/b.txt"
+        FileManager.default.createFile(atPath: pathA, contents: Data("hello".utf8))
+        FileManager.default.createFile(atPath: pathB, contents: Data("world".utf8))
+        let ds = GatedWriteFileBrowserDataSource()
+        let c = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: root, rootKind: .project),
+            dataSource: ds
+        )
+        await c.loadRoot()
+
+        // Open and pin tab A, then open and pin tab B, so both stay alive as
+        // separate sub-tabs (an unpinned preview tab would be repurposed by
+        // the second openInTree instead of creating a second tab).
+        await c.openInTree(pathA)
+        c.pinActiveSubTab()
+        let idA = try XCTUnwrap(c.activeSubTabID)
+
+        await c.openInTree(pathB)
+        c.pinActiveSubTab()
+        let idB = try XCTUnwrap(c.activeSubTabID)
+        XCTAssertNotEqual(idA, idB)
+
+        // Switch back to A, dirty it, and start saving it.
+        c.activateSubTab(idA)
+        XCTAssertEqual(c.activeSubTabID, idA)
+        c.updateBuffer(content: "hello-edited", forSubTab: idA)
+
+        let saveTask = Task { @MainActor in try await c.saveCurrentFile() }
+        await waitForPendingWrite(ds)
+
+        // While A's write is still in flight, the user switches to B.
+        c.activateSubTab(idB)
+        XCTAssertEqual(c.activeSubTabID, idB)
+
+        ds.releaseWrite()
+        try await saveTask.value
+
+        // A must reflect the completed save, regardless of which tab is
+        // active by the time the write finishes.
+        let tabA = try XCTUnwrap(c.subTabs.first(where: { $0.id == idA }))
+        guard case .text(let aPath, let aContent, _, let aDirty) = tabA.openFile else {
+            XCTFail("expected tab A to still be .text")
+            return
+        }
+        XCTAssertEqual(aPath, pathA)
+        XCTAssertEqual(aContent, "hello-edited")
+        XCTAssertFalse(aDirty, "tab A's save must clear dirty on tab A")
+        XCTAssertEqual(
+            try String(contentsOfFile: pathA, encoding: .utf8), "hello-edited")
+
+        // B must be completely untouched by A's save completion.
+        let tabB = try XCTUnwrap(c.subTabs.first(where: { $0.id == idB }))
+        guard case .text(let bPath, let bContent, _, let bDirty) = tabB.openFile else {
+            XCTFail("expected tab B to still be .text")
+            return
+        }
+        XCTAssertEqual(bPath, pathB)
+        XCTAssertEqual(bContent, "world")
+        XCTAssertFalse(bDirty)
+    }
+
     private func waitForPendingWrite(
         _ ds: GatedWriteFileBrowserDataSource,
         timeoutSeconds: Double = 2.0

@@ -58,7 +58,8 @@ struct FileTreePanelView: View {
                         FileTreeRow(
                             row: row,
                             density: store.settings.fileTree.density,
-                            controller: controller
+                            controller: controller,
+                            themeID: theme.activeTheme.id
                         )
                         .equatable()
                     }
@@ -205,13 +206,21 @@ private struct FileTreeRow: View, Equatable {
     let row: FileTreeRowModel
     let density: TreeDensity
     let controller: FileBrowserTabController
+    /// The active theme's identity, passed in from the parent (rather than
+    /// read only from `@EnvironmentObject`) so it participates in `==`.
+    /// Without this, an EquatableView short-circuit on theme switch would
+    /// skip recomputing rows whose `row`/`density` didn't change, leaving
+    /// them painted with the old theme's colors (a half-recolored tree).
+    let themeID: String
     @EnvironmentObject private var theme: ThemeManager
     @State private var isHovered = false
 
     // Equality intentionally ignores `controller` (same instance for the
-    // whole tree) and `theme` (rare, environment-driven).
+    // whole tree). `theme` itself is environment-driven and excluded from
+    // identity, but `themeID` stands in for it so theme switches still
+    // invalidate the cached row.
     nonisolated static func == (lhs: FileTreeRow, rhs: FileTreeRow) -> Bool {
-        lhs.row == rhs.row && lhs.density == rhs.density
+        lhs.row == rhs.row && lhs.density == rhs.density && lhs.themeID == rhs.themeID
     }
 
     var body: some View {
