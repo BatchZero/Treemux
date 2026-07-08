@@ -56,14 +56,20 @@ struct DocumentViewerView: View {
             Divider()
             viewContent(for: mode)
         }
-        // Kick off the debounce timer whenever the outer content binding changes.
+        // Kick off the debounce timer whenever the outer content binding changes
+        // (covers load / save / external reload — anything that republishes
+        // `openFile.content`).
         .onChange(of: content) { _, newValue in
-            debounceTask?.cancel()
-            debounceTask = Task {
-                try? await Task.sleep(nanoseconds: 300_000_000) // 300 ms
-                guard !Task.isCancelled else { return }
-                await MainActor.run { debouncedContent = newValue }
-            }
+            scheduleDebouncedUpdate(to: newValue)
+        }
+    }
+
+    private func scheduleDebouncedUpdate(to newValue: String) {
+        debounceTask?.cancel()
+        debounceTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000) // 300 ms
+            guard !Task.isCancelled else { return }
+            await MainActor.run { debouncedContent = newValue }
         }
     }
 
@@ -101,6 +107,12 @@ struct DocumentViewerView: View {
     }
 
     /// The source editor — uses the real TextEditorView init signature.
+    ///
+    /// Passes `onLiveChange` so the debounced Split/Render preview follows
+    /// live typing without a polling timer: every keystroke reschedules the
+    /// same 300 ms debounce used for the `content` (load/save/reload) path,
+    /// so `debouncedContent` settles to whichever update — typing or an
+    /// external reload — landed most recently.
     private var sourceEditor: some View {
         TextEditorView(
             subTabID: subTabID,
@@ -108,7 +120,8 @@ struct DocumentViewerView: View {
             content: content,
             encoding: encoding,
             dirty: dirty,
-            controller: controller
+            controller: controller,
+            onLiveChange: { scheduleDebouncedUpdate(to: $0) }
         )
     }
 

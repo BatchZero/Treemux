@@ -36,22 +36,36 @@ final class FileBrowserTabController: ObservableObject {
     @Published var rootPath: String
     @Published private(set) var rootKind: FileBrowserRootKind
     @Published var splitRatio: Double
-    @Published var expandedDirs: Set<String>
-    @Published var showsHiddenFiles: Bool
+    @Published var expandedDirs: Set<String> {
+        didSet { visibleRowsCache = nil }
+    }
+    @Published var showsHiddenFiles: Bool {
+        didSet { visibleRowsCache = nil }
+    }
 
     // Runtime state.
-    @Published private(set) var rootChildren: [FileNode] = []
-    @Published private(set) var childrenByPath: [String: [FileNode]] = [:]
+    @Published private(set) var rootChildren: [FileNode] = [] {
+        didSet { visibleRowsCache = nil }
+    }
+    @Published private(set) var childrenByPath: [String: [FileNode]] = [:] {
+        didSet { visibleRowsCache = nil }
+    }
     private var rawChildrenByPath: [String: [FileNode]] = [:]
-    @Published private(set) var subTabs: [SubTabRuntime] = []
-    @Published private(set) var activeSubTabID: UUID?
+    @Published private(set) var subTabs: [SubTabRuntime] = [] {
+        didSet { visibleRowsCache = nil }
+    }
+    @Published private(set) var activeSubTabID: UUID? {
+        didSet { visibleRowsCache = nil }
+    }
     @Published private(set) var loadingPaths: Set<String> = []
     @Published private(set) var loadError: LoadError?
 
     // Git diff/status caches. `diffHunksByPath` keyed by absolute path of the
     // active sub-tab; `fileStatusByPath` keyed by absolute path under `repoRoot`.
     @Published private(set) var diffHunksByPath: [String: [DiffHunk]] = [:]
-    @Published private(set) var fileStatusByPath: [String: FileStatus] = [:]
+    @Published private(set) var fileStatusByPath: [String: FileStatus] = [:] {
+        didSet { visibleRowsCache = nil }
+    }
 
     // Configuration.
     static let textReadLimit: Int = 5 * 1024 * 1024       // 5 MB
@@ -64,7 +78,29 @@ final class FileBrowserTabController: ObservableObject {
     let gitDiffService: GitDiffService?
     let repoRoot: String?
     let treeCache: DirectoryTreeCachePersistence
-    @Published private(set) var truncatedDirs: Set<String> = []
+    @Published private(set) var truncatedDirs: Set<String> = [] {
+        didSet { visibleRowsCache = nil }
+    }
+
+    /// Memoized result of the last `visibleRows()` flatten. Invalidated (set
+    /// to `nil`) via `didSet` on every `@Published` property the flatten
+    /// reads: `rootChildren`, `childrenByPath`, `expandedDirs`,
+    /// `truncatedDirs`, `fileStatusByPath`, `activeSubTabID`, `subTabs`
+    /// (which `selectedFilePath` derives from), and `showsHiddenFiles`
+    /// (belt-and-suspenders — it only actually takes effect by re-deriving
+    /// `childrenByPath`/`rootChildren`, but is included directly in case that
+    /// ever changes). Without this, `FileTreePanelView.body` re-flattened the
+    /// whole tree — O(n) work plus an O(n) Equatable diff against the
+    /// previous `[FileTreeRowModel]` — on every re-render, even ones the
+    /// tree's own state had nothing to do with.
+    private var visibleRowsCache: [FileTreeRowModel]?
+
+    #if DEBUG
+    /// Test seam: counts actual flattens (cache misses), so tests can assert
+    /// the cache is hit/invalidated at the right times without depending on
+    /// timing. Not gated on anything but DEBUG — cheap increment.
+    private(set) var visibleRowsComputeCount = 0
+    #endif
 
     /// Last known vertical scroll offset of the file tree. Cached in-memory so
     /// the tree restores its position when the tab is re-mounted (e.g. after
@@ -217,6 +253,7 @@ final class FileBrowserTabController: ObservableObject {
             await persistTree()
             // The full tree (bulk fetch + async deeper expanded dirs) is now
             // applied; signal the view so it can re-assert a restored offset.
+            PerfSignpost.event("tree-generation-bump")
             treeContentGeneration &+= 1
             await refreshGitStatus()
         } catch {
@@ -337,6 +374,55 @@ final class FileBrowserTabController: ObservableObject {
         showsHiddenFiles ? nodes : nodes.filter { !$0.isHidden }
     }
 
+    /// Flattens the expanded tree into visible rows, depth-first. This is the
+    /// single source the tree view renders from; rows are pure values so
+    /// SwiftUI can skip unchanged rows via Equatable.
+    ///
+    /// Memoized: the flatten is only recomputed once per actual state change,
+    /// keyed off `visibleRowsCache`. See its doc comment for the full list of
+    /// `@Published` properties whose `didSet` invalidates the cache — every
+    /// property this function reads must be on that list.
+    func visibleRows() -> [FileTreeRowModel] {
+        if let cached = visibleRowsCache { return cached }
+        #if DEBUG
+        visibleRowsComputeCount += 1
+        #endif
+        var rows: [FileTreeRowModel] = []
+        func emit(_ nodes: [FileNode], depth: Int) {
+            for node in nodes {
+                let expanded = node.isDirectory && expandedDirs.contains(node.path)
+                rows.append(FileTreeRowModel(
+                    id: node.path,
+                    kind: .node(node),
+                    depth: depth,
+                    isSelected: selectedFilePath == node.path,
+                    isExpanded: expanded,
+                    status: fileStatusByPath[node.path]
+                ))
+                if expanded, let kids = childrenByPath[node.path] {
+                    emit(kids, depth: depth + 1)
+                    if truncatedDirs.contains(node.path) {
+                        rows.append(FileTreeRowModel(
+                            id: "loadMore:" + node.path,
+                            kind: .loadMore(parentPath: node.path),
+                            depth: depth + 1,
+                            isSelected: false, isExpanded: false, status: nil
+                        ))
+                    }
+                }
+            }
+        }
+        emit(rootChildren, depth: 0)
+        if truncatedDirs.contains(rootPath) {
+            rows.append(FileTreeRowModel(
+                id: "loadMore:" + rootPath, kind: .loadMore(parentPath: rootPath),
+                depth: 0, isSelected: false, isExpanded: false, status: nil
+            ))
+        }
+        visibleRowsCache = rows
+        return rows
+    }
+
     // MARK: - Git diff / status
 
     /// Re-pulls `git status --porcelain` for the workspace root. Keys in the
@@ -344,6 +430,8 @@ final class FileBrowserTabController: ObservableObject {
     /// `node.path` directly. No-op when no `GitDiffService`/`repoRoot` is wired.
     func refreshGitStatus() async {
         guard let svc = gitDiffService, let root = repoRoot else { return }
+        let sp = PerfSignpost.begin("git-status-refresh")
+        defer { PerfSignpost.end("git-status-refresh", sp) }
         let result = (try? await svc.fileStatus(in: root)) ?? [:]
         let prefix = root.hasSuffix("/") ? root : root + "/"
         var byPath: [String: FileStatus] = [:]
@@ -378,6 +466,10 @@ final class FileBrowserTabController: ObservableObject {
             return
         }
         if let previewIdx = subTabs.firstIndex(where: { !$0.isPinned }) {
+            // Repurposing swaps in a different file under the same sub-tab id,
+            // so any live (unsaved) buffer for the old file must not leak into
+            // the new one.
+            liveBufferByTab[subTabs[previewIdx].id] = nil
             subTabs[previewIdx].path = path
             subTabs[previewIdx].openFile = .empty
             activeSubTabID = subTabs[previewIdx].id
@@ -436,6 +528,7 @@ final class FileBrowserTabController: ObservableObject {
     func closeSubTabImmediate(_ id: UUID) {
         guard let idx = subTabs.firstIndex(where: { $0.id == id }) else { return }
         let wasActive = (activeSubTabID == id)
+        liveBufferByTab[id] = nil
         subTabs.remove(at: idx)
         if wasActive {
             if idx < subTabs.count {
@@ -663,29 +756,85 @@ final class FileBrowserTabController: ObservableObject {
         return false
     }
 
+    /// Live (per-keystroke) editor buffers, keyed by sub-tab id. Intentionally
+    /// NOT @Published: keystrokes must not fan out to every observer of this
+    /// controller (tree rows, tab bars). The published `openFile` keeps the
+    /// content it had when the tab was opened / last saved; `dirty` is the only
+    /// flag that publishes, exactly once per dirty transition.
+    private(set) var liveBufferByTab: [UUID: String] = [:]
+
+    /// Reads the in-progress (uncommitted-to-`openFile`) buffer for a sub-tab,
+    /// if the user has typed anything since it was opened/saved. Views that
+    /// reconstruct their initial editor text from controller state must prefer
+    /// this over `openFile.content` — see `updateBuffer` for why the two can
+    /// diverge.
+    func liveBuffer(for id: UUID) -> String? { liveBufferByTab[id] }
+
     /// Updates the in-memory buffer for the sub-tab identified by `id`, but
     /// only if that sub-tab still exists, its `path` is unchanged, and its
     /// `openFile` is still `.text` at the same `path`. The path/state guards
     /// are essential because the editor view stays alive across sub-tab
     /// switches (ZStack), so a delayed text-binding setter can fire long
     /// after the user has activated, closed, or repurposed another sub-tab.
+    ///
+    /// Only the *first* keystroke since the buffer was last clean publishes
+    /// (via the `dirty` flip below) — every keystroke after that only updates
+    /// `liveBufferByTab`, which is not `@Published`. This keeps per-key input
+    /// from fanning out to every other observer of this controller (file tree
+    /// rows, tab bars, etc.).
     func updateBuffer(content: String, forSubTab id: UUID) {
         guard let idx = subTabs.firstIndex(where: { $0.id == id }) else { return }
-        guard case .text(let path, _, let encoding, _) = subTabs[idx].openFile else { return }
+        guard case .text(let path, let opened, let encoding, let dirty) = subTabs[idx].openFile else { return }
         guard subTabs[idx].path == path else { return }
-        subTabs[idx].openFile = .text(path: path, content: content, encoding: encoding, dirty: true)
+        liveBufferByTab[id] = content
+        if !dirty {
+            // First divergence from the on-disk content: publish once so the
+            // dirty dot and close-guard update. Also auto-pin (VSCode
+            // semantics: editing a preview tab converts it to a regular tab)
+            // so `openInTree`'s preview-reuse branch can no longer repurpose
+            // this sub-tab out from under an in-progress edit — see the
+            // "single click while dirty discards the preview tab" bug this
+            // guards against. Folded into the same `subTabs` write as the
+            // `openFile` update above so this doesn't add a second publish.
+            subTabs[idx].openFile = .text(path: path, content: opened, encoding: encoding, dirty: true)
+            subTabs[idx].isPinned = true
+        }
     }
 
     /// Saves the current buffer back to disk via the data source. Returns as
     /// soon as the write completes and `dirty` is cleared; the git-status and
     /// diff refresh run off the save path so saving never blocks on `git`.
     func saveCurrentFile() async throws {
-        guard case .text(let path, let content, let encoding, _) = activeOpenFile else {
+        guard let id = activeSubTabID,
+              case .text(let path, let opened, let encoding, _) = activeOpenFile else {
             return
         }
+        let content = liveBufferByTab[id] ?? opened
         let data = content.data(using: encoding) ?? Data()
         try await dataSource.writeFile(path, data: data)
-        setActiveOpenFile(.text(path: path, content: content, encoding: encoding, dirty: false))
+        // The write above suspends this task; the user can keep typing while
+        // it's in flight, which advances `liveBufferByTab[id]` past `content`.
+        // Only treat the buffer as "saved" (clear it + drop dirty) if it still
+        // matches what we actually wrote to disk. If it diverged, keep the
+        // newer buffer and the dirty flag so those keystrokes are never
+        // silently discarded; `openFile.content` still advances to the
+        // just-saved value so a subsequent switch-away/back round trip has
+        // the right disk-backed baseline to diff against.
+        // Write completion must land on the sub-tab we started saving (`id`),
+        // not whatever tab happens to be active now — `writeFile` suspends,
+        // and the user can switch tabs while it's in flight. Using the
+        // `expectingPath`-guarded setter (instead of re-reading
+        // `activeSubTabID` via `setActiveOpenFile`) keeps a slow save from
+        // clobbering a different tab's state after the user has moved on.
+        let bufferAfterWrite = liveBufferByTab[id]
+        if bufferAfterWrite == nil || bufferAfterWrite == content {
+            liveBufferByTab[id] = nil
+            setOpenFile(forSubTab: id, expectingPath: path,
+                .text(path: path, content: content, encoding: encoding, dirty: false))
+        } else {
+            setOpenFile(forSubTab: id, expectingPath: path,
+                .text(path: path, content: content, encoding: encoding, dirty: true))
+        }
         // Fire-and-forget: diff + git status are non-essential to the save
         // completing and each is a `git` subprocess round-trip. This is a plain
         // (MainActor-inherited, not `Task.detached`) Task so the refreshes still

@@ -13,6 +13,13 @@ extension Notification.Name {
 /// UI views observe this store via @EnvironmentObject.
 @MainActor
 final class WorkspaceStore: ObservableObject {
+    /// NOTE: `sidebarIconCache`/`remoteGroupsCache` correctness depends on every
+    /// structural mutation converging on `saveWorkspaceState()` (see its cache-clear
+    /// there). `WorkspaceModel` is a class, so mutating one of its properties does
+    /// NOT trigger this array's `didSet`/`@Published` — callers must not mutate the
+    /// icon-seed/grouping-key input fields (`repositoryRoot`, `sshTarget`, `name`,
+    /// `workspaceIcon`, `isArchived`, `kind`) on a path that bypasses
+    /// `saveWorkspaceState()`, or the caches will silently go stale.
     @Published var workspaces: [WorkspaceModel] = []
     @Published var selectedWorkspaceID: UUID? {
         didSet { handleWorktreeSelectionIfNeeded() }
@@ -23,6 +30,11 @@ final class WorkspaceStore: ObservableObject {
     @Published var showSettings = false
     @Published var showCommandPalette = false
     @Published var sidebarIconCustomizationRequest: SidebarIconCustomizationRequest?
+
+    /// Bumped whenever git worktree metadata for any workspace is refreshed.
+    /// Replaces a bare objectWillChange.send() so the invalidation survives
+    /// the @Observable migration (which has no objectWillChange).
+    @Published private(set) var workspaceMetadataGeneration: Int = 0
 
     @Published var settings: AppSettings {
         didSet { try? settingsPersistence.save(settings) }
@@ -71,6 +83,14 @@ final class WorkspaceStore: ObservableObject {
     /// Reentry guard for `refreshAllRemoteWorkspaces`. Drops overlapping
     /// triggers (e.g. timer firing while a window-focus refresh is in flight).
     private var isRefreshingRemotes = false
+
+    /// Caches generated repository icons; invalidated whenever the workspace
+    /// list mutates (add/remove/rename/icon change all call saveWorkspaceState).
+    private var sidebarIconCache: [UUID: SidebarItemIcon] = [:]
+
+    /// Caches the remote workspace grouping; invalidated the same way as
+    /// `sidebarIconCache` (see `saveWorkspaceState`).
+    private var remoteGroupsCache: [(key: String, targets: [WorkspaceModel])]?
 
     /// The currently selected workspace, if any.
     /// Resolves both workspace-level and worktree-level selection.
@@ -135,13 +155,16 @@ final class WorkspaceStore: ObservableObject {
 
     /// Remote workspaces grouped by server+user combination.
     var remoteWorkspaceGroups: [(key: String, targets: [WorkspaceModel])] {
+        if let cached = remoteGroupsCache { return cached }
         let remotes = workspaces.filter { !$0.isArchived && $0.kind == .repository && $0.sshTarget != nil }
         let grouped = Dictionary(grouping: remotes) { ws -> String in
             guard let target = ws.sshTarget else { return "unknown" }
             return Self.remoteGroupKey(for: target)
         }
-        return grouped.map { (key: $0.key, targets: $0.value) }
+        let result = grouped.map { (key: $0.key, targets: $0.value) }
             .sorted { $0.key < $1.key }
+        remoteGroupsCache = result
+        return result
     }
 
     init() {
@@ -466,7 +489,7 @@ final class WorkspaceStore: ObservableObject {
             }
 
             // Notify SwiftUI that child model data changed so the sidebar rebuilds.
-            objectWillChange.send()
+            workspaceMetadataGeneration += 1
         } catch {
             // Not a git repository or git command failed — that's acceptable.
         }
@@ -541,6 +564,13 @@ final class WorkspaceStore: ObservableObject {
     }
 
     func saveWorkspaceState() {
+        // Invalidate derived caches: this is the aggregation point for every
+        // structural mutation to `workspaces` (add/remove/rename/icon change/
+        // reorder), so clearing here covers all of them without needing a
+        // bespoke invalidation call at each call site.
+        sidebarIconCache.removeAll()
+        remoteGroupsCache = nil
+
         // Resolve to workspace-level ID for persistence (worktree IDs are unstable across launches).
         let resolvedID: UUID? = {
             guard let id = selectedWorkspaceID else { return nil }
@@ -571,6 +601,7 @@ final class WorkspaceStore: ObservableObject {
         case .localTerminal:
             return settings.defaultLocalTerminalIcon
         case .repository:
+            if let cached = sidebarIconCache[workspace.id] { return cached }
             let existingIcons = workspaces
                 .filter { $0.id != workspace.id && !$0.isArchived && $0.kind == .repository }
                 .compactMap { $0.workspaceIcon ?? generatedRepositoryIcon(for: $0) }
@@ -582,10 +613,12 @@ final class WorkspaceStore: ObservableObject {
             } else {
                 iconSeed = workspace.repositoryRoot?.lastPathComponent ?? workspace.name
             }
-            return .randomRepository(
+            let icon = SidebarItemIcon.randomRepository(
                 preferredSeed: iconSeed,
                 avoiding: existingIcons
             )
+            sidebarIconCache[workspace.id] = icon
+            return icon
         }
     }
 

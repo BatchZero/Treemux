@@ -134,14 +134,20 @@ final class FileBrowserTabControllerStaleLoadTests: XCTestCase {
 
         let tabA = ctrl.subTabs.first(where: { $0.id == aID })
         let tabB = ctrl.subTabs.first(where: { $0.id == bID })
+        // `openFile.content` intentionally stays pinned at the opened value —
+        // Task 7 isolates per-keystroke edits into `liveBuffer(for:)`; only the
+        // `dirty` flip publishes through `subTabs`. The live buffer is where
+        // the actual edit lands, and it must be routed to A only.
         XCTAssertEqual(
             tabA?.openFile,
-            .text(path: "/r/a.txt", content: "AAA-edited", encoding: .utf8, dirty: true),
-            "updateBuffer with aID must edit A")
+            .text(path: "/r/a.txt", content: "AAA", encoding: .utf8, dirty: true),
+            "updateBuffer with aID must mark A dirty without touching B")
         XCTAssertEqual(
             tabB?.openFile,
             .text(path: "/r/b.txt", content: "BBB", encoding: .utf8, dirty: false),
             "B must not be touched when we explicitly target A")
+        XCTAssertEqual(ctrl.liveBuffer(for: aID), "AAA-edited", "live buffer must hold A's edit")
+        XCTAssertNil(ctrl.liveBuffer(for: bID), "B must have no live buffer")
     }
 
     func test_updateBuffer_droppedIfSubTabClosed() async {

@@ -367,8 +367,16 @@ final class TreemuxGhosttyController: ManagedTerminalSessionSurfaceController {
     // MARK: - Surface resize
 
     fileprivate func handleSurfaceResize(cols: Int, rows: Int) {
-        DispatchQueue.main.async { [weak self] in
-            self?.onResize?(cols, rows)
+        // setFrameSize already runs on the main thread; only hop when the
+        // callback arrives from a libghostty background thread.
+        if Thread.isMainThread {
+            MainActor.assumeIsolated {
+                onResize?(cols, rows)
+            }
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.onResize?(cols, rows)
+            }
         }
     }
 
@@ -429,9 +437,15 @@ final class TreemuxGhosttyController: ManagedTerminalSessionSurfaceController {
     }
 
     fileprivate func notifyStatusChange() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.onStatusChange?(terminalView.statusSnapshot)
+        if Thread.isMainThread {
+            MainActor.assumeIsolated {
+                onStatusChange?(terminalView.statusSnapshot)
+            }
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.onStatusChange?(self.terminalView.statusSnapshot)
+            }
         }
     }
 }
@@ -788,9 +802,7 @@ private final class TreemuxGhosttySurfaceView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
-        DispatchQueue.main.async { [weak self] in
-            self?.controller?.onUserInput?()
-        }
+        if let onUserInput = controller?.onUserInput { onUserInput() }
         guard let surface else { return }
         let mods = ghosttyMods(event.modifierFlags)
         ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_PRESS, GHOSTTY_MOUSE_LEFT, mods)
@@ -894,9 +906,7 @@ private final class TreemuxGhosttySurfaceView: NSView {
     // MARK: - Key events
 
     override func keyDown(with event: NSEvent) {
-        DispatchQueue.main.async { [weak self] in
-            self?.controller?.onUserInput?()
-        }
+        if let onUserInput = controller?.onUserInput { onUserInput() }
         guard let surface else {
             super.keyDown(with: event)
             return

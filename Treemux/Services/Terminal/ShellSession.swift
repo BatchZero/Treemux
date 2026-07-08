@@ -102,22 +102,28 @@ final class ShellSession: ObservableObject, Identifiable {
     private func configureSurfaceCallbacks() {
         surfaceController.onResize = { [weak self] cols, rows in
             guard let self else { return }
-            self.cols = max(cols, 2)
-            self.rows = max(rows, 2)
+            // Resize callbacks fire per-frame during window drags even when
+            // the grid did not change; skip no-op publishes.
+            let c = max(cols, 2)
+            let r = max(rows, 2)
+            if self.cols != c { self.cols = c }
+            if self.rows != r { self.rows = r }
         }
         surfaceController.onTitleChange = { [weak self] title in
-            guard let self, !title.isEmpty else { return }
+            guard let self, !title.isEmpty, title != self.title else { return }
             self.title = title
             self.detectTmux(fromTitle: title)
         }
         surfaceController.onWorkingDirectoryChange = { [weak self] directory in
-            self?.reportedWorkingDirectory = directory
+            guard let self, directory != self.reportedWorkingDirectory else { return }
+            self.reportedWorkingDirectory = directory
         }
         surfaceController.onFocus = { [weak self] in
             self?.onFocus?()
         }
         surfaceController.onStatusChange = { [weak self] status in
-            self?.surfaceStatus = status
+            guard let self, status != self.surfaceStatus else { return }
+            self.surfaceStatus = status
         }
 
         surfaceController.onProcessExit = { [weak self] exitCode in
