@@ -789,8 +789,15 @@ final class FileBrowserTabController: ObservableObject {
         liveBufferByTab[id] = content
         if !dirty {
             // First divergence from the on-disk content: publish once so the
-            // dirty dot and close-guard update.
+            // dirty dot and close-guard update. Also auto-pin (VSCode
+            // semantics: editing a preview tab converts it to a regular tab)
+            // so `openInTree`'s preview-reuse branch can no longer repurpose
+            // this sub-tab out from under an in-progress edit — see the
+            // "single click while dirty discards the preview tab" bug this
+            // guards against. Folded into the same `subTabs` write as the
+            // `openFile` update above so this doesn't add a second publish.
             subTabs[idx].openFile = .text(path: path, content: opened, encoding: encoding, dirty: true)
+            subTabs[idx].isPinned = true
         }
     }
 

@@ -211,6 +211,61 @@ final class EditorBufferIsolationTests: XCTestCase {
         XCTAssertFalse(bDirty)
     }
 
+    /// Regression for the data-loss UX bug: single-clicking a file in the tree
+    /// opens a preview (unpinned) sub-tab; clicking a *different* file while
+    /// that preview is dirty used to repurpose the same sub-tab in place
+    /// (`openInTree`'s "reuse the preview" branch), silently discarding the
+    /// unsaved edit and dropping its live buffer. VSCode semantics: editing a
+    /// preview tab converts it to a regular (pinned) tab, so it's no longer a
+    /// candidate for repurposing and a fresh preview opens for the new file
+    /// instead — the edit survives.
+    func testEditingPreviewTabAutoPinsAndSurvivesTreeNavigation() async throws {
+        let (c, idA) = try await makeControllerWithOpenFile()
+        // Freshly opened via openInTree: preview (unpinned) sub-tab.
+        XCTAssertEqual(c.subTabs.count, 1)
+        XCTAssertFalse(c.subTabs[0].isPinned)
+
+        // Type into A: first divergence flips dirty AND must auto-pin.
+        c.updateBuffer(content: "hello-edited", forSubTab: idA)
+        let tabA = try XCTUnwrap(c.subTabs.first(where: { $0.id == idA }))
+        XCTAssertTrue(tabA.isPinned, "editing a preview tab must convert it to pinned")
+        guard case .text(_, _, _, let dirtyA) = tabA.openFile else {
+            XCTFail("expected tab A to still be .text"); return
+        }
+        XCTAssertTrue(dirtyA)
+
+        // Single-click a different file in the tree.
+        let root = URL(fileURLWithPath: c.rootPath).path
+        let pathB = root + "/b.txt"
+        FileManager.default.createFile(atPath: pathB, contents: Data("b".utf8))
+        await c.openInTree(pathB)
+
+        // Must NOT have repurposed A's sub-tab: two sub-tabs now exist, A
+        // intact with its live buffer, B a new preview.
+        XCTAssertEqual(c.subTabs.count, 2, "editing A must not be discarded by opening B in place")
+        let tabAAfter = try XCTUnwrap(c.subTabs.first(where: { $0.id == idA }))
+        XCTAssertEqual(tabAAfter.path, root + "/a.txt")
+        XCTAssertTrue(tabAAfter.isPinned)
+        guard case .text(_, _, _, let dirtyAAfter) = tabAAfter.openFile else {
+            XCTFail("expected tab A to still be .text"); return
+        }
+        XCTAssertTrue(dirtyAAfter, "A's dirty flag must survive opening B")
+        XCTAssertEqual(c.liveBuffer(for: idA), "hello-edited", "A's live buffer must not be dropped")
+
+        let idB = try XCTUnwrap(c.activeSubTabID)
+        XCTAssertNotEqual(idB, idA)
+        let tabB = try XCTUnwrap(c.subTabs.first(where: { $0.id == idB }))
+        XCTAssertEqual(tabB.path, pathB)
+        XCTAssertFalse(tabB.isPinned, "B opens as a fresh preview tab")
+
+        // Single-click back on A: must hit the pinned-hit branch and focus
+        // the existing (unsaved) tab rather than creating/repurposing again.
+        await c.openInTree(root + "/a.txt")
+        XCTAssertEqual(c.activeSubTabID, idA, "clicking A again must refocus its pinned tab")
+        XCTAssertEqual(c.subTabs.count, 2, "no new sub-tab should be created")
+        XCTAssertEqual(c.liveBuffer(for: idA), "hello-edited", "A's content must still be intact")
+    }
+
     private func waitForPendingWrite(
         _ ds: GatedWriteFileBrowserDataSource,
         timeoutSeconds: Double = 2.0
