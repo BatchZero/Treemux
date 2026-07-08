@@ -13,6 +13,13 @@ extension Notification.Name {
 /// UI views observe this store via @EnvironmentObject.
 @MainActor
 final class WorkspaceStore: ObservableObject {
+    /// NOTE: `sidebarIconCache`/`remoteGroupsCache` correctness depends on every
+    /// structural mutation converging on `saveWorkspaceState()` (see its cache-clear
+    /// there). `WorkspaceModel` is a class, so mutating one of its properties does
+    /// NOT trigger this array's `didSet`/`@Published` — callers must not mutate the
+    /// icon-seed/grouping-key input fields (`repositoryRoot`, `sshTarget`, `name`,
+    /// `workspaceIcon`, `isArchived`, `kind`) on a path that bypasses
+    /// `saveWorkspaceState()`, or the caches will silently go stale.
     @Published var workspaces: [WorkspaceModel] = []
     @Published var selectedWorkspaceID: UUID? {
         didSet { handleWorktreeSelectionIfNeeded() }
