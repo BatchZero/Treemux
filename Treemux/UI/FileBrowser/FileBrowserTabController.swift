@@ -225,10 +225,19 @@ final class FileBrowserTabController: ObservableObject {
 
     func loadRoot() async {
         loadError = nil
-        // 1. Instant render from the on-disk cache if present.
-        if let identity = dataSource.treeCacheIdentity,
-           let snap = treeCache.load(identity: identity, rootPath: rootPath) {
-            applySnapshot(snap)
+        // 1. Instant render from the on-disk cache if present. The file read +
+        //    JSON decode runs off the main actor (mirroring persistTree's write
+        //    side) — a large remote snapshot used to block the first frame for
+        //    the whole synchronous decode.
+        if let identity = dataSource.treeCacheIdentity {
+            let cache = treeCache
+            let root = rootPath
+            let snap = await Task.detached(priority: .userInitiated) {
+                cache.load(identity: identity, rootPath: root)
+            }.value
+            if let snap {
+                applySnapshot(snap)
+            }
         }
         // 2. Background-refresh via bulk fetch (also the only fetch path on a cache miss).
         await refreshTree()
