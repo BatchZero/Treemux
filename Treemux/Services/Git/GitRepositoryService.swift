@@ -201,25 +201,13 @@ actor GitRepositoryService {
         let errorOutput: String
     }
 
-    /// Runs a command on a remote host via system SSH.
+    /// Runs a command on a remote host via system SSH. Argument construction
+    /// (including ControlMaster connection reuse) is shared with SFTPService
+    /// via SSHMultiplexing.
     private func runSSH(target: SSHTarget, command: String) async throws -> SSHResult {
-        var args: [String] = [
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=10",
-            "-o", "StrictHostKeyChecking=accept-new",
-            "-p", "\(target.port)"
-        ]
-        if let identityFile = target.identityFile {
-            let expandedPath = (identityFile as NSString).expandingTildeInPath
-            args += ["-i", expandedPath]
-        }
-        let username = target.user ?? NSUserName()
-        args.append("\(username)@\(target.host)")
-        args.append(command)
-
         let result = try await ShellCommandRunner.run(
             "/usr/bin/ssh",
-            arguments: args
+            arguments: SSHMultiplexing.sshArguments(target: target, command: command)
         )
         return SSHResult(exitCode: result.exitCode, output: result.output, errorOutput: result.errorOutput)
     }
