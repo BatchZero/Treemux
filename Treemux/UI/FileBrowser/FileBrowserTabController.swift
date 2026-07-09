@@ -235,7 +235,13 @@ final class FileBrowserTabController: ObservableObject {
             let snap = await Task.detached(priority: .userInitiated) {
                 cache.load(identity: identity, rootPath: root)
             }.value
-            if let snap {
+            // Apply only while the tree is still unpopulated: the detached read
+            // introduces a suspension point, so a concurrent refreshTree()
+            // (manual refresh / retry) may have landed fresher data during the
+            // await — never clobber it with the older on-disk snapshot. On the
+            // cold-start path rootChildren is always empty here, so the
+            // cache-first instant render is unaffected.
+            if let snap, rootChildren.isEmpty {
                 applySnapshot(snap)
             }
         }
