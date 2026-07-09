@@ -58,6 +58,37 @@ final class SSHMultiplexingTests: XCTestCase {
         XCTAssertEqual(opts, [])
     }
 
+    /// Arg-building must be read-only after the first successful ensure for a
+    /// state directory: a per-call mkdir raced with tests/users deleting the
+    /// state directory (FileManager.removeItem vs createDirectory yields
+    /// NSCocoaError 513), so after the first call the options are served from
+    /// cache and the directory is NOT recreated.
+    func test_controlOptions_doesNotRecreateDirectoryAfterFirstCall() throws {
+        _ = SSHMultiplexing.controlOptions(stateDirectory: tmp)
+        let dir = SSHMultiplexing.controlDirectoryURL(stateDirectory: tmp)
+        try FileManager.default.removeItem(at: tmp)
+
+        let opts = SSHMultiplexing.controlOptions(stateDirectory: tmp)
+
+        XCTAssertEqual(opts.count, 6, "options still served from the ensure cache")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: dir.path),
+                       "arg building must not write to the filesystem after the first ensure")
+    }
+
+    /// A failed ensure must NOT be cached: once the obstruction is removed,
+    /// the next call retries and succeeds.
+    func test_controlOptions_retriesAfterFailedEnsure() throws {
+        // A regular FILE at the state-directory path makes createDirectory throw.
+        try Data().write(to: tmp)
+        let failedOpts = SSHMultiplexing.controlOptions(stateDirectory: tmp)
+        XCTAssertEqual(failedOpts, [])
+
+        try FileManager.default.removeItem(at: tmp)
+
+        let opts = SSHMultiplexing.controlOptions(stateDirectory: tmp)
+        XCTAssertEqual(opts.count, 6, "failed ensure must not be cached; a later call retries")
+    }
+
     // MARK: - sshArguments
 
     func test_sshArguments_endsWithTargetAndCommand_andCarriesBaseOptions() throws {
