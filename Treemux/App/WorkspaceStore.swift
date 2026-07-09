@@ -526,17 +526,39 @@ final class WorkspaceStore: ObservableObject {
         }
     }
 
-    /// Refreshes every SSH-backed workspace serially. No-op for local workspaces.
-    /// Reentry-guarded so overlapping triggers (timer + window focus, or
-    /// back-to-back) don't stack SSH connections.
+    /// Refreshes every SSH-backed workspace concurrently. No-op for local
+    /// workspaces. Reentry-guarded so overlapping triggers (timer + window
+    /// focus, or back-to-back) don't stack SSH connections.
     private func refreshAllRemoteWorkspaces() async {
         guard !isRefreshingRemotes else { return }
-        let remotes = workspaces.filter { $0.sshTarget != nil && !$0.isArchived }
-        guard !remotes.isEmpty else { return }
+        let ids = workspaces
+            .filter { $0.sshTarget != nil && !$0.isArchived }
+            .map(\.id)
+        guard !ids.isEmpty else { return }
         isRefreshingRemotes = true
         defer { isRefreshingRemotes = false }
-        for workspace in remotes {
-            await refreshWorkspace(workspace)
+        await refreshRemoteWorkspacesConcurrently(ids: ids) { [weak self] id in
+            guard let self,
+                  let workspace = self.workspaces.first(where: { $0.id == id }) else { return }
+            await self.refreshWorkspace(workspace)
+        }
+    }
+
+    /// Runs `refresh` for every workspace id concurrently and returns when all
+    /// finish. The closures hop to the main actor, but each SSH round-trip
+    /// suspends there, so the network waits overlap — total wall-clock is
+    /// roughly the slowest workspace instead of the sum. IDs (not models)
+    /// cross the task boundary; each closure re-resolves its workspace so a
+    /// mid-flight removal is safely skipped. Internal so tests can drive the
+    /// concurrency shape without real SSH.
+    func refreshRemoteWorkspacesConcurrently(
+        ids: [UUID],
+        using refresh: @escaping @MainActor @Sendable (UUID) async -> Void
+    ) async {
+        await withTaskGroup(of: Void.self) { group in
+            for id in ids {
+                group.addTask { await refresh(id) }
+            }
         }
     }
 
