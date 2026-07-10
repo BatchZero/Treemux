@@ -742,7 +742,11 @@ final class FileBrowserTabController {
                     .loadingContent(path: path))
         do {
             let data = try await dataSource.readFile(path, maxBytes: Int(Self.quickLookOnlyThreshold))
-            if let img = NSImage(data: data) {
+            let decoded = await Task.detached(priority: .userInitiated) {
+                DownsampledImageDecoder.decode(data)
+            }.value
+            if let decoded {
+                let img = NSImage(cgImage: decoded.cgImage, size: decoded.pixelSize)
                 setOpenFile(forSubTab: subTabID, expectingPath: path,
                             .image(path: path, image: img))
             } else {
