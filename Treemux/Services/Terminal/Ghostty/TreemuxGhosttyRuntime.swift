@@ -19,8 +19,8 @@ final class TreemuxGhosttyRuntime: NSObject {
     /// from any window (hidden tabs/worktrees) or in fully occluded windows report
     /// non-visible to libghostty so its renderer can throttle them. Updated live from
     /// `.treemuxTerminalSettingsDidChange`; read by `TreemuxGhosttySurfaceView.updateSurfaceOcclusion()`.
-    /// Default `true` here is overwritten by the init-time settings load below.
-    private(set) var suspendHiddenSurfaces: Bool = true
+    /// Default `false` here is overwritten by the init-time settings load below.
+    private(set) var suspendHiddenSurfaces: Bool = false
 
     /// Overrides disk resolution when a live theme switch posts a Theme via notification.object.
     /// Nil at startup so the init path falls through to disk-based resolution.

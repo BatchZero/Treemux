@@ -111,14 +111,15 @@ struct TerminalSettings: Equatable {
     /// When true, surfaces detached from any window (hidden tabs/worktrees)
     /// and surfaces in fully occluded windows report non-visible to libghostty
     /// so its renderer can throttle them. Kill switch for the P3 occlusion
-    /// experiment — turning it off restores pre-P3 behavior at runtime.
+    /// experiment — turning it on restores the pre-P3 behavior at runtime.
+    /// Off by default; opt-in via Settings.
     var suspendHiddenSurfaces: Bool
 
     init(
         defaultShell: String = "/bin/zsh",
         fontSizeOffset: Int = 0,
         cursorStyle: String = "bar",
-        suspendHiddenSurfaces: Bool = true
+        suspendHiddenSurfaces: Bool = false
     ) {
         self.defaultShell = defaultShell
         self.fontSizeOffset = TerminalSettings.clamp(fontSizeOffset)
@@ -146,7 +147,7 @@ extension TerminalSettings: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let shell = try container.decodeIfPresent(String.self, forKey: .defaultShell) ?? "/bin/zsh"
         let cursor = try container.decodeIfPresent(String.self, forKey: .cursorStyle) ?? "bar"
-        let suspendHiddenSurfaces = try container.decodeIfPresent(Bool.self, forKey: .suspendHiddenSurfaces) ?? true
+        let suspendHiddenSurfaces = try container.decodeIfPresent(Bool.self, forKey: .suspendHiddenSurfaces) ?? false
 
         let offset: Int
         if let stored = try container.decodeIfPresent(Int.self, forKey: .fontSizeOffset) {
