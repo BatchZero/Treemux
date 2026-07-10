@@ -9,7 +9,7 @@ import SwiftUI
 /// Each `.pane` leaf renders a `TerminalPaneView`; each `.split` node
 /// renders an HStack or VStack with a draggable divider.
 struct SplitNodeView: View {
-    @ObservedObject var sessionController: WorkspaceSessionController
+    let sessionController: WorkspaceSessionController
     let node: SessionLayoutNode
     var onClosePane: (UUID) -> Void
 

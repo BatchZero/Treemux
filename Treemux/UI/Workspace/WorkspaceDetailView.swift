@@ -68,7 +68,7 @@ private struct WorkspaceTabContainerView: View {
 /// Observes the session controller directly so that layout mutations
 /// (e.g. splitPane) propagate to SplitNodeView.
 private struct WorkspaceSessionDetailView: View {
-    @ObservedObject var controller: WorkspaceSessionController
+    let controller: WorkspaceSessionController
     var onCloseTab: () -> Void
 
     var body: some View {
