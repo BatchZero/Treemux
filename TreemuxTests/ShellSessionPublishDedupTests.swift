@@ -87,9 +87,13 @@ final class ShellSessionPublishDedupTests: XCTestCase {
         let counter = makeCounter(for: session)
         defer { counter.stop() }
 
-        let snap = TerminalSurfaceStatusSnapshot()
+        // Must differ from the session's initial default snapshot, otherwise the
+        // first delivery is itself deduped and afterFirst stays 0 vacuously.
+        var snap = TerminalSurfaceStatusSnapshot()
+        snap.isReadOnly = true
         surface.onStatusChange?(snap)
         let afterFirst = counter.count
+        XCTAssertGreaterThan(afterFirst, 0, "first change must be observed — guards against a dead counter")
         surface.onStatusChange?(snap)
         XCTAssertEqual(counter.count, afterFirst)
     }
@@ -103,6 +107,7 @@ final class ShellSessionPublishDedupTests: XCTestCase {
         surface.onTitleChange?("zsh")
         surface.onWorkingDirectoryChange?("/tmp")
         let afterFirst = counter.count
+        XCTAssertGreaterThan(afterFirst, 0, "first change must be observed — guards against a dead counter")
         surface.onTitleChange?("zsh")
         surface.onWorkingDirectoryChange?("/tmp")
         XCTAssertEqual(counter.count, afterFirst)
