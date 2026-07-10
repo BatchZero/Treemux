@@ -400,21 +400,9 @@ actor SFTPService {
         return try await Self.runProcessAndCaptureOutput(process, stdin: stdinData)
     }
 
-    private static func sshArgs(target: SSHTarget, command: String) -> [String] {
-        var args: [String] = [
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=10",
-            "-o", "StrictHostKeyChecking=accept-new",
-            "-p", "\(target.port)"
-        ]
-        if let identityFile = target.identityFile {
-            let expandedPath = (identityFile as NSString).expandingTildeInPath
-            args += ["-i", expandedPath]
-        }
-        let username = target.user ?? NSUserName()
-        args.append("\(username)@\(target.host)")
-        args.append(command)
-        return args
+    /// Internal (not private) so tests can assert the mux options are wired in.
+    static func sshArgs(target: SSHTarget, command: String) -> [String] {
+        SSHMultiplexing.sshArguments(target: target, command: command)
     }
 
     /// Runs `process` to completion and returns its stdout + exit code.

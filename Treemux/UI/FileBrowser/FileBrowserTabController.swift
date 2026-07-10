@@ -225,10 +225,25 @@ final class FileBrowserTabController: ObservableObject {
 
     func loadRoot() async {
         loadError = nil
-        // 1. Instant render from the on-disk cache if present.
-        if let identity = dataSource.treeCacheIdentity,
-           let snap = treeCache.load(identity: identity, rootPath: rootPath) {
-            applySnapshot(snap)
+        // 1. Instant render from the on-disk cache if present. The file read +
+        //    JSON decode runs off the main actor (mirroring persistTree's write
+        //    side) — a large remote snapshot used to block the first frame for
+        //    the whole synchronous decode.
+        if let identity = dataSource.treeCacheIdentity {
+            let cache = treeCache
+            let root = rootPath
+            let snap = await Task.detached(priority: .userInitiated) {
+                cache.load(identity: identity, rootPath: root)
+            }.value
+            // Apply only while the tree is still unpopulated: the detached read
+            // introduces a suspension point, so a concurrent refreshTree()
+            // (manual refresh / retry) may have landed fresher data during the
+            // await — never clobber it with the older on-disk snapshot. On the
+            // cold-start path rootChildren is always empty here, so the
+            // cache-first instant render is unaffected.
+            if let snap, rootChildren.isEmpty {
+                applySnapshot(snap)
+            }
         }
         // 2. Background-refresh via bulk fetch (also the only fetch path on a cache miss).
         await refreshTree()
@@ -529,6 +544,7 @@ final class FileBrowserTabController: ObservableObject {
         guard let idx = subTabs.firstIndex(where: { $0.id == id }) else { return }
         let wasActive = (activeSubTabID == id)
         liveBufferByTab[id] = nil
+        pendingLargeFileMeta[id] = nil
         subTabs.remove(at: idx)
         if wasActive {
             if idx < subTabs.count {
@@ -633,6 +649,7 @@ final class FileBrowserTabController: ObservableObject {
         }
         // Prompt for files between large threshold and quickLookOnly threshold.
         if meta.sizeBytes > Self.largeFileThreshold {
+            pendingLargeFileMeta[subTabID] = meta
             setOpenFile(forSubTab: subTabID, expectingPath: path,
                         .confirmingLargeFile(path: path, sizeBytes: meta.sizeBytes))
             return
@@ -641,10 +658,17 @@ final class FileBrowserTabController: ObservableObject {
         await dispatchByType(path: path, meta: meta, subTabID: subTabID)
     }
 
-    /// Called from UI when user confirms the large-file prompt.
+    /// Called from UI when user confirms the large-file prompt. Reuses the
+    /// metadata captured by `selectFile` when it still matches this sub-tab's
+    /// path; falls back to a fresh stat otherwise (e.g. state restored from
+    /// persistence, or the size-gate was hit via a `readFile` failure).
     func confirmLargeFileLoad() async {
         guard case .confirmingLargeFile(let path, _) = activeOpenFile,
               let id = activeSubTabID else { return }
+        if let meta = pendingLargeFileMeta.removeValue(forKey: id), meta.path == path {
+            await dispatchByType(path: path, meta: meta, subTabID: id)
+            return
+        }
         do {
             let meta = try await dataSource.fileMetadata(path)
             await dispatchByType(path: path, meta: meta, subTabID: id)
@@ -656,6 +680,9 @@ final class FileBrowserTabController: ObservableObject {
 
     /// Called from UI when user cancels the large-file prompt.
     func cancelLargeFileLoad() {
+        if let id = activeSubTabID {
+            pendingLargeFileMeta[id] = nil
+        }
         setActiveOpenFile(.empty)
     }
 
@@ -762,6 +789,12 @@ final class FileBrowserTabController: ObservableObject {
     /// content it had when the tab was opened / last saved; `dirty` is the only
     /// flag that publishes, exactly once per dirty transition.
     private(set) var liveBufferByTab: [UUID: String] = [:]
+
+    /// Metadata captured when a load enters `.confirmingLargeFile`, keyed by
+    /// sub-tab. Lets `confirmLargeFileLoad()` reuse the stat from `selectFile`
+    /// instead of paying a second remote round-trip. Path-checked on read so a
+    /// repurposed sub-tab can never dispatch stale metadata.
+    private var pendingLargeFileMeta: [UUID: FileMetadata] = [:]
 
     /// Reads the in-progress (uncommitted-to-`openFile`) buffer for a sub-tab,
     /// if the user has typed anything since it was opened/saved. Views that

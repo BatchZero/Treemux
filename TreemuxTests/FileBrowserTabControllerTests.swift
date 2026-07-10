@@ -250,6 +250,59 @@ final class FileBrowserTabControllerTests: XCTestCase {
         ctrl.treeScrollOffset = 142.5
         XCTAssertEqual(ctrl.treeScrollOffset, 142.5)
     }
+
+    // MARK: - Large-file confirm (P2: single stat)
+
+    /// P2: `confirmLargeFileLoad` must reuse the metadata already fetched by
+    /// `selectFile` instead of paying a second remote stat round-trip.
+    func test_confirmLargeFileLoad_reusesMetadata_noSecondStat() async {
+        let mock = MockFileBrowserDataSource()
+        let path = "/r/big.txt"
+        mock.fileMetas[path] = FileMetadata(path: path, sizeBytes: 6 * 1024 * 1024,
+                                            modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
+        mock.fileContents[path] = Data("hello".utf8)
+        let ctrl = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/r", rootKind: .project),
+            dataSource: mock
+        )
+
+        await ctrl.openInTree(path)
+        guard case .confirmingLargeFile = ctrl.activeSubTab?.openFile else {
+            return XCTFail("expected large-file prompt, got \(String(describing: ctrl.activeSubTab?.openFile))")
+        }
+        XCTAssertEqual(mock.fileMetadataCallCount, 1)
+
+        await ctrl.confirmLargeFileLoad()
+
+        XCTAssertEqual(mock.fileMetadataCallCount, 1, "confirm must not re-stat")
+        guard case .text(_, let content, _, _) = ctrl.activeSubTab?.openFile else {
+            return XCTFail("expected text content after confirm, got \(String(describing: ctrl.activeSubTab?.openFile))")
+        }
+        XCTAssertEqual(content, "hello")
+    }
+
+    /// Cancelling the prompt clears the stashed metadata and resets state, so
+    /// a stray confirm afterwards is a harmless no-op (no dispatch, no stat).
+    func test_cancelLargeFileLoad_clearsPendingMetadata() async {
+        let mock = MockFileBrowserDataSource()
+        let path = "/r/big.txt"
+        mock.fileMetas[path] = FileMetadata(path: path, sizeBytes: 6 * 1024 * 1024,
+                                            modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
+        mock.fileContents[path] = Data("hello".utf8)
+        let ctrl = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/r", rootKind: .project),
+            dataSource: mock
+        )
+
+        await ctrl.openInTree(path)
+        ctrl.cancelLargeFileLoad()
+        if case .empty = ctrl.activeSubTab?.openFile {} else {
+            XCTFail("expected empty state after cancel")
+        }
+
+        await ctrl.confirmLargeFileLoad()
+        XCTAssertEqual(mock.fileMetadataCallCount, 1, "stray confirm must not stat")
+    }
 }
 
 final class MockFileBrowserDataSource: FileBrowserDataSource {
@@ -267,8 +320,10 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
         if let listError { throw listError }
         return directoryListings[path] ?? []
     }
+    var fileMetadataCallCount = 0
     func fileMetadata(_ path: String) async throws -> FileMetadata {
-        fileMetas[path] ?? FileMetadata(path: path, sizeBytes: Int64(fileContents[path]?.count ?? 0), modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
+        fileMetadataCallCount += 1
+        return fileMetas[path] ?? FileMetadata(path: path, sizeBytes: Int64(fileContents[path]?.count ?? 0), modifiedAt: nil, isDirectory: false, isSymbolicLink: false)
     }
     func readFile(_ path: String, maxBytes: Int) async throws -> Data {
         guard let data = fileContents[path] else { throw FileBrowserError.notFound(path) }

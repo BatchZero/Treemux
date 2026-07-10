@@ -196,6 +196,22 @@ final class SFTPServiceTests: XCTestCase {
         XCTAssertEqual(result.exitCode, 0)
         XCTAssertEqual(result.output, "ok\n")
     }
+
+    // MARK: - sshArgs multiplexing (P2)
+
+    /// P2: every system-ssh invocation must carry ControlMaster options so
+    /// repeated file operations reuse one authenticated connection.
+    func test_sshArgs_includesConnectionMultiplexingOptions() {
+        let target = SSHTarget(host: "h", port: 22, user: "u", identityFile: nil,
+                               displayName: "h", remotePath: nil)
+        let args = SFTPService.sshArgs(target: target, command: "echo 1")
+
+        XCTAssertTrue(args.contains("ControlMaster=auto"))
+        XCTAssertTrue(args.contains(where: { $0.hasPrefix("ControlPath=") && $0.hasSuffix("/%C") }))
+        XCTAssertTrue(args.contains("ControlPersist=60s"))
+        // Invocation shape unchanged: target second-to-last, command last.
+        XCTAssertEqual(Array(args.suffix(2)), ["u@h", "echo 1"])
+    }
 }
 
 // MARK: - Test helpers
