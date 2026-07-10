@@ -7,7 +7,7 @@ import SwiftUI
 struct FileTreePanelView: View {
     @ObservedObject var controller: FileBrowserTabController
     @EnvironmentObject private var store: WorkspaceStore
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
 
     @State private var scrollPosition: ScrollPosition
     /// The offset we're restoring to, captured at mount.
@@ -212,7 +212,7 @@ private struct FileTreeRow: View, Equatable {
     /// skip recomputing rows whose `row`/`density` didn't change, leaving
     /// them painted with the old theme's colors (a half-recolored tree).
     let themeID: String
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     @State private var isHovered = false
 
     // Equality intentionally ignores `controller` (same instance for the
@@ -335,7 +335,7 @@ private struct LoadMoreRow: View {
     let path: String
     let depth: Int
     @ObservedObject var controller: FileBrowserTabController
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
 
     var body: some View {
         Button {

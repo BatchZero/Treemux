@@ -24,7 +24,7 @@ struct TextEditorView: View {
     /// which has no live-follow consumer.
     var onLiveChange: ((String) -> Void)? = nil
     @EnvironmentObject private var store: WorkspaceStore
-    @EnvironmentObject private var themeManager: ThemeManager
+    @Environment(ThemeManager.self) private var themeManager
 
     /// The content to actually show in the editor: `openFile.content` freezes
     /// at the value it had when the tab was opened/last saved (Task 7 stops

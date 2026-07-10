@@ -8,7 +8,7 @@ import SwiftUI
 /// into SwiftUI, using SidebarCoordinator as the coordinator.
 struct WorkspaceOutlineSidebar: NSViewRepresentable {
     @ObservedObject var store: WorkspaceStore
-    @ObservedObject var theme: ThemeManager
+    let theme: ThemeManager
 
     /// Called when a context menu "Rename" is chosen. Params: (workspaceID, currentName).
     var onRequestRename: (UUID, String) -> Void
@@ -31,6 +31,12 @@ struct WorkspaceOutlineSidebar: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: SidebarContainerView, context: Context) {
+        // Explicit tracked read: keeps updateNSView re-firing on theme
+        // switches (parity with the old whole-object @ObservedObject
+        // invalidation). The sidebar island refreshes via .themeDidChange,
+        // but the coordinator's re-apply pass still expects this update.
+        _ = theme.activeTheme
+
         let coordinator = context.coordinator
         coordinator.store = store
         coordinator.requestRename = onRequestRename

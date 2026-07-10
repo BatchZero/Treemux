@@ -10,7 +10,7 @@ import UniformTypeIdentifiers
 /// Sidebar-based settings sheet following macOS System Settings pattern.
 struct SettingsSheet: View {
     @EnvironmentObject private var store: WorkspaceStore
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     @EnvironmentObject private var languageManager: LanguageManager
     @Environment(\.dismiss) private var dismiss
 
@@ -302,7 +302,7 @@ private struct TerminalSettingsView: View {
 
 private struct ThemeSettingsView: View {
     @Binding var settings: AppSettings
-    @ObservedObject var themeManager: ThemeManager
+    let themeManager: ThemeManager
 
     @State private var importError: String?
 

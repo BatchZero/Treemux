@@ -25,7 +25,7 @@ struct DataURIInlineImageProvider: InlineImageProvider {
 /// - links limited to http/https/mailto and opened in the system browser,
 /// - code blocks highlighted via tree-sitter.
 struct RenderedMarkdownView: View {
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     let content: String
 
     var body: some View {

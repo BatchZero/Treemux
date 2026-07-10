@@ -7,7 +7,7 @@ import SwiftUI
 
 /// Sheet that displays a tree-style remote directory browser via SFTP.
 struct RemoteDirectoryBrowser: View {
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: RemoteDirectoryBrowserViewModel
 

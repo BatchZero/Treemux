@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct FileViewerPanelView: View {
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     @ObservedObject var controller: FileBrowserTabController
 
     var body: some View {

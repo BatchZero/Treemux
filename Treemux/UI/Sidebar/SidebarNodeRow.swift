@@ -13,6 +13,11 @@ import SwiftUI
 /// `NSHostingView<AnyView>`, where SwiftUI's diffing of the wrapped view can
 /// suppress `@ObservedObject` re-evaluation. Plain-value props always force a
 /// fresh view struct, so the body re-runs whenever the indicator changes.
+// (Post-@Observable note: reads of theme/store/workspace reference props in
+// these bodies are now auto-tracked by Observation — a benign extra refresh
+// channel. The coordinator's manual fingerprint/.themeDidChange refresh
+// remains the authoritative path. Environment injection of ANY kind is
+// still forbidden here — see crash 678fda8.)
 struct SidebarNodeRow: View {
     let node: SidebarNodeItem
     let store: WorkspaceStore

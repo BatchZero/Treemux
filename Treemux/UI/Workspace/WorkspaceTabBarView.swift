@@ -7,7 +7,7 @@ import SwiftUI
 /// Tab bar displayed above the terminal area when 2+ tabs exist.
 /// Shows tab buttons with title, pane count badge, close button, and drag-to-reorder.
 struct WorkspaceTabBarView: View {
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     @ObservedObject var workspace: WorkspaceModel
     @State private var renamingTabID: UUID?
     @State private var renameText: String = ""
@@ -125,7 +125,7 @@ struct WorkspaceTabBarView: View {
 // MARK: - Tab Button
 
 private struct TabButton: View {
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     let tab: WorkspaceTabStateRecord
     let isSelected: Bool
     let isHovered: Bool

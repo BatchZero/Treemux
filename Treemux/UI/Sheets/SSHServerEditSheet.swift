@@ -9,7 +9,7 @@ import SwiftUI
 /// Shared add/edit form for an SSH server. Presented identically from both the
 /// Settings → SSH list and the Open Project → Remote dialog.
 struct SSHServerEditSheet: View {
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     enum Mode: Equatable {
         case add
         case edit(ManagedSSHEntry)

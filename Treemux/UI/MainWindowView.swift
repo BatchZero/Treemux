@@ -7,7 +7,7 @@ import SwiftUI
 
 /// Main window view with a NavigationSplitView containing a sidebar and detail pane.
 struct MainWindowView: View {
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     @EnvironmentObject private var store: WorkspaceStore
     @EnvironmentObject private var languageManager: LanguageManager
     @State private var columnVisibility: NavigationSplitViewVisibility = .all

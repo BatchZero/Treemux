@@ -8,7 +8,7 @@ import SwiftUI
 /// Two-mode dialog for opening a project: local folder or remote SSH server.
 struct OpenProjectSheet: View {
     @EnvironmentObject private var store: WorkspaceStore
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     @EnvironmentObject private var languageManager: LanguageManager
     @Environment(\.dismiss) private var dismiss
 

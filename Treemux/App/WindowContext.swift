@@ -35,7 +35,7 @@ final class WindowContext {
         let host = NSHostingController(
             rootView: MainWindowView()
                 .environmentObject(store)
-                .environmentObject(themeManager)
+                .environment(themeManager)
                 .environmentObject(languageManager)
                 .environment(\.locale, languageManager.locale)
         )
@@ -65,8 +65,7 @@ final class WindowContext {
         self.window = window
 
         // Observe theme changes to keep the window appearance in sync.
-        themeCancellable = themeManager.$activeTheme
-            .dropFirst()
+        themeCancellable = themeManager.activeThemePublisher
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 self?.updateAppearance()
@@ -80,7 +79,7 @@ final class WindowContext {
                 guard let self, let host else { return }
                 host.rootView = MainWindowView()
                     .environmentObject(self.store)
-                    .environmentObject(self.themeManager)
+                    .environment(self.themeManager)
                     .environmentObject(self.languageManager)
                     .environment(\.locale, newLocale)
             }

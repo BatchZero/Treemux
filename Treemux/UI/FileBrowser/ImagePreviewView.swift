@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct ImagePreviewView: View {
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     let path: String
     let image: NSImage
     var body: some View {

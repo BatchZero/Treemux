@@ -22,7 +22,7 @@ struct PaletteCommand: Identifiable {
 /// Fuzzy-search overlay for executing commands. Activated by ⌘⇧P.
 struct CommandPaletteView: View {
     @EnvironmentObject private var store: WorkspaceStore
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     @Binding var isPresented: Bool
     @State private var query: String = ""
     @State private var selectedIndex: Int = 0

@@ -8,7 +8,7 @@ import SwiftUI
 /// Uses an AppKit NSOutlineView (via WorkspaceOutlineSidebar) for rendering.
 struct WorkspaceSidebarView: View {
     @EnvironmentObject private var store: WorkspaceStore
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     @EnvironmentObject private var languageManager: LanguageManager
 
     // Rename dialog state
@@ -91,7 +91,7 @@ struct WorkspaceSidebarView: View {
         .sheet(item: $store.sidebarIconCustomizationRequest) { request in
             SidebarIconCustomizationSheet(request: request)
                 .environmentObject(store)
-                .environmentObject(theme)
+                .environment(theme)
                 .environment(\.locale, languageManager.locale)
         }
     }
