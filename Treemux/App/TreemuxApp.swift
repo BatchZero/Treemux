@@ -24,7 +24,7 @@ final class TreemuxApp {
 
     /// Persists workspace state before the application terminates.
     func shutdown() {
-        windowContext?.store.saveWorkspaceState()
-        windowContext?.store.flushPendingPersistence()
+        windowContext?.store.saveWorkspaceState()      // capture latest live tab state + clear caches
+        windowContext?.store.flushPendingPersistence() // synchronous final write of both files
     }
 }

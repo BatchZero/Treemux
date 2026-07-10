@@ -146,6 +146,10 @@ final class WorkspaceStoreIconCacheTests: XCTestCase {
         let siblingOverride = SidebarItemIcon(symbolName: "star.fill", palette: .gold, fillStyle: .solid)
         store.updateSidebarIcon(siblingOverride, for: .workspace(siblingID))
 
+        // Workspace-state writes are now debounced (P3); force the pending write
+        // to disk before the oracle store below re-reads it.
+        store.flushPendingPersistence()
+
         // Oracle: a brand-new store reading the same persisted state has an empty
         // cache, so its answer is always freshly computed — never stale.
         let oracleStore = WorkspaceStore()
@@ -190,6 +194,10 @@ final class WorkspaceStoreIconCacheTests: XCTestCase {
         // with `ws`'s top candidate and forces `ws`'s own icon to change once the
         // cache is correctly invalidated.
         store.addWorkspaceFromPath(URL(fileURLWithPath: "/tmp/proj2/widgets"))
+
+        // Workspace-state writes are now debounced (P3); force the pending write
+        // to disk before the oracle store below re-reads it.
+        store.flushPendingPersistence()
 
         // Oracle: a brand-new store reading the same (now-updated) persisted state
         // has an empty cache, so its answer is always freshly computed — never stale.

@@ -40,4 +40,17 @@ final class DebouncedPersistenceTests: XCTestCase {
         XCTAssertEqual(reloaded.terminal.fontSizeOffset, draft.terminal.fontSizeOffset,
                        "flush must persist the latest in-memory settings")
     }
+
+    func testFlushPendingPersistenceWritesWorkspaceState() throws {
+        let store = WorkspaceStore()
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("p3-ws-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        store.addWorkspaceFromPath(dir)   // triggers saveWorkspaceState (now debounced)
+        store.flushPendingPersistence()
+        let persisted = WorkspaceStatePersistence().load()
+        XCTAssertTrue(persisted.workspaces.contains { $0.repositoryPath == dir.path },
+                      "flush must persist workspace added moments before exit")
+    }
 }
