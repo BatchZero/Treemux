@@ -66,7 +66,9 @@ final class EditorBufferIsolationTests: XCTestCase {
         withObservationTracking {
             _ = c.visibleRows()   // cache hit — must still read the tracked inputs
         } onChange: {
-            fired = true
+            MainActor.assumeIsolated {
+                fired = true
+            }
         }
         // Mutate one of the 8 observed inputs; without the tracked-reads block
         // at the top of visibleRows() this never fires and the tree goes stale.
