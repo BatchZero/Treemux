@@ -4,7 +4,9 @@
 //
 
 import AppKit
+import Combine
 import Foundation
+import Observation
 import SwiftUI
 import Yams
 
@@ -17,11 +19,20 @@ enum FileIconTintRole: Equatable {
 
 /// Manages YAML theme loading, selection, and color publishing for the app.
 @MainActor
-final class ThemeManager: ObservableObject {
+@Observable
+final class ThemeManager {
 
-    @Published private(set) var activeTheme: Theme
-    @Published private(set) var availableThemes: [Theme] = []
-    @Published private(set) var loadErrors: [ThemeLoadError] = []
+    private(set) var activeTheme: Theme {
+        didSet { activeThemeSubject.send(activeTheme) }
+    }
+    private(set) var availableThemes: [Theme] = []
+    private(set) var loadErrors: [ThemeLoadError] = []
+
+    @ObservationIgnored private let activeThemeSubject = PassthroughSubject<Theme, Never>()
+    /// Bridge for non-SwiftUI observers (WindowContext window chrome).
+    /// Fires on every post-init activeTheme assignment (setActiveTheme AND
+    /// reloadThemes); never replays — subscribers need no `.dropFirst()`.
+    var activeThemePublisher: AnyPublisher<Theme, Never> { activeThemeSubject.eraseToAnyPublisher() }
 
     /// Directory holding all theme `.yaml` files.
     let themesDirectory: URL

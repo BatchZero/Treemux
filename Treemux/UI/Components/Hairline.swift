@@ -9,7 +9,7 @@
 import SwiftUI
 
 private struct HairlineModifier: ViewModifier {
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     let edge: Edge
 
     func body(content: Content) -> some View {

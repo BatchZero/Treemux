@@ -9,9 +9,9 @@ import UniformTypeIdentifiers
 
 /// Sidebar-based settings sheet following macOS System Settings pattern.
 struct SettingsSheet: View {
-    @EnvironmentObject private var store: WorkspaceStore
-    @EnvironmentObject private var theme: ThemeManager
-    @EnvironmentObject private var languageManager: LanguageManager
+    @Environment(WorkspaceStore.self) private var store
+    @Environment(ThemeManager.self) private var theme
+    @Environment(LanguageManager.self) private var languageManager
     @Environment(\.dismiss) private var dismiss
 
     @State private var draft = AppSettings()
@@ -302,7 +302,7 @@ private struct TerminalSettingsView: View {
 
 private struct ThemeSettingsView: View {
     @Binding var settings: AppSettings
-    @ObservedObject var themeManager: ThemeManager
+    let themeManager: ThemeManager
 
     @State private var importError: String?
 
@@ -652,7 +652,7 @@ private struct UpdateSettingsView: View {
 
 private struct SidebarIconsSettingsView: View {
     @Binding var settings: AppSettings
-    @EnvironmentObject private var store: WorkspaceStore
+    @Environment(WorkspaceStore.self) private var store
 
     /// Repository workspaces (non-archived) for the instance-level icon list.
     private var repositoryWorkspaces: [WorkspaceModel] {
@@ -690,8 +690,8 @@ private struct SidebarIconsSettingsView: View {
 
 /// A clickable row showing a workspace's current icon. Tapping opens the customization sheet.
 private struct WorkspaceIconRow: View {
-    @EnvironmentObject private var store: WorkspaceStore
-    @ObservedObject var workspace: WorkspaceModel
+    @Environment(WorkspaceStore.self) private var store
+    let workspace: WorkspaceModel
 
     var body: some View {
         Button {
@@ -715,8 +715,8 @@ private struct WorkspaceIconRow: View {
 
 /// A clickable row showing a worktree's current icon. Tapping opens the customization sheet.
 private struct WorktreeIconRow: View {
-    @EnvironmentObject private var store: WorkspaceStore
-    @ObservedObject var workspace: WorkspaceModel
+    @Environment(WorkspaceStore.self) private var store
+    let workspace: WorkspaceModel
     let worktree: WorktreeModel
 
     var body: some View {

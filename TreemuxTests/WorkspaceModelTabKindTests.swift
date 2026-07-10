@@ -36,12 +36,13 @@ final class WorkspaceModelTabKindTests: XCTestCase {
         XCTAssertEqual(fbTab?.fileBrowserState?.rootPath, "/x")
     }
 
-    /// Regression: external observers may touch `workspace.sessionController`
-    /// on every objectWillChange. With a file-browser tab active, the previous
-    /// implementation lazily created a terminal controller for the FB tab id and
-    /// stored it in tabControllers. The next saveActiveTabState() then overwrote
-    /// the FB tab record with a default WorkspaceTabStateRecord (kind defaults to
-    /// .terminal, fileBrowserState nil) — corrupting the FB tab into a terminal tab.
+    /// Regression: external observers (e.g. `WorkspaceDetailView.body`) may touch
+    /// `workspace.sessionController` on every SwiftUI re-render. With a file-browser
+    /// tab active, the previous implementation lazily created a terminal controller
+    /// for the FB tab id and stored it in tabControllers. The next saveActiveTabState()
+    /// then overwrote the FB tab record with a default WorkspaceTabStateRecord (kind
+    /// defaults to .terminal, fileBrowserState nil) — corrupting the FB tab into a
+    /// terminal tab.
     func test_saveActiveTabState_doesNotCorruptFileBrowserTab() {
         let ws = WorkspaceModel(
             name: "tmp",

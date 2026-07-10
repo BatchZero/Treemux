@@ -85,10 +85,15 @@ struct SidebarIconActivityBadge: View {
     let size: CGFloat
     let palette: SidebarIconPalette
     /// Ring color separating the dot from the icon tile. Passed in (NOT via
-    /// @EnvironmentObject): this view is hosted inside `SidebarCellView`'s
+    /// environment injection): this view is hosted inside `SidebarCellView`'s
     /// NSHostingView, which does not inject `ThemeManager` — see `SidebarNodeRow`'s
-    /// "no @EnvironmentObject" contract. Using @EnvironmentObject here crashes
-    /// the app whenever an activity badge renders.
+    /// "no environment injection" contract. Injecting any environment object here
+    /// crashes the app whenever an activity badge renders.
+    // (Post-@Observable note: reads of theme/store/workspace reference props in
+    // these bodies are now auto-tracked by Observation — a benign extra refresh
+    // channel. The coordinator's manual fingerprint/.themeDidChange refresh
+    // remains the authoritative path. Environment injection of ANY kind is
+    // still forbidden here — see crash 678fda8.)
     var ringColor: Color = .clear
 
     private var activityColor: Color {

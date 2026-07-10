@@ -212,7 +212,7 @@ final class WordCompletionDelegate: CodeSuggestionDelegate {
 /// change (debounced 300ms), pushes the snapshot into `BufferWordIndex`, and
 /// keeps `WordCompletionDelegate` connected to the active text view.
 @MainActor
-final class WordCompletionCoordinator: ObservableObject, TextViewCoordinator {
+final class WordCompletionCoordinator: TextViewCoordinator {
     private let bufferID: UUID
     private let wordIndex: BufferWordIndex
     let delegate: WordCompletionDelegate

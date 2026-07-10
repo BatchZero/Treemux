@@ -5,9 +5,9 @@
 import SwiftUI
 
 struct FileTreePanelView: View {
-    @ObservedObject var controller: FileBrowserTabController
-    @EnvironmentObject private var store: WorkspaceStore
-    @EnvironmentObject private var theme: ThemeManager
+    let controller: FileBrowserTabController
+    @Environment(WorkspaceStore.self) private var store
+    @Environment(ThemeManager.self) private var theme
 
     @State private var scrollPosition: ScrollPosition
     /// The offset we're restoring to, captured at mount.
@@ -26,7 +26,7 @@ struct FileTreePanelView: View {
     @State private var contentSettled = false
 
     init(controller: FileBrowserTabController) {
-        _controller = ObservedObject(wrappedValue: controller)
+        self.controller = controller
         let target = controller.treeScrollOffset
         _restoreTarget = State(initialValue: target)
         _liveOffset = State(initialValue: target)
@@ -109,7 +109,7 @@ struct FileTreePanelView: View {
 }
 
 private struct FileTreeToolbar: View {
-    @ObservedObject var controller: FileBrowserTabController
+    let controller: FileBrowserTabController
 
     var body: some View {
         HStack(spacing: 8) {
@@ -140,7 +140,7 @@ private struct FileTreeToolbar: View {
 }
 
 private struct FileTreeErrorBanner: View {
-    @ObservedObject var controller: FileBrowserTabController
+    let controller: FileBrowserTabController
     @State private var password: String = ""
 
     var body: some View {
@@ -207,12 +207,12 @@ private struct FileTreeRow: View, Equatable {
     let density: TreeDensity
     let controller: FileBrowserTabController
     /// The active theme's identity, passed in from the parent (rather than
-    /// read only from `@EnvironmentObject`) so it participates in `==`.
+    /// read only from `@Environment`) so it participates in `==`.
     /// Without this, an EquatableView short-circuit on theme switch would
     /// skip recomputing rows whose `row`/`density` didn't change, leaving
     /// them painted with the old theme's colors (a half-recolored tree).
     let themeID: String
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     @State private var isHovered = false
 
     // Equality intentionally ignores `controller` (same instance for the
@@ -334,8 +334,8 @@ private struct FileTreeRow: View, Equatable {
 private struct LoadMoreRow: View {
     let path: String
     let depth: Int
-    @ObservedObject var controller: FileBrowserTabController
-    @EnvironmentObject private var theme: ThemeManager
+    let controller: FileBrowserTabController
+    @Environment(ThemeManager.self) private var theme
 
     var body: some View {
         Button {

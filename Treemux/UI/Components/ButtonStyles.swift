@@ -3,7 +3,7 @@
 //  Treemux
 //
 //  The two DESIGN.md button grammars. Colors are injected at the call site
-//  (from ThemeManager) because ButtonStyle can't read @EnvironmentObject.
+//  (from ThemeManager) because ButtonStyle can't read the environment.
 //
 
 import SwiftUI

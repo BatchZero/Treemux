@@ -8,8 +8,8 @@ import SwiftUI
 /// Displays a single terminal pane with a compact header showing status,
 /// title, and working directory, followed by the Ghostty terminal surface.
 struct TerminalPaneView: View {
-    @EnvironmentObject private var theme: ThemeManager
-    @ObservedObject var session: ShellSession
+    @Environment(ThemeManager.self) private var theme
+    let session: ShellSession
     var onClose: () -> Void
     @State private var isCloseHovered = false
 

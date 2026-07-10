@@ -7,16 +7,16 @@ import SwiftUI
 
 /// Sheet that displays a tree-style remote directory browser via SFTP.
 struct RemoteDirectoryBrowser: View {
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel: RemoteDirectoryBrowserViewModel
+    @State private var viewModel: RemoteDirectoryBrowserViewModel
 
     /// Callback to pass selected path back to the caller.
     let onSelect: (String) -> Void
 
     init(sshTarget: SSHTarget, onSelect: @escaping (String) -> Void) {
-        _viewModel = StateObject(
-            wrappedValue: RemoteDirectoryBrowserViewModel(sshTarget: sshTarget)
+        _viewModel = State(
+            initialValue: RemoteDirectoryBrowserViewModel(sshTarget: sshTarget)
         )
         self.onSelect = onSelect
     }
@@ -212,10 +212,10 @@ struct RemoteDirectoryBrowser: View {
 
 /// Recursive row for a single directory node in the tree.
 struct DirectoryNodeRow: View {
-    @ObservedObject var node: DirectoryNode
+    let node: DirectoryNode
     @Binding var selectedPath: String?
     /// Passed in from the parent that owns `ThemeManager` so this struct
-    /// avoids an `@EnvironmentObject` dependency while still using the themed color.
+    /// avoids an environment dependency while still using the themed color.
     var accentColor: Color = .accentColor
     let expandAction: (DirectoryNode) -> Void
 

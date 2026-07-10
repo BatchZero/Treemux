@@ -4,8 +4,8 @@
 //
 
 import AppKit
-import Combine
 import Foundation
+import Observation
 
 // MARK: - Shell session lifecycle
 
@@ -28,29 +28,30 @@ enum ShellSessionLifecycle: Equatable {
 // MARK: - Shell session
 
 @MainActor
-final class ShellSession: ObservableObject, Identifiable {
+@Observable
+final class ShellSession: Identifiable {
     let id: UUID
     let backendConfiguration: SessionBackendConfiguration
 
-    @Published var title: String
-    @Published var preferredWorkingDirectory: String
-    @Published var reportedWorkingDirectory: String?
-    @Published private(set) var lifecycle: ShellSessionLifecycle = .idle
-    @Published var exitCode: Int32?
-    @Published var pid: Int32?
-    @Published var rows: Int = 24
-    @Published var cols: Int = 80
-    @Published var surfaceStatus = TerminalSurfaceStatusSnapshot()
+    var title: String
+    var preferredWorkingDirectory: String
+    var reportedWorkingDirectory: String?
+    private(set) var lifecycle: ShellSessionLifecycle = .idle
+    var exitCode: Int32?
+    var pid: Int32?
+    var rows: Int = 24
+    var cols: Int = 80
+    var surfaceStatus = TerminalSurfaceStatusSnapshot()
 
     /// Detected tmux session name, if the shell is running inside tmux.
-    @Published var detectedTmuxSession: String?
+    var detectedTmuxSession: String?
 
-    var onWorkspaceAction: ((TerminalWorkspaceAction) -> Void)?
-    var onFocus: (() -> Void)?
+    @ObservationIgnored var onWorkspaceAction: ((TerminalWorkspaceAction) -> Void)?
+    @ObservationIgnored var onFocus: (() -> Void)?
 
     private let surfaceController: ManagedTerminalSessionSurfaceController
-    private var launchConfiguration: TerminalLaunchConfiguration
-    private var isFocusedInWorkspace = false
+    @ObservationIgnored private var launchConfiguration: TerminalLaunchConfiguration
+    @ObservationIgnored private var isFocusedInWorkspace = false
 
     // MARK: - Initialization
 

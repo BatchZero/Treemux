@@ -5,6 +5,7 @@
 
 import Foundation
 import AppKit
+import Observation
 
 // MARK: - Persistent Records (Codable)
 
@@ -261,10 +262,11 @@ struct BatchCloseRequest: Identifiable {
 
 // MARK: - Observable Runtime Model
 
-/// A runtime workspace model observed by UI views via @EnvironmentObject.
+/// A runtime workspace model observed by UI views via @Environment / @Bindable.
 /// Created from a `WorkspaceRecord` and serialized back via `toRecord()`.
 @MainActor
-final class WorkspaceModel: ObservableObject, Identifiable {
+@Observable
+final class WorkspaceModel: Identifiable {
     /// Stable UUID for the single built-in `~` (home directory) terminal entry.
     /// Persisted alongside user-created workspaces so its sidebar order survives launches.
     static let builtInDefaultTerminalID = UUID(uuidString: "00000000-0000-0000-0000-00000000007E")!
@@ -272,47 +274,51 @@ final class WorkspaceModel: ObservableObject, Identifiable {
     let id: UUID
     let kind: WorkspaceKindRecord
 
-    @Published var name: String
-    @Published var repositoryRoot: URL?
-    @Published var isPinned: Bool
-    @Published var isArchived: Bool
-    @Published var sshTarget: SSHTarget?
-    @Published var currentBranch: String?
-    @Published var worktrees: [WorktreeModel] = []
-    @Published var repositoryStatus: RepositoryStatusSnapshot?
+    var name: String
+    var repositoryRoot: URL?
+    var isPinned: Bool
+    var isArchived: Bool
+    var sshTarget: SSHTarget?
+    var currentBranch: String?
+    var worktrees: [WorktreeModel] = []
+    var repositoryStatus: RepositoryStatusSnapshot?
     /// Custom display order of worktrees (paths). Empty means default git order.
-    @Published var worktreeOrder: [String] = []
+    var worktreeOrder: [String] = []
     /// User-customized sidebar icon for this workspace.
-    @Published var workspaceIcon: SidebarItemIcon?
+    var workspaceIcon: SidebarItemIcon?
     /// Per-worktree icon overrides, keyed by worktree path.
-    @Published var worktreeIconOverrides: [String: SidebarItemIcon] = [:]
+    var worktreeIconOverrides: [String: SidebarItemIcon] = [:]
     /// True for the single built-in home-directory terminal entry. Read-only at runtime — set during init.
     let isBuiltInDefaultTerminal: Bool
 
     // MARK: - Tab State
 
-    @Published var tabs: [WorkspaceTabStateRecord] = []
-    @Published var activeTabID: UUID?
+    var tabs: [WorkspaceTabStateRecord] = []
+    var activeTabID: UUID?
 
     /// In-flight request for the batch unsaved-changes sheet (set when
     /// closing an outer file-browser tab with 2+ dirty sub-tabs). The
     /// containing view binds a `.sheet(item:)` to this property; setting it
     /// to nil dismisses the sheet (used as the Cancel path).
-    @Published var pendingBatchClose: BatchCloseRequest?
+    var pendingBatchClose: BatchCloseRequest?
 
     /// Tab controllers keyed by worktree path → tab ID.
-    private var tabControllers: [String: [UUID: WorkspaceSessionController]] = [:]
+    @ObservationIgnored private var tabControllers: [String: [UUID: WorkspaceSessionController]] = [:]
     /// File browser controllers keyed by worktree path → tab ID.
-    private var fileBrowserControllers: [String: [UUID: FileBrowserTabController]] = [:]
+    @ObservationIgnored private var fileBrowserControllers: [String: [UUID: FileBrowserTabController]] = [:]
     /// Saved tab state for inactive worktrees.
-    private var worktreeTabStates: [String: (tabs: [WorkspaceTabStateRecord], activeTabID: UUID?)] = [:]
+    @ObservationIgnored private var worktreeTabStates: [String: (tabs: [WorkspaceTabStateRecord], activeTabID: UUID?)] = [:]
     /// The worktree path currently being displayed.
-    private(set) var activeWorktreePath: String = ""
+    /// Not observation-tracked: pre-migration this was a plain (unpublished)
+    /// `private(set) var`, so reads never triggered SwiftUI updates. The sidebar's
+    /// "current" badge for the active worktree refreshes via its own fingerprint
+    /// mechanism, not observation — keep that frozen semantics unchanged.
+    @ObservationIgnored private(set) var activeWorktreePath: String = ""
 
     /// Shared SFTP service for this workspace; lazily created the first time
     /// a remote file-browser tab needs it. Sharing one service across tabs
     /// means a successful password prompt on the first tab unlocks the rest.
-    private var sharedSFTPService_: SFTPService?
+    @ObservationIgnored private var sharedSFTPService_: SFTPService?
 
     func ensureSharedSFTPService() -> SFTPService {
         if let s = sharedSFTPService_ { return s }

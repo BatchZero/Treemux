@@ -10,7 +10,7 @@
 import SwiftUI
 
 struct BatchUnsavedChangesSheet: View {
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     let dirtyRelativePaths: [String]
     let onSaveAll: () -> Void
     let onDiscardAll: () -> Void

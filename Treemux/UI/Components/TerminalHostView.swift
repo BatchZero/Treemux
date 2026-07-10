@@ -11,7 +11,7 @@ import SwiftUI
 /// Bridges a ShellSession's terminal NSView into SwiftUI using a container
 /// view that manages layout constraints and first-responder focus.
 struct TerminalHostView: NSViewRepresentable {
-    @ObservedObject var session: ShellSession
+    let session: ShellSession
     var shouldRestoreFocus: Bool = false
 
     func makeNSView(context: Context) -> TerminalViewContainer {

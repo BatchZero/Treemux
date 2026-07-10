@@ -40,7 +40,10 @@ enum SSHMultiplexing {
     /// `ControlMaster=auto` silently disables multiplexing when the socket
     /// path is unusable, falling back to a plain connection — matching this
     /// module's documented silent-degradation contract.
-    private static var ensuredDirectories = Set<String>()
+    // NSLock-guarded (see ensureLock); the annotation documents that guard
+    // for future Swift 6 strict-concurrency mode, where a bare mutable
+    // `static var` on a nonisolated type is a compile error.
+    nonisolated(unsafe) private static var ensuredDirectories = Set<String>()
     private static let ensureLock = NSLock()
 
     static func controlDirectoryURL(

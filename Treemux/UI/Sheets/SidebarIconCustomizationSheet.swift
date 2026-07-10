@@ -9,7 +9,7 @@ import SwiftUI
 
 /// A reusable card that lets the user pick a symbol, palette, and fill style for a sidebar icon.
 struct SidebarIconEditorCard: View {
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     let title: LocalizedStringKey
     let subtitle: LocalizedStringKey?
     @Binding var icon: SidebarItemIcon
@@ -91,8 +91,8 @@ struct SidebarIconEditorCard: View {
 /// A sheet that allows customizing the sidebar icon for a workspace, worktree, or app default.
 struct SidebarIconCustomizationSheet: View {
     let request: SidebarIconCustomizationRequest
-    @EnvironmentObject private var store: WorkspaceStore
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(WorkspaceStore.self) private var store
+    @Environment(ThemeManager.self) private var theme
     @Environment(\.dismiss) private var dismiss
     @State private var icon = SidebarItemIcon(symbolName: "arrow.triangle.branch", palette: .blue)
 

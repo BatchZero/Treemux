@@ -4,23 +4,25 @@
 //
 
 import Foundation
+import Observation
 
 /// Manages multiple ShellSessions for a workspace's split pane layout.
 /// Each pane in the layout tree has a corresponding ShellSession that is
 /// lazily created and started when the pane first becomes visible.
 @MainActor
-final class WorkspaceSessionController: ObservableObject {
-    @Published private(set) var sessions: [UUID: ShellSession] = [:]
-    @Published var layout: SessionLayoutNode
-    @Published var focusedPaneID: UUID? {
+@Observable
+final class WorkspaceSessionController {
+    private(set) var sessions: [UUID: ShellSession] = [:]
+    var layout: SessionLayoutNode
+    var focusedPaneID: UUID? {
         didSet {
             updateSessionFocusStates()
         }
     }
-    @Published var zoomedPaneID: UUID?
+    var zoomedPaneID: UUID?
 
     /// Called after pane operations to notify the workspace model of state changes.
-    var onPaneStateChanged: (() -> Void)?
+    @ObservationIgnored var onPaneStateChanged: (() -> Void)?
 
     private let workingDirectory: String
     private let sshTarget: SSHTarget?

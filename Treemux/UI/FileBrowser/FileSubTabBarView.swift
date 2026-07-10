@@ -10,8 +10,8 @@ import SwiftUI
 /// a close affordance; right-click exposes copy-path and close-set commands;
 /// drag reorders.
 struct FileSubTabBarView: View {
-    @EnvironmentObject private var theme: ThemeManager
-    @ObservedObject var controller: FileBrowserTabController
+    @Environment(ThemeManager.self) private var theme
+    let controller: FileBrowserTabController
     @State private var hoveredID: UUID?
     @State private var draggedID: UUID?
 
@@ -99,7 +99,7 @@ private struct SubTabDropDelegate: DropDelegate {
 // MARK: - Sub-tab button
 
 private struct SubTabButton: View {
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     let tab: SubTabRuntime
     let isActive: Bool
     let isHovered: Bool

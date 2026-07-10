@@ -3,17 +3,27 @@
 //  Treemux
 //
 
+import Combine
 import Foundation
+import Observation
 import SwiftUI
 
 /// Manages application language override and publishes a Locale
 /// for SwiftUI environment injection.
 @MainActor
-final class LanguageManager: ObservableObject {
+@Observable
+final class LanguageManager {
 
     /// The active locale derived from the language setting.
     /// Bind this to `.environment(\.locale)` on the root view.
-    @Published private(set) var locale: Locale
+    private(set) var locale: Locale {
+        didSet { localeSubject.send(locale) }
+    }
+
+    @ObservationIgnored private let localeSubject = PassthroughSubject<Locale, Never>()
+    /// Bridge for WindowContext's root-view rebuild. Delivers the new locale
+    /// as payload; never replays — subscriber needs no `.dropFirst()`.
+    var localePublisher: AnyPublisher<Locale, Never> { localeSubject.eraseToAnyPublisher() }
 
     init(languageCode: String) {
         self.locale = Self.resolveLocale(languageCode)

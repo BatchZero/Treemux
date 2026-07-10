@@ -3,8 +3,8 @@
 //  Treemux
 
 import AppKit
-import Combine
 import Foundation
+import Observation
 
 /// Selects which form of a file path is written to the pasteboard
 /// by ``FileBrowserTabController/copyPath(_:mode:)``.
@@ -24,7 +24,8 @@ struct SubTabRuntime: Identifiable, Equatable {
 }
 
 @MainActor
-final class FileBrowserTabController: ObservableObject {
+@Observable
+final class FileBrowserTabController {
     /// Surfaced load failure for the file tree. UI binds this to a banner
     /// (Task B4) so SSH-key/permission failures stop being silently swallowed.
     enum LoadError: Equatable {
@@ -33,37 +34,37 @@ final class FileBrowserTabController: ObservableObject {
     }
 
     // Persistent state mirrors / writes back to FileBrowserTabState.
-    @Published var rootPath: String
-    @Published private(set) var rootKind: FileBrowserRootKind
-    @Published var splitRatio: Double
-    @Published var expandedDirs: Set<String> {
+    var rootPath: String
+    private(set) var rootKind: FileBrowserRootKind
+    var splitRatio: Double
+    var expandedDirs: Set<String> {
         didSet { visibleRowsCache = nil }
     }
-    @Published var showsHiddenFiles: Bool {
+    var showsHiddenFiles: Bool {
         didSet { visibleRowsCache = nil }
     }
 
     // Runtime state.
-    @Published private(set) var rootChildren: [FileNode] = [] {
+    private(set) var rootChildren: [FileNode] = [] {
         didSet { visibleRowsCache = nil }
     }
-    @Published private(set) var childrenByPath: [String: [FileNode]] = [:] {
+    private(set) var childrenByPath: [String: [FileNode]] = [:] {
         didSet { visibleRowsCache = nil }
     }
-    private var rawChildrenByPath: [String: [FileNode]] = [:]
-    @Published private(set) var subTabs: [SubTabRuntime] = [] {
+    @ObservationIgnored private var rawChildrenByPath: [String: [FileNode]] = [:]
+    private(set) var subTabs: [SubTabRuntime] = [] {
         didSet { visibleRowsCache = nil }
     }
-    @Published private(set) var activeSubTabID: UUID? {
+    private(set) var activeSubTabID: UUID? {
         didSet { visibleRowsCache = nil }
     }
-    @Published private(set) var loadingPaths: Set<String> = []
-    @Published private(set) var loadError: LoadError?
+    private(set) var loadingPaths: Set<String> = []
+    private(set) var loadError: LoadError?
 
     // Git diff/status caches. `diffHunksByPath` keyed by absolute path of the
     // active sub-tab; `fileStatusByPath` keyed by absolute path under `repoRoot`.
-    @Published private(set) var diffHunksByPath: [String: [DiffHunk]] = [:]
-    @Published private(set) var fileStatusByPath: [String: FileStatus] = [:] {
+    private(set) var diffHunksByPath: [String: [DiffHunk]] = [:]
+    private(set) var fileStatusByPath: [String: FileStatus] = [:] {
         didSet { visibleRowsCache = nil }
     }
 
@@ -78,12 +79,12 @@ final class FileBrowserTabController: ObservableObject {
     let gitDiffService: GitDiffService?
     let repoRoot: String?
     let treeCache: DirectoryTreeCachePersistence
-    @Published private(set) var truncatedDirs: Set<String> = [] {
+    private(set) var truncatedDirs: Set<String> = [] {
         didSet { visibleRowsCache = nil }
     }
 
     /// Memoized result of the last `visibleRows()` flatten. Invalidated (set
-    /// to `nil`) via `didSet` on every `@Published` property the flatten
+    /// to `nil`) via `didSet` on every observed property the flatten
     /// reads: `rootChildren`, `childrenByPath`, `expandedDirs`,
     /// `truncatedDirs`, `fileStatusByPath`, `activeSubTabID`, `subTabs`
     /// (which `selectedFilePath` derives from), and `showsHiddenFiles`
@@ -93,20 +94,20 @@ final class FileBrowserTabController: ObservableObject {
     /// whole tree — O(n) work plus an O(n) Equatable diff against the
     /// previous `[FileTreeRowModel]` — on every re-render, even ones the
     /// tree's own state had nothing to do with.
-    private var visibleRowsCache: [FileTreeRowModel]?
+    @ObservationIgnored private var visibleRowsCache: [FileTreeRowModel]?
 
     #if DEBUG
     /// Test seam: counts actual flattens (cache misses), so tests can assert
     /// the cache is hit/invalidated at the right times without depending on
     /// timing. Not gated on anything but DEBUG — cheap increment.
-    private(set) var visibleRowsComputeCount = 0
+    @ObservationIgnored private(set) var visibleRowsComputeCount = 0
     #endif
 
     /// Last known vertical scroll offset of the file tree. Cached in-memory so
     /// the tree restores its position when the tab is re-mounted (e.g. after
-    /// switching to a terminal tab and back). NOT @Published — it must not
+    /// switching to a terminal tab and back). @ObservationIgnored — must not
     /// trigger a re-render, and it is intentionally never persisted to disk.
-    var treeScrollOffset: CGFloat = 0
+    @ObservationIgnored var treeScrollOffset: CGFloat = 0
 
     /// Bumped whenever a full tree reload settles (bulk fetch + any async
     /// deeper expanded directories applied). The tree view observes this to
@@ -114,7 +115,7 @@ final class FileBrowserTabController: ObservableObject {
     /// otherwise the offset is applied against a shorter, still-loading tree
     /// and lands in the wrong place. Local trees render instantly from cache,
     /// so they settle on the first bump.
-    @Published private(set) var treeContentGeneration: Int = 0
+    private(set) var treeContentGeneration: Int = 0
 
     /// Shared word index for editor completion across this tab's sub-tabs.
     /// Lazily populated by `WordCompletionCoordinator` as buffers open.
@@ -122,7 +123,7 @@ final class FileBrowserTabController: ObservableObject {
 
     /// Called when the persistent state should be written back into
     /// `WorkspaceTabStateRecord.fileBrowserState` (debounced by caller).
-    var onPersistableStateChanged: (() -> Void)?
+    @ObservationIgnored var onPersistableStateChanged: (() -> Void)?
 
     init(
         initial state: FileBrowserTabState,
@@ -395,9 +396,22 @@ final class FileBrowserTabController: ObservableObject {
     ///
     /// Memoized: the flatten is only recomputed once per actual state change,
     /// keyed off `visibleRowsCache`. See its doc comment for the full list of
-    /// `@Published` properties whose `didSet` invalidates the cache — every
+    /// observed properties whose `didSet` invalidates the cache — every
     /// property this function reads must be on that list.
     func visibleRows() -> [FileTreeRowModel] {
+        // Touch every input on EVERY call — including cache hits. Under
+        // @Observable, SwiftUI only tracks properties actually read during
+        // body evaluation; a cache hit that read nothing observable would
+        // leave the calling view with zero tracked dependencies, and the
+        // tree would never re-render again.
+        _ = rootChildren
+        _ = childrenByPath
+        _ = expandedDirs
+        _ = truncatedDirs
+        _ = fileStatusByPath
+        _ = activeSubTabID
+        _ = subTabs
+        _ = showsHiddenFiles
         if let cached = visibleRowsCache { return cached }
         #if DEBUG
         visibleRowsComputeCount += 1
@@ -784,17 +798,17 @@ final class FileBrowserTabController: ObservableObject {
     }
 
     /// Live (per-keystroke) editor buffers, keyed by sub-tab id. Intentionally
-    /// NOT @Published: keystrokes must not fan out to every observer of this
+    /// @ObservationIgnored: keystrokes must not fan out to every observer of this
     /// controller (tree rows, tab bars). The published `openFile` keeps the
     /// content it had when the tab was opened / last saved; `dirty` is the only
     /// flag that publishes, exactly once per dirty transition.
-    private(set) var liveBufferByTab: [UUID: String] = [:]
+    @ObservationIgnored private(set) var liveBufferByTab: [UUID: String] = [:]
 
     /// Metadata captured when a load enters `.confirmingLargeFile`, keyed by
     /// sub-tab. Lets `confirmLargeFileLoad()` reuse the stat from `selectFile`
     /// instead of paying a second remote round-trip. Path-checked on read so a
     /// repurposed sub-tab can never dispatch stale metadata.
-    private var pendingLargeFileMeta: [UUID: FileMetadata] = [:]
+    @ObservationIgnored private var pendingLargeFileMeta: [UUID: FileMetadata] = [:]
 
     /// Reads the in-progress (uncommitted-to-`openFile`) buffer for a sub-tab,
     /// if the user has typed anything since it was opened/saved. Views that
@@ -812,7 +826,7 @@ final class FileBrowserTabController: ObservableObject {
     ///
     /// Only the *first* keystroke since the buffer was last clean publishes
     /// (via the `dirty` flip below) — every keystroke after that only updates
-    /// `liveBufferByTab`, which is not `@Published`. This keeps per-key input
+    /// `liveBufferByTab`, which is `@ObservationIgnored`. This keeps per-key input
     /// from fanning out to every other observer of this controller (file tree
     /// rows, tab bars, etc.).
     func updateBuffer(content: String, forSubTab id: UUID) {
@@ -871,7 +885,7 @@ final class FileBrowserTabController: ObservableObject {
         // Fire-and-forget: diff + git status are non-essential to the save
         // completing and each is a `git` subprocess round-trip. This is a plain
         // (MainActor-inherited, not `Task.detached`) Task so the refreshes still
-        // mutate `@Published` state on the main actor — same pattern used after
+        // mutate observed state on the main actor — same pattern used after
         // tree mutations.
         Task { [weak self] in
             await self?.refreshDiffForActive()

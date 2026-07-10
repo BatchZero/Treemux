@@ -7,12 +7,13 @@ import SwiftUI
 
 /// Main window view with a NavigationSplitView containing a sidebar and detail pane.
 struct MainWindowView: View {
-    @EnvironmentObject private var theme: ThemeManager
-    @EnvironmentObject private var store: WorkspaceStore
-    @EnvironmentObject private var languageManager: LanguageManager
+    @Environment(ThemeManager.self) private var theme
+    @Environment(WorkspaceStore.self) private var store
+    @Environment(LanguageManager.self) private var languageManager
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
+        @Bindable var store = store
         NavigationSplitView(columnVisibility: $columnVisibility) {
             WorkspaceSidebarView()
                 .navigationSplitViewColumnWidth(min: 180, ideal: 276, max: 400)

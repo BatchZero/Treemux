@@ -8,7 +8,7 @@ import SwiftUI
 /// Advanced raw-text editor for the primary SSH config file. Saves atomically
 /// via the shared writer (same fidelity / permission guarantees).
 struct SSHRawConfigSheet: View {
-    @EnvironmentObject private var theme: ThemeManager
+    @Environment(ThemeManager.self) private var theme
     let path: String                 // expanded absolute path
     @Environment(\.dismiss) private var dismiss
 

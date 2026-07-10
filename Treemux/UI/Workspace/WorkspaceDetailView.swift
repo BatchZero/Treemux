@@ -7,7 +7,7 @@ import SwiftUI
 /// Detail view for the selected workspace.
 /// Displays the tab bar (when 2+ tabs), split pane layout, or empty state.
 struct WorkspaceDetailView: View {
-    @EnvironmentObject private var store: WorkspaceStore
+    @Environment(WorkspaceStore.self) private var store
 
     var body: some View {
         if let workspace = store.selectedWorkspace {
@@ -19,8 +19,8 @@ struct WorkspaceDetailView: View {
 
 /// Container that manages tab bar visibility and routes to the active tab's content.
 private struct WorkspaceTabContainerView: View {
-    @EnvironmentObject private var store: WorkspaceStore
-    @ObservedObject var workspace: WorkspaceModel
+    @Environment(WorkspaceStore.self) private var store
+    @Bindable var workspace: WorkspaceModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -68,7 +68,7 @@ private struct WorkspaceTabContainerView: View {
 /// Observes the session controller directly so that layout mutations
 /// (e.g. splitPane) propagate to SplitNodeView.
 private struct WorkspaceSessionDetailView: View {
-    @ObservedObject var controller: WorkspaceSessionController
+    let controller: WorkspaceSessionController
     var onCloseTab: () -> Void
 
     var body: some View {
