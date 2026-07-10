@@ -37,13 +37,17 @@ final class ThemeManager {
     /// Directory holding all theme `.yaml` files.
     let themesDirectory: URL
 
+    /// Per-file mtime/size cache so repeated reloads (import/delete/reset)
+    /// skip re-reading and re-decoding unchanged theme files.
+    @ObservationIgnored private let themeFileCache = ThemeFileCache()
+
     init(activeThemeID: String = "treemux-dark") {
         self.themesDirectory = treemuxStateDirectoryURL()
             .appendingPathComponent("themes", isDirectory: true)
 
         // Make sure built-ins exist on disk, then load.
         try? BuiltInThemes.ensureInstalled(in: themesDirectory)
-        let result = ThemeLoader.load(from: themesDirectory)
+        let result = ThemeLoader.load(from: themesDirectory, cache: themeFileCache)
         self.availableThemes = result.themes
         self.loadErrors = result.errors
 
@@ -61,15 +65,11 @@ final class ThemeManager {
     }
 
     func reloadThemes() {
-        let result = ThemeLoader.load(from: themesDirectory)
+        let result = ThemeLoader.load(from: themesDirectory, cache: themeFileCache)
         availableThemes = result.themes
         loadErrors = result.errors
         // Re-resolve active theme (it may have been deleted/edited).
         activeTheme = ThemeManager.resolve(id: activeTheme.id, in: result.themes)
-    }
-
-    func ensureBuiltInThemesExist() {
-        try? BuiltInThemes.ensureInstalled(in: themesDirectory)
     }
 
     // MARK: - Switching

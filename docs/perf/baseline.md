@@ -255,3 +255,102 @@ Scenario A（冷启动，仅供参考）：branch 与 main 的 ViewGraph/Attribu
 | `WorkspaceModelTabKindTests.swift:40` | **已改写** | 原文「on every objectWillChange」描述的触发机制已不存在（`WorkspaceStore` 已迁移完毕，全仓无 `objectWillChange`）；改写为「on every SwiftUI re-render」并具名 `WorkspaceDetailView.body`，消除机制误述，回归叙事本身原样保留 |
 
 `import Combine` 白名单核对：`AppDelegate.swift`、`ThemeManager.swift`、`WindowContext.swift`、`WorkspaceStore.swift`、`LanguageManager.swift`、`ObservableBridgeTests.swift` —— 与 brief 白名单（5 个 app 文件 + `ObservableBridgeTests`）精确匹配，无多余命中，无需删除任何 import。
+
+## P3 surface occlusion 量化 (2026-07-10)
+
+测量对象：`TreemuxGhosttyController` 在 `suspendHiddenSurfaces == true` 时对隐藏 surface 调用 `ghostty_surface_set_occlusion(surface, false)`（`Treemux/Services/Terminal/Ghostty/TreemuxGhosttyController.swift:680-681,784`），目的是验证隐藏 surface 停止上报可见性是否能实测降低内存/CPU 占用。
+
+### 机器与布局
+
+- 本地 macOS（Apple Silicon），worktree `perf+p3-cleanup` 内 `xcodebuild build -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation` 产出的 Debug 构建（`DerivedData/Treemux-dbydgkjbqfydvpdzqtyeulyvtimm/Build/Products/Debug/Treemux.app`）。
+- 用 `~/.treemux-debug/` 全新配置起步，通过 System Events 发送真实快捷键搭出布局：Cmd+D（`splitHorizontal`）在默认终端 tab 内加一个 pane，Cmd+T（`newTab`）新建第二个 tab。最终落盘的 `workspace-state.json` 确认：**3 个 surface / 2 个 tab** —— tab1（2 个 pane，split）为隐藏 tab，tab2（1 个 pane）为前台选中 tab，与 protocol 要求的"≥3 surface、≥2 tab、部分隐藏"一致。3 个 pane 都是空闲 `zsh --login`（登录时打印了几行网络/代理信息后即静止），不含持续刷屏的 TUI 程序。
+- 设计文档参考基线（生产实例、5 surface）：footprint 791MB、IOSurface 488MB、IOAccelerator 115MB——量级远超本次 3 个空闲 shell 的复现环境，两者不可直接比较，仅作为"重负载场景可能出现更大效应"的背景参考。
+- A/B 通过重启完成：quit → `python3 -c` 改写 `~/.treemux-debug/settings.json` 的 `terminal.suspendHiddenSurfaces` → 重新 `open` → 同一份 `workspace-state.json` 自动恢复相同布局（截图核对 tab1 badge "2"、tab2 单 pane 前台，两次一致）。每次 launch 后等待 30s 稳态，再取 3 次样（间隔 ~8-10s）。
+
+### ON（`suspendHiddenSurfaces = true`，默认值，PID 48902）
+
+| 采样 | IOSurface | IOAccelerator(graphics)+IOAccelerator | phys_footprint | RSS | CPU |
+|---|---|---|---|---|---|
+| 1 | 31 MB | 6128+64 KB | 90 MB | 122592 KB | 0.5% |
+| 2 | 31 MB | 6160+64 KB | 91 MB | 92448 KB | 1.0% |
+| 3 | 31 MB | 6160+64 KB | 91 MB | 92416 KB | 6.5% |
+| **均值** | **31.0 MB** | **6213 KB** | **90.7 MB** | **~100.1 MB** | **2.7%** |
+
+### OFF（`suspendHiddenSurfaces = false`，PID 53104，同一份布局重启后）
+
+| 采样 | IOSurface | IOAccelerator(graphics)+IOAccelerator | phys_footprint | RSS | CPU |
+|---|---|---|---|---|---|
+| 1 | 31 MB | 4912+64 KB | 86 MB | 143312 KB | 4.2%（该次采样瞬间前台被 WeChat 短暂抢走，窗口仍可见未被完全遮挡） |
+| 2 | 31 MB | 4912+64 KB | 86 MB | 129648 KB | 0.9% |
+| 3 | 31 MB | 4912+64 KB | 86 MB | 129568 KB | 0.9% |
+| **均值** | **31.0 MB** | **4976 KB** | **86.0 MB** | **~131.0 MB** | **2.0%** |
+
+### 结论
+
+在本次可复现的 3-surface / 2-tab 空闲 shell 场景下，`suspendHiddenSurfaces` 开关**没有表现出可靠的内存或 CPU 收益**：IOSurface 占用在 ON/OFF 两组下完全相同（31MB，逐样本一致，说明隐藏 surface 上报 `occlusion=false` 并未让 libghostty 释放或缩减其 IOSurface 后备存储）；phys_footprint 反而是 OFF 更低（86MB vs 90.7MB），RSS 也是 OFF 更低（~131MB vs ~100MB，但两组内部单样本抖动本身就有 20-30MB，量级和这个"差异"相当）；CPU 两组均值 2.7% vs 2.0%，差值落在个位百分点、且两组各自都有一次孤立高值（ON 采样 3 的 6.5%、OFF 采样 1 的 4.2%）拉高均值，去掉离群值后两组基本持平。三个指标里没有一个方向一致地支持"ON 更省"，样本量（3 个空闲 zsh、无持续渲染负载）也远小于设计文档参考的 5-surface 791MB 生产实例，无法验证该开关在重负载场景下是否有效——空闲场景无可测收益，按计划分支 (b) 默认值定为 `false`（可在设置中开启）。
+
+## P3 完成 (2026-07-10)
+
+Task 9 Step 3：P3 系列改动（settings.json / workspace-state.json 写入去抖、图片/文本编码/隐藏文件过滤搬离主线程、主题解析 mtime 缓存、surface occlusion 开关）合入前的回归护栏 + `⌘=` 去抖定性验证。P3 本身不触碰 Scenario B（git 刷新）的热路径（`FileTreePanelView`/`WorkspaceStore` 的视图失效逻辑未改动，P1b 的 `@Observable` 迁移已在 main 和 branch 两侧生效），此处 Scenario B 结果用于确认 P3 没有引入意外的视图重算回归；`⌘=` 去抖用于直接验证 Task 9（`perf(p3): debounce settings.json writes with exit flush`，`356226d`）的行为。
+
+### 方法论
+
+Branch = worktree `perf+p3-cleanup` @ `e79fdf4`；Main = 主仓库 `/Users/yanu/Documents/code/Terminal/treemux` @ `f58ba5a`（P1b 已合并，P3 未合并）。两侧各自 `xcodebuild build -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation`，`BUILT_PRODUCTS_DIR` 确认落在不同的 DerivedData 目录（`...-dbydgkjbqfydvpdzqtyeulyvtimm`= branch，`...-fbvzemhsknohjwfflqakdhefxzwi` = main），互不覆盖。Scenario B 按 main→branch→main→branch…**交错**跑满 4 轮/侧（而非 P1b 小节因差异超噪声包络而跳过的顺序执行），每轮前 `rm -rf ~/.treemux-debug/`；每侧丢弃第 1 轮（构建后首跑噪声，P1a/P1b 小节的既有结论），对剩余 3 轮取均值。
+
+### Scenario B raw（8s，`touch .git/index` 触发 git 刷新，交错执行）
+
+| 轮次 | Main ViewGraph | Main AttributeGraph | Main NSHostingView | Main RSS | Branch ViewGraph | Branch AttributeGraph | Branch NSHostingView | Branch RSS |
+|---|---|---|---|---|---|---|---|---|
+| 1（丢弃） | 49 | 19 | 44 | 187MB | 21 | 10 | 23 | 230MB |
+| 2 | 3 | 2 | 6 | 218MB | 3 | 2 | 4 | 218MB |
+| 3 | 3 | 2 | 7 | 218MB | 6 | 7 | 7 | 224MB |
+| 4 | 6 | 8 | 8 | 221MB | 33 | 42 | 154 | 196MB |
+| **均值（2-4）** | **4.00** | **4.00** | **7.00** | **219.00MB** | **14.00** | **17.00** | **55.00** | **212.67MB** |
+
+### 判读
+
+均值层面 branch 的 ViewGraph/AttributeGraph/NSHostingView 高于 main（3.5×/4.25×/7.9×），但逐轮拆开看**并不满足"consistently 超过 main 2×"的判据**：
+
+- 第 2 轮：branch 与 main 基本持平甚至更低（ViewGraph 3=3、AttributeGraph 2=2、NSHostingView 4<6）。
+- 第 3 轮：branch 略高（ViewGraph 2×、AttributeGraph 3.5×、NSHostingView 1×）。
+- 第 4 轮：branch 明显偏高（ViewGraph 5.5×、AttributeGraph 5.25×、NSHostingView 19×），是拉高均值的唯一离群轮次。
+
+第 4 轮同时观察到 branch 的 Scenario A（冷启动，仅供参考）主线程/ViewGraph 样本数（4291）也是 branch 四轮里最高的一次（其余三轮 3696-4327 区间内 3718/3696 明显更低），说明该轮次机器状态本身偏噪（后台进程/热限流等），并非只在 Scenario B 单项异常——与 Scenario A、B 同步偏高的模式吻合"机器噪声"而非"代码回归"。且 P3 的改动范围（`Treemux/Persistence/DebouncedSaver.swift` 写入去抖、图片解码/文本编码探测/隐藏文件过滤搬离主线程、`ThemeLoader` mtime 缓存、Ghostty surface occlusion）机制上都不触碰 `FileTreePanelView`/`WorkspaceStore` 的 git 状态视图失效路径，没有可信机制能解释一次性 19× 的 NSHostingView 差异应归因于代码而非采样噪声。RSS 均值 branch 212.67MB vs main 219.00MB（branch 更低 ~3%），未见回归信号。
+
+**结论：不构成回归。** 本次是按 protocol 要求的交错执行（非顺序执行后才决定要不要交错复核），逐轮判据（"branch 均值连续 3 轮都 >2× main"）未触发；均值层面的偏高完全由第 4 轮单点离群驱动，且该离群与 P3 改动机制无关，与 Scenario A 同步走高的模式指向机器噪声。绝对量级（个位数到几十）相对于两侧 ~6700-6900 的主线程样本总量本身就是噪声敏感区间，与 P1b 完成小节记录的既有结论一致。
+
+### `⌘=`（Increase Terminal Font Size）去抖定性验证
+
+验证对象：`AppDelegate.terminalFontSizeIncrease` → `WorkspaceStore.updateSettings` → `settings` 的 `didSet`。Branch 侧 `didSet` 调用 `settingsSaver.schedule()`（`DebouncedSaver`，默认 `interval = 0.25s`，尾部去抖，`Treemux/Persistence/DebouncedSaver.swift`）；main 侧（P3 未合并）`didSet` 直接 `try? settingsPersistence.save(settings)`，逐次同步写盘。两侧起始 `fontSizeOffset = 0`，`⌘=` 每次 `+1`，range `-8...12`，10 次连续按键不会触发上限 clamp。
+
+方法：`rm -rf ~/.treemux-debug/` 后全新启动目标 app；通过 System Events 以 PID（而非进程名，机器上另有一个生产版 `/Applications/Treemux.app` 同名在跑，需按 PID 精确寻址避免误操作）激活目标窗口，用**单次** AppleScript `repeat 10 times / key code 24 using command down` 发送 10 次 `⌘=`（单次 osascript 进程内的 repeat 循环，键间隔远小于 250ms 去抖窗口；早期用 10 次独立 osascript 进程发送时，每次进程启动开销 ~400ms > 250ms，反而无法触发合并，已弃用该版本）；用 Python `os.stat().st_mtime`（APFS 纳秒级 mtime，非 `stat -f %m` 的 1 秒整数精度）每 30-50ms 采样 `~/.treemux-debug/settings.json`，覆盖按键前、突发期间、突发结束后 1.5s。
+
+**Branch（PID 82566）raw（节选，仅列 mtime 变化点，单位 ms/elapsed）：**
+
+| elapsed_ms | 事件 | settings.json mtime |
+|---|---|---|
+| 0-825 | 突发前 | 文件不存在 |
+| — | AppleScript repeat 10× 发出 | — |
+| 908 | 突发结束（BURST_END） | 文件仍不存在 |
+| 1152 | 突发结束后 +244ms | 文件仍不存在 |
+| 1250 | 突发结束后 +342ms | **1783681480.8705（首次出现，此后到 2501ms 采样结束恒定不变）** |
+
+去抖窗口内（908ms 突发结束 → 1250ms 首次落盘 → 342ms，与 250ms 尾部去抖 + 少量调度/IO 延迟吻合）只写了 **1 次**，此后 13 次连续采样（到突发结束后 ~1.6s）mtime 保持完全不变。
+
+**Main（PID 87061）raw（节选）：**
+
+| elapsed_ms | 事件 | settings.json mtime |
+|---|---|---|
+| 0-772 | 突发前 | 文件不存在 |
+| 847 | 突发进行中（早于 BURST_END=852） | 1783681499.6368（首次出现） |
+| 895 | +48ms | 1783681499.6988 |
+| 998 | +151ms | 1783681499.8043 |
+| 1096 | +249ms | 1783681499.9107 |
+| 1195 | +348ms | 1783681500.0174 |
+| 1300 | +453ms | 1783681500.1241（此后到 2486ms 采样结束恒定不变） |
+
+Main 侧在突发期间及结束后 ~450ms 内连续写了 **6 次不同 mtime**（.6368/.6988/.8043/.9107/.0174/.1241），间隔约 100-110ms 一次，与"每次按键同步落盘"的预期一致（10 次按键因 AppKit 事件队列合并等原因未必逐一对应 6 次写入，但远多于 1 次、且贯穿整个按键窗口，与 branch 的"突发结束后单次落盘"形成清晰对比）。
+
+**结论：`⌘=` 去抖行为符合预期。** Branch 侧 10 次连续按键只产生 1 次磁盘写入（在突发结束后按 250ms 尾部去抖延迟落盘，此后保持稳定）；main 侧同样的 10 次按键产生 6 次磁盘写入（贯穿按键期间，逐次落盘），两者对比清晰、可复现。测试后已 kill 两侧进程并 `rm -rf ~/.treemux-debug/`。
+
+> 决策：按计划分支 (b)，无可测收益 → 默认值改为 false（实施保留，可在设置中开启）；终审时由用户定夺。

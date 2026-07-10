@@ -108,15 +108,23 @@ struct TerminalSettings: Equatable {
     /// construction and on every Codable decode.
     var fontSizeOffset: Int
     var cursorStyle: String
+    /// When true, surfaces detached from any window (hidden tabs/worktrees)
+    /// and surfaces in fully occluded windows report non-visible to libghostty
+    /// so its renderer can throttle them. Kill switch for the P3 occlusion
+    /// experiment — turning it off restores the pre-P3 behavior at runtime.
+    /// Off by default; opt-in via Settings.
+    var suspendHiddenSurfaces: Bool
 
     init(
         defaultShell: String = "/bin/zsh",
         fontSizeOffset: Int = 0,
-        cursorStyle: String = "bar"
+        cursorStyle: String = "bar",
+        suspendHiddenSurfaces: Bool = false
     ) {
         self.defaultShell = defaultShell
         self.fontSizeOffset = TerminalSettings.clamp(fontSizeOffset)
         self.cursorStyle = cursorStyle
+        self.suspendHiddenSurfaces = suspendHiddenSurfaces
     }
 
     /// Clamps a candidate offset into the valid range. Delegates to the
@@ -132,12 +140,14 @@ extension TerminalSettings: Codable {
         case fontSizeOffset
         case cursorStyle
         case fontSize  // legacy, decode-only
+        case suspendHiddenSurfaces
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let shell = try container.decodeIfPresent(String.self, forKey: .defaultShell) ?? "/bin/zsh"
         let cursor = try container.decodeIfPresent(String.self, forKey: .cursorStyle) ?? "bar"
+        let suspendHiddenSurfaces = try container.decodeIfPresent(Bool.self, forKey: .suspendHiddenSurfaces) ?? false
 
         let offset: Int
         if let stored = try container.decodeIfPresent(Int.self, forKey: .fontSizeOffset) {
@@ -147,7 +157,7 @@ extension TerminalSettings: Codable {
         } else {
             offset = 0
         }
-        self.init(defaultShell: shell, fontSizeOffset: offset, cursorStyle: cursor)
+        self.init(defaultShell: shell, fontSizeOffset: offset, cursorStyle: cursor, suspendHiddenSurfaces: suspendHiddenSurfaces)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -155,6 +165,7 @@ extension TerminalSettings: Codable {
         try container.encode(defaultShell, forKey: .defaultShell)
         try container.encode(fontSizeOffset, forKey: .fontSizeOffset)
         try container.encode(cursorStyle, forKey: .cursorStyle)
+        try container.encode(suspendHiddenSurfaces, forKey: .suspendHiddenSurfaces)
     }
 }
 

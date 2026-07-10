@@ -41,7 +41,7 @@ final class WorkspaceStore {
 
     var settings: AppSettings {
         didSet {
-            try? settingsPersistence.save(settings)
+            settingsSaver.schedule()
             settingsSubject.send(settings)
         }
     }
@@ -74,6 +74,30 @@ final class WorkspaceStore {
     private let gitService = GitRepositoryService()
     private let metadataWatcher = WorkspaceMetadataWatchService()
     private let tmuxService = TmuxService()
+
+    /// Serial background queue for persistence encoding + IO. Flush paths use
+    /// `.sync` so the final write is ordered after any in-flight debounced
+    /// write to the same file.
+    private static let persistenceQueue = DispatchQueue(label: "treemux.persistence", qos: .utility)
+
+    @ObservationIgnored private lazy var settingsSaver = DebouncedSaver { [weak self] mode in
+        guard let self else { return }
+        let snapshot = self.settings
+        let persistence = self.settingsPersistence
+        switch mode {
+        case .debounced:
+            Self.persistenceQueue.async { try? persistence.save(snapshot) }
+        case .flush:
+            Self.persistenceQueue.sync { try? persistence.save(snapshot) }
+        }
+    }
+
+    /// Synchronously writes any pending debounced state to disk. Call on app
+    /// termination; safe to call at any time.
+    func flushPendingPersistence() {
+        settingsSaver.flush()
+        stateSaver.flush()
+    }
 
     /// How often to poll SSH-backed workspaces for git state changes.
     /// File system events cannot reach across SSH, so we fall back to a
@@ -602,6 +626,10 @@ final class WorkspaceStore {
         }
     }
 
+    /// Cache invalidation MUST stay synchronous here — this is the single
+    /// invalidation point for the sidebarIcon/remoteWorkspaceGroups memos
+    /// (P1a Task 9). Only snapshot building + encoding + disk IO moved to the
+    /// debounced path.
     func saveWorkspaceState() {
         // Invalidate derived caches: this is the aggregation point for every
         // structural mutation to `workspaces` (add/remove/rename/icon change/
@@ -610,6 +638,10 @@ final class WorkspaceStore {
         sidebarIconCache.removeAll()
         remoteGroupsCache = nil
 
+        stateSaver.schedule()
+    }
+
+    private func buildPersistedWorkspaceState() -> PersistedWorkspaceState {
         // Resolve to workspace-level ID for persistence (worktree IDs are unstable across launches).
         let resolvedID: UUID? = {
             guard let id = selectedWorkspaceID else { return nil }
@@ -620,13 +652,27 @@ final class WorkspaceStore {
             return nil
         }()
         let persistedSelectedID = resolvedID
-        let state = PersistedWorkspaceState(
+        return PersistedWorkspaceState(
             version: 1,
             selectedWorkspaceID: persistedSelectedID,
             workspaces: workspaces.map { $0.toRecord() },
             collapsedSections: collapsedSections.isEmpty ? nil : Array(collapsedSections)
         )
-        try? workspaceStatePersistence.save(state)
+    }
+
+    /// Builds the persisted snapshot on the main actor (reads live models),
+    /// then encodes + writes off-main for `.debounced`, synchronously for
+    /// `.flush`.
+    @ObservationIgnored private lazy var stateSaver = DebouncedSaver { [weak self] mode in
+        guard let self else { return }
+        let state = self.buildPersistedWorkspaceState()
+        let persistence = self.workspaceStatePersistence
+        switch mode {
+        case .debounced:
+            Self.persistenceQueue.async { try? persistence.save(state) }
+        case .flush:
+            Self.persistenceQueue.sync { try? persistence.save(state) }
+        }
     }
 
     // MARK: - Sidebar Icons

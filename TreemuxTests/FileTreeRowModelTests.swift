@@ -230,6 +230,30 @@ final class FileTreeRowModelTests: XCTestCase {
         XCTAssertEqual(c.visibleRowsComputeCount, countBefore + 1)
         XCTAssertEqual(rows.first(where: { $0.id == root + "/a.txt" })?.status, .modified)
     }
+
+    /// Task 7 moves the hidden-file re-filter off-main. Applying it still
+    /// writes `childrenByPath`/`rootChildren`, whose existing `didSet`
+    /// invalidates `visibleRowsCache` — this must keep working once the
+    /// filter itself runs on a detached task and is applied asynchronously.
+    func testVisibleRowsCacheInvalidatesOnHiddenFilterApply() async throws {
+        let root = try makeTempTree()
+        FileManager.default.createFile(atPath: root + "/.hidden", contents: Data())
+        let c = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: root, rootKind: .project, showsHiddenFiles: true),
+            dataSource: LocalFileBrowserDataSource()
+        )
+        await c.loadRoot()
+
+        _ = c.visibleRows() // prime the cache
+        let countBefore = c.visibleRowsComputeCount
+
+        c.setShowsHiddenFiles(false)
+        await c.pendingHiddenFilterTask?.value
+        let rows = c.visibleRows()
+
+        XCTAssertEqual(c.visibleRowsComputeCount, countBefore + 1, "filter apply must invalidate the memo")
+        XCTAssertFalse(rows.contains { $0.id.hasSuffix("/.hidden") })
+    }
 }
 
 /// Minimal `GitDiffService` stub for isolating `fileStatusByPath` invalidation

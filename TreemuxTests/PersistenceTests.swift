@@ -162,6 +162,19 @@ final class PersistenceTests: XCTestCase {
         XCTAssertTrue(decoded.showDefaultTerminal)
     }
 
+    func testTerminalSettings_suspendHiddenSurfacesDefaultsFalseAndRoundTrips() throws {
+        // Old settings.json without the key must default to false (backward compat).
+        let legacy = #"{"terminal":{}}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: legacy)
+        XCTAssertFalse(decoded.terminal.suspendHiddenSurfaces)
+
+        var settings = AppSettings()
+        settings.terminal.suspendHiddenSurfaces = true
+        let data = try JSONEncoder().encode(settings)
+        let roundTripped = try JSONDecoder().decode(AppSettings.self, from: data)
+        XCTAssertTrue(roundTripped.terminal.suspendHiddenSurfaces)
+    }
+
     // MARK: - TerminalSettings migration
 
     func testTerminalSettings_decodesNewFontSizeOffset() throws {

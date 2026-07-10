@@ -26,7 +26,6 @@ final class WindowContext {
         let sp = PerfSignpost.begin("window-construct")
         self.themeManager = ThemeManager(activeThemeID: store.settings.activeThemeID)
         self.languageManager = LanguageManager(languageCode: store.settings.language)
-        themeManager.ensureBuiltInThemesExist()
         self.windowConstructSignpost = sp
     }
 

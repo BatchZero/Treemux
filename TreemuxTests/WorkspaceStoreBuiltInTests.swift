@@ -269,6 +269,10 @@ final class WorkspaceStoreBuiltInTests: XCTestCase {
         XCTAssertTrue(afterMove.first?.isBuiltInDefaultTerminal ?? false, "Built-in should now be first after move")
         XCTAssertEqual(afterMove.map { $0.name }, ["~", "alpha", "beta"])
 
+        // Workspace-state writes are now debounced (P3); force the pending
+        // write to disk before re-reading it via a fresh store below.
+        store.flushPendingPersistence()
+
         // Verify position survives a re-init (encode → decode round-trip via disk).
         let store2 = WorkspaceStore()
         let restored = store2.localWorkspaces

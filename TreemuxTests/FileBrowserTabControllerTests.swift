@@ -18,10 +18,31 @@ final class FileBrowserTabControllerTests: XCTestCase {
         XCTAssertEqual(ctrl.rootChildren.count, 2)
 
         ctrl.setShowsHiddenFiles(false)
+        await ctrl.pendingHiddenFilterTask?.value
         XCTAssertEqual(ctrl.rootChildren.count, 1, "only visible file remains")
 
         ctrl.setShowsHiddenFiles(true)
+        await ctrl.pendingHiddenFilterTask?.value
         XCTAssertEqual(ctrl.rootChildren.count, 2, "hidden file must reappear without re-fetch")
+    }
+
+    /// The hidden-file filter now re-derives off-main (Task 7), guarded by a
+    /// generation counter. Two toggles fired back-to-back with no await in
+    /// between must still converge to the *latest* requested state, not
+    /// whichever background computation happens to finish last.
+    func test_rapidHiddenToggleConvergesToLatestState() async {
+        let mock = MockFileBrowserDataSource()
+        mock.directoryListings["/r"] = [
+            FileNode(id: "/r/.hidden", name: ".hidden", path: "/r/.hidden", kind: .file, sizeBytes: 0, modifiedAt: nil),
+            FileNode(id: "/r/visible.txt", name: "visible.txt", path: "/r/visible.txt", kind: .file, sizeBytes: 0, modifiedAt: nil),
+        ]
+        let state = FileBrowserTabState(rootPath: "/r", rootKind: .project, showsHiddenFiles: true)
+        let ctrl = FileBrowserTabController(initial: state, dataSource: mock)
+        await ctrl.loadRoot()
+        ctrl.setShowsHiddenFiles(false)
+        ctrl.setShowsHiddenFiles(true)   // immediately toggle back, no await between
+        await ctrl.pendingHiddenFilterTask?.value
+        XCTAssertEqual(ctrl.rootChildren.count, 2, "latest toggle (show=true) must win")
     }
 
     func testLoadRootPopulatesChildren() async {
