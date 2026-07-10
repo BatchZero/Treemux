@@ -166,3 +166,92 @@ master socket 正常出现在 `~/.treemux-debug/ssh-mux/`（`srw-------`），Co
 ### 测试
 
 全量 440 测试 0 失败（424 基线 + 16 新增）。修复过程中发现并解决一个真实竞争：SSHMultiplexing 每次构参 mkdir 与测试删 `~/.treemux-debug` 并发导致 NSCocoaError 513（IconCacheTests 全量必挂）——改为进程内每路径一次性 ensure 后 3 次全量连续全绿。
+
+## P1b 完成 @ d3a28b6 2026-07-10
+
+改动：11 个核心状态对象（ThemeManager/LanguageManager/ShellSession/FileBrowserTabController/WorkspaceSessionController/WorkspaceModel/WorkspaceStore/remote 浏览 VM + 2 个 vestigial coordinator）从 `ObservableObject` + `@Published` 迁移到 `@Observable` 宏；Combine 保留为 3 条非视图层跨对象桥（theme/locale/settings 的 `PassthroughSubject`），WorkspaceStore 新增 `workspaceMetadataGeneration` 计数器替代裸 `objectWillChange.send()`。本地渲染路径的核心变化：视图从「持有 store 引用 → 任意 `@Published` 变更即整体重算 body」变为「只在 body 求值期间实际读到的属性变化时才失效」。
+
+### 方法论
+
+在 P1a/P2 既定方法论上收紧为分支级终验：branch（worktree）与 main（主仓库同一台机器同法构建）各自 Debug 构建后跑 4 次 `scripts/perf-baseline.sh`，去掉紧跟构建的首次运行（机器/索引噪声，P1a 小节已记录的既有结论），保留后 3 次取均值。两侧构建与采样在同一天顺序执行（未交错）——因为观测到的差异（见下）远超既有噪声包络（2~5×），不满足"看起来更差需交错复核"的触发条件，故未额外跑交错对。Scenario B（git 刷新）为主信号；Scenario A（冷启动）仅供参考。
+
+### Branch（perf/p1b-observable @ d3a28b6，worktree 内 `build/DerivedData`）
+
+Scenario A raw（10s 冷启动 + 1000 行树；run1 丢弃）：
+
+| run | 主线程 | ViewGraph | AttributeGraph | NSHostingView | RSS |
+|---|---|---|---|---|---|
+| 1（丢弃） | 7538 | 3926 | 12490 | 4657 | 162MB |
+| 2 | 7953 | 3281 | 9919 | 3842 | 222MB |
+| 3 | 7836 | 4028 | 11331 | 4879 | 233MB |
+| 4 | 8226 | 4073 | 12009 | 5459 | 202MB |
+| 均值（2-4） | 8005.00 | 3794.00 | 11086.33 | 4726.67 | 219.00MB |
+
+Scenario B raw（8s，`touch .git/index` 触发 git 刷新）：
+
+| run | 主线程 | ViewGraph | AttributeGraph | NSHostingView | RSS |
+|---|---|---|---|---|---|
+| 1（丢弃） | 6611 | 6 | 4 | 11 | 114MB |
+| 2 | 6663 | 3 | 2 | 9 | 106MB |
+| 3 | 6908 | 3 | 2 | 4 | 171MB |
+| 4 | 6923 | 3 | 2 | 4 | 95MB |
+| 均值（2-4） | 6831.33 | 3.00 | 2.00 | 5.67 | 124.00MB |
+
+### Main（8e69805，主仓库 `/Users/yanu/Documents/code/Terminal/treemux` 同法构建于 `build/DerivedData-p1b-baseline`，测量后已清理）
+
+Scenario A raw：
+
+| run | 主线程 | ViewGraph | AttributeGraph | NSHostingView | RSS |
+|---|---|---|---|---|---|
+| 1（丢弃） | 4909 | 3540 | 12462 | 4370 | 258MB |
+| 2 | 7780 | 3485 | 10376 | 4290 | 244MB |
+| 3 | 7628 | 3582 | 10972 | 4363 | 246MB |
+| 4 | 7828 | 3752 | 11826 | 4681 | 171MB |
+| 均值（2-4） | 7745.33 | 3606.33 | 11058.00 | 4444.67 | 220.33MB |
+
+Scenario B raw：
+
+| run | 主线程 | ViewGraph | AttributeGraph | NSHostingView | RSS |
+|---|---|---|---|---|---|
+| 1（丢弃） | 6745 | 229 | 133 | 291 | 212MB |
+| 2 | 6677 | 131 | 93 | 166 | 238MB |
+| 3 | 6679 | 102 | 65 | 126 | 240MB |
+| 4 | 6690 | 122 | 89 | 150 | 162MB |
+| 均值（2-4） | 6682.00 | 118.33 | 82.33 | 147.33 | 213.33MB |
+
+### 对比与判读（Scenario B，硬验收信号）
+
+| 指标 | Branch 均值 | Main 均值 | 相对变化 |
+|---|---|---|---|
+| ViewGraph | 3.00 | 118.33 | **-97.5%** |
+| AttributeGraph | 2.00 | 82.33 | **-97.6%** |
+| NSHostingView | 5.67 | 147.33 | **-96.2%** |
+
+**验收结论：通过。** Branch 均值远低于 main（数量级下降，不是"噪声包络内持平"），完全满足「Scenario B 均值不劣于 main」的验收标准；由于差异方向对分支有利且远超 2~5× 噪声包络，未触发"看起来更差需交错复核一对"的条款。
+
+机制解释（与本文档 P1a 完成小节记录的既有问题吻合）：迁移前 `WorkspaceStore` 是 `ObservableObject`，任何 `@Published` 变更（包括 git 刷新只改动的 `workspaceMetadataGeneration`/`repositoryStatus` 等与文件树内容无关的字段）都会经 `objectWillChange` 触发所有持有该 store 引用的视图整体重算 body——这正是 P1a 完成小节记录的「无关状态变化触发文件树空转重算」的根因（`FileTreePanelView` 当时读取 `store.settings.fileTree.density`，与 git 状态无关，却因为 objectWillChange 是对象级广播而被拖着重算）。迁移到 `@Observable` 后，SwiftUI 只在 body 求值期间实际读取的属性发生变化时才使该视图失效；`FileTreePanelView` 不读取 `workspaceMetadataGeneration`，git 刷新因此不再级联触发其重算，Scenario B 的 ViewGraph/AttributeGraph 样本数从"几十到大几百"量级降到"个位数"量级。这是本次 `@Observable` 迁移在设计目标路径（按属性精确失效）上的直接、可测量收益，不是测量噪声。
+
+Scenario A（冷启动，仅供参考）：branch 与 main 的 ViewGraph/AttributeGraph/NSHostingView 均值差异约 5%（3794 vs 3606、11086 vs 11058、4727 vs 4445），与本文档 P1a 完成小节的既有结论一致——冷启动首次渲染没有旧值可比，属性级失效/记忆化优化在这个场景下本就没有作用点，此处的小幅差异属于机器噪声，既不是回归也不是证据。
+
+### 测试
+
+全量 444 测试 0 失败（worktree HEAD `d3a28b6`；`.xcresult` 验证：`totalTestCount 444, passedTests 444, failedTests 0, expectedFailures 0`）。
+
+### 版本核对
+
+`grep -c "MARKETING_VERSION = 0.0.19" Treemux.xcodeproj/project.pbxproj` → `2`，未漂移。
+
+### Step 1：全局残留清扫
+
+`grep -rn "@Published\|@EnvironmentObject\|@StateObject\|@ObservedObject\|environmentObject(\|ObservableObject\|objectWillChange" Treemux/ TreemuxTests/` 命中 10 处，全部落在 prose 注释里对旧机制的提及（非声明/非可执行代码）。逐条 triage 结论：
+
+| 文件:行 | 判定 | 理由 |
+|---|---|---|
+| `WorkspaceOutlineSidebar.swift:35,41` | 保留（白名单） | 冻结侧栏区，解释显式 tracked read 与旧 whole-object `@ObservedObject` 失效行为的对等关系，历史语境准确，未误述当前机制 |
+| `SidebarCoordinator.swift:73,253` | 保留（白名单） | 冻结侧栏区，解释为何 `theme` 按值传参仍需手工 `themeDidChangeRefresh`；迁移后该结论依然成立——`NSHostingView<AnyView>` 的结构相等短路会跳过 body 求值，@Observable 的自动追踪救不了这种情况，手工刷新仍是权威路径 |
+| `SidebarNodeRow.swift:14` | 保留（白名单） | 冻结侧栏区，同上；文件本身已有「Post-@Observable note」段落（16-20 行）补充当前状态，无需改写旧段落 |
+| `WorkspaceStore.swift:38-39` | 保留（白名单） | 准确描述当前状态（"replaces a bare objectWillChange.send()...which has no objectWillChange"），是对现状的陈述，不是历史误述 |
+| `ObservableBridgeTests.swift:6,17,22` | 保留（白名单） | 测试 helper 的机制文档，对比新旧桥模式正是文档目的本身，描述准确 |
+| `WorkspaceModelTabKindTests.swift:40` | **已改写** | 原文「on every objectWillChange」描述的触发机制已不存在（`WorkspaceStore` 已迁移完毕，全仓无 `objectWillChange`）；改写为「on every SwiftUI re-render」并具名 `WorkspaceDetailView.body`，消除机制误述，回归叙事本身原样保留 |
+
+`import Combine` 白名单核对：`AppDelegate.swift`、`ThemeManager.swift`、`WindowContext.swift`、`WorkspaceStore.swift`、`LanguageManager.swift`、`ObservableBridgeTests.swift` —— 与 brief 白名单（5 个 app 文件 + `ObservableBridgeTests`）精确匹配，无多余命中，无需删除任何 import。
