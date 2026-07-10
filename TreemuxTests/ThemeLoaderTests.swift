@@ -105,4 +105,28 @@ final class ThemeLoaderTests: XCTestCase {
         XCTAssertTrue(result.themes.isEmpty)
         XCTAssertTrue(result.errors.isEmpty)
     }
+
+    func testMtimeCacheSkipsReparseAndInvalidatesOnChange() throws {
+        let dir = try makeTempDir()
+        try write(minimalThemeYAML(id: "t1", name: "Alpha"), named: "t1.yaml", to: dir)
+        let cache = ThemeFileCache()
+        let first = ThemeLoader.load(from: dir, cache: cache)
+        XCTAssertEqual(first.themes.first?.name, "Alpha")
+        #if DEBUG
+        XCTAssertEqual(cache.hitCount, 0)
+        #endif
+        let second = ThemeLoader.load(from: dir, cache: cache)
+        XCTAssertEqual(second.themes.first?.name, "Alpha")
+        #if DEBUG
+        XCTAssertEqual(cache.hitCount, 1, "unchanged file must be served from cache")
+        #endif
+        // Oracle: rewrite content with a bumped mtime — a wrong always-hit cache
+        // would keep returning "Alpha" and fail here.
+        try write(minimalThemeYAML(id: "t1", name: "Beta"), named: "t1.yaml", to: dir)
+        let future = Date().addingTimeInterval(10)
+        try FileManager.default.setAttributes([.modificationDate: future],
+                                              ofItemAtPath: dir.appendingPathComponent("t1.yaml").path)
+        let third = ThemeLoader.load(from: dir, cache: cache)
+        XCTAssertEqual(third.themes.first?.name, "Beta", "changed mtime must force reparse")
+    }
 }
