@@ -215,7 +215,7 @@ struct DirectoryNodeRow: View {
     @ObservedObject var node: DirectoryNode
     @Binding var selectedPath: String?
     /// Passed in from the parent that owns `ThemeManager` so this struct
-    /// avoids an `@EnvironmentObject` dependency while still using the themed color.
+    /// avoids an environment dependency while still using the themed color.
     var accentColor: Color = .accentColor
     let expandAction: (DirectoryNode) -> Void
 

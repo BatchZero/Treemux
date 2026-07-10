@@ -20,8 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // terminal font) don't rebuild the entire main menu and reconfigure
             // the updater on every press. 150ms collapses bursts without making
             // genuine settings edits feel sluggish.
-            settingsCancellable = store.$settings
-                .dropFirst()
+            settingsCancellable = store.settingsPublisher
                 .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
                 .sink { [weak self] _ in
                     self?.buildMainMenu()

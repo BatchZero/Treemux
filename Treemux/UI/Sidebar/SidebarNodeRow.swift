@@ -6,7 +6,7 @@ import SwiftUI
 
 /// Dispatches rendering to workspace or worktree row content
 /// based on the SidebarNodeItem kind.
-/// All dependencies are passed as parameters — no @EnvironmentObject usage.
+/// All dependencies are passed as parameters — no environment injection.
 ///
 /// `activityIndicator` is precomputed by the coordinator from the workspace's
 /// running-session state and passed in by value. The row is hosted inside

@@ -3,6 +3,8 @@
 //  Treemux
 //
 
+import Combine
+import Observation
 import SwiftUI
 
 extension Notification.Name {
@@ -10,35 +12,45 @@ extension Notification.Name {
 }
 
 /// Central state management for all workspaces.
-/// UI views observe this store via @EnvironmentObject.
+/// UI views observe this store via @Environment(WorkspaceStore.self).
 @MainActor
-final class WorkspaceStore: ObservableObject {
+@Observable
+final class WorkspaceStore {
     /// NOTE: `sidebarIconCache`/`remoteGroupsCache` correctness depends on every
     /// structural mutation converging on `saveWorkspaceState()` (see its cache-clear
     /// there). `WorkspaceModel` is a class, so mutating one of its properties does
-    /// NOT trigger this array's `didSet`/`@Published` — callers must not mutate the
+    /// NOT trigger this array's observation — callers must not mutate the
     /// icon-seed/grouping-key input fields (`repositoryRoot`, `sshTarget`, `name`,
     /// `workspaceIcon`, `isArchived`, `kind`) on a path that bypasses
     /// `saveWorkspaceState()`, or the caches will silently go stale.
-    @Published var workspaces: [WorkspaceModel] = []
-    @Published var selectedWorkspaceID: UUID? {
+    var workspaces: [WorkspaceModel] = []
+    var selectedWorkspaceID: UUID? {
         didSet { handleWorktreeSelectionIfNeeded() }
     }
 
-    @Published var collapsedSections: Set<String> = []
+    var collapsedSections: Set<String> = []
 
-    @Published var showSettings = false
-    @Published var showCommandPalette = false
-    @Published var sidebarIconCustomizationRequest: SidebarIconCustomizationRequest?
+    var showSettings = false
+    var showCommandPalette = false
+    var sidebarIconCustomizationRequest: SidebarIconCustomizationRequest?
 
     /// Bumped whenever git worktree metadata for any workspace is refreshed.
     /// Replaces a bare objectWillChange.send() so the invalidation survives
     /// the @Observable migration (which has no objectWillChange).
-    @Published private(set) var workspaceMetadataGeneration: Int = 0
+    private(set) var workspaceMetadataGeneration: Int = 0
 
-    @Published var settings: AppSettings {
-        didSet { try? settingsPersistence.save(settings) }
+    var settings: AppSettings {
+        didSet {
+            try? settingsPersistence.save(settings)
+            settingsSubject.send(settings)
+        }
     }
+
+    @ObservationIgnored private let settingsSubject = PassthroughSubject<AppSettings, Never>()
+    /// Bridge for AppDelegate's debounced menu/updater rebuild. Fires on
+    /// every post-init settings assignment; never replays — the subscriber
+    /// keeps its debounce but drops `.dropFirst()`.
+    var settingsPublisher: AnyPublisher<AppSettings, Never> { settingsSubject.eraseToAnyPublisher() }
 
     /// Applies a new settings snapshot (used by SettingsSheet Save).
     func updateSettings(_ newSettings: AppSettings) {
@@ -73,24 +85,24 @@ final class WorkspaceStore: ObservableObject {
     /// singleton, so no `deinit` cleanup is required. If `WorkspaceStore` ever
     /// becomes non-singleton, add a deinit that invalidates this timer and
     /// removes `remoteWindowObserver`.
-    private var remoteRefreshTimer: Timer?
+    @ObservationIgnored private var remoteRefreshTimer: Timer?
 
     /// Notification observer that immediately refreshes SSH-backed workspaces
     /// when any Treemux window becomes key. See `remoteRefreshTimer` for
     /// lifetime notes.
-    private var remoteWindowObserver: NSObjectProtocol?
+    @ObservationIgnored private var remoteWindowObserver: NSObjectProtocol?
 
     /// Reentry guard for `refreshAllRemoteWorkspaces`. Drops overlapping
     /// triggers (e.g. timer firing while a window-focus refresh is in flight).
-    private var isRefreshingRemotes = false
+    @ObservationIgnored private var isRefreshingRemotes = false
 
     /// Caches generated repository icons; invalidated whenever the workspace
     /// list mutates (add/remove/rename/icon change all call saveWorkspaceState).
-    private var sidebarIconCache: [UUID: SidebarItemIcon] = [:]
+    @ObservationIgnored private var sidebarIconCache: [UUID: SidebarItemIcon] = [:]
 
     /// Caches the remote workspace grouping; invalidated the same way as
     /// `sidebarIconCache` (see `saveWorkspaceState`).
-    private var remoteGroupsCache: [(key: String, targets: [WorkspaceModel])]?
+    @ObservationIgnored private var remoteGroupsCache: [(key: String, targets: [WorkspaceModel])]?
 
     /// The currently selected workspace, if any.
     /// Resolves both workspace-level and worktree-level selection.
@@ -155,6 +167,11 @@ final class WorkspaceStore: ObservableObject {
 
     /// Remote workspaces grouped by server+user combination.
     var remoteWorkspaceGroups: [(key: String, targets: [WorkspaceModel])] {
+        // Tracked reads on cache hits (see FileBrowserTabController.visibleRows
+        // rationale): a hit must still register the observable inputs, or the
+        // calling SwiftUI body ends up with zero tracked dependencies.
+        _ = workspaces
+        _ = workspaceMetadataGeneration
         if let cached = remoteGroupsCache { return cached }
         let remotes = workspaces.filter { !$0.isArchived && $0.kind == .repository && $0.sshTarget != nil }
         let grouped = Dictionary(grouping: remotes) { ws -> String in
@@ -616,6 +633,11 @@ final class WorkspaceStore: ObservableObject {
 
     /// Returns the resolved sidebar icon for a workspace, considering user overrides and app defaults.
     func sidebarIcon(for workspace: WorkspaceModel) -> SidebarItemIcon {
+        // Tracked reads on cache hits (see FileBrowserTabController.visibleRows
+        // rationale): a hit must still register the observable inputs, or the
+        // calling SwiftUI body ends up with zero tracked dependencies.
+        _ = workspaces
+        _ = workspaceMetadataGeneration
         if let override = workspace.workspaceIcon {
             return override
         }
@@ -661,6 +683,11 @@ final class WorkspaceStore: ObservableObject {
     /// Returns the resolved sidebar icon for a worktree, considering user overrides, app defaults,
     /// and deterministic generation when using the default worktree icon.
     func sidebarIcon(for worktree: WorktreeModel, in workspace: WorkspaceModel) -> SidebarItemIcon {
+        // Tracked reads on cache hits (see FileBrowserTabController.visibleRows
+        // rationale): a hit must still register the observable inputs, or the
+        // calling SwiftUI body ends up with zero tracked dependencies.
+        _ = workspaces
+        _ = workspaceMetadataGeneration
         if let override = workspace.worktreeIconOverrides[worktree.path.path] {
             return override
         }

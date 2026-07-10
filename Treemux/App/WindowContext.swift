@@ -34,7 +34,7 @@ final class WindowContext {
     func show() {
         let host = NSHostingController(
             rootView: MainWindowView()
-                .environmentObject(store)
+                .environment(store)
                 .environment(themeManager)
                 .environment(languageManager)
                 .environment(\.locale, languageManager.locale)
@@ -77,7 +77,7 @@ final class WindowContext {
             .sink { [weak host, weak self] newLocale in
                 guard let self, let host else { return }
                 host.rootView = MainWindowView()
-                    .environmentObject(self.store)
+                    .environment(self.store)
                     .environment(self.themeManager)
                     .environment(self.languageManager)
                     .environment(\.locale, newLocale)

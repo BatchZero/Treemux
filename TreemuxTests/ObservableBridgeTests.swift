@@ -79,4 +79,17 @@ final class ObservableBridgeTests: XCTestCase {
         XCTAssertEqual(received.last?.identifier, "zh-Hans",
                        "bridge must deliver the NEW locale as payload")
     }
+
+    func testSettingsPublisherFiresOnMutationWithoutReplay() {
+        let store = WorkspaceStore()
+        var fires = 0
+        let sub = store.settingsPublisher.sink { _ in fires += 1 }
+        defer { sub.cancel() }
+
+        XCTAssertEqual(fires, 0, "bridge must not replay initial settings")
+        var s = store.settings
+        s.showDefaultTerminal.toggle()
+        store.settings = s
+        XCTAssertEqual(fires, 1, "one assignment -> exactly one bridge fire")
+    }
 }

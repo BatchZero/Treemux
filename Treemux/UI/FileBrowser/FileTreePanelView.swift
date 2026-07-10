@@ -6,7 +6,7 @@ import SwiftUI
 
 struct FileTreePanelView: View {
     let controller: FileBrowserTabController
-    @EnvironmentObject private var store: WorkspaceStore
+    @Environment(WorkspaceStore.self) private var store
     @Environment(ThemeManager.self) private var theme
 
     @State private var scrollPosition: ScrollPosition
@@ -207,7 +207,7 @@ private struct FileTreeRow: View, Equatable {
     let density: TreeDensity
     let controller: FileBrowserTabController
     /// The active theme's identity, passed in from the parent (rather than
-    /// read only from `@EnvironmentObject`) so it participates in `==`.
+    /// read only from `@Environment`) so it participates in `==`.
     /// Without this, an EquatableView short-circuit on theme switch would
     /// skip recomputing rows whose `row`/`density` didn't change, leaving
     /// them painted with the old theme's colors (a half-recolored tree).

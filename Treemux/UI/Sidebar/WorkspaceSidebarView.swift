@@ -7,7 +7,7 @@ import SwiftUI
 /// Sidebar view displaying the list of workspaces with an "Open Project" button.
 /// Uses an AppKit NSOutlineView (via WorkspaceOutlineSidebar) for rendering.
 struct WorkspaceSidebarView: View {
-    @EnvironmentObject private var store: WorkspaceStore
+    @Environment(WorkspaceStore.self) private var store
     @Environment(ThemeManager.self) private var theme
     @Environment(LanguageManager.self) private var languageManager
 
@@ -22,6 +22,7 @@ struct WorkspaceSidebarView: View {
     @State private var showOpenProjectSheet = false
 
     var body: some View {
+        @Bindable var store = store
         VStack(spacing: 0) {
             WorkspaceOutlineSidebar(
                 store: store,
@@ -90,7 +91,7 @@ struct WorkspaceSidebarView: View {
         }
         .sheet(item: $store.sidebarIconCustomizationRequest) { request in
             SidebarIconCustomizationSheet(request: request)
-                .environmentObject(store)
+                .environment(store)
                 .environment(theme)
                 .environment(\.locale, languageManager.locale)
         }

@@ -91,7 +91,7 @@ struct SidebarIconEditorCard: View {
 /// A sheet that allows customizing the sidebar icon for a workspace, worktree, or app default.
 struct SidebarIconCustomizationSheet: View {
     let request: SidebarIconCustomizationRequest
-    @EnvironmentObject private var store: WorkspaceStore
+    @Environment(WorkspaceStore.self) private var store
     @Environment(ThemeManager.self) private var theme
     @Environment(\.dismiss) private var dismiss
     @State private var icon = SidebarItemIcon(symbolName: "arrow.triangle.branch", palette: .blue)

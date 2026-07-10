@@ -23,7 +23,7 @@ struct TextEditorView: View {
     /// timer. `nil` for plain source editing (see `FileViewerPanelView`),
     /// which has no live-follow consumer.
     var onLiveChange: ((String) -> Void)? = nil
-    @EnvironmentObject private var store: WorkspaceStore
+    @Environment(WorkspaceStore.self) private var store
     @Environment(ThemeManager.self) private var themeManager
 
     /// The content to actually show in the editor: `openFile.content` freezes
