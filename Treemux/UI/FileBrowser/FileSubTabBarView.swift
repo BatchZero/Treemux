@@ -11,7 +11,7 @@ import SwiftUI
 /// drag reorders.
 struct FileSubTabBarView: View {
     @Environment(ThemeManager.self) private var theme
-    @ObservedObject var controller: FileBrowserTabController
+    let controller: FileBrowserTabController
     @State private var hoveredID: UUID?
     @State private var draggedID: UUID?
 

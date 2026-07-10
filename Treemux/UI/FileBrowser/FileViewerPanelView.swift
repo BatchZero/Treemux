@@ -6,7 +6,7 @@ import SwiftUI
 
 struct FileViewerPanelView: View {
     @Environment(ThemeManager.self) private var theme
-    @ObservedObject var controller: FileBrowserTabController
+    let controller: FileBrowserTabController
 
     var body: some View {
         VStack(spacing: 0) {

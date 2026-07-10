@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct FileBrowserTabContentView: View {
-    @ObservedObject var controller: FileBrowserTabController
+    let controller: FileBrowserTabController
 
     // Default 2:8 split. HStack + explicit widths + SplitDivider gives reliable
     // initial layout and per-tab drag state, unlike HSplitView's idealWidth cache.

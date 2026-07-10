@@ -15,7 +15,7 @@ struct TextEditorView: View {
     let content: String
     let encoding: String.Encoding
     let dirty: Bool
-    @ObservedObject var controller: FileBrowserTabController
+    let controller: FileBrowserTabController
     /// Optional side-channel notified with the raw editor text on every
     /// keystroke, in addition to `controller.updateBuffer`. Lets a host view
     /// (e.g. `DocumentViewerView`'s debounced Split/Render preview) follow

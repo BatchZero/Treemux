@@ -3,8 +3,22 @@
 //  TreemuxTests
 
 import XCTest
-import Combine
 @testable import Treemux
+
+/// All-property counter for a FileBrowserTabController (see
+/// ObservationChangeCounter in ObservableBridgeTests.swift).
+@MainActor
+private func makeCounter(for c: FileBrowserTabController) -> ObservationChangeCounter {
+    ObservationChangeCounter {
+        _ = c.rootPath; _ = c.rootKind; _ = c.splitRatio
+        _ = c.expandedDirs; _ = c.showsHiddenFiles
+        _ = c.rootChildren; _ = c.childrenByPath
+        _ = c.subTabs; _ = c.activeSubTabID
+        _ = c.loadingPaths; _ = c.loadError
+        _ = c.diffHunksByPath; _ = c.fileStatusByPath
+        _ = c.truncatedDirs; _ = c.treeContentGeneration
+    }
+}
 
 @MainActor
 final class EditorBufferIsolationTests: XCTestCase {
@@ -27,16 +41,15 @@ final class EditorBufferIsolationTests: XCTestCase {
 
     func testKeystrokesPublishOnlyOnDirtyTransition() async throws {
         let (c, id) = try await makeControllerWithOpenFile()
-        var publishes = 0
-        let sub = c.objectWillChange.sink { _ in publishes += 1 }
-        defer { sub.cancel() }
+        let counter = makeCounter(for: c)
+        defer { counter.stop() }
 
         c.updateBuffer(content: "hello1", forSubTab: id)   // dirty flips: 1 publish
-        let afterFirst = publishes
+        let afterFirst = counter.count
         XCTAssertGreaterThan(afterFirst, 0)
         c.updateBuffer(content: "hello12", forSubTab: id)  // already dirty: no publish
         c.updateBuffer(content: "hello123", forSubTab: id)
-        XCTAssertEqual(publishes, afterFirst, "subsequent keystrokes must not publish")
+        XCTAssertEqual(counter.count, afterFirst, "subsequent keystrokes must not publish")
         XCTAssertEqual(c.liveBuffer(for: id), "hello123")
     }
 

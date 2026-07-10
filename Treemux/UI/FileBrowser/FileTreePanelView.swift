@@ -5,7 +5,7 @@
 import SwiftUI
 
 struct FileTreePanelView: View {
-    @ObservedObject var controller: FileBrowserTabController
+    let controller: FileBrowserTabController
     @EnvironmentObject private var store: WorkspaceStore
     @Environment(ThemeManager.self) private var theme
 
@@ -26,7 +26,7 @@ struct FileTreePanelView: View {
     @State private var contentSettled = false
 
     init(controller: FileBrowserTabController) {
-        _controller = ObservedObject(wrappedValue: controller)
+        self.controller = controller
         let target = controller.treeScrollOffset
         _restoreTarget = State(initialValue: target)
         _liveOffset = State(initialValue: target)
@@ -109,7 +109,7 @@ struct FileTreePanelView: View {
 }
 
 private struct FileTreeToolbar: View {
-    @ObservedObject var controller: FileBrowserTabController
+    let controller: FileBrowserTabController
 
     var body: some View {
         HStack(spacing: 8) {
@@ -140,7 +140,7 @@ private struct FileTreeToolbar: View {
 }
 
 private struct FileTreeErrorBanner: View {
-    @ObservedObject var controller: FileBrowserTabController
+    let controller: FileBrowserTabController
     @State private var password: String = ""
 
     var body: some View {
@@ -334,7 +334,7 @@ private struct FileTreeRow: View, Equatable {
 private struct LoadMoreRow: View {
     let path: String
     let depth: Int
-    @ObservedObject var controller: FileBrowserTabController
+    let controller: FileBrowserTabController
     @Environment(ThemeManager.self) private var theme
 
     var body: some View {
