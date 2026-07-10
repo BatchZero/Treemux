@@ -122,8 +122,33 @@ enum BuiltInThemes {
         id == "treemux-light" ? lightYAML : darkYAML
     }
 
+    // Startup calls ensureInstalled from ThemeManager and the Ghostty runtime;
+    // only the first call per directory should pay the directory scan.
+    // Failures are not cached so a transient error is retried next call.
+    // NSLock-guarded (see ensuredLock); the annotation documents that guard
+    // for future Swift 6 strict-concurrency mode, where a bare mutable
+    // `static var` on a nonisolated type is a compile error.
+    private static let ensuredLock = NSLock()
+    nonisolated(unsafe) private static var ensuredDirectories: Set<String> = []
+
+    #if DEBUG
+    /// Test-only seam to reset the once-guard so tests can verify rescans.
+    static func _resetEnsuredDirectoriesForTesting() {
+        ensuredLock.lock(); defer { ensuredLock.unlock() }
+        ensuredDirectories.removeAll()
+    }
+    #endif
+
     /// Writes any missing built-in files without overwriting existing ones.
+    /// Only performs the directory scan once per `directory.path` within the
+    /// process; subsequent calls for an already-ensured path are a no-op.
     static func ensureInstalled(in directory: URL, fileManager: FileManager = .default) throws {
+        let key = directory.path
+        ensuredLock.lock()
+        let done = ensuredDirectories.contains(key)
+        ensuredLock.unlock()
+        if done { return }
+
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         for id in ids {
             let url = directory.appendingPathComponent(fileNames[id]!)
@@ -131,6 +156,10 @@ enum BuiltInThemes {
                 try yaml(forID: id).write(to: url, atomically: true, encoding: .utf8)
             }
         }
+
+        ensuredLock.lock()
+        ensuredDirectories.insert(key)
+        ensuredLock.unlock()
     }
 
     /// Force-rewrites both built-in files (overwriting edits/corruption).

@@ -68,10 +68,6 @@ final class ThemeManager {
         activeTheme = ThemeManager.resolve(id: activeTheme.id, in: result.themes)
     }
 
-    func ensureBuiltInThemesExist() {
-        try? BuiltInThemes.ensureInstalled(in: themesDirectory)
-    }
-
     // MARK: - Switching
 
     func setActiveTheme(_ id: String) {

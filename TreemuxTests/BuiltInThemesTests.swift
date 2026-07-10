@@ -52,4 +52,25 @@ final class BuiltInThemesTests: XCTestCase {
     func testFallbackDarkParses() {
         XCTAssertEqual(BuiltInThemes.fallbackDark().id, "treemux-dark")
     }
+
+    func testEnsureInstalledIsOncePerPathWithinProcess() throws {
+        BuiltInThemes._resetEnsuredDirectoriesForTesting()
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("p3-themes-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try BuiltInThemes.ensureInstalled(in: dir)
+        let installed = try FileManager.default.contentsOfDirectory(atPath: dir.path)
+        XCTAssertFalse(installed.isEmpty)
+        // Delete one built-in, call again: the once-guard must skip the rescan,
+        // proving the second call does no filesystem work.
+        let victim = dir.appendingPathComponent(installed[0])
+        try FileManager.default.removeItem(at: victim)
+        try BuiltInThemes.ensureInstalled(in: dir)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: victim.path),
+                       "second ensureInstalled for the same path must be a no-op")
+        // Reset seam restores rescan behavior.
+        BuiltInThemes._resetEnsuredDirectoriesForTesting()
+        try BuiltInThemes.ensureInstalled(in: dir)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: victim.path))
+    }
 }

@@ -33,9 +33,14 @@ final class TreemuxGhosttyRuntime: NSObject {
         }
         ghostty_config_load_default_files(configuration)
 
-        // Override with Treemux terminal settings
-        let terminalSettings = AppSettingsPersistence().load().terminal
-        if let tempURL = writeTemporaryGhosttyConfig(for: terminalSettings) {
+        // Override with Treemux terminal settings. Load AppSettings once and reuse
+        // it for both the terminal block and the active theme id (consumed by
+        // resolveActiveTerminalColors via writeTemporaryGhosttyConfig) instead of
+        // loading it twice on the startup path.
+        let loadedSettings = AppSettingsPersistence().load()
+        if let tempURL = writeTemporaryGhosttyConfig(
+            for: loadedSettings.terminal, activeThemeID: loadedSettings.activeThemeID
+        ) {
             ghostty_config_load_file(configuration, tempURL.path)
             try? FileManager.default.removeItem(at: tempURL)
         }
@@ -71,21 +76,22 @@ final class TreemuxGhosttyRuntime: NSObject {
     /// global `font-size` would fight with the per-surface override.
     /// Resolves the active theme's terminal colors.
     /// Returns the in-memory override (set during a live theme switch) when present;
-    /// otherwise falls back to disk-based resolution using the persisted active theme id.
-    private func resolveActiveTerminalColors() -> ThemeTerminalColors {
+    /// otherwise falls back to disk-based resolution using the caller-supplied active
+    /// theme id (the caller reads AppSettings once and passes it down, avoiding a
+    /// redundant load here).
+    private func resolveActiveTerminalColors(activeThemeID: String) -> ThemeTerminalColors {
         if let override = activeThemeTerminalColors { return override }
         let themesDir = treemuxStateDirectoryURL()
             .appendingPathComponent("themes", isDirectory: true)
         try? BuiltInThemes.ensureInstalled(in: themesDir)
-        let activeID = AppSettingsPersistence().load().activeThemeID
         let themes = ThemeLoader.load(from: themesDir).themes
-        if let match = themes.first(where: { $0.id == activeID }) { return match.terminal }
+        if let match = themes.first(where: { $0.id == activeThemeID }) { return match.terminal }
         if let dark = themes.first(where: { $0.id == "treemux-dark" }) { return dark.terminal }
         return BuiltInThemes.fallbackDark().terminal
     }
 
-    private func writeTemporaryGhosttyConfig(for terminal: TerminalSettings) -> URL? {
-        let colors = resolveActiveTerminalColors()
+    private func writeTemporaryGhosttyConfig(for terminal: TerminalSettings, activeThemeID: String) -> URL? {
+        let colors = resolveActiveTerminalColors(activeThemeID: activeThemeID)
         let lines = GhosttyTerminalConfig.lines(for: colors, cursorStyle: terminal.cursorStyle)
         let content = lines.joined(separator: "\n") + "\n"
         let url = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -152,7 +158,11 @@ final class TreemuxGhosttyRuntime: NSObject {
 
     @objc private func terminalSettingsDidChange(_ notification: Notification) {
         guard let terminal = notification.object as? TerminalSettings else { return }
-        reloadGhosttyConfig(with: terminal)
+        // The notification only carries the terminal block, so the active theme id
+        // still needs a fresh load here (this is a runtime settings-change event,
+        // not the startup path the once-per-init dedup targets).
+        let activeThemeID = AppSettingsPersistence().load().activeThemeID
+        reloadGhosttyConfig(with: terminal, activeThemeID: activeThemeID)
     }
 
     @objc private func themeDidChange(_ notification: Notification) {
@@ -163,15 +173,16 @@ final class TreemuxGhosttyRuntime: NSObject {
         if let theme = notification.object as? Theme {
             activeThemeTerminalColors = theme.terminal
         }
-        let terminal = AppSettingsPersistence().load().terminal
-        reloadGhosttyConfig(with: terminal)
+        // Single load reused for both the terminal block and the active theme id.
+        let settings = AppSettingsPersistence().load()
+        reloadGhosttyConfig(with: settings.terminal, activeThemeID: settings.activeThemeID)
     }
 
-    private func reloadGhosttyConfig(with terminal: TerminalSettings) {
+    private func reloadGhosttyConfig(with terminal: TerminalSettings, activeThemeID: String) {
         guard let newConfig = ghostty_config_new() else { return }
         ghostty_config_load_default_files(newConfig)
 
-        if let tempURL = writeTemporaryGhosttyConfig(for: terminal) {
+        if let tempURL = writeTemporaryGhosttyConfig(for: terminal, activeThemeID: activeThemeID) {
             ghostty_config_load_file(newConfig, tempURL.path)
             try? FileManager.default.removeItem(at: tempURL)
         }
