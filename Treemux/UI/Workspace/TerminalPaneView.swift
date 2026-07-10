@@ -9,7 +9,7 @@ import SwiftUI
 /// title, and working directory, followed by the Ghostty terminal surface.
 struct TerminalPaneView: View {
     @Environment(ThemeManager.self) private var theme
-    @ObservedObject var session: ShellSession
+    let session: ShellSession
     var onClose: () -> Void
     @State private var isCloseHovered = false
 

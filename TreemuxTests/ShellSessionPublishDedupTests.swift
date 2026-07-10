@@ -4,7 +4,6 @@
 //
 
 import XCTest
-import Combine
 import AppKit
 @testable import Treemux
 
@@ -39,6 +38,24 @@ private final class FakeSurfaceController: ManagedTerminalSessionSurfaceControll
     func terminateManagedSession() {}
 }
 
+/// All-property counter for a ShellSession (see ObservationChangeCounter in
+/// ObservableBridgeTests.swift) — faithful to the old object-level counting.
+@MainActor
+private func makeCounter(for session: ShellSession) -> ObservationChangeCounter {
+    ObservationChangeCounter {
+        _ = session.title
+        _ = session.preferredWorkingDirectory
+        _ = session.reportedWorkingDirectory
+        _ = session.lifecycle
+        _ = session.exitCode
+        _ = session.pid
+        _ = session.rows
+        _ = session.cols
+        _ = session.surfaceStatus
+        _ = session.detectedTmuxSession
+    }
+}
+
 @MainActor
 final class ShellSessionPublishDedupTests: XCTestCase {
     private func makeSession(surface: FakeSurfaceController) -> ShellSession {
@@ -52,45 +69,42 @@ final class ShellSessionPublishDedupTests: XCTestCase {
     func testRepeatedIdenticalResizeDoesNotRepublish() {
         let surface = FakeSurfaceController()
         let session = makeSession(surface: surface)
-        var publishes = 0
-        let sub = session.objectWillChange.sink { _ in publishes += 1 }
-        defer { sub.cancel() }
+        let counter = makeCounter(for: session)
+        defer { counter.stop() }
 
         surface.onResize?(120, 40)
-        let afterFirst = publishes
+        let afterFirst = counter.count
         surface.onResize?(120, 40)   // same values: must be a no-op
         surface.onResize?(120, 40)
-        XCTAssertEqual(publishes, afterFirst, "identical resize must not republish")
+        XCTAssertEqual(counter.count, afterFirst, "identical resize must not republish")
         surface.onResize?(121, 40)   // changed: must publish again
-        XCTAssertGreaterThan(publishes, afterFirst)
+        XCTAssertGreaterThan(counter.count, afterFirst)
     }
 
     func testIdenticalStatusSnapshotDoesNotRepublish() {
         let surface = FakeSurfaceController()
         let session = makeSession(surface: surface)
-        var publishes = 0
-        let sub = session.objectWillChange.sink { _ in publishes += 1 }
-        defer { sub.cancel() }
+        let counter = makeCounter(for: session)
+        defer { counter.stop() }
 
         let snap = TerminalSurfaceStatusSnapshot()
         surface.onStatusChange?(snap)
-        let afterFirst = publishes
+        let afterFirst = counter.count
         surface.onStatusChange?(snap)
-        XCTAssertEqual(publishes, afterFirst)
+        XCTAssertEqual(counter.count, afterFirst)
     }
 
     func testIdenticalTitleAndCwdDoNotRepublish() {
         let surface = FakeSurfaceController()
         let session = makeSession(surface: surface)
-        var publishes = 0
-        let sub = session.objectWillChange.sink { _ in publishes += 1 }
-        defer { sub.cancel() }
+        let counter = makeCounter(for: session)
+        defer { counter.stop() }
 
         surface.onTitleChange?("zsh")
         surface.onWorkingDirectoryChange?("/tmp")
-        let afterFirst = publishes
+        let afterFirst = counter.count
         surface.onTitleChange?("zsh")
         surface.onWorkingDirectoryChange?("/tmp")
-        XCTAssertEqual(publishes, afterFirst)
+        XCTAssertEqual(counter.count, afterFirst)
     }
 }
