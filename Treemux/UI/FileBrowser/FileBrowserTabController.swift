@@ -51,7 +51,18 @@ final class FileBrowserTabController {
     private(set) var childrenByPath: [String: [FileNode]] = [:] {
         didSet { visibleRowsCache = nil }
     }
-    @ObservationIgnored private var rawChildrenByPath: [String: [FileNode]] = [:]
+    @ObservationIgnored private var rawChildrenByPath: [String: [FileNode]] = [:] {
+        didSet { rawTreeGeneration += 1 }
+    }
+
+    /// Monotonic generation for rawChildrenByPath. The async hidden-file filter
+    /// compares it before applying, so a tree mutation that lands mid-filter
+    /// (expand/refresh completing) restarts the filter instead of clobbering
+    /// newer entries with a stale derived dictionary.
+    @ObservationIgnored private var rawTreeGeneration = 0
+
+    /// Test seam: awaiting this task guarantees the last toggle has been applied.
+    @ObservationIgnored private(set) var pendingHiddenFilterTask: Task<Void, Never>?
     private(set) var subTabs: [SubTabRuntime] = [] {
         didSet { visibleRowsCache = nil }
     }
@@ -362,15 +373,49 @@ final class FileBrowserTabController {
     func setShowsHiddenFiles(_ show: Bool) {
         guard showsHiddenFiles != show else { return }
         showsHiddenFiles = show
-        // Re-derive filtered listings from the unfiltered cache, so toggling
-        // hidden→visible doesn't require a re-fetch.
-        var derived: [String: [FileNode]] = [:]
-        for (key, value) in rawChildrenByPath {
-            derived[key] = filtered(value)
-        }
-        childrenByPath = derived
-        rootChildren = childrenByPath[rootPath] ?? []
+        rederiveFilteredChildren()
         onPersistableStateChanged?()
+    }
+
+    /// Re-derives the filtered listings from the unfiltered cache off the main
+    /// actor, then applies the result atomically. The whole-tree O(n) filter
+    /// used to run synchronously here and stalled the main thread on large trees.
+    ///
+    /// Race argument: this closure is a `Task {}` created on the @MainActor,
+    /// so it inherits the actor — every line before and after the `await` runs
+    /// serialized with the rest of the controller's main-actor work (toggles,
+    /// tree mutations). A newer toggle cancels the in-flight task before
+    /// starting its own, and the old task's continuation checks
+    /// `Task.isCancelled` right after the await, so a superseded computation
+    /// never applies. If a tree mutation (expand/refresh completing) lands
+    /// during the filter's background window, `rawTreeGeneration` no longer
+    /// matches the snapshot this task captured, so instead of clobbering the
+    /// newer raw data with a stale derived dictionary it just restarts the
+    /// filter from the fresh state — each restart captures a strictly newer
+    /// snapshot, so this converges in a bounded number of iterations.
+    private func rederiveFilteredChildren() {
+        let show = showsHiddenFiles
+        let raw = rawChildrenByPath
+        let generation = rawTreeGeneration
+        pendingHiddenFilterTask?.cancel()
+        pendingHiddenFilterTask = Task { [weak self] in
+            let derived = await Task.detached(priority: .userInitiated) { () -> [String: [FileNode]] in
+                var result: [String: [FileNode]] = [:]
+                result.reserveCapacity(raw.count)
+                for (path, nodes) in raw {
+                    result[path] = show ? nodes : nodes.filter { !$0.isHidden }
+                }
+                return result
+            }.value
+            guard let self, !Task.isCancelled else { return }
+            guard self.rawTreeGeneration == generation, self.showsHiddenFiles == show else {
+                self.rederiveFilteredChildren()   // inputs moved mid-filter; recompute fresh
+                return
+            }
+            self.childrenByPath = derived
+            self.rootChildren = derived[self.rootPath] ?? []
+            self.pendingHiddenFilterTask = nil
+        }
     }
 
     func refresh(_ path: String) async {
