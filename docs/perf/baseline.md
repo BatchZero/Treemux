@@ -255,3 +255,36 @@ Scenario A（冷启动，仅供参考）：branch 与 main 的 ViewGraph/Attribu
 | `WorkspaceModelTabKindTests.swift:40` | **已改写** | 原文「on every objectWillChange」描述的触发机制已不存在（`WorkspaceStore` 已迁移完毕，全仓无 `objectWillChange`）；改写为「on every SwiftUI re-render」并具名 `WorkspaceDetailView.body`，消除机制误述，回归叙事本身原样保留 |
 
 `import Combine` 白名单核对：`AppDelegate.swift`、`ThemeManager.swift`、`WindowContext.swift`、`WorkspaceStore.swift`、`LanguageManager.swift`、`ObservableBridgeTests.swift` —— 与 brief 白名单（5 个 app 文件 + `ObservableBridgeTests`）精确匹配，无多余命中，无需删除任何 import。
+
+## P3 surface occlusion 量化 (2026-07-10)
+
+测量对象：`TreemuxGhosttyController` 在 `suspendHiddenSurfaces == true` 时对隐藏 surface 调用 `ghostty_surface_set_occlusion(surface, false)`（`Treemux/Services/Terminal/Ghostty/TreemuxGhosttyController.swift:680-681,784`），目的是验证隐藏 surface 停止上报可见性是否能实测降低内存/CPU 占用。
+
+### 机器与布局
+
+- 本地 macOS（Apple Silicon），worktree `perf+p3-cleanup` 内 `xcodebuild build -project Treemux.xcodeproj -scheme Treemux -destination 'platform=macOS' -skipPackagePluginValidation` 产出的 Debug 构建（`DerivedData/Treemux-dbydgkjbqfydvpdzqtyeulyvtimm/Build/Products/Debug/Treemux.app`）。
+- 用 `~/.treemux-debug/` 全新配置起步，通过 System Events 发送真实快捷键搭出布局：Cmd+D（`splitHorizontal`）在默认终端 tab 内加一个 pane，Cmd+T（`newTab`）新建第二个 tab。最终落盘的 `workspace-state.json` 确认：**3 个 surface / 2 个 tab** —— tab1（2 个 pane，split）为隐藏 tab，tab2（1 个 pane）为前台选中 tab，与 protocol 要求的"≥3 surface、≥2 tab、部分隐藏"一致。3 个 pane 都是空闲 `zsh --login`（登录时打印了几行网络/代理信息后即静止），不含持续刷屏的 TUI 程序。
+- 设计文档参考基线（生产实例、5 surface）：footprint 791MB、IOSurface 488MB、IOAccelerator 115MB——量级远超本次 3 个空闲 shell 的复现环境，两者不可直接比较，仅作为"重负载场景可能出现更大效应"的背景参考。
+- A/B 通过重启完成：quit → `python3 -c` 改写 `~/.treemux-debug/settings.json` 的 `terminal.suspendHiddenSurfaces` → 重新 `open` → 同一份 `workspace-state.json` 自动恢复相同布局（截图核对 tab1 badge "2"、tab2 单 pane 前台，两次一致）。每次 launch 后等待 30s 稳态，再取 3 次样（间隔 ~8-10s）。
+
+### ON（`suspendHiddenSurfaces = true`，默认值，PID 48902）
+
+| 采样 | IOSurface | IOAccelerator(graphics)+IOAccelerator | phys_footprint | RSS | CPU |
+|---|---|---|---|---|---|
+| 1 | 31 MB | 6128+64 KB | 90 MB | 122592 KB | 0.5% |
+| 2 | 31 MB | 6160+64 KB | 91 MB | 92448 KB | 1.0% |
+| 3 | 31 MB | 6160+64 KB | 91 MB | 92416 KB | 6.5% |
+| **均值** | **31.0 MB** | **6213 KB** | **90.7 MB** | **~100.1 MB** | **2.7%** |
+
+### OFF（`suspendHiddenSurfaces = false`，PID 53104，同一份布局重启后）
+
+| 采样 | IOSurface | IOAccelerator(graphics)+IOAccelerator | phys_footprint | RSS | CPU |
+|---|---|---|---|---|---|
+| 1 | 31 MB | 4912+64 KB | 86 MB | 143312 KB | 4.2%（该次采样瞬间前台被 WeChat 短暂抢走，窗口仍可见未被完全遮挡） |
+| 2 | 31 MB | 4912+64 KB | 86 MB | 129648 KB | 0.9% |
+| 3 | 31 MB | 4912+64 KB | 86 MB | 129568 KB | 0.9% |
+| **均值** | **31.0 MB** | **4976 KB** | **86.0 MB** | **~131.0 MB** | **2.0%** |
+
+### 结论
+
+在本次可复现的 3-surface / 2-tab 空闲 shell 场景下，`suspendHiddenSurfaces` 开关**没有表现出可靠的内存或 CPU 收益**：IOSurface 占用在 ON/OFF 两组下完全相同（31MB，逐样本一致，说明隐藏 surface 上报 `occlusion=false` 并未让 libghostty 释放或缩减其 IOSurface 后备存储）；phys_footprint 反而是 OFF 更低（86MB vs 90.7MB），RSS 也是 OFF 更低（~131MB vs ~100MB，但两组内部单样本抖动本身就有 20-30MB，量级和这个"差异"相当）；CPU 两组均值 2.7% vs 2.0%，差值落在个位百分点、且两组各自都有一次孤立高值（ON 采样 3 的 6.5%、OFF 采样 1 的 4.2%）拉高均值，去掉离群值后两组基本持平。三个指标里没有一个方向一致地支持"ON 更省"，样本量（3 个空闲 zsh、无持续渲染负载）也远小于设计文档参考的 5-surface 791MB 生产实例，无法验证该开关在重负载场景下是否有效——**推荐维持默认值 `true` 不变**：现有数据不构成"flip 到 false 更优"的证据，但也没有找到 ON 状态下的可测量收益或副作用，默认开启符合"预期应该更省、且未观测到负面影响"的保守选择；如需验证重负载场景（多个持续刷屏的 TUI、大量 scrollback），需要更接近生产参考基线的真实工作负载复测，这超出本次 P3 Task 8 测量阶段的范围。
