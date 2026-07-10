@@ -8,7 +8,7 @@ import SwiftUI
 /// Shows tab buttons with title, pane count badge, close button, and drag-to-reorder.
 struct WorkspaceTabBarView: View {
     @Environment(ThemeManager.self) private var theme
-    @ObservedObject var workspace: WorkspaceModel
+    let workspace: WorkspaceModel
     @State private var renamingTabID: UUID?
     @State private var renameText: String = ""
     @State private var hoveredTabID: UUID?

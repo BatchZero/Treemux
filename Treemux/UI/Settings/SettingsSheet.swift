@@ -691,7 +691,7 @@ private struct SidebarIconsSettingsView: View {
 /// A clickable row showing a workspace's current icon. Tapping opens the customization sheet.
 private struct WorkspaceIconRow: View {
     @EnvironmentObject private var store: WorkspaceStore
-    @ObservedObject var workspace: WorkspaceModel
+    let workspace: WorkspaceModel
 
     var body: some View {
         Button {
@@ -716,7 +716,7 @@ private struct WorkspaceIconRow: View {
 /// A clickable row showing a worktree's current icon. Tapping opens the customization sheet.
 private struct WorktreeIconRow: View {
     @EnvironmentObject private var store: WorkspaceStore
-    @ObservedObject var workspace: WorkspaceModel
+    let workspace: WorkspaceModel
     let worktree: WorktreeModel
 
     var body: some View {

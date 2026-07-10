@@ -20,7 +20,7 @@ struct WorkspaceDetailView: View {
 /// Container that manages tab bar visibility and routes to the active tab's content.
 private struct WorkspaceTabContainerView: View {
     @EnvironmentObject private var store: WorkspaceStore
-    @ObservedObject var workspace: WorkspaceModel
+    @Bindable var workspace: WorkspaceModel
 
     var body: some View {
         VStack(spacing: 0) {
