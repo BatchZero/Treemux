@@ -9,7 +9,7 @@ import SwiftUI
 struct WorkspaceSidebarView: View {
     @EnvironmentObject private var store: WorkspaceStore
     @Environment(ThemeManager.self) private var theme
-    @EnvironmentObject private var languageManager: LanguageManager
+    @Environment(LanguageManager.self) private var languageManager
 
     // Rename dialog state
     @State private var renamingWorkspaceID: UUID?

@@ -9,7 +9,7 @@ import SwiftUI
 struct MainWindowView: View {
     @Environment(ThemeManager.self) private var theme
     @EnvironmentObject private var store: WorkspaceStore
-    @EnvironmentObject private var languageManager: LanguageManager
+    @Environment(LanguageManager.self) private var languageManager
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {

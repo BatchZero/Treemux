@@ -36,7 +36,7 @@ final class WindowContext {
             rootView: MainWindowView()
                 .environmentObject(store)
                 .environment(themeManager)
-                .environmentObject(languageManager)
+                .environment(languageManager)
                 .environment(\.locale, languageManager.locale)
         )
 
@@ -72,15 +72,14 @@ final class WindowContext {
             }
 
         // Observe language changes to update the root view's locale environment.
-        localeCancellable = languageManager.$locale
-            .dropFirst()
+        localeCancellable = languageManager.localePublisher
             .receive(on: RunLoop.main)
             .sink { [weak host, weak self] newLocale in
                 guard let self, let host else { return }
                 host.rootView = MainWindowView()
                     .environmentObject(self.store)
                     .environment(self.themeManager)
-                    .environmentObject(self.languageManager)
+                    .environment(self.languageManager)
                     .environment(\.locale, newLocale)
             }
     }

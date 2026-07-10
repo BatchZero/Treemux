@@ -62,4 +62,21 @@ final class ObservableBridgeTests: XCTestCase {
         XCTAssertEqual(received.count, countAfterSet + 1,
                        "reloadThemes assigns activeTheme and must fire the bridge")
     }
+
+    func testLocalePublisherDeliversNewLocaleWithoutReplay() {
+        let saved = UserDefaults.standard.object(forKey: "AppleLanguages")
+        defer {
+            if let saved { UserDefaults.standard.set(saved, forKey: "AppleLanguages") }
+            else { UserDefaults.standard.removeObject(forKey: "AppleLanguages") }
+        }
+        let manager = LanguageManager(languageCode: "en")
+        var received: [Locale] = []
+        let sub = manager.localePublisher.sink { received.append($0) }
+        defer { sub.cancel() }
+
+        XCTAssertEqual(received, [], "bridge must not replay the initial locale")
+        manager.apply(languageCode: "zh-Hans")
+        XCTAssertEqual(received.last?.identifier, "zh-Hans",
+                       "bridge must deliver the NEW locale as payload")
+    }
 }

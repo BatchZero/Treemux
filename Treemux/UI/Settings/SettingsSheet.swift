@@ -11,7 +11,7 @@ import UniformTypeIdentifiers
 struct SettingsSheet: View {
     @EnvironmentObject private var store: WorkspaceStore
     @Environment(ThemeManager.self) private var theme
-    @EnvironmentObject private var languageManager: LanguageManager
+    @Environment(LanguageManager.self) private var languageManager
     @Environment(\.dismiss) private var dismiss
 
     @State private var draft = AppSettings()
