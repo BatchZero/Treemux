@@ -3,6 +3,7 @@
 //  TreemuxTests
 
 import XCTest
+import Observation
 @testable import Treemux
 
 /// All-property counter for a FileBrowserTabController (see
@@ -51,6 +52,26 @@ final class EditorBufferIsolationTests: XCTestCase {
         c.updateBuffer(content: "hello123", forSubTab: id)
         XCTAssertEqual(counter.count, afterFirst, "subsequent keystrokes must not publish")
         XCTAssertEqual(c.liveBuffer(for: id), "hello123")
+    }
+
+    /// R4 regression guard: a cache-hit `visibleRows()` call must still read
+    /// its 8 observed inputs so SwiftUI keeps tracking them. Without the
+    /// tracked-reads block at the top of visibleRows(), a hit only touches the
+    /// @ObservationIgnored cache, the caller registers zero dependencies, and
+    /// the file tree never re-renders again.
+    func testVisibleRowsCacheHitStillRegistersObservationTracking() async throws {
+        let (c, _) = try await makeControllerWithOpenFile()
+        _ = c.visibleRows()   // warm the cache so the next call is a HIT
+        var fired = false
+        withObservationTracking {
+            _ = c.visibleRows()   // cache hit — must still read the tracked inputs
+        } onChange: {
+            fired = true
+        }
+        // Mutate one of the 8 observed inputs; without the tracked-reads block
+        // at the top of visibleRows() this never fires and the tree goes stale.
+        c.expandedDirs.insert("/nonexistent-tracking-probe")
+        XCTAssertTrue(fired, "cache-hit visibleRows() must register observation of its inputs")
     }
 
     func testSavePersistsLiveBufferAndClearsDirty() async throws {
