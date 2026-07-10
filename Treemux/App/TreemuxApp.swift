@@ -25,5 +25,6 @@ final class TreemuxApp {
     /// Persists workspace state before the application terminates.
     func shutdown() {
         windowContext?.store.saveWorkspaceState()
+        windowContext?.store.flushPendingPersistence()
     }
 }
