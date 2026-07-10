@@ -6,7 +6,6 @@ import AppKit
 import CodeEditSourceEditor
 import CodeEditTextView
 import CodeEditLanguages
-import Combine
 import SwiftUI
 
 struct TextEditorView: View {
@@ -107,11 +106,11 @@ private struct CodeEditorRepresentable: View {
     private let highlightEligible: Bool
     /// Persisted across view updates so we can push fresh hunks into the
     /// existing overlay without forcing CodeEditSourceEditor to rebuild.
-    @StateObject private var stripeCoordinator = DiffStripeCoordinator()
+    @State private var stripeCoordinator = DiffStripeCoordinator()
     /// Owns the `WordCompletionDelegate` and re-indexes the buffer on edits.
-    /// Held as `@StateObject` so a single instance survives view updates and
+    /// Held as `@State` so a single instance survives view updates and
     /// can keep its weak `controller` reference connected.
-    @StateObject private var completionCoordinator: WordCompletionCoordinator
+    @State private var completionCoordinator: WordCompletionCoordinator
 
     init(
         path: String,
@@ -136,8 +135,8 @@ private struct CodeEditorRepresentable: View {
         )
         self._text = State(initialValue: content)
         let delegate = WordCompletionDelegate(wordIndex: wordIndex, isEnabled: isCompletionEnabled)
-        self._completionCoordinator = StateObject(
-            wrappedValue: WordCompletionCoordinator(
+        self._completionCoordinator = State(
+            initialValue: WordCompletionCoordinator(
                 bufferID: bufferID,
                 wordIndex: wordIndex,
                 delegate: delegate
@@ -310,7 +309,7 @@ private extension NSColor {
 /// 0.15.x doesn't expose a public hook on its `GutterView`, so we piggy-back
 /// on `TextViewCoordinator` to grab the controller and inject our own
 /// floating subview using only the public `textView`/`scrollView` surface.
-private final class DiffStripeCoordinator: ObservableObject, TextViewCoordinator {
+private final class DiffStripeCoordinator: TextViewCoordinator {
     private weak var controller: TextViewController?
     private weak var stripeView: DiffStripeView?
     private var hunks: [DiffHunk] = []

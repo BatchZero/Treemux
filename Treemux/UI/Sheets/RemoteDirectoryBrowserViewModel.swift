@@ -4,18 +4,20 @@
 //
 
 import Foundation
+import Observation
 import SwiftUI
 
 /// Tree node representing a remote directory for the browser UI.
 @MainActor
-class DirectoryNode: Identifiable, ObservableObject {
+@Observable
+class DirectoryNode: Identifiable {
     let id = UUID()
     let name: String
     let path: String
-    @Published var children: [DirectoryNode]?  // nil = not yet loaded
-    @Published var isExpanded: Bool = false
-    @Published var isLoading: Bool = false
-    @Published var error: String?
+    var children: [DirectoryNode]?  // nil = not yet loaded
+    var isExpanded: Bool = false
+    var isLoading: Bool = false
+    var error: String?
 
     init(name: String, path: String) {
         self.name = name
@@ -25,14 +27,15 @@ class DirectoryNode: Identifiable, ObservableObject {
 
 /// ViewModel driving the RemoteDirectoryBrowser sheet.
 @MainActor
-class RemoteDirectoryBrowserViewModel: ObservableObject {
-    @Published var pathBarText: String = ""
-    @Published var rootNodes: [DirectoryNode] = []
-    @Published var selectedPath: String? = nil
-    @Published var isConnecting: Bool = false
-    @Published var connectionError: String? = nil
-    @Published var needsPassword: Bool = false
-    @Published var password: String = ""
+@Observable
+class RemoteDirectoryBrowserViewModel {
+    var pathBarText: String = ""
+    var rootNodes: [DirectoryNode] = []
+    var selectedPath: String? = nil
+    var isConnecting: Bool = false
+    var connectionError: String? = nil
+    var needsPassword: Bool = false
+    var password: String = ""
 
     private let sftpService = SFTPService()
     private let sshTarget: SSHTarget
