@@ -124,7 +124,38 @@ var foo: FooType {
 
 import XCTest
 import Combine
+import Observation
 @testable import Treemux
+
+/// Counts Observation change notifications over the properties read by the
+/// `reading` closure — the faithful replacement for the old object-level
+/// `objectWillChange.sink { publishes += 1 }` counting (used by
+/// ShellSessionPublishDedupTests and EditorBufferIsolationTests; internal on
+/// purpose so those files share it). onChange fires synchronously at willSet
+/// on the mutating (main) actor and is one-shot, so it re-arms synchronously;
+/// back-to-back mutations inside one callback are each counted. NOTE: fires
+/// only for @Observable types — against a not-yet-migrated ObservableObject
+/// it never fires, which is what makes rewrite-test-first runs red.
+@MainActor
+final class ObservationChangeCounter {
+    private(set) var count = 0
+    private var stopped = false
+    private let read: () -> Void
+    init(reading read: @escaping () -> Void) {
+        self.read = read
+        arm()
+    }
+    func stop() { stopped = true }
+    private func arm() {
+        withObservationTracking(read) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, !self.stopped else { return }
+                self.count += 1
+                self.arm()
+            }
+        }
+    }
+}
 
 @MainActor
 final class ObservableBridgeTests: XCTestCase {
@@ -330,43 +361,24 @@ import 区加 `import Combine`、`import Observation`。
 
 - [ ] **Step 1: 先改写测试（TDD 红）**
 
-`ShellSessionPublishDedupTests.swift`：`import Combine` 改为 `import Observation`；在 `FakeSurfaceController` 后加计数器（R5 完整实现）：
+`ShellSessionPublishDedupTests.swift`：删除 `import Combine`；使用 Task 1 落地的共享 `ObservationChangeCounter`（定义在 `ObservableBridgeTests.swift`，同 target 内可见），在本文件加一个便捷工厂读取 ShellSession **全部** 10 个观察属性（R5）：
 
 ```swift
-/// Counts Observation change notifications across ALL observable properties
-/// of a ShellSession — a faithful replacement for the old
-/// `objectWillChange.sink { publishes += 1 }` object-level counting.
-/// onChange fires synchronously at willSet on the mutating (main) actor and
-/// is one-shot, so it re-arms synchronously; back-to-back mutations inside
-/// one callback are each counted. (Duplicated in EditorBufferIsolationTests
-/// for its controller — kept file-private on purpose to avoid a new shared
-/// test-support file.)
+/// All-property counter for a ShellSession (see ObservationChangeCounter in
+/// ObservableBridgeTests.swift) — faithful to the old object-level counting.
 @MainActor
-private final class SessionChangeCounter {
-    private(set) var count = 0
-    private var stopped = false
-    private let session: ShellSession
-    init(_ session: ShellSession) { self.session = session; arm() }
-    func stop() { stopped = true }
-    private func arm() {
-        withObservationTracking { [session] in
-            _ = session.title
-            _ = session.preferredWorkingDirectory
-            _ = session.reportedWorkingDirectory
-            _ = session.lifecycle
-            _ = session.exitCode
-            _ = session.pid
-            _ = session.rows
-            _ = session.cols
-            _ = session.surfaceStatus
-            _ = session.detectedTmuxSession
-        } onChange: { [weak self] in
-            MainActor.assumeIsolated {
-                guard let self, !self.stopped else { return }
-                self.count += 1
-                self.arm()
-            }
-        }
+private func makeCounter(for session: ShellSession) -> ObservationChangeCounter {
+    ObservationChangeCounter {
+        _ = session.title
+        _ = session.preferredWorkingDirectory
+        _ = session.reportedWorkingDirectory
+        _ = session.lifecycle
+        _ = session.exitCode
+        _ = session.pid
+        _ = session.rows
+        _ = session.cols
+        _ = session.surfaceStatus
+        _ = session.detectedTmuxSession
     }
 }
 ```
@@ -377,7 +389,7 @@ private final class SessionChangeCounter {
     func testRepeatedIdenticalResizeDoesNotRepublish() {
         let surface = FakeSurfaceController()
         let session = makeSession(surface: surface)
-        let counter = SessionChangeCounter(session)
+        let counter = makeCounter(for: session)
         defer { counter.stop() }
 
         surface.onResize?(120, 40)
@@ -390,7 +402,7 @@ private final class SessionChangeCounter {
     }
 ```
 
-`testIdenticalStatusSnapshotDoesNotRepublish` / `testIdenticalTitleAndCwdDoNotRepublish` 同样把 `var publishes = 0; let sub = session.objectWillChange.sink…; defer { sub.cancel() }` 替换为 `let counter = SessionChangeCounter(session); defer { counter.stop() }`，`publishes`→`counter.count`。
+`testIdenticalStatusSnapshotDoesNotRepublish` / `testIdenticalTitleAndCwdDoNotRepublish` 同样把 `var publishes = 0; let sub = session.objectWillChange.sink…; defer { sub.cancel() }` 替换为 `let counter = makeCounter(for: session); defer { counter.stop() }`，`publishes`→`counter.count`。
 
 - [ ] **Step 2: 跑该类测试确认失败**
 
@@ -423,39 +435,26 @@ Expected: FAIL — ShellSession 尚未 @Observable，`withObservationTracking` �
 
 - [ ] **Step 1: 先改写击键隔离测试（TDD 红）**
 
-`EditorBufferIsolationTests.swift`：`import Combine` → `import Observation`；文件内加控制器版计数器（与 Task 3 同构，读全部 15 个观察属性；有意文件内复制，见 Task 3 注释）：
+`EditorBufferIsolationTests.swift`：删除 `import Combine`；使用共享 `ObservationChangeCounter`（Task 1 落地于 `ObservableBridgeTests.swift`），加控制器版便捷工厂，读取 FileBrowserTabController **全部** 15 个观察属性（R5）：
 
 ```swift
-/// See SessionChangeCounter in ShellSessionPublishDedupTests — same pattern
-/// for FileBrowserTabController, reading ALL its observable properties.
+/// All-property counter for a FileBrowserTabController (see
+/// ObservationChangeCounter in ObservableBridgeTests.swift).
 @MainActor
-private final class ControllerChangeCounter {
-    private(set) var count = 0
-    private var stopped = false
-    private let c: FileBrowserTabController
-    init(_ c: FileBrowserTabController) { self.c = c; arm() }
-    func stop() { stopped = true }
-    private func arm() {
-        withObservationTracking { [c] in
-            _ = c.rootPath; _ = c.rootKind; _ = c.splitRatio
-            _ = c.expandedDirs; _ = c.showsHiddenFiles
-            _ = c.rootChildren; _ = c.childrenByPath
-            _ = c.subTabs; _ = c.activeSubTabID
-            _ = c.loadingPaths; _ = c.loadError
-            _ = c.diffHunksByPath; _ = c.fileStatusByPath
-            _ = c.truncatedDirs; _ = c.treeContentGeneration
-        } onChange: { [weak self] in
-            MainActor.assumeIsolated {
-                guard let self, !self.stopped else { return }
-                self.count += 1
-                self.arm()
-            }
-        }
+private func makeCounter(for c: FileBrowserTabController) -> ObservationChangeCounter {
+    ObservationChangeCounter {
+        _ = c.rootPath; _ = c.rootKind; _ = c.splitRatio
+        _ = c.expandedDirs; _ = c.showsHiddenFiles
+        _ = c.rootChildren; _ = c.childrenByPath
+        _ = c.subTabs; _ = c.activeSubTabID
+        _ = c.loadingPaths; _ = c.loadError
+        _ = c.diffHunksByPath; _ = c.fileStatusByPath
+        _ = c.truncatedDirs; _ = c.treeContentGeneration
     }
 }
 ```
 
-`testKeystrokesPublishOnlyOnDirtyTransition`（:28-41）中 `var publishes = 0; let sub = c.objectWillChange.sink…` 替换为 `let counter = ControllerChangeCounter(c); defer { counter.stop() }`，`publishes`→`counter.count`，断言结构不变。
+`testKeystrokesPublishOnlyOnDirtyTransition`（:28-41）中 `var publishes = 0; let sub = c.objectWillChange.sink…` 替换为 `let counter = makeCounter(for: c); defer { counter.stop() }`，`publishes`→`counter.count`，断言结构不变。
 
 - [ ] **Step 2: 跑该文件测试确认目标测试红**（`-only-testing:TreemuxTests/EditorBufferIsolationTests`；`XCTAssertGreaterThan(afterFirst, 0)` 失败，其余 5 个状态型测试应仍绿）
 
