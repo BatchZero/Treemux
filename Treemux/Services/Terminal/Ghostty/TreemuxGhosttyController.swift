@@ -675,10 +675,10 @@ private final class TreemuxGhosttySurfaceView: NSView {
     /// hierarchy) or in a fully occluded window reports non-visible so the
     /// renderer can throttle. With the setting off, every surface reports
     /// visible, matching pre-P3 behavior.
-    func updateSurfaceOcclusion() {
+    func updateSurfaceOcclusion(suspendOverride: Bool? = nil) {
         guard let surface else { return }
-        let featureOn = TreemuxGhosttyRuntime.shared.suspendHiddenSurfaces
-        let visible = !featureOn || (window?.occlusionState.contains(.visible) ?? false)
+        let suspendHiddenSurfaces = suspendOverride ?? TreemuxGhosttyRuntime.shared.suspendHiddenSurfaces
+        let visible = !suspendHiddenSurfaces || (window?.occlusionState.contains(.visible) ?? false)
         ghostty_surface_set_occlusion(surface, visible)
     }
 
@@ -769,7 +769,8 @@ private final class TreemuxGhosttySurfaceView: NSView {
         ) { [weak self] notification in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                if let terminal = notification.object as? TerminalSettings {
+                let terminal = notification.object as? TerminalSettings
+                if let terminal {
                     self.cachedFontSizeOffset = terminal.fontSizeOffset
                 } else {
                     // Defensive fallback — re-read from disk if the payload
@@ -777,11 +778,10 @@ private final class TreemuxGhosttySurfaceView: NSView {
                     self.cachedFontSizeOffset = AppSettingsPersistence().load().terminal.fontSizeOffset
                 }
                 self.applyAdaptiveFontSize()
-                // TreemuxGhosttyRuntime.shared.suspendHiddenSurfaces is already
-                // refreshed by this same notification (runtime's own observer);
-                // re-apply here so a toggle-off immediately restores this surface
+                // Re-apply here so a toggle-off immediately restores this surface
                 // to visible without waiting for a window/occlusion event.
-                self.updateSurfaceOcclusion()
+                // Use the notification's own payload — cross-observer delivery order is unspecified.
+                self.updateSurfaceOcclusion(suspendOverride: terminal?.suspendHiddenSurfaces)
             }
         }
         adaptiveFontObservers.append(settingsToken)
