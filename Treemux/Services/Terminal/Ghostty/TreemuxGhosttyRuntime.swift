@@ -15,6 +15,13 @@ final class TreemuxGhosttyRuntime: NSObject {
     var config: ghostty_config_t!
     var app: ghostty_app_t!
 
+    /// Kill switch for the P3 occlusion experiment. When true, surfaces detached
+    /// from any window (hidden tabs/worktrees) or in fully occluded windows report
+    /// non-visible to libghostty so its renderer can throttle them. Updated live from
+    /// `.treemuxTerminalSettingsDidChange`; read by `TreemuxGhosttySurfaceView.updateSurfaceOcclusion()`.
+    /// Default `true` here is overwritten by the init-time settings load below.
+    private(set) var suspendHiddenSurfaces: Bool = true
+
     /// Overrides disk resolution when a live theme switch posts a Theme via notification.object.
     /// Nil at startup so the init path falls through to disk-based resolution.
     private var activeThemeTerminalColors: ThemeTerminalColors?
@@ -38,6 +45,7 @@ final class TreemuxGhosttyRuntime: NSObject {
         // resolveActiveTerminalColors via writeTemporaryGhosttyConfig) instead of
         // loading it twice on the startup path.
         let loadedSettings = AppSettingsPersistence().load()
+        suspendHiddenSurfaces = loadedSettings.terminal.suspendHiddenSurfaces
         if let tempURL = writeTemporaryGhosttyConfig(
             for: loadedSettings.terminal, activeThemeID: loadedSettings.activeThemeID
         ) {
@@ -158,6 +166,7 @@ final class TreemuxGhosttyRuntime: NSObject {
 
     @objc private func terminalSettingsDidChange(_ notification: Notification) {
         guard let terminal = notification.object as? TerminalSettings else { return }
+        suspendHiddenSurfaces = terminal.suspendHiddenSurfaces
         // The notification only carries the terminal block, so the active theme id
         // still needs a fresh load here (this is a runtime settings-change event,
         // not the startup path the once-per-init dedup targets).

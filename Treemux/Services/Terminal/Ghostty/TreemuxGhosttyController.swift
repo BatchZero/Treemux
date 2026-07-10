@@ -519,6 +519,11 @@ private final class TreemuxGhosttySurfaceView: NSView {
     private var lastPerformKeyEvent: TimeInterval?
     private var markedSelectionRange = NSRange(location: NSNotFound, length: 0)
     private var adaptiveFontObservers: [NSObjectProtocol] = []
+    /// Tracks the host window's occlusion state so hidden surfaces (occluded
+    /// window, or a tab view detached from any window) can be reported as
+    /// non-visible to libghostty. Torn down and re-registered on every window
+    /// change in `viewDidMoveToWindow()`, mirroring `adaptiveFontObservers`.
+    private var occlusionObserver: NSObjectProtocol?
     /// Initial value loaded from disk during view construction; afterwards
     /// refreshed by `.treemuxTerminalSettingsDidChange` notifications inside
     /// `registerAdaptiveFontObservers()`. Never read disk on the hot path.
@@ -542,6 +547,9 @@ private final class TreemuxGhosttySurfaceView: NSView {
         // is thread-safe so it's safe to call from any context.
         for token in adaptiveFontObservers {
             NotificationCenter.default.removeObserver(token)
+        }
+        if let occlusionObserver {
+            NotificationCenter.default.removeObserver(occlusionObserver)
         }
     }
 
@@ -641,6 +649,37 @@ private final class TreemuxGhosttySurfaceView: NSView {
         syncSurfaceMetrics()
         registerAdaptiveFontObservers()
         applyAdaptiveFontSize()
+
+        // Re-register the occlusion observer against the (possibly new) window.
+        // A view detached from any window (hidden tab/worktree — see
+        // TerminalViewContainer.attach) has `window == nil` here, which
+        // updateSurfaceOcclusion() below treats as non-visible.
+        if let occlusionObserver {
+            NotificationCenter.default.removeObserver(occlusionObserver)
+            self.occlusionObserver = nil
+        }
+        if let window {
+            occlusionObserver = NotificationCenter.default.addObserver(
+                forName: NSWindow.didChangeOcclusionStateNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated { self?.updateSurfaceOcclusion() }
+            }
+        }
+        updateSurfaceOcclusion()
+    }
+
+    /// Reports visibility to libghostty. A view detached from any window
+    /// (hidden tab/worktree — `TerminalViewContainer` removes it from the
+    /// hierarchy) or in a fully occluded window reports non-visible so the
+    /// renderer can throttle. With the setting off, every surface reports
+    /// visible, matching pre-P3 behavior.
+    func updateSurfaceOcclusion() {
+        guard let surface else { return }
+        let featureOn = TreemuxGhosttyRuntime.shared.suspendHiddenSurfaces
+        let visible = !featureOn || (window?.occlusionState.contains(.visible) ?? false)
+        ghostty_surface_set_occlusion(surface, visible)
     }
 
     override func viewDidChangeBackingProperties() {
@@ -738,6 +777,11 @@ private final class TreemuxGhosttySurfaceView: NSView {
                     self.cachedFontSizeOffset = AppSettingsPersistence().load().terminal.fontSizeOffset
                 }
                 self.applyAdaptiveFontSize()
+                // TreemuxGhosttyRuntime.shared.suspendHiddenSurfaces is already
+                // refreshed by this same notification (runtime's own observer);
+                // re-apply here so a toggle-off immediately restores this surface
+                // to visible without waiting for a window/occlusion event.
+                self.updateSurfaceOcclusion()
             }
         }
         adaptiveFontObservers.append(settingsToken)
@@ -1192,6 +1236,7 @@ private final class TreemuxGhosttySurfaceView: NSView {
         }
         ghostty_surface_set_focus(surface, workspaceFocused)
         syncSurfaceMetrics()
+        updateSurfaceOcclusion()
     }
 
     private func withSurfaceConfig<T>(

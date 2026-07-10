@@ -1351,6 +1351,16 @@
         }
       }
     },
+    "Pause Rendering of Hidden Terminals": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂停渲染隐藏的终端"
+          }
+        }
+      }
+    },
     "Pin Tab": {
       "localizations": {
         "zh-Hans": {
@@ -1447,6 +1457,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "只读 · 请用原文编辑"
+          }
+        }
+      }
+    },
+    "Reduces memory and GPU usage for terminals not currently visible on screen.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降低当前不在屏幕上显示的终端所占用的内存和 GPU 资源。"
           }
         }
       }

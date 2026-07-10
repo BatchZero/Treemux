@@ -293,6 +293,14 @@ private struct TerminalSettingsView: View {
                 Text("Bar").tag("bar")
                 Text("Underline").tag("underline")
             }
+
+            Section {
+                Toggle("Pause Rendering of Hidden Terminals", isOn: $settings.terminal.suspendHiddenSurfaces)
+            } footer: {
+                Text("Reduces memory and GPU usage for terminals not currently visible on screen.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
     }
