@@ -723,9 +723,11 @@ final class FileBrowserTabController {
                     .loadingContent(path: path))
         do {
             let data = try await dataSource.readFile(path, maxBytes: Self.textReadLimit)
-            let (content, encoding) = decode(data)
+            let decoded = await Task.detached(priority: .userInitiated) {
+                TextEncodingDetector.decode(data)
+            }.value
             setOpenFile(forSubTab: subTabID, expectingPath: path,
-                        .text(path: path, content: content, encoding: encoding, dirty: false))
+                        .text(path: path, content: decoded.text, encoding: decoded.encoding, dirty: false))
         } catch FileBrowserError.fileTooLarge(_, let size, _) {
             setOpenFile(forSubTab: subTabID, expectingPath: path,
                         .confirmingLargeFile(path: path, sizeBytes: size))
@@ -780,14 +782,6 @@ final class FileBrowserTabController {
             setOpenFile(forSubTab: subTabID, expectingPath: path,
                         .binary(path: path, metadata: meta))
         }
-    }
-
-    /// Tries UTF-8 → GBK → Latin-1.
-    private func decode(_ data: Data) -> (String, String.Encoding) {
-        if let s = String(data: data, encoding: .utf8) { return (s, .utf8) }
-        let gbk = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(CFStringEncodings.GB_18030_2000.rawValue)))
-        if let s = String(data: data, encoding: gbk) { return (s, gbk) }
-        return (String(data: data, encoding: .isoLatin1) ?? "", .isoLatin1)
     }
 
     // MARK: - Edit / save
