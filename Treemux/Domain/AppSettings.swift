@@ -111,7 +111,7 @@ struct TerminalSettings: Equatable {
     /// When true, surfaces detached from any window (hidden tabs/worktrees)
     /// and surfaces in fully occluded windows report non-visible to libghostty
     /// so its renderer can throttle them. Kill switch for the P3 occlusion
-    /// experiment — turning it on restores the pre-P3 behavior at runtime.
+    /// experiment — turning it off restores the pre-P3 behavior at runtime.
     /// Off by default; opt-in via Settings.
     var suspendHiddenSurfaces: Bool
 

@@ -19,8 +19,6 @@ final class DebouncedSaver {
     private let save: @MainActor (Mode) -> Void
     private var pending: DispatchWorkItem?
 
-    var hasPendingSave: Bool { pending != nil }
-
     init(interval: TimeInterval = 0.25, save: @escaping @MainActor (Mode) -> Void) {
         self.interval = interval
         self.save = save

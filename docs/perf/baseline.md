@@ -287,7 +287,7 @@ Scenario A（冷启动，仅供参考）：branch 与 main 的 ViewGraph/Attribu
 
 ### 结论
 
-在本次可复现的 3-surface / 2-tab 空闲 shell 场景下，`suspendHiddenSurfaces` 开关**没有表现出可靠的内存或 CPU 收益**：IOSurface 占用在 ON/OFF 两组下完全相同（31MB，逐样本一致，说明隐藏 surface 上报 `occlusion=false` 并未让 libghostty 释放或缩减其 IOSurface 后备存储）；phys_footprint 反而是 OFF 更低（86MB vs 90.7MB），RSS 也是 OFF 更低（~131MB vs ~100MB，但两组内部单样本抖动本身就有 20-30MB，量级和这个"差异"相当）；CPU 两组均值 2.7% vs 2.0%，差值落在个位百分点、且两组各自都有一次孤立高值（ON 采样 3 的 6.5%、OFF 采样 1 的 4.2%）拉高均值，去掉离群值后两组基本持平。三个指标里没有一个方向一致地支持"ON 更省"，样本量（3 个空闲 zsh、无持续渲染负载）也远小于设计文档参考的 5-surface 791MB 生产实例，无法验证该开关在重负载场景下是否有效——**推荐维持默认值 `true` 不变**：现有数据不构成"flip 到 false 更优"的证据，但也没有找到 ON 状态下的可测量收益或副作用，默认开启符合"预期应该更省、且未观测到负面影响"的保守选择；如需验证重负载场景（多个持续刷屏的 TUI、大量 scrollback），需要更接近生产参考基线的真实工作负载复测，这超出本次 P3 Task 8 测量阶段的范围。
+在本次可复现的 3-surface / 2-tab 空闲 shell 场景下，`suspendHiddenSurfaces` 开关**没有表现出可靠的内存或 CPU 收益**：IOSurface 占用在 ON/OFF 两组下完全相同（31MB，逐样本一致，说明隐藏 surface 上报 `occlusion=false` 并未让 libghostty 释放或缩减其 IOSurface 后备存储）；phys_footprint 反而是 OFF 更低（86MB vs 90.7MB），RSS 也是 OFF 更低（~131MB vs ~100MB，但两组内部单样本抖动本身就有 20-30MB，量级和这个"差异"相当）；CPU 两组均值 2.7% vs 2.0%，差值落在个位百分点、且两组各自都有一次孤立高值（ON 采样 3 的 6.5%、OFF 采样 1 的 4.2%）拉高均值，去掉离群值后两组基本持平。三个指标里没有一个方向一致地支持"ON 更省"，样本量（3 个空闲 zsh、无持续渲染负载）也远小于设计文档参考的 5-surface 791MB 生产实例，无法验证该开关在重负载场景下是否有效——空闲场景无可测收益，按计划分支 (b) 默认值定为 `false`（可在设置中开启）。
 
 ## P3 完成 (2026-07-10)
 
