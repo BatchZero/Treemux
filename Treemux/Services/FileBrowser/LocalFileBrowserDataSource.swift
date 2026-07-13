@@ -74,6 +74,27 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
         }
     }
 
+    func createDirectory(_ path: String) async throws {
+        try await runOnQueue {
+            if FileManager.default.fileExists(atPath: path) {
+                throw FileBrowserError.notWritable(path)
+            }
+            try FileManager.default.createDirectory(
+                atPath: path, withIntermediateDirectories: false)
+        }
+    }
+
+    func createFile(_ path: String) async throws {
+        try await runOnQueue {
+            if FileManager.default.fileExists(atPath: path) {
+                throw FileBrowserError.notWritable(path)
+            }
+            guard FileManager.default.createFile(atPath: path, contents: nil) else {
+                throw FileBrowserError.notWritable(path)
+            }
+        }
+    }
+
     func downloadForQuickLook(_ path: String, progress: @escaping (Double) -> Void) async throws -> URL {
         // Local: just return the path itself.
         URL(fileURLWithPath: path)

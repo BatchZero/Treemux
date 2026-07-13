@@ -62,6 +62,14 @@ protocol FileBrowserDataSource: AnyObject {
     /// Returns a URL to a local file usable by Quick Look. For local sources
     /// this is the original path; for remote, downloads to NSTemporaryDirectory.
     func downloadForQuickLook(_ path: String, progress: @escaping (Double) -> Void) async throws -> URL
+
+    /// Creates a new empty directory at `path` (non-recursive — parent must
+    /// exist). Throws if the path already exists or the source is read-only.
+    func createDirectory(_ path: String) async throws
+
+    /// Creates a new empty file at `path`. Throws if the path already exists or
+    /// the source is read-only.
+    func createFile(_ path: String) async throws
 }
 
 extension FileBrowserDataSource {
@@ -69,5 +77,12 @@ extension FileBrowserDataSource {
 
     func listTree(_ root: String, maxDepth: Int, entryCap: Int) async throws -> DirectoryTreeFetch {
         try await BFSTreeLister.list(using: self, root: root, maxDepth: maxDepth, entryCap: entryCap)
+    }
+
+    func createDirectory(_ path: String) async throws {
+        throw FileBrowserError.notWritable(path)
+    }
+    func createFile(_ path: String) async throws {
+        throw FileBrowserError.notWritable(path)
     }
 }
