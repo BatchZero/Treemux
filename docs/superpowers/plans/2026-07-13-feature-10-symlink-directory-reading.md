@@ -482,14 +482,21 @@ private func listAllEntriesViaSSH(target: SSHTarget, path: String) async throws 
     let gnuCmd = "ls -lA --time-style=+%s -- \(escapedPath)"
     let bsdCmd = "ls -lAT -- \(escapedPath)"
     let listing = "( \(gnuCmd) 2>/dev/null || \(bsdCmd) )"
-    // cd into the dir so the probe's `find .` emits ./-relative names we can
-    // resolve against `path`. The listing itself still uses the absolute path.
-    let combined = "\(listing); cd \(escapedPath) && \(Self.symlinkDirProbeFragment(maxDepth: 1))"
+    // Capture the listing's exit code FIRST so the probe can never mask it, then
+    // cd + probe best-effort, then exit with the listing's code. Joining with a
+    // bare `;` (without the capture) would make `result.exitCode` reflect the
+    // probe instead of the listing — a real bug found in review.
+    let combined = "\(listing); __tmx_rc=$?; cd \(escapedPath) 2>/dev/null; \(Self.symlinkDirProbeFragment(maxDepth: 1)); exit $__tmx_rc"
 
     let result = try await runSSH(target: target, command: combined, timeout: Self.listingCommandTimeout)
     guard result.exitCode == 0 else {
         throw SFTPServiceError.commandFailed("ls failed at \(path)")
     }
+    // NOTE (fix applied during execution): the probe must NOT be appended with a
+    // bare `;` — that masks the listing's exit code (a permission-denied `ls`
+    // would be reported as an empty folder, and a `cd` failure would discard a
+    // valid listing). Capture the listing's status first, run the probe
+    // best-effort, then exit with the captured code. See `combined` above.
 
     let sections = result.output.components(separatedBy: Self.symlinkProbeMarker)
     let listingOut = sections.first ?? result.output
@@ -509,7 +516,10 @@ static func bulkListCommand(maxDepth: Int, maxEntries: Int = bulkListMaxEntries)
     let gnu = "find . -mindepth 1 -maxdepth \(maxDepth) \(sel) -exec ls -ldn --time-style=+%s {} +"
     let bsd = "find . -mindepth 1 -maxdepth \(maxDepth) \(sel) -exec ls -ldnT {} +"
     let listing = "( \(gnu) 2>/dev/null || \(bsd) ) | head -n \(maxEntries)"
-    return "\(listing); \(symlinkDirProbeFragment(maxDepth: maxDepth))"
+    // Capture the listing's exit code before the probe so `runCommand`'s
+    // `cd <root> && …` prefix + listing failure both surface (a bare `;` here
+    // masks them — bug found in review). `__tmx_rc` captures `(cd root && LISTING)`.
+    return "\(listing); __tmx_rc=$?; \(symlinkDirProbeFragment(maxDepth: maxDepth)); exit $__tmx_rc"
 }
 ```
 
