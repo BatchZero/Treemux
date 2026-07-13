@@ -241,7 +241,7 @@ private struct FileTreeRow: View, Equatable {
                     .frame(width: 1, height: density.rowHeight)
                     .padding(.trailing, 13)
             }
-            if node.isDirectory {
+            if node.isExpandableDirectory {
                 Image(systemName: row.isExpanded ? "chevron.down" : "chevron.right")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(theme.textMuted)
@@ -286,14 +286,14 @@ private struct FileTreeRow: View, Equatable {
         .onHover { isHovered = $0 }
         .gesture(
             TapGesture(count: 2).onEnded {
-                if !node.isDirectory {
+                if !node.isExpandableDirectory {
                     Task { await controller.pinFile(node.path) }
                 }
             }
         )
         .simultaneousGesture(
             TapGesture(count: 1).onEnded {
-                if node.isDirectory {
+                if node.isExpandableDirectory {
                     Task { await controller.toggleExpand(node.path) }
                 } else {
                     Task { await controller.openInTree(node.path) }
