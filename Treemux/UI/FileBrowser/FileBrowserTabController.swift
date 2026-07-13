@@ -455,9 +455,20 @@ final class FileBrowserTabController {
     }
 
     func beginNewEntry(intent: NewEntryIntent, in directory: String) async {
-        // Ensure the target is expanded so the editor row is visible.
-        if directory != rootPath && !expandedDirs.contains(directory) {
-            await toggleExpand(directory)
+        // Expand the full ancestor chain so the editor row's parent is actually
+        // reachable during visibleRows() flatten — not just the immediate dir.
+        if directory != rootPath {
+            let rel = relativePath(directory)
+            var current = rootPath
+            for component in rel.split(separator: "/") {
+                current += "/" + component
+                if !expandedDirs.contains(current) {
+                    await toggleExpand(current)
+                    // If a level failed to expand (data-source error), don't leave a
+                    // draft that can never render — bail; loadError already surfaces.
+                    guard expandedDirs.contains(current) else { return }
+                }
+            }
         }
         newEntryDraft = NewEntryDraft(parentPath: directory, intent: intent, errorMessage: nil)
     }
@@ -494,8 +505,8 @@ final class FileBrowserTabController {
             case .file:   try await dataSource.createFile(newPath)
             }
         } catch {
-            let msg = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-            newEntryDraft?.errorMessage = msg
+            newEntryDraft?.errorMessage = String.localizedStringWithFormat(
+                String(localized: "Could not create \"%@\""), trimmed)
             return
         }
         newEntryDraft = nil

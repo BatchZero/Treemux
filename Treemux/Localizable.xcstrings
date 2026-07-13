@@ -431,6 +431,16 @@
         }
       }
     },
+    "Could not create \"%@\"": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法创建“%@”"
+          }
+        }
+      }
+    },
     "Create a new file browser tab for the selected worktree.": {
       "localizations": {
         "zh-Hans": {

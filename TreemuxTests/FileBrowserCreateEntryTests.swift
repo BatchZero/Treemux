@@ -64,6 +64,26 @@ final class FileBrowserCreateEntryTests: XCTestCase {
         XCTAssertEqual(mock.createdFiles, [])
     }
 
+    func testBeginNewEntryInNestedDirExpandsAncestors() async {
+        let mock = MockFileBrowserDataSource()
+        mock.directoryListings["/root"] = [
+            FileNode(id: "/root/a", name: "a", path: "/root/a",
+                     kind: .directory, sizeBytes: nil, modifiedAt: nil)]
+        mock.directoryListings["/root/a"] = [
+            FileNode(id: "/root/a/b", name: "b", path: "/root/a/b",
+                     kind: .directory, sizeBytes: nil, modifiedAt: nil)]
+        mock.directoryListings["/root/a/b"] = []
+        let c = makeController(mock)
+        await c.refreshTree()
+
+        // Nothing expanded yet; target is two levels deep.
+        await c.beginNewEntry(intent: .file, in: "/root/a/b")
+
+        let ids = c.visibleRows().map(\.id)
+        XCTAssertTrue(ids.contains("newEntry:/root/a/b"),
+                      "editor row must render even when ancestors started collapsed")
+    }
+
     func testTargetDirectoryForFileUsesParent() {
         let mock = MockFileBrowserDataSource()
         let c = makeController(mock)
