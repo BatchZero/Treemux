@@ -101,6 +101,21 @@ final class SFTPServiceTests: XCTestCase {
         XCTAssertEqual(withoutSlash.first?.path, "/x/file")
     }
 
+    func testParseListingMarksSymlinkDirFromProbeSet() {
+        // GNU `ls -lA --time-style=+%s` layout: perms links owner group size epoch name
+        let output = """
+        total 8
+        lrwxrwxrwx 1 0 0 5 1700000000 dlink -> realdir
+        lrwxrwxrwx 1 0 0 5 1700000000 flink -> real.txt
+        """
+        let entries = SFTPService.parseListing(
+            output: output, parentPath: "/home/u",
+            symlinkDirPaths: ["/home/u/dlink"])
+        let byName = Dictionary(uniqueKeysWithValues: entries.map { ($0.name, $0) })
+        XCTAssertTrue(byName["dlink"]!.symlinkTargetIsDirectory)
+        XCTAssertFalse(byName["flink"]!.symlinkTargetIsDirectory)
+    }
+
     // MARK: - runProcessAndCaptureOutput: pipe drain regression
 
     /// Regression: opening a remote file ≥ ~16 KB used to hang forever because

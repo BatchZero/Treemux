@@ -525,7 +525,8 @@ actor SFTPService {
     /// Parse `ls -lA` style output. Auto-detects whether the timestamp is a single epoch field
     /// (Linux `--time-style=+%s`) or 4 BSD fields (`Mon DD HH:MM:SS YYYY`).
     /// Exposed at internal scope (and as a static function) so unit tests can drive it directly.
-    static func parseListing(output: String, parentPath: String) -> [SFTPRichEntry] {
+    static func parseListing(output: String, parentPath: String,
+                              symlinkDirPaths: Set<String> = []) -> [SFTPRichEntry] {
         var entries: [SFTPRichEntry] = []
         // Hoisted out of the loop — see `parseRecursiveListing` for why per-line
         // `DateFormatter` allocation is a performance problem on big listings.
@@ -612,7 +613,8 @@ actor SFTPService {
                 path: fullPath,
                 kind: resolvedKind,
                 sizeBytes: size,
-                modifiedAt: mtime
+                modifiedAt: mtime,
+                symlinkTargetIsDirectory: symlinkDirPaths.contains(fullPath)
             ))
         }
 
@@ -672,7 +674,8 @@ actor SFTPService {
     /// reassembled into an absolute path and grouped under its parent directory.
     /// Each group is sorted directories-first, then case-insensitive by name —
     /// matching `RemoteFileBrowserDataSource.listDirectory`'s ordering.
-    static func parseRecursiveListing(output: String, root: String) -> [String: [SFTPRichEntry]] {
+    static func parseRecursiveListing(output: String, root: String,
+                                       symlinkDirPaths: Set<String> = []) -> [String: [SFTPRichEntry]] {
         let normalizedRoot = root.hasSuffix("/") ? String(root.dropLast()) : root
         var grouped: [String: [SFTPRichEntry]] = [:]
         // Hoisted out of the per-line loop: `DateFormatter` init + locale setup
@@ -735,7 +738,9 @@ actor SFTPService {
             }()
 
             grouped[parent, default: []].append(
-                SFTPRichEntry(name: name, path: absolutePath, kind: kind, sizeBytes: size, modifiedAt: mtime)
+                SFTPRichEntry(name: name, path: absolutePath, kind: kind,
+                              sizeBytes: size, modifiedAt: mtime,
+                              symlinkTargetIsDirectory: symlinkDirPaths.contains(absolutePath))
             )
         }
 
