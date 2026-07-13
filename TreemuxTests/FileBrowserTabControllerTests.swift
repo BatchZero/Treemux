@@ -392,4 +392,24 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
     func downloadForQuickLook(_ path: String, progress: @escaping (Double) -> Void) async throws -> URL {
         URL(fileURLWithPath: path)
     }
+    var createdDirectories: [String] = []
+    var createdFiles: [String] = []
+    var createError: Error?
+    func createDirectory(_ path: String) async throws {
+        if let createError { throw createError }
+        createdDirectories.append(path)
+        // Make it visible to a subsequent listDirectory of the parent.
+        let parent = (path as NSString).deletingLastPathComponent
+        let name = (path as NSString).lastPathComponent
+        directoryListings[parent, default: []].append(
+            FileNode(id: path, name: name, path: path, kind: .directory, sizeBytes: nil, modifiedAt: nil))
+    }
+    func createFile(_ path: String) async throws {
+        if let createError { throw createError }
+        createdFiles.append(path)
+        let parent = (path as NSString).deletingLastPathComponent
+        let name = (path as NSString).lastPathComponent
+        directoryListings[parent, default: []].append(
+            FileNode(id: path, name: name, path: path, kind: .file, sizeBytes: 0, modifiedAt: nil))
+    }
 }
