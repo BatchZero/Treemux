@@ -267,12 +267,10 @@ actor SFTPService {
                 throw SFTPServiceError.commandFailed("create file failed at \(path)")
             }
         case .citadel(_, let sftp):
-            // Reject an existing path (mirror noclobber). statViaSFTP throws when
-            // the path is absent, which is the success case for creation.
-            if (try? await statViaSFTP(sftp: sftp, path: path)) != nil {
-                throw SFTPServiceError.commandFailed("already exists: \(path)")
-            }
-            let file = try await sftp.openFile(filePath: path, flags: [.write, .create, .truncate])
+            // Atomic exclusive create (SSH_FXF_EXCL): the server fails the open if the
+            // path already exists, so there is no check-then-truncate race and no
+            // silent overwrite. Mirrors the SSH path's `set -C` noclobber guarantee.
+            let file = try await sftp.openFile(filePath: path, flags: [.write, .create, .forceCreate])
             try await file.close()
         }
     }
