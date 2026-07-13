@@ -229,6 +229,9 @@ private struct FileTreeRow: View, Equatable {
             nodeBody(node)
         case .loadMore(let parentPath):
             LoadMoreRow(path: parentPath, depth: row.depth, controller: controller)
+        case .editor:
+            // TODO(Task 5): render the inline new-file/new-folder text field.
+            EmptyView()
         }
     }
 
