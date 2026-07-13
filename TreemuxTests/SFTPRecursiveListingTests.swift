@@ -72,4 +72,14 @@ final class SFTPRecursiveListingTests: XCTestCase {
         XCTAssertEqual(grouped["/r"]?.first?.name, "my file.txt")
         XCTAssertEqual(grouped["/r"]?.first?.path, "/r/my file.txt")
     }
+
+    func testNodeFromEntryCarriesSymlinkDirFlag() {
+        let entry = SFTPRichEntry(name: "dlink", path: "/r/dlink",
+                                  kind: .symlink(target: "/r/real"),
+                                  sizeBytes: 5, modifiedAt: nil,
+                                  symlinkTargetIsDirectory: true)
+        let node = RemoteFileBrowserDataSource.node(from: entry)
+        XCTAssertTrue(node.isSymlink)
+        XCTAssertTrue(node.isExpandableDirectory)
+    }
 }
