@@ -170,6 +170,7 @@
 		B620A3848F1EF7DE7BDC62A2 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32F18F29A965B9650B203208 /* LanguageManager.swift */; };
 		B7E2539E316B55AA17521CC6 /* HardenedWebContentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A007738BED05612150627 /* HardenedWebContentTests.swift */; };
 		B840AF41A36001568C69698A /* TreeSitterCodeHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4407EBDC733583FA3CF08209 /* TreeSitterCodeHighlighter.swift */; };
+		BA43688BF20C69AB068391F6 /* FileNodeSymlinkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7210E86710CF2B3C7EA0022 /* FileNodeSymlinkTests.swift */; };
 		BCEB4C8CE71A07F316E67D13 /* SplitDivider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F23062A273124B6BBE28B71 /* SplitDivider.swift */; };
 		BD1E15B46C40E1A341C3B5B6 /* SidebarContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 562B8C6A2EC32280F3C88E13 /* SidebarContainerView.swift */; };
 		BF6AC7D0EC7DBA0469366D91 /* WorkspaceMetadataWatchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FED0327A7E59732F42304316 /* WorkspaceMetadataWatchService.swift */; };
@@ -416,6 +417,7 @@
 		D378CA5DC5BE2FED3CF23D41 /* ObservableBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservableBridgeTests.swift; sourceTree = "<group>"; };
 		D3C9EABA8F49976F4327BA6D /* FileBrowserTabStateCodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTabStateCodingTests.swift; sourceTree = "<group>"; };
 		D5FB45C7299B44CB5A534F28 /* WorkspaceOutlineSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceOutlineSidebar.swift; sourceTree = "<group>"; };
+		D7210E86710CF2B3C7EA0022 /* FileNodeSymlinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileNodeSymlinkTests.swift; sourceTree = "<group>"; };
 		D8EB47950FCB5E9637572424 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		DC45A45117E3662286FF3B32 /* FileBrowserTabControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTabControllerTests.swift; sourceTree = "<group>"; };
 		DDABEBA6E29676427AB96F34 /* SSHConfigDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigDocument.swift; sourceTree = "<group>"; };
@@ -519,6 +521,7 @@
 				D3C9EABA8F49976F4327BA6D /* FileBrowserTabStateCodingTests.swift */,
 				327C1AAEDC6474147999425B /* FileBrowserTreeAccelerationTests.swift */,
 				2AB7BEBA22EDD063B0C5F951 /* FileIconCatalogTests.swift */,
+				D7210E86710CF2B3C7EA0022 /* FileNodeSymlinkTests.swift */,
 				3FA0085E209334A614D18291 /* FileSubTabRecordCodingTests.swift */,
 				CD6292BEBC02739CAA418464 /* FileTreeRowModelTests.swift */,
 				A01C3B62B418371CFF6848D2 /* FileTreeSettingsTests.swift */,
@@ -1205,6 +1208,7 @@
 				98BBB295D98A3BC13A807E63 /* FileBrowserTabStateCodingTests.swift in Sources */,
 				FE9822AA382F00FAA78C4FDF /* FileBrowserTreeAccelerationTests.swift in Sources */,
 				13520499F56541EF75682DCF /* FileIconCatalogTests.swift in Sources */,
+				BA43688BF20C69AB068391F6 /* FileNodeSymlinkTests.swift in Sources */,
 				F13DEBE0000ABD5FA8DC4A16 /* FileSubTabRecordCodingTests.swift in Sources */,
 				5AB0973BC012EA9ED52AD8F8 /* FileTreeRowModelTests.swift in Sources */,
 				2B446FB1CDE3729E4D7645E1 /* FileTreeSettingsTests.swift in Sources */,
