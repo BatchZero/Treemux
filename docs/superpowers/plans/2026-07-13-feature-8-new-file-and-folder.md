@@ -394,7 +394,7 @@ final class FileBrowserCreateEntryTests: XCTestCase {
     private func makeController(_ mock: MockFileBrowserDataSource,
                                root: String = "/root") -> FileBrowserTabController {
         FileBrowserTabController(
-            initial: FileBrowserTabState(rootPath: root, rootKind: .local),
+            initial: FileBrowserTabState(rootPath: root, rootKind: .worktree),
             dataSource: mock)
     }
 
