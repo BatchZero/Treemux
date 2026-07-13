@@ -818,6 +818,10 @@ actor SFTPService {
 
     // MARK: - SFTP rich listing (Citadel)
 
+    // NOTE: symlink target-type resolution needs the `[ -d ]` probe, which requires
+    // arbitrary command exec — unavailable on the Citadel password-auth path. Over
+    // Citadel, symlink-directories therefore render as plain (non-expandable) links.
+    // The common key-auth system-SSH path (listAllEntriesViaSSH) is fully supported.
     private func listAllEntriesViaSFTP(sftp: SFTPClient, path: String) async throws -> [SFTPRichEntry] {
         let names = try await sftp.listDirectory(atPath: path)
         var entries: [SFTPRichEntry] = []
