@@ -119,6 +119,28 @@ private struct FileTreeToolbar: View {
                 .truncationMode(.middle)
             Spacer()
             Button {
+                let dir = controller.selectedFilePath.map { path -> String in
+                    // Selected path is a file (sub-tab); create in its directory.
+                    (path as NSString).deletingLastPathComponent
+                } ?? controller.rootPath
+                Task { await controller.beginNewEntry(intent: .folder, in: dir) }
+            } label: {
+                Image(systemName: "folder.badge.plus")
+            }
+            .buttonStyle(.plain)
+            .help(LocalizedStringKey("New Folder"))
+
+            Button {
+                let dir = controller.selectedFilePath.map { ($0 as NSString).deletingLastPathComponent }
+                    ?? controller.rootPath
+                Task { await controller.beginNewEntry(intent: .file, in: dir) }
+            } label: {
+                Image(systemName: "doc.badge.plus")
+            }
+            .buttonStyle(.plain)
+            .help(LocalizedStringKey("New File"))
+
+            Button {
                 Task { await controller.refreshTree() }
             } label: {
                 Image(systemName: "arrow.clockwise")
@@ -304,6 +326,15 @@ private struct FileTreeRow: View, Equatable {
             }
         )
         .contextMenu {
+            Button(LocalizedStringKey("New Folder")) {
+                Task { await controller.beginNewEntry(intent: .folder,
+                                                      in: controller.targetDirectory(for: node)) }
+            }
+            Button(LocalizedStringKey("New File")) {
+                Task { await controller.beginNewEntry(intent: .file,
+                                                      in: controller.targetDirectory(for: node)) }
+            }
+            Divider()
             Button(LocalizedStringKey("Copy Absolute Path")) {
                 controller.copyPath(node.path, mode: .absolute)
             }

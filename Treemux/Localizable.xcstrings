@@ -91,6 +91,16 @@
         }
       }
     },
+    "An item named \"%@\" already exists": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已存在名为“%@”的项目"
+          }
+        }
+      }
+    },
     "Apply": {
       "localizations": {
         "zh-Hans": {
@@ -981,6 +991,26 @@
         }
       }
     },
+    "Name cannot be empty": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称不能为空"
+          }
+        }
+      }
+    },
+    "Name cannot contain a slash": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称不能包含斜杠"
+          }
+        }
+      }
+    },
     "New": {
       "localizations": {
         "zh-Hans": {
@@ -1001,12 +1031,32 @@
         }
       }
     },
+    "New File": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建文件"
+          }
+        }
+      }
+    },
     "New File Browser Tab": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "新建文件浏览器标签页"
+          }
+        }
+      }
+    },
+    "New Folder": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建文件夹"
           }
         }
       }
