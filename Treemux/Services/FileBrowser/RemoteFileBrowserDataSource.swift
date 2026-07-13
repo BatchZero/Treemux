@@ -96,6 +96,16 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
         try await service.writeFile(at: path, data: data)
     }
 
+    func createDirectory(_ path: String) async throws {
+        try await ensureConnected()
+        try await service.createDirectory(at: path)
+    }
+
+    func createFile(_ path: String) async throws {
+        try await ensureConnected()
+        try await service.createFile(at: path)
+    }
+
     func downloadForQuickLook(_ path: String, progress: @escaping (Double) -> Void) async throws -> URL {
         try await ensureConnected()
         // 200 MB hard cap to avoid disk thrash. The caller's large-file gate
