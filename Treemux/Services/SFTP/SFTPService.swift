@@ -528,7 +528,7 @@ actor SFTPService {
         // ./-relative names we can resolve against `path`. The listing itself
         // still uses the absolute path.
         let probe = Self.symlinkDirProbeFragment(maxDepth: 1)
-        let combined = "\(listing); __tmx_rc=$?; cd \(escapedPath) 2>/dev/null; \(probe); exit $__tmx_rc"
+        let combined = "\(listing); __tmx_rc=$?; cd \(escapedPath) 2>/dev/null && \(probe); exit $__tmx_rc"
 
         let result = try await runSSH(target: target, command: combined, timeout: Self.listingCommandTimeout)
         guard result.exitCode == 0 else {
@@ -725,9 +725,14 @@ actor SFTPService {
         // `listAllEntriesViaSSH`. `runCommand(_:in:)` prepends `cd <root> && `,
         // so the full command is `cd root && LISTING; __tmx_rc=$?; PROBE; exit
         // $__tmx_rc`; shell precedence makes `__tmx_rc` capture the exit of
-        // `(cd root && LISTING)`, so a failed `cd root` or a failed listing both
-        // yield a nonzero overall exit that `runCommand`'s guard correctly throws
-        // on, and the probe can never mask either failure.
+        // `(cd root && LISTING)`. `__tmx_rc` preserves the pre-existing exit
+        // semantics of that expression rather than adding new guarantees: since
+        // `LISTING` is piped through `head` without `pipefail`, `__tmx_rc`
+        // reliably reflects a failed `cd root` (which short-circuits the `&&`
+        // before the pipe even runs), but an inner `ls`/`find` failure inside
+        // the pipe is generally masked by `head`'s own success. Either way, the
+        // probe runs strictly after this capture, so it can never mask or
+        // overwrite whatever `__tmx_rc` already holds.
         return "\(listing); __tmx_rc=$?; \(symlinkDirProbeFragment(maxDepth: maxDepth)); exit $__tmx_rc"
     }
 

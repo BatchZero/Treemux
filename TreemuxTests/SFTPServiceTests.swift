@@ -185,6 +185,21 @@ final class SFTPServiceTests: XCTestCase {
         XCTAssertEqual(result.exitCode, 0, "documents the bug: old form masks a failing listing")
     }
 
+    /// The tests above exercise the capture-and-exit idiom via hand-rolled
+    /// `false`/`true` stubs, never the actual string `bulkListCommand`
+    /// produces. Assert the real builder output carries the idiom too, so a
+    /// future edit that accidentally drops `__tmx_rc` (or reorders it around
+    /// the probe) is caught here rather than only in the stubbed tests above.
+    func testBulkListCommandPreservesListingExitCode() {
+        let cmd = SFTPService.bulkListCommand(maxDepth: 2)
+        // The listing's exit status must be captured BEFORE the probe and re-exited
+        // AFTER it, so the probe can never mask a listing/cd-root failure.
+        XCTAssertTrue(cmd.contains("__tmx_rc=$?"),
+                      "bulk command must capture the listing exit code before the probe")
+        XCTAssertTrue(cmd.hasSuffix("exit $__tmx_rc"),
+                      "bulk command must exit with the captured listing code")
+    }
+
     // MARK: - runProcessAndCaptureOutput: pipe drain regression
 
     /// Regression: opening a remote file ≥ ~16 KB used to hang forever because
