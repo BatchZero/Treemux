@@ -230,7 +230,7 @@ private struct FileTreeRow: View, Equatable {
         case .loadMore(let parentPath):
             LoadMoreRow(path: parentPath, depth: row.depth, controller: controller)
         case .editor(let parentPath, let intent):
-            NewEntryEditorRow(controller: controller, depth: row.depth,
+            NewEntryEditorRow(controller: controller, density: density, depth: row.depth,
                               parentPath: parentPath, intent: intent)
         }
     }
@@ -374,6 +374,7 @@ private struct LoadMoreRow: View {
 /// as `FileTreeRow.nodeBody`.
 private struct NewEntryEditorRow: View {
     let controller: FileBrowserTabController
+    let density: TreeDensity
     let depth: Int
     let parentPath: String
     let intent: NewEntryIntent
@@ -389,30 +390,31 @@ private struct NewEntryEditorRow: View {
                 ForEach(0..<depth, id: \.self) { _ in
                     Rectangle()
                         .fill(theme.dividerColor)
-                        .frame(width: 1)
+                        .frame(width: 1, height: density.rowHeight)
                         .padding(.trailing, 13)
                 }
                 Spacer().frame(width: 12)                    // disclosure gutter
                 Color.clear.frame(width: 4, height: 4)       // git-dot gutter
                 Image(iconAsset)
                     .resizable().renderingMode(.template).scaledToFit()
-                    .frame(width: 15, height: 15)
+                    .frame(width: density.fontSize + 3, height: density.fontSize + 3)
                     .foregroundStyle(theme.textSecondary)
                 TextField(intent == .folder
                           ? LocalizedStringKey("New Folder")
                           : LocalizedStringKey("New File"), text: $name)
                     .textFieldStyle(.plain)
-                    .font(DesignFonts.dataLayer(size: 13))
+                    .font(DesignFonts.dataLayer(size: density.fontSize))
                     .foregroundStyle(theme.textPrimary)
                     .focused($focused)
                     .onSubmit { Task { await controller.commitNewEntry(name: name) } }
                     .onExitCommand { controller.cancelNewEntry() }   // Esc
             }
+            .frame(height: density.rowHeight)
             .padding(.horizontal, 8)
             if let err = controller.newEntryDraft?.errorMessage {
                 Text(err)
                     .font(.system(size: 10))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(theme.dangerColor)
                     .padding(.leading, CGFloat(depth) * 14 + 40)
             }
         }
