@@ -464,7 +464,7 @@ final class FileBrowserTabController {
         var rows: [FileTreeRowModel] = []
         func emit(_ nodes: [FileNode], depth: Int) {
             for node in nodes {
-                let expanded = node.isDirectory && expandedDirs.contains(node.path)
+                let expanded = node.isExpandableDirectory && expandedDirs.contains(node.path)
                 rows.append(FileTreeRowModel(
                     id: node.path,
                     kind: .node(node),
