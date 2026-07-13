@@ -280,7 +280,13 @@ actor SFTPService {
         async throws -> (childrenByPath: [String: [SFTPRichEntry]], truncated: Set<String>) {
         let output = try await runCommand(
             Self.bulkListCommand(maxDepth: maxDepth), in: root, timeout: Self.listingCommandTimeout)
-        var grouped = Self.parseRecursiveListing(output: output, root: root)
+        let sections = output.components(separatedBy: Self.symlinkProbeMarker)
+        let listingOut = sections.first ?? output
+        let probeOut = sections.count > 1 ? sections[1] : ""
+        // `runCommand(_:in:)` supplies the leading `cd <root>`, so the probe's
+        // `find .` names are ./-relative to `root`.
+        let symlinkDirs = Self.parseSymlinkDirProbe(probeOut, parentPath: root)
+        var grouped = Self.parseRecursiveListing(output: listingOut, root: root, symlinkDirPaths: symlinkDirs)
         var truncated: Set<String> = []
         for (dir, entries) in grouped where entries.count > entryCap {
             grouped[dir] = Array(entries.prefix(entryCap))
@@ -512,20 +518,68 @@ actor SFTPService {
         // Try GNU coreutils first (Linux). If that fails (likely macOS/BSD), retry with -T.
         let gnuCmd = "ls -lA --time-style=+%s -- \(escapedPath)"
         let bsdCmd = "ls -lAT -- \(escapedPath)"
-        let combined = "\(gnuCmd) 2>/dev/null || \(bsdCmd)"
+        let listing = "( \(gnuCmd) 2>/dev/null || \(bsdCmd) )"
+        // Capture the listing's exit code into `__tmx_rc` immediately, before the
+        // probe runs, then `exit $__tmx_rc` at the end so the overall exit code
+        // reflects ONLY the listing. The probe (including its `cd`) runs
+        // best-effort after that capture — a failed `cd` just yields an empty
+        // probe set (graceful), it can never mask a listing failure or discard a
+        // successful listing. cd into the dir so the probe's `find .` emits
+        // ./-relative names we can resolve against `path`. The listing itself
+        // still uses the absolute path.
+        let probe = Self.symlinkDirProbeFragment(maxDepth: 1)
+        let combined = "\(listing); __tmx_rc=$?; cd \(escapedPath) 2>/dev/null && \(probe); exit $__tmx_rc"
 
         let result = try await runSSH(target: target, command: combined, timeout: Self.listingCommandTimeout)
         guard result.exitCode == 0 else {
             throw SFTPServiceError.commandFailed("ls failed at \(path)")
         }
 
-        return Self.parseListing(output: result.output, parentPath: path)
+        let sections = result.output.components(separatedBy: Self.symlinkProbeMarker)
+        let listingOut = sections.first ?? result.output
+        let probeOut = sections.count > 1 ? sections[1] : ""
+        let symlinkDirs = Self.parseSymlinkDirProbe(probeOut, parentPath: path)
+        return Self.parseListing(output: listingOut, parentPath: path, symlinkDirPaths: symlinkDirs)
+    }
+
+    /// Marker separating the listing section from the symlink-dir probe section
+    /// in the combined command output. Chosen to never collide with a filename.
+    static let symlinkProbeMarker = "@@TMX_SYMDIRS@@"
+
+    /// Parses the probe section: one path per line, each a symlink whose target is
+    /// a directory. When `parentPath` is non-nil, entries are `./`-relative and are
+    /// resolved against it (bulk form); otherwise they are already absolute.
+    static func parseSymlinkDirProbe(_ output: String, parentPath: String?) -> Set<String> {
+        let base = parentPath.map { $0.hasSuffix("/") ? String($0.dropLast()) : $0 }
+        var set: Set<String> = []
+        for raw in output.components(separatedBy: "\n") {
+            var line = raw.trimmingCharacters(in: .whitespaces)
+            if line.isEmpty { continue }
+            if let base {
+                if line.hasPrefix("./") { line.removeFirst(2) }
+                if line.isEmpty { continue }
+                set.insert(base + "/" + line)
+            } else {
+                set.insert(line)
+            }
+        }
+        return set
+    }
+
+    /// Shell fragment that, after the main listing, emits the marker followed by
+    /// one line per symlink (to `maxDepth`) whose target is a directory. Portable:
+    /// `[ -d "$l/" ]` dereferences the link on both GNU and BSD userlands.
+    static func symlinkDirProbeFragment(maxDepth: Int) -> String {
+        "echo \(symlinkProbeMarker); "
+        + "find . -mindepth 1 -maxdepth \(maxDepth) -type l 2>/dev/null "
+        + "| while IFS= read -r l; do [ -d \"$l/\" ] && printf '%s\\n' \"$l\"; done"
     }
 
     /// Parse `ls -lA` style output. Auto-detects whether the timestamp is a single epoch field
     /// (Linux `--time-style=+%s`) or 4 BSD fields (`Mon DD HH:MM:SS YYYY`).
     /// Exposed at internal scope (and as a static function) so unit tests can drive it directly.
-    static func parseListing(output: String, parentPath: String) -> [SFTPRichEntry] {
+    static func parseListing(output: String, parentPath: String,
+                              symlinkDirPaths: Set<String> = []) -> [SFTPRichEntry] {
         var entries: [SFTPRichEntry] = []
         // Hoisted out of the loop — see `parseRecursiveListing` for why per-line
         // `DateFormatter` allocation is a performance problem on big listings.
@@ -612,7 +666,8 @@ actor SFTPService {
                 path: fullPath,
                 kind: resolvedKind,
                 sizeBytes: size,
-                modifiedAt: mtime
+                modifiedAt: mtime,
+                symlinkTargetIsDirectory: symlinkDirPaths.contains(fullPath)
             ))
         }
 
@@ -664,7 +719,21 @@ actor SFTPService {
         // cap applies whichever branch runs. `head` closing the pipe also makes
         // `find` stop early via SIGPIPE, so the server doesn't keep walking the
         // tree after the cap is reached.
-        return "( \(gnu) 2>/dev/null || \(bsd) ) | head -n \(maxEntries)"
+        let listing = "( \(gnu) 2>/dev/null || \(bsd) ) | head -n \(maxEntries)"
+        // Capture the listing's exit code before running the best-effort probe,
+        // then exit with the captured code — see the analogous comment in
+        // `listAllEntriesViaSSH`. `runCommand(_:in:)` prepends `cd <root> && `,
+        // so the full command is `cd root && LISTING; __tmx_rc=$?; PROBE; exit
+        // $__tmx_rc`; shell precedence makes `__tmx_rc` capture the exit of
+        // `(cd root && LISTING)`. `__tmx_rc` preserves the pre-existing exit
+        // semantics of that expression rather than adding new guarantees: since
+        // `LISTING` is piped through `head` without `pipefail`, `__tmx_rc`
+        // reliably reflects a failed `cd root` (which short-circuits the `&&`
+        // before the pipe even runs), but an inner `ls`/`find` failure inside
+        // the pipe is generally masked by `head`'s own success. Either way, the
+        // probe runs strictly after this capture, so it can never mask or
+        // overwrite whatever `__tmx_rc` already holds.
+        return "\(listing); __tmx_rc=$?; \(symlinkDirProbeFragment(maxDepth: maxDepth)); exit $__tmx_rc"
     }
 
     /// Parses the recursive `ls -ld` output produced by `bulkListCommand`.
@@ -672,7 +741,8 @@ actor SFTPService {
     /// reassembled into an absolute path and grouped under its parent directory.
     /// Each group is sorted directories-first, then case-insensitive by name —
     /// matching `RemoteFileBrowserDataSource.listDirectory`'s ordering.
-    static func parseRecursiveListing(output: String, root: String) -> [String: [SFTPRichEntry]] {
+    static func parseRecursiveListing(output: String, root: String,
+                                       symlinkDirPaths: Set<String> = []) -> [String: [SFTPRichEntry]] {
         let normalizedRoot = root.hasSuffix("/") ? String(root.dropLast()) : root
         var grouped: [String: [SFTPRichEntry]] = [:]
         // Hoisted out of the per-line loop: `DateFormatter` init + locale setup
@@ -735,7 +805,9 @@ actor SFTPService {
             }()
 
             grouped[parent, default: []].append(
-                SFTPRichEntry(name: name, path: absolutePath, kind: kind, sizeBytes: size, modifiedAt: mtime)
+                SFTPRichEntry(name: name, path: absolutePath, kind: kind,
+                              sizeBytes: size, modifiedAt: mtime,
+                              symlinkTargetIsDirectory: symlinkDirPaths.contains(absolutePath))
             )
         }
 
@@ -751,6 +823,10 @@ actor SFTPService {
 
     // MARK: - SFTP rich listing (Citadel)
 
+    // NOTE: symlink target-type resolution needs the `[ -d ]` probe, which requires
+    // arbitrary command exec — unavailable on the Citadel password-auth path. Over
+    // Citadel, symlink-directories therefore render as plain (non-expandable) links.
+    // The common key-auth system-SSH path (listAllEntriesViaSSH) is fully supported.
     private func listAllEntriesViaSFTP(sftp: SFTPClient, path: String) async throws -> [SFTPRichEntry] {
         let names = try await sftp.listDirectory(atPath: path)
         var entries: [SFTPRichEntry] = []

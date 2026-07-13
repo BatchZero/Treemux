@@ -41,6 +41,8 @@ struct SFTPRichEntry: Equatable {
     let kind: Kind
     let sizeBytes: Int64?
     let modifiedAt: Date?
+    /// Only meaningful for `.symlink` — true when the link resolves to a directory.
+    var symlinkTargetIsDirectory: Bool = false
 
     var isDirectory: Bool {
         if case .directory = kind { return true }

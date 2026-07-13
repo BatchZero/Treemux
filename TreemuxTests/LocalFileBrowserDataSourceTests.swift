@@ -151,4 +151,32 @@ final class LocalFileBrowserDataSourceTests: XCTestCase {
         let nodes = LocalFileBrowserDataSource.buildNodes(from: raw, parent: parent) { self.fileNode($0) }
         XCTAssertEqual(Set(nodes.map(\.name)), Set(["one", "two"]))
     }
+
+    // MARK: - Symlink target type resolution
+
+    func testSymlinkToDirectoryMarkedExpandable() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+
+        let realDir = root.appendingPathComponent("real")
+        try fm.createDirectory(at: realDir, withIntermediateDirectories: true)
+        let realFile = root.appendingPathComponent("file.txt")
+        try Data("hi".utf8).write(to: realFile)
+
+        let dirLink = root.appendingPathComponent("dirlink")
+        try fm.createSymbolicLink(at: dirLink, withDestinationURL: realDir)
+        let fileLink = root.appendingPathComponent("filelink")
+        try fm.createSymbolicLink(at: fileLink, withDestinationURL: realFile)
+
+        let source = LocalFileBrowserDataSource()
+        let nodes = try await source.listDirectory(root.path)
+        let byName = Dictionary(uniqueKeysWithValues: nodes.map { ($0.name, $0) })
+
+        XCTAssertTrue(byName["dirlink"]!.isSymlink)
+        XCTAssertTrue(byName["dirlink"]!.isExpandableDirectory)
+        XCTAssertTrue(byName["filelink"]!.isSymlink)
+        XCTAssertFalse(byName["filelink"]!.isExpandableDirectory)
+    }
 }

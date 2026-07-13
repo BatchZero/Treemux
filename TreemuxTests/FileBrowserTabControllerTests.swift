@@ -77,6 +77,36 @@ final class FileBrowserTabControllerTests: XCTestCase {
         XCTAssertEqual(ctrl.childrenByPath["/r/sub"]?.map(\.name), ["child.txt"])
     }
 
+    /// Feature 10, Task 6: `visibleRows()` must key the `expanded` decision off
+    /// `isExpandableDirectory`, not `isDirectory`, so an expanded symlink-to-dir
+    /// node renders its children rows.
+    func testExpandSymlinkDirectoryShowsChildren() async {
+        let mock = MockFileBrowserDataSource()
+        let link = FileNode(id: "/root/dlink", name: "dlink", path: "/root/dlink",
+                            kind: .symlink(target: "/root/real"), sizeBytes: nil,
+                            modifiedAt: nil, symlinkTargetIsDirectory: true)
+        let child = FileNode(id: "/root/dlink/inner.txt", name: "inner.txt",
+                             path: "/root/dlink/inner.txt", kind: .file,
+                             sizeBytes: 3, modifiedAt: nil)
+        mock.directoryListings["/root"] = [link]
+        mock.directoryListings["/root/dlink"] = [child]
+
+        let controller = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/root", rootKind: .worktree,
+                                         splitRatio: 0.3, expandedDirs: [],
+                                         showsHiddenFiles: false, subTabs: [], activeSubTabID: nil),
+            dataSource: mock)
+        await controller.refreshTree()
+
+        // Before expand: only the link row.
+        XCTAssertEqual(controller.visibleRows().count, 1)
+
+        await controller.toggleExpand("/root/dlink")
+        let ids = controller.visibleRows().map(\.id)
+        XCTAssertTrue(ids.contains("/root/dlink/inner.txt"),
+                      "symlink-dir should list its target's children when expanded")
+    }
+
     // Stage D rewires file loading to operate on the active sub-tab. The tests
     // below now go through `openInTree`, which seeds a preview sub-tab and then
     // dispatches to the same metadata/content loading code path the previous

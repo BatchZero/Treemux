@@ -101,6 +101,105 @@ final class SFTPServiceTests: XCTestCase {
         XCTAssertEqual(withoutSlash.first?.path, "/x/file")
     }
 
+    func testParseListingMarksSymlinkDirFromProbeSet() {
+        // GNU `ls -lA --time-style=+%s` layout: perms links owner group size epoch name
+        let output = """
+        total 8
+        lrwxrwxrwx 1 0 0 5 1700000000 dlink -> realdir
+        lrwxrwxrwx 1 0 0 5 1700000000 flink -> real.txt
+        """
+        let entries = SFTPService.parseListing(
+            output: output, parentPath: "/home/u",
+            symlinkDirPaths: ["/home/u/dlink"])
+        let byName = Dictionary(uniqueKeysWithValues: entries.map { ($0.name, $0) })
+        XCTAssertTrue(byName["dlink"]!.symlinkTargetIsDirectory)
+        XCTAssertFalse(byName["flink"]!.symlinkTargetIsDirectory)
+    }
+
+    func testParseSymlinkDirProbeAbsolute() {
+        let out = "/home/u/dlink\n/home/u/nested/dlink2\n"
+        let set = SFTPService.parseSymlinkDirProbe(out, parentPath: nil)
+        XCTAssertEqual(set, ["/home/u/dlink", "/home/u/nested/dlink2"])
+    }
+
+    func testParseSymlinkDirProbeRelativeToRoot() {
+        // Bulk form: `find .` emits ./-relative paths; resolve against root.
+        let out = "./dlink\n./nested/dlink2\n"
+        let set = SFTPService.parseSymlinkDirProbe(out, parentPath: "/home/u")
+        XCTAssertEqual(set, ["/home/u/dlink", "/home/u/nested/dlink2"])
+    }
+
+    // MARK: - exit-code preservation idiom (symlink-dir probe must never mask listing failure)
+
+    /// Regression for the Critical bug where appending the symlink-dir probe
+    /// with a bare `;` made the combined command's exit code reflect only the
+    /// probe, discarding a failed listing's nonzero status. The fix captures
+    /// the listing's exit code into `__tmx_rc` immediately, runs the probe
+    /// best-effort, then `exit $__tmx_rc`. This drives that exact idiom
+    /// through `/bin/sh -c` (no live SSH server needed) with a failing
+    /// listing stub (`false`) and asserts the overall exit is still nonzero.
+    func test_exitCodeIdiom_failingListing_stillYieldsNonzeroExit() async throws {
+        let command = "false; __tmx_rc=$?; echo \(SFTPService.symlinkProbeMarker); true; exit $__tmx_rc"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", command]
+
+        let result = try await withTimeout(seconds: 5) {
+            try await SFTPService.runProcessAndCaptureOutput(process)
+        }
+
+        XCTAssertNotEqual(result.exitCode, 0)
+    }
+
+    /// Same idiom, but with a succeeding listing stub (`true`) — the overall
+    /// exit must be 0 so a healthy listing is never spuriously rejected.
+    func test_exitCodeIdiom_succeedingListing_yieldsZeroExit() async throws {
+        let command = "true; __tmx_rc=$?; echo \(SFTPService.symlinkProbeMarker); true; exit $__tmx_rc"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", command]
+
+        let result = try await withTimeout(seconds: 5) {
+            try await SFTPService.runProcessAndCaptureOutput(process)
+        }
+
+        XCTAssertEqual(result.exitCode, 0)
+    }
+
+    /// Contrast case locking in the regression this fix closes: the OLD
+    /// `;`-without-capture form (`listing; probe`, no `__tmx_rc` capture) lets
+    /// a trailing successful probe (`true`) mask a failed listing (`false`),
+    /// yielding exit 0 even though the listing failed. This is exactly the
+    /// bug described in the Critical review finding — a permission-denied
+    /// `ls` masked by the probe's own success.
+    func test_exitCodeIdiom_oldUncapturedForm_masksFailingListing() async throws {
+        let command = "false; echo M; true"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", command]
+
+        let result = try await withTimeout(seconds: 5) {
+            try await SFTPService.runProcessAndCaptureOutput(process)
+        }
+
+        XCTAssertEqual(result.exitCode, 0, "documents the bug: old form masks a failing listing")
+    }
+
+    /// The tests above exercise the capture-and-exit idiom via hand-rolled
+    /// `false`/`true` stubs, never the actual string `bulkListCommand`
+    /// produces. Assert the real builder output carries the idiom too, so a
+    /// future edit that accidentally drops `__tmx_rc` (or reorders it around
+    /// the probe) is caught here rather than only in the stubbed tests above.
+    func testBulkListCommandPreservesListingExitCode() {
+        let cmd = SFTPService.bulkListCommand(maxDepth: 2)
+        // The listing's exit status must be captured BEFORE the probe and re-exited
+        // AFTER it, so the probe can never mask a listing/cd-root failure.
+        XCTAssertTrue(cmd.contains("__tmx_rc=$?"),
+                      "bulk command must capture the listing exit code before the probe")
+        XCTAssertTrue(cmd.hasSuffix("exit $__tmx_rc"),
+                      "bulk command must exit with the captured listing code")
+    }
+
     // MARK: - runProcessAndCaptureOutput: pipe drain regression
 
     /// Regression: opening a remote file ≥ ~16 KB used to hang forever because

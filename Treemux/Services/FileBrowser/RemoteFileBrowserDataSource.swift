@@ -40,7 +40,8 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
         case .symlink(let target): kind = .symlink(target: target)
         }
         return FileNode(id: entry.path, name: entry.name, path: entry.path,
-                        kind: kind, sizeBytes: entry.sizeBytes, modifiedAt: entry.modifiedAt)
+                        kind: kind, sizeBytes: entry.sizeBytes, modifiedAt: entry.modifiedAt,
+                        symlinkTargetIsDirectory: entry.symlinkTargetIsDirectory)
     }
 
     func listDirectory(_ path: String) async throws -> [FileNode] {
