@@ -519,9 +519,16 @@ actor SFTPService {
         let gnuCmd = "ls -lA --time-style=+%s -- \(escapedPath)"
         let bsdCmd = "ls -lAT -- \(escapedPath)"
         let listing = "( \(gnuCmd) 2>/dev/null || \(bsdCmd) )"
-        // cd into the dir so the probe's `find .` emits ./-relative names we can
-        // resolve against `path`. The listing itself still uses the absolute path.
-        let combined = "\(listing); cd \(escapedPath) && \(Self.symlinkDirProbeFragment(maxDepth: 1))"
+        // Capture the listing's exit code into `__tmx_rc` immediately, before the
+        // probe runs, then `exit $__tmx_rc` at the end so the overall exit code
+        // reflects ONLY the listing. The probe (including its `cd`) runs
+        // best-effort after that capture — a failed `cd` just yields an empty
+        // probe set (graceful), it can never mask a listing failure or discard a
+        // successful listing. cd into the dir so the probe's `find .` emits
+        // ./-relative names we can resolve against `path`. The listing itself
+        // still uses the absolute path.
+        let probe = Self.symlinkDirProbeFragment(maxDepth: 1)
+        let combined = "\(listing); __tmx_rc=$?; cd \(escapedPath) 2>/dev/null; \(probe); exit $__tmx_rc"
 
         let result = try await runSSH(target: target, command: combined, timeout: Self.listingCommandTimeout)
         guard result.exitCode == 0 else {
@@ -713,7 +720,15 @@ actor SFTPService {
         // `find` stop early via SIGPIPE, so the server doesn't keep walking the
         // tree after the cap is reached.
         let listing = "( \(gnu) 2>/dev/null || \(bsd) ) | head -n \(maxEntries)"
-        return "\(listing); \(symlinkDirProbeFragment(maxDepth: maxDepth))"
+        // Capture the listing's exit code before running the best-effort probe,
+        // then exit with the captured code — see the analogous comment in
+        // `listAllEntriesViaSSH`. `runCommand(_:in:)` prepends `cd <root> && `,
+        // so the full command is `cd root && LISTING; __tmx_rc=$?; PROBE; exit
+        // $__tmx_rc`; shell precedence makes `__tmx_rc` capture the exit of
+        // `(cd root && LISTING)`, so a failed `cd root` or a failed listing both
+        // yield a nonzero overall exit that `runCommand`'s guard correctly throws
+        // on, and the probe can never mask either failure.
+        return "\(listing); __tmx_rc=$?; \(symlinkDirProbeFragment(maxDepth: maxDepth)); exit $__tmx_rc"
     }
 
     /// Parses the recursive `ls -ld` output produced by `bulkListCommand`.

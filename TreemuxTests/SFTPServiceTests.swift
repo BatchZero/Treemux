@@ -129,6 +129,62 @@ final class SFTPServiceTests: XCTestCase {
         XCTAssertEqual(set, ["/home/u/dlink", "/home/u/nested/dlink2"])
     }
 
+    // MARK: - exit-code preservation idiom (symlink-dir probe must never mask listing failure)
+
+    /// Regression for the Critical bug where appending the symlink-dir probe
+    /// with a bare `;` made the combined command's exit code reflect only the
+    /// probe, discarding a failed listing's nonzero status. The fix captures
+    /// the listing's exit code into `__tmx_rc` immediately, runs the probe
+    /// best-effort, then `exit $__tmx_rc`. This drives that exact idiom
+    /// through `/bin/sh -c` (no live SSH server needed) with a failing
+    /// listing stub (`false`) and asserts the overall exit is still nonzero.
+    func test_exitCodeIdiom_failingListing_stillYieldsNonzeroExit() async throws {
+        let command = "false; __tmx_rc=$?; echo \(SFTPService.symlinkProbeMarker); true; exit $__tmx_rc"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", command]
+
+        let result = try await withTimeout(seconds: 5) {
+            try await SFTPService.runProcessAndCaptureOutput(process)
+        }
+
+        XCTAssertNotEqual(result.exitCode, 0)
+    }
+
+    /// Same idiom, but with a succeeding listing stub (`true`) — the overall
+    /// exit must be 0 so a healthy listing is never spuriously rejected.
+    func test_exitCodeIdiom_succeedingListing_yieldsZeroExit() async throws {
+        let command = "true; __tmx_rc=$?; echo \(SFTPService.symlinkProbeMarker); true; exit $__tmx_rc"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", command]
+
+        let result = try await withTimeout(seconds: 5) {
+            try await SFTPService.runProcessAndCaptureOutput(process)
+        }
+
+        XCTAssertEqual(result.exitCode, 0)
+    }
+
+    /// Contrast case locking in the regression this fix closes: the OLD
+    /// `;`-without-capture form (`listing; probe`, no `__tmx_rc` capture) lets
+    /// a trailing successful probe (`true`) mask a failed listing (`false`),
+    /// yielding exit 0 even though the listing failed. This is exactly the
+    /// bug described in the Critical review finding — a permission-denied
+    /// `ls` masked by the probe's own success.
+    func test_exitCodeIdiom_oldUncapturedForm_masksFailingListing() async throws {
+        let command = "false; echo M; true"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", command]
+
+        let result = try await withTimeout(seconds: 5) {
+            try await SFTPService.runProcessAndCaptureOutput(process)
+        }
+
+        XCTAssertEqual(result.exitCode, 0, "documents the bug: old form masks a failing listing")
+    }
+
     // MARK: - runProcessAndCaptureOutput: pipe drain regression
 
     /// Regression: opening a remote file ≥ ~16 KB used to hang forever because
