@@ -229,9 +229,9 @@ private struct FileTreeRow: View, Equatable {
             nodeBody(node)
         case .loadMore(let parentPath):
             LoadMoreRow(path: parentPath, depth: row.depth, controller: controller)
-        case .editor:
-            // TODO(Task 5): render the inline new-file/new-folder text field.
-            EmptyView()
+        case .editor(let parentPath, let intent):
+            NewEntryEditorRow(controller: controller, depth: row.depth,
+                              parentPath: parentPath, intent: intent)
         }
     }
 
@@ -365,5 +365,58 @@ private struct LoadMoreRow: View {
             .padding(.vertical, 2)
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Inline text field for creating a new file/folder under `parentPath`.
+/// Rendered in place of a `FileTreeRowModel.Kind.editor` row, aligned with
+/// sibling rows via the same depth-hairline / disclosure / git-dot gutters
+/// as `FileTreeRow.nodeBody`.
+private struct NewEntryEditorRow: View {
+    let controller: FileBrowserTabController
+    let depth: Int
+    let parentPath: String
+    let intent: NewEntryIntent
+    @Environment(ThemeManager.self) private var theme
+    @State private var name: String = ""
+    @FocusState private var focused: Bool
+
+    private var iconAsset: String { intent == .folder ? "folder" : "file-document-outline" }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                ForEach(0..<depth, id: \.self) { _ in
+                    Rectangle()
+                        .fill(theme.dividerColor)
+                        .frame(width: 1)
+                        .padding(.trailing, 13)
+                }
+                Spacer().frame(width: 12)                    // disclosure gutter
+                Color.clear.frame(width: 4, height: 4)       // git-dot gutter
+                Image(iconAsset)
+                    .resizable().renderingMode(.template).scaledToFit()
+                    .frame(width: 15, height: 15)
+                    .foregroundStyle(theme.textSecondary)
+                TextField(intent == .folder
+                          ? LocalizedStringKey("New Folder")
+                          : LocalizedStringKey("New File"), text: $name)
+                    .textFieldStyle(.plain)
+                    .font(DesignFonts.dataLayer(size: 13))
+                    .foregroundStyle(theme.textPrimary)
+                    .focused($focused)
+                    .onSubmit { Task { await controller.commitNewEntry(name: name) } }
+                    .onExitCommand { controller.cancelNewEntry() }   // Esc
+            }
+            .padding(.horizontal, 8)
+            if let err = controller.newEntryDraft?.errorMessage {
+                Text(err)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.orange)
+                    .padding(.leading, CGFloat(depth) * 14 + 40)
+            }
+        }
+        .padding(.vertical, 2)
+        .onAppear { focused = true }
     }
 }
