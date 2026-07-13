@@ -103,10 +103,17 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
     private static func makeNode(from url: URL) throws -> FileNode {
         let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey, .contentModificationDateKey])
         let kind: FileNode.Kind
+        var symlinkTargetIsDirectory = false
         if values.isSymbolicLink == true {
             // Resolve target lazily — readlink not exposed via URLResourceKey.
             let target = (try? FileManager.default.destinationOfSymbolicLink(atPath: url.path))
             kind = .symlink(target: target)
+            // Follow the link to classify the target. `isDirectory` on the resolved
+            // path follows symlinks; a broken link yields false (not expandable).
+            var isDir: ObjCBool = false
+            if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) {
+                symlinkTargetIsDirectory = isDir.boolValue
+            }
         } else if values.isDirectory == true {
             kind = .directory
         } else {
@@ -118,7 +125,8 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
             path: url.path,
             kind: kind,
             sizeBytes: values.fileSize.map(Int64.init),
-            modifiedAt: values.contentModificationDate
+            modifiedAt: values.contentModificationDate,
+            symlinkTargetIsDirectory: symlinkTargetIsDirectory
         )
     }
 
