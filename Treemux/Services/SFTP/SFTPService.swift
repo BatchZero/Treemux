@@ -280,7 +280,13 @@ actor SFTPService {
         async throws -> (childrenByPath: [String: [SFTPRichEntry]], truncated: Set<String>) {
         let output = try await runCommand(
             Self.bulkListCommand(maxDepth: maxDepth), in: root, timeout: Self.listingCommandTimeout)
-        var grouped = Self.parseRecursiveListing(output: output, root: root)
+        let sections = output.components(separatedBy: Self.symlinkProbeMarker)
+        let listingOut = sections.first ?? output
+        let probeOut = sections.count > 1 ? sections[1] : ""
+        // `runCommand(_:in:)` supplies the leading `cd <root>`, so the probe's
+        // `find .` names are ./-relative to `root`.
+        let symlinkDirs = Self.parseSymlinkDirProbe(probeOut, parentPath: root)
+        var grouped = Self.parseRecursiveListing(output: listingOut, root: root, symlinkDirPaths: symlinkDirs)
         var truncated: Set<String> = []
         for (dir, entries) in grouped where entries.count > entryCap {
             grouped[dir] = Array(entries.prefix(entryCap))
@@ -512,14 +518,54 @@ actor SFTPService {
         // Try GNU coreutils first (Linux). If that fails (likely macOS/BSD), retry with -T.
         let gnuCmd = "ls -lA --time-style=+%s -- \(escapedPath)"
         let bsdCmd = "ls -lAT -- \(escapedPath)"
-        let combined = "\(gnuCmd) 2>/dev/null || \(bsdCmd)"
+        let listing = "( \(gnuCmd) 2>/dev/null || \(bsdCmd) )"
+        // cd into the dir so the probe's `find .` emits ./-relative names we can
+        // resolve against `path`. The listing itself still uses the absolute path.
+        let combined = "\(listing); cd \(escapedPath) && \(Self.symlinkDirProbeFragment(maxDepth: 1))"
 
         let result = try await runSSH(target: target, command: combined, timeout: Self.listingCommandTimeout)
         guard result.exitCode == 0 else {
             throw SFTPServiceError.commandFailed("ls failed at \(path)")
         }
 
-        return Self.parseListing(output: result.output, parentPath: path)
+        let sections = result.output.components(separatedBy: Self.symlinkProbeMarker)
+        let listingOut = sections.first ?? result.output
+        let probeOut = sections.count > 1 ? sections[1] : ""
+        let symlinkDirs = Self.parseSymlinkDirProbe(probeOut, parentPath: path)
+        return Self.parseListing(output: listingOut, parentPath: path, symlinkDirPaths: symlinkDirs)
+    }
+
+    /// Marker separating the listing section from the symlink-dir probe section
+    /// in the combined command output. Chosen to never collide with a filename.
+    static let symlinkProbeMarker = "@@TMX_SYMDIRS@@"
+
+    /// Parses the probe section: one path per line, each a symlink whose target is
+    /// a directory. When `parentPath` is non-nil, entries are `./`-relative and are
+    /// resolved against it (bulk form); otherwise they are already absolute.
+    static func parseSymlinkDirProbe(_ output: String, parentPath: String?) -> Set<String> {
+        let base = parentPath.map { $0.hasSuffix("/") ? String($0.dropLast()) : $0 }
+        var set: Set<String> = []
+        for raw in output.components(separatedBy: "\n") {
+            var line = raw.trimmingCharacters(in: .whitespaces)
+            if line.isEmpty { continue }
+            if let base {
+                if line.hasPrefix("./") { line.removeFirst(2) }
+                if line.isEmpty { continue }
+                set.insert(base + "/" + line)
+            } else {
+                set.insert(line)
+            }
+        }
+        return set
+    }
+
+    /// Shell fragment that, after the main listing, emits the marker followed by
+    /// one line per symlink (to `maxDepth`) whose target is a directory. Portable:
+    /// `[ -d "$l/" ]` dereferences the link on both GNU and BSD userlands.
+    static func symlinkDirProbeFragment(maxDepth: Int) -> String {
+        "echo \(symlinkProbeMarker); "
+        + "find . -mindepth 1 -maxdepth \(maxDepth) -type l 2>/dev/null "
+        + "| while IFS= read -r l; do [ -d \"$l/\" ] && printf '%s\\n' \"$l\"; done"
     }
 
     /// Parse `ls -lA` style output. Auto-detects whether the timestamp is a single epoch field
@@ -666,7 +712,8 @@ actor SFTPService {
         // cap applies whichever branch runs. `head` closing the pipe also makes
         // `find` stop early via SIGPIPE, so the server doesn't keep walking the
         // tree after the cap is reached.
-        return "( \(gnu) 2>/dev/null || \(bsd) ) | head -n \(maxEntries)"
+        let listing = "( \(gnu) 2>/dev/null || \(bsd) ) | head -n \(maxEntries)"
+        return "\(listing); \(symlinkDirProbeFragment(maxDepth: maxDepth))"
     }
 
     /// Parses the recursive `ls -ld` output produced by `bulkListCommand`.

@@ -116,6 +116,19 @@ final class SFTPServiceTests: XCTestCase {
         XCTAssertFalse(byName["flink"]!.symlinkTargetIsDirectory)
     }
 
+    func testParseSymlinkDirProbeAbsolute() {
+        let out = "/home/u/dlink\n/home/u/nested/dlink2\n"
+        let set = SFTPService.parseSymlinkDirProbe(out, parentPath: nil)
+        XCTAssertEqual(set, ["/home/u/dlink", "/home/u/nested/dlink2"])
+    }
+
+    func testParseSymlinkDirProbeRelativeToRoot() {
+        // Bulk form: `find .` emits ./-relative paths; resolve against root.
+        let out = "./dlink\n./nested/dlink2\n"
+        let set = SFTPService.parseSymlinkDirProbe(out, parentPath: "/home/u")
+        XCTAssertEqual(set, ["/home/u/dlink", "/home/u/nested/dlink2"])
+    }
+
     // MARK: - runProcessAndCaptureOutput: pipe drain regression
 
     /// Regression: opening a remote file ≥ ~16 KB used to hang forever because
