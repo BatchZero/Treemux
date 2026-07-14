@@ -20,7 +20,7 @@ import CoreGraphics
 enum AdaptiveFontSizeCalculator {
     static let base: Int = 14
     static let referencePPI: CGFloat = 109
-    static let offsetRange: ClosedRange<Int> = -8 ... 12
+    static let offsetRange: ClosedRange<Int> = -8 ... 36
 
     /// Pure formula — used for tests and when PPI is already known.
     static func fontSize(forPPI ppi: CGFloat, offset: Int) -> Int {

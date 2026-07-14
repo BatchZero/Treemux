@@ -41,8 +41,8 @@ final class AdaptiveFontSizeCalculatorTests: XCTestCase {
 
     func testOffsetAbove_clampsToUpperBound() {
         let result = AdaptiveFontSizeCalculator.fontSize(forPPI: 109, offset: 99)
-        // (14 + 12) × 1 = 26
-        XCTAssertEqual(result, 26)
+        // (14 + 36) × 1 = 50
+        XCTAssertEqual(result, 50)
     }
 
     func testOffsetBelow_clampsToLowerBound() {
@@ -56,11 +56,24 @@ final class AdaptiveFontSizeCalculatorTests: XCTestCase {
     }
 
     func testClampOffset_above_returnsUpper() {
-        XCTAssertEqual(AdaptiveFontSizeCalculator.clampOffset(100), 12)
+        XCTAssertEqual(AdaptiveFontSizeCalculator.clampOffset(100), 36)
     }
 
     func testClampOffset_below_returnsLower() {
         XCTAssertEqual(AdaptiveFontSizeCalculator.clampOffset(-100), -8)
+    }
+
+    func testClampOffset_atUpperBound_returnsUpper() {
+        XCTAssertEqual(AdaptiveFontSizeCalculator.clampOffset(36), 36)
+    }
+
+    func testClampOffset_justAboveUpperBound_returnsUpper() {
+        XCTAssertEqual(AdaptiveFontSizeCalculator.clampOffset(37), 36)
+    }
+
+    func testUpperBoundOffset_producesLargerPointSize() {
+        // (14 + 36) × 109 / 109 = 50, below the 72pt ceiling
+        XCTAssertEqual(AdaptiveFontSizeCalculator.fontSize(forPPI: 109, offset: 36), 50)
     }
 
     // MARK: - Final clamp [6, 72]
@@ -87,8 +100,8 @@ final class AdaptiveFontSizeCalculatorTests: XCTestCase {
         XCTAssertEqual(AdaptiveFontSizeCalculator.referencePPI, 109)
     }
 
-    func testOffsetRange_isMinus8To12() {
-        XCTAssertEqual(AdaptiveFontSizeCalculator.offsetRange, -8 ... 12)
+    func testOffsetRange_isMinus8To36() {
+        XCTAssertEqual(AdaptiveFontSizeCalculator.offsetRange, -8 ... 36)
     }
 
     // MARK: - NSScreen helpers (nil paths)

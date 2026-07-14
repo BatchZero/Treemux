@@ -104,7 +104,7 @@ struct AppSettings: Codable, Equatable {
 struct TerminalSettings: Equatable {
     var defaultShell: String
     /// User-facing terminal font offset. Always within
-    /// `AdaptiveFontSizeCalculator.offsetRange` (-8 ... +12); enforced on
+    /// `AdaptiveFontSizeCalculator.offsetRange` (-8 ... +36); enforced on
     /// construction and on every Codable decode.
     var fontSizeOffset: Int
     var cursorStyle: String
