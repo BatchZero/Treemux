@@ -217,4 +217,35 @@ final class LocalFileBrowserDataSourceTests: XCTestCase {
             // expected
         }
     }
+
+    // MARK: - searchNames
+
+    func testSearchNamesFindsNestedMatches() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let sub = root.appendingPathComponent("sub")
+        try fm.createDirectory(at: sub, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        try Data("x".utf8).write(to: root.appendingPathComponent("alpha.txt"))
+        try Data("x".utf8).write(to: sub.appendingPathComponent("alphabet.md"))
+        try Data("x".utf8).write(to: sub.appendingPathComponent("other.txt"))
+
+        let source = LocalFileBrowserDataSource()
+        let results = try await source.searchNames(root: root.path, query: "ALPHA", maxResults: 100)
+        let names = Set(results.map(\.name))
+        XCTAssertTrue(names.contains("alpha.txt"))
+        XCTAssertTrue(names.contains("alphabet.md"))
+        XCTAssertFalse(names.contains("other.txt"))
+    }
+
+    func testSearchNamesHonorsMaxResults() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        for i in 0..<10 { try Data("x".utf8).write(to: root.appendingPathComponent("match\(i).txt")) }
+        let source = LocalFileBrowserDataSource()
+        let results = try await source.searchNames(root: root.path, query: "match", maxResults: 3)
+        XCTAssertEqual(results.count, 3)
+    }
 }

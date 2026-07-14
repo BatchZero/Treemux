@@ -100,6 +100,29 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
         URL(fileURLWithPath: path)
     }
 
+    func searchNames(root: String, query: String, maxResults: Int) async throws -> [FileNode] {
+        try await runOnQueue {
+            let fm = FileManager.default
+            let rootURL = URL(fileURLWithPath: root)
+            guard let enumerator = fm.enumerator(
+                at: rootURL,
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: []) else { return [] }
+
+            var results: [FileNode] = []
+            for case let url as URL in enumerator {
+                let name = url.lastPathComponent
+                guard name.range(of: query, options: [.caseInsensitive]) != nil else { continue }
+                let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+                results.append(FileNode(
+                    id: url.path, name: name, path: url.path,
+                    kind: isDir ? .directory : .file, sizeBytes: nil, modifiedAt: nil))
+                if results.count >= maxResults { break }
+            }
+            return results
+        }
+    }
+
     // MARK: - helpers
 
     /// Builds `FileNode`s from raw directory entries, skipping any entry whose

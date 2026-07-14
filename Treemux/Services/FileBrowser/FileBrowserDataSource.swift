@@ -70,6 +70,11 @@ protocol FileBrowserDataSource: AnyObject {
     /// Creates a new empty file at `path`. Throws if the path already exists or
     /// the source is read-only.
     func createFile(_ path: String) async throws
+
+    /// Recursively searches names under `root`, returning up to `maxResults`
+    /// nodes whose name contains `query` (case-insensitive). Bounded — remote
+    /// uses a single server-side `find`; local walks the FS off-thread.
+    func searchNames(root: String, query: String, maxResults: Int) async throws -> [FileNode]
 }
 
 extension FileBrowserDataSource {
@@ -84,5 +89,8 @@ extension FileBrowserDataSource {
     }
     func createFile(_ path: String) async throws {
         throw FileBrowserError.notWritable(path)
+    }
+    func searchNames(root: String, query: String, maxResults: Int) async throws -> [FileNode] {
+        []
     }
 }
