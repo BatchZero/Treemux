@@ -65,6 +65,7 @@
 		3C1BD4702DECC75E0A4ABD1A /* WorkspaceSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8354D57B9898A0C0ADBD959 /* WorkspaceSidebarView.swift */; };
 		3C1F3562DE4FA89E8C580B30 /* TreemuxGhosttyBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16FE9D700089232316516F73 /* TreemuxGhosttyBootstrap.swift */; };
 		3CE12C1E3DF620B8D18564C0 /* DirectoryTreeFetch.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0AB6110DCDDCCD5520353E0 /* DirectoryTreeFetch.swift */; };
+		3F188D8B2B3A27256F1E5141 /* ScrollWheelHorizontalRedirect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 938EF990581C5D5F78F501BA /* ScrollWheelHorizontalRedirect.swift */; };
 		423A99DD3918742FC88745B3 /* TreemuxGhosttyResourcePaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01B85899C7236D215CECDD /* TreemuxGhosttyResourcePaths.swift */; };
 		430EEC769877E62F8575D557 /* TabGrouping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C1C770D0164AFC6938989F /* TabGrouping.swift */; };
 		439B7154F34CC1DC69D74A6E /* TreemuxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE43F77B5BDC0AB70604EC9B /* TreemuxApp.swift */; };
@@ -370,6 +371,7 @@
 		927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitRepositoryService.swift; sourceTree = "<group>"; };
 		92B0D1DFEE9B34109844D751 /* TreemuxGhosttyLogFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyLogFilter.swift; sourceTree = "<group>"; };
 		92B183417582C15AE89A8698 /* SidebarIconCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIconCatalog.swift; sourceTree = "<group>"; };
+		938EF990581C5D5F78F501BA /* ScrollWheelHorizontalRedirect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollWheelHorizontalRedirect.swift; sourceTree = "<group>"; };
 		952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellCommandRunner.swift; sourceTree = "<group>"; };
 		952DFCA114D8DE9B65E79BCC /* ThemeLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeLoaderTests.swift; sourceTree = "<group>"; };
 		9D8662706F495A0DA4CCB1F0 /* WindowContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowContext.swift; sourceTree = "<group>"; };
@@ -618,6 +620,7 @@
 				076410C949B44BB7C357EBF0 /* ButtonStyles.swift */,
 				2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */,
 				860BE08474960AA84EB76155 /* Hairline.swift */,
+				938EF990581C5D5F78F501BA /* ScrollWheelHorizontalRedirect.swift */,
 				36FB4E7DCC3318B7E1832016 /* TabAccentIndicator.swift */,
 				5C2110A46976203DDBF9D707 /* TerminalHostView.swift */,
 			);
@@ -1136,6 +1139,7 @@
 				13B9B8CC2251E6814CA4897F /* SSHRawConfigSheet.swift in Sources */,
 				4DE2CEAEC3114FC1C79E784C /* SSHServerEditSheet.swift in Sources */,
 				E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */,
+				3F188D8B2B3A27256F1E5141 /* ScrollWheelHorizontalRedirect.swift in Sources */,
 				4F93E2B9A2A6EC003FCAB4BE /* SessionBackend.swift in Sources */,
 				A7746DB757BF4458229659E0 /* SessionBackendLaunch.swift in Sources */,
 				11799B542DF852B119E2960A /* SettingsSheet.swift in Sources */,
