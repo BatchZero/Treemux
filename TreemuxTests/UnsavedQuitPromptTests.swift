@@ -41,6 +41,15 @@ final class UnsavedQuitPromptTests: XCTestCase {
         XCTAssertEqual(plan?.overflowCount, 0)
     }
 
+    func testSameBasenameDifferentDirs_notDeduped() {
+        // Dedup is by full path, so two different files that happen to share a
+        // basename are both counted and listed.
+        let plan = UnsavedQuitPrompt.plan(paths: ["/a/x.txt", "/b/x.txt"])
+        XCTAssertEqual(plan?.uniqueCount, 2)
+        XCTAssertEqual(plan?.listedNames, ["x.txt", "x.txt"])
+        XCTAssertEqual(plan?.overflowCount, 0)
+    }
+
     func testBuild_nonNilForNonEmpty() {
         // Locale-independent structural checks: message + informative present,
         // informative contains the filename and the discard hint.
