@@ -100,6 +100,7 @@
 		61FA29FB5FBEF18055F8163D /* LocalGitDiffService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07F078C6D132852EC60F4A72 /* LocalGitDiffService.swift */; };
 		62CE7BFD0AC7D9E62938EA75 /* HookDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE947981856776881A910EE /* HookDiff.swift */; };
 		634F5C15FC031D133DEA6DC1 /* PathFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10AD81F3E792C490B4656A1 /* PathFormatting.swift */; };
+		638DE0BC2F93842260315157 /* UnsavedQuitPromptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D682EBB93E7D2F92B1E70FE4 /* UnsavedQuitPromptTests.swift */; };
 		6633C6D74ADB9DFDA3DA98B6 /* SFTPDirectoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ABC31C96A9F51C865E1FCD /* SFTPDirectoryEntry.swift */; };
 		6A5F5F8B6080A06391EC7D99 /* CodeHighlightThemeThemingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2CE396B207DE6754165C047 /* CodeHighlightThemeThemingTests.swift */; };
 		6AC7580CF74D588D2D19BF03 /* TreemuxGhosttyLogFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92B0D1DFEE9B34109844D751 /* TreemuxGhosttyLogFilter.swift */; };
@@ -211,6 +212,7 @@
 		DCA2B428177A4F1160393A30 /* ThemeLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF7573B19B3EC961B740564F /* ThemeLoader.swift */; };
 		DDB379227505CCDD96BB62C1 /* TreemuxKeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7DBEF3A8FDA651804A6D8A /* TreemuxKeyboardShortcuts.swift */; };
 		DDDEF7B960C5F076099D8E86 /* WorkspaceStoreBuiltInTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2036C4C917DE175BEEF342C /* WorkspaceStoreBuiltInTests.swift */; };
+		DE6EAB7D7462C0840364D1F2 /* UnsavedQuitPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83FB54806051215EA124EE47 /* UnsavedQuitPrompt.swift */; };
 		E1DE0D95217E95CD1EB1A02D /* FileIconCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B7D707F4CF11D6790D042C0 /* FileIconCatalog.swift */; };
 		E2C72C794E93E57094D67663 /* TabAccentIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36FB4E7DCC3318B7E1832016 /* TabAccentIndicator.swift */; };
 		E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8629D2D5813F897F85840289 /* SSHTarget.swift */; };
@@ -357,6 +359,7 @@
 		7D950147EB64BF9DEB3D44E5 /* BFSTreeListerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BFSTreeListerTests.swift; sourceTree = "<group>"; };
 		7EB6F148CE5B8B354C31106E /* SFTPRecursiveListingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPRecursiveListingTests.swift; sourceTree = "<group>"; };
 		827594A3628098FC39EC59E0 /* SFTPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFTPService.swift; sourceTree = "<group>"; };
+		83FB54806051215EA124EE47 /* UnsavedQuitPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnsavedQuitPrompt.swift; sourceTree = "<group>"; };
 		84FF18E9726EDA37A4D07CB5 /* SSHConfigParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigParser.swift; sourceTree = "<group>"; };
 		858D7419778730455F284070 /* FileTreeSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreeSearch.swift; sourceTree = "<group>"; };
 		85E586BC73709B3E51989859 /* GitDiffServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitDiffServiceTests.swift; sourceTree = "<group>"; };
@@ -430,6 +433,7 @@
 		D378CA5DC5BE2FED3CF23D41 /* ObservableBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservableBridgeTests.swift; sourceTree = "<group>"; };
 		D3C9EABA8F49976F4327BA6D /* FileBrowserTabStateCodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTabStateCodingTests.swift; sourceTree = "<group>"; };
 		D5FB45C7299B44CB5A534F28 /* WorkspaceOutlineSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceOutlineSidebar.swift; sourceTree = "<group>"; };
+		D682EBB93E7D2F92B1E70FE4 /* UnsavedQuitPromptTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnsavedQuitPromptTests.swift; sourceTree = "<group>"; };
 		D7210E86710CF2B3C7EA0022 /* FileNodeSymlinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileNodeSymlinkTests.swift; sourceTree = "<group>"; };
 		D8EB47950FCB5E9637572424 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		DC45A45117E3662286FF3B32 /* FileBrowserTabControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserTabControllerTests.swift; sourceTree = "<group>"; };
@@ -578,6 +582,7 @@
 				6F5D08DEA1593F9CF50CA11C /* TreemuxTabLayoutTests.swift */,
 				3477DE6F674F94B9457073F4 /* TreemuxTests.swift */,
 				F0ED89DE63336C3B913F0C77 /* TreeSitterCodeHighlighterTests.swift */,
+				D682EBB93E7D2F92B1E70FE4 /* UnsavedQuitPromptTests.swift */,
 				0D66279CB21EA721C605457C /* WordIndexSnapshotStoreTests.swift */,
 				146197866DA01552D3FD974E /* WorkspaceModelsTests.swift */,
 				39ADDF2DEBC6DA37E13F759D /* WorkspaceModelTabKindTests.swift */,
@@ -785,6 +790,7 @@
 				1D785A9B26AEA5938D1D1759 /* Theme.swift */,
 				BF7573B19B3EC961B740564F /* ThemeLoader.swift */,
 				1B7DBEF3A8FDA651804A6D8A /* TreemuxKeyboardShortcuts.swift */,
+				83FB54806051215EA124EE47 /* UnsavedQuitPrompt.swift */,
 				BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */,
 				D2054644AE5A8CE04F07FCF2 /* WorkspaceTabKind.swift */,
 			);
@@ -1184,6 +1190,7 @@
 				9DB5A3B694A7A2D4D0248724 /* TreemuxGhosttyRuntime.swift in Sources */,
 				527270F31405E3CCEFE8CF79 /* TreemuxGhosttyShellIntegration.swift in Sources */,
 				DDB379227505CCDD96BB62C1 /* TreemuxKeyboardShortcuts.swift in Sources */,
+				DE6EAB7D7462C0840364D1F2 /* UnsavedQuitPrompt.swift in Sources */,
 				04885DA006A7F9D402450132 /* WindowContext.swift in Sources */,
 				8A424C110ED8A1A00452E2E0 /* WordIndexSnapshotStore.swift in Sources */,
 				320E9CBA68B37DFD4F22711A /* WorkspaceDetailView.swift in Sources */,
@@ -1274,6 +1281,7 @@
 				D19A23C46D175B48CE53A9E4 /* TreeSitterCodeHighlighterTests.swift in Sources */,
 				FAF95D064B6284F2E37B0FB9 /* TreemuxTabLayoutTests.swift in Sources */,
 				CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */,
+				638DE0BC2F93842260315157 /* UnsavedQuitPromptTests.swift in Sources */,
 				D28A8434A7ED5469EA3D2E14 /* WordIndexSnapshotStoreTests.swift in Sources */,
 				A04CA84B2C50B4E52EC8B119 /* WorkspaceModelTabKindTests.swift in Sources */,
 				8F9B78336B7C0422AD8E4D0B /* WorkspaceModelsTests.swift in Sources */,
