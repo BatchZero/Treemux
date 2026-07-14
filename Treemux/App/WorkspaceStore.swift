@@ -24,6 +24,13 @@ final class WorkspaceStore {
     /// `workspaceIcon`, `isArchived`, `kind`) on a path that bypasses
     /// `saveWorkspaceState()`, or the caches will silently go stale.
     var workspaces: [WorkspaceModel] = []
+
+    /// Paths of all file sub-tabs with unsaved edits across every workspace.
+    /// Used by the quit guard to decide whether to warn before terminating.
+    var unsavedFilePaths: [String] {
+        workspaces.flatMap { $0.unsavedFilePaths }
+    }
+
     var selectedWorkspaceID: UUID? {
         didSet { handleWorktreeSelectionIfNeeded() }
     }

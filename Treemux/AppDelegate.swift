@@ -33,6 +33,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         treemuxApp?.shutdown()
     }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let store,
+              let prompt = UnsavedQuitPrompt.build(paths: store.unsavedFilePaths) else {
+            return .terminateNow
+        }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = prompt.message
+        alert.informativeText = prompt.informative
+        let quit = alert.addButton(withTitle: String(localized: "Quit Anyway"))
+        quit.hasDestructiveAction = true
+        let cancel = alert.addButton(withTitle: String(localized: "Cancel"))
+        cancel.keyEquivalent = "\r" // Return = Cancel, prevents accidental quit
+        return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
     }

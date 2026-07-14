@@ -470,6 +470,14 @@ final class WorkspaceModel: Identifiable {
         return ctrl
     }
 
+    /// Paths of all file sub-tabs, across this workspace's instantiated
+    /// file-browser controllers, that currently have unsaved text edits.
+    var unsavedFilePaths: [String] {
+        fileBrowserControllers.values
+            .flatMap { $0.values }
+            .flatMap { $0.dirtySubTabs.map(\.path) }
+    }
+
     private func makeDataSource() -> any FileBrowserDataSource {
         if let target = sshTarget {
             return RemoteFileBrowserDataSource(sshTarget: target, service: ensureSharedSFTPService())

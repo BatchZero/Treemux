@@ -2530,6 +2530,56 @@
           }
         }
       }
+    },
+    "1 file has unsaved changes.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有 1 个文件未保存更改。"
+          }
+        }
+      }
+    },
+    "%d files have unsaved changes.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有 %d 个文件未保存更改。"
+          }
+        }
+      }
+    },
+    "…and %d more.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "…以及另外 %d 个。"
+          }
+        }
+      }
+    },
+    "Quitting now will discard these changes.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "现在退出将丢弃这些更改。"
+          }
+        }
+      }
+    },
+    "Quit Anyway": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仍然退出"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
