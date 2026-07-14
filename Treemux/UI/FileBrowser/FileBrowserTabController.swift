@@ -106,6 +106,11 @@ final class FileBrowserTabController {
             searchError = nil
             searchTask?.cancel()
             searchTask = nil
+            // A cancelled task's own cleanup (`if !Task.isCancelled { isSearching = false }`
+            // in performRecursiveSearch) never runs once cancelled, so this is the only
+            // place left to clear the flag — otherwise editing the query mid-search
+            // leaves `isSearching` stuck `true` forever.
+            isSearching = false
             visibleRowsCache = nil
         }
     }
@@ -582,7 +587,12 @@ final class FileBrowserTabController {
 
         // Mode 3: flat recursive results.
         if showingRecursiveResults {
-            for node in searchResults {
+            // Filter at emit time (mirrors modes 1/2, which read from the already
+            // hidden-filtered rootChildren/childrenByPath) so hidden entries like
+            // `.git/config` don't leak into results when "Show Hidden Files" is off.
+            // searchResults itself stays raw so a live showsHiddenFiles toggle just
+            // re-filters here instead of needing a re-search.
+            for node in filtered(searchResults) {
                 rows.append(FileTreeRowModel(
                     id: "result:" + node.path,
                     kind: .node(node),
@@ -706,6 +716,10 @@ final class FileBrowserTabController {
             current += "/" + component
             if !expandedDirs.contains(current) {
                 await toggleExpand(current)
+                // If a level failed to expand (data-source error), stop walking —
+                // otherwise this keeps calling toggleExpand on never-expanded dirs
+                // and repeatedly overwrites loadError. Mirrors beginNewEntry's guard.
+                guard expandedDirs.contains(current) else { return }
             }
         }
     }
