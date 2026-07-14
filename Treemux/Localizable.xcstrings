@@ -21,6 +21,16 @@
         }
       }
     },
+    "%lld matches": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个匹配"
+          }
+        }
+      }
+    },
     "(file does not exist)": {
       "localizations": {
         "zh-Hans": {
@@ -1181,6 +1191,16 @@
         }
       }
     },
+    "No matches": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无匹配"
+          }
+        }
+      }
+    },
     "No matching commands": {
       "localizations": {
         "zh-Hans": {
@@ -1457,6 +1477,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "请按快捷键…"
+          }
+        }
+      }
+    },
+    "Press ⏎ to search all files": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按 ⏎ 搜索全部文件"
+          }
+        }
+      }
+    },
+    "Press ⏎ to search the server": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按 ⏎ 在服务器上搜索"
           }
         }
       }
@@ -1811,6 +1851,16 @@
         }
       }
     },
+    "Search": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索"
+          }
+        }
+      }
+    },
     "Search and run commands.": {
       "localizations": {
         "zh-Hans": {
@@ -1827,6 +1877,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "搜索命令…"
+          }
+        }
+      }
+    },
+    "Searching…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索中…"
           }
         }
       }
