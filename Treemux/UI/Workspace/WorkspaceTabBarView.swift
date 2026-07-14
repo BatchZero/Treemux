@@ -13,10 +13,29 @@ struct WorkspaceTabBarView: View {
     @State private var renameText: String = ""
     @State private var hoveredTabID: UUID?
     @State private var draggedTabID: UUID?
+    @State private var viewportWidth: CGFloat = 0
+    @State private var chromeWidth: CGFloat = 0
+    @State private var contentWidth: CGFloat = 0
+    @State private var scrollPosition = ScrollPosition()
+    @State private var liveScrollX: CGFloat = 0
 
     private var groups: (files: [WorkspaceTabStateRecord], shell: [WorkspaceTabStateRecord]) {
         TabGrouping.partition(workspace.tabs) { $0.kind }
     }
+
+    private var tabCount: Int { groups.files.count + groups.shell.count }
+
+    private var uniformTabWidth: CGFloat {
+        TabBarLayout.uniformWidth(
+            viewport: viewportWidth,
+            tabCount: tabCount,
+            reservedChrome: chromeWidth + Spacing.xs * 2,
+            minWidth: TabBarLayout.minTabWidth,
+            maxWidth: TabBarLayout.maxTabWidth
+        )
+    }
+
+    private var maxScrollX: CGFloat { max(0, contentWidth - viewportWidth) }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -24,6 +43,7 @@ struct WorkspaceTabBarView: View {
                 HStack(spacing: 1) {
                     if !groups.files.isEmpty {
                         TabGroupEyebrow(title: "Files", color: theme.accentColor)
+                            .background(chromeWidthReporter)
                         ForEach(groups.files) { tab in tabView(tab) }
                     }
                     if !groups.files.isEmpty && !groups.shell.isEmpty {
@@ -31,14 +51,41 @@ struct WorkspaceTabBarView: View {
                             .fill(theme.dividerColor)
                             .frame(width: 1, height: 18)
                             .padding(.horizontal, Spacing.xxs)
+                            .background(chromeWidthReporter)
                     }
                     if !groups.shell.isEmpty {
                         TabGroupEyebrow(title: "Shell", color: theme.accentColor)
+                            .background(chromeWidthReporter)
                         ForEach(groups.shell) { tab in tabView(tab) }
                     }
                 }
                 .padding(.horizontal, Spacing.xs)
+                .background(
+                    GeometryReader { g in
+                        Color.clear.preference(key: TabBarContentWidthKey.self, value: g.size.width)
+                    }
+                )
             }
+            .scrollPosition($scrollPosition)
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.x } action: { _, x in
+                liveScrollX = x
+            }
+            .background(
+                GeometryReader { g in
+                    Color.clear.preference(key: TabBarViewportWidthKey.self, value: g.size.width)
+                }
+            )
+            .onPreferenceChange(TabBarViewportWidthKey.self) { viewportWidth = $0 }
+            .onPreferenceChange(TabBarContentWidthKey.self) { contentWidth = $0 }
+            .onPreferenceChange(TabBarChromeWidthKey.self) { chromeWidth = $0 }
+            .overlay(
+                ScrollWheelHorizontalRedirect { deltaY in
+                    // Wheel down scrolls toward the trailing edge. Sign/step
+                    // calibrated during GUI smoke; flip the sign if inverted.
+                    let target = min(max(liveScrollX - deltaY * 3, 0), maxScrollX)
+                    scrollPosition.scrollTo(x: target)
+                }
+            )
 
             // New tab button
             Button {
@@ -63,6 +110,13 @@ struct WorkspaceTabBarView: View {
         }
     }
 
+    // Reports a chrome element's width into TabBarChromeWidthKey (summed).
+    private var chromeWidthReporter: some View {
+        GeometryReader { g in
+            Color.clear.preference(key: TabBarChromeWidthKey.self, value: g.size.width)
+        }
+    }
+
     @ViewBuilder
     private func tabView(_ tab: WorkspaceTabStateRecord) -> some View {
         if renamingTabID == tab.id {
@@ -76,7 +130,7 @@ struct WorkspaceTabBarView: View {
                     renamingTabID = nil
                 }
             )
-            .frame(width: TreemuxTabSizing.width(for: renameText.isEmpty ? "Tab name" : renameText, paneCount: paneCount(for: tab)))
+            .frame(width: uniformTabWidth)
         } else {
             TabButton(
                 tab: tab,
@@ -90,7 +144,8 @@ struct WorkspaceTabBarView: View {
                 onRename: {
                     renameText = tab.title
                     renamingTabID = tab.id
-                }
+                },
+                width: uniformTabWidth
             )
             .onHover { isHovered in
                 hoveredTabID = isHovered ? tab.id : nil
@@ -135,6 +190,7 @@ private struct TabButton: View {
     let onSelect: () -> Void
     let onClose: () -> Void
     let onRename: () -> Void
+    let width: CGFloat
 
     var body: some View {
         Button(action: onSelect) {
@@ -195,7 +251,7 @@ private struct TabButton: View {
             .tabAccentIndicator(theme.accentColor, active: isSelected)
         }
         .buttonStyle(.plain)
-        .frame(width: TreemuxTabSizing.width(for: tab.title, paneCount: paneCount, hasDot: dotKind != nil))
+        .frame(width: width)
         .contextMenu {
             Button("Rename…") { onRename() }
             Divider()
@@ -256,28 +312,6 @@ private struct TabRenameField: View {
             .onSubmit { onCommit() }
             .onExitCommand { onCancel() }
             .onAppear { isFocused = true }
-    }
-}
-
-// MARK: - Tab Sizing
-
-enum TreemuxTabSizing {
-    // Always measure with .semibold so tab width stays stable regardless of
-    // selection state (unselected tabs use .medium, which is slightly narrower).
-    private static let titleFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
-    private static let countFont = NSFont.monospacedSystemFont(ofSize: 9, weight: .medium)
-
-    static func width(for title: String, paneCount: Int, hasDot: Bool = false) -> CGFloat {
-        let titleWidth = ceil((title as NSString).size(withAttributes: [.font: titleFont]).width)
-        // 12 leading + icon ~14 + 4 HStack spacing + 16 close button + 12 trailing
-        var totalWidth = titleWidth + 60
-        if paneCount > 1 {
-            let countText = "\(paneCount)"
-            let countWidth = ceil((countText as NSString).size(withAttributes: [.font: countFont]).width)
-            totalWidth += countWidth + 12
-        }
-        if hasDot { totalWidth += 10 }
-        return min(max(totalWidth, 100), 260)
     }
 }
 
