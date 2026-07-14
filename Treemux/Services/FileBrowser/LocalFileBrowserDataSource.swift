@@ -100,6 +100,12 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
         URL(fileURLWithPath: path)
     }
 
+    // Mirrors the remote search depth bound (`searchMaxDepth = 12`) so a
+    // no-match query over a large/deep tree (e.g. node_modules, .build)
+    // cannot walk the entire hierarchy before returning — that would stall
+    // other file operations queued behind this on the shared serial queue.
+    private static let searchMaxDepth = 12
+
     func searchNames(root: String, query: String, maxResults: Int) async throws -> [FileNode] {
         try await runOnQueue {
             let fm = FileManager.default
@@ -111,6 +117,12 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
 
             var results: [FileNode] = []
             for case let url as URL in enumerator {
+                // `level` is 1 for direct children of rootURL. Once we're at
+                // or beyond the depth bound, stop descending further (but
+                // still consider the current entry itself for a match).
+                if enumerator.level >= Self.searchMaxDepth {
+                    enumerator.skipDescendants()
+                }
                 let name = url.lastPathComponent
                 guard name.range(of: query, options: [.caseInsensitive]) != nil else { continue }
                 let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false

@@ -248,4 +248,41 @@ final class LocalFileBrowserDataSourceTests: XCTestCase {
         let results = try await source.searchNames(root: root.path, query: "match", maxResults: 3)
         XCTAssertEqual(results.count, 3)
     }
+
+    // Core of the depth-bound fix: a no-match (or few-match) query over a
+    // very deep tree must not walk past the bound (12, mirroring the remote
+    // search's searchMaxDepth), or it stalls the shared serial queue.
+    func testSearchNamesRespectsDepthBound() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+
+        // Build a chain of 14 nested directories: d1/d2/.../d14. This is
+        // deeper than the 12-level bound, so the walk must not descend into
+        // d13/d14.
+        var current = root
+        var dirs: [URL] = []
+        for i in 1...14 {
+            current = current.appendingPathComponent("d\(i)")
+            dirs.append(current)
+        }
+        try fm.createDirectory(at: dirs.last!, withIntermediateDirectories: true)
+
+        // Shallow match: inside d5 (enumerator level 6), well within the bound.
+        let shallowFile = dirs[4].appendingPathComponent("findme_shallow.md")
+        try Data("x".utf8).write(to: shallowFile)
+
+        // Deep match: inside d13 (enumerator level 14). d12 sits at the
+        // bound (level 12), so its descendants — d13 onward — are pruned
+        // and this file must never be visited.
+        let deepFile = dirs[12].appendingPathComponent("findme_deep.md")
+        try Data("x".utf8).write(to: deepFile)
+
+        let source = LocalFileBrowserDataSource()
+        let results = try await source.searchNames(root: root.path, query: "findme", maxResults: 100)
+        let names = Set(results.map(\.name))
+        XCTAssertTrue(names.contains("findme_shallow.md"))
+        XCTAssertFalse(names.contains("findme_deep.md"))
+    }
 }
