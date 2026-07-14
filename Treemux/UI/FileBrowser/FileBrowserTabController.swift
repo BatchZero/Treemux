@@ -85,6 +85,8 @@ final class FileBrowserTabController {
     static let quickLookOnlyThreshold: Int64 = 100 * 1024 * 1024 // 100 MB
     static let treeFetchDepth: Int = 2
     static let treeEntryCap: Int = 500
+    static let searchMaxResults = 500
+    static let searchMaxDepth = 12
 
     let dataSource: any FileBrowserDataSource
     let gitDiffService: GitDiffService?
@@ -93,6 +95,30 @@ final class FileBrowserTabController {
     private(set) var truncatedDirs: Set<String> = [] {
         didSet { visibleRowsCache = nil }
     }
+
+    /// Live search field text. Typing filters the loaded tree; changing it
+    /// cancels any in-flight recursive search and returns to live-filter mode.
+    var searchQuery: String = "" {
+        didSet {
+            guard searchQuery != oldValue else { return }
+            showingRecursiveResults = false
+            searchResults = []
+            searchError = nil
+            searchTask?.cancel()
+            searchTask = nil
+            visibleRowsCache = nil
+        }
+    }
+    private(set) var isSearching = false { didSet { visibleRowsCache = nil } }
+    private(set) var showingRecursiveResults = false { didSet { visibleRowsCache = nil } }
+    private(set) var searchResults: [FileNode] = [] { didSet { visibleRowsCache = nil } }
+    private(set) var searchError: String?
+    @ObservationIgnored private var searchTask: Task<Void, Never>?
+
+    /// True when this tab browses a remote host (system-SSH or Citadel). Drives
+    /// the local-vs-remote escalation-hint copy. `rootKind` (.project/.worktree)
+    /// is orthogonal — both are local — so it MUST NOT be used for this.
+    var isRemote: Bool { dataSource is RemoteFileBrowserDataSource }
 
     /// Inline "new folder / new file" editor state. Non-nil while the user is
     /// typing a name. Drives an `.editor` row in `visibleRows()`.
@@ -544,11 +570,56 @@ final class FileBrowserTabController {
         _ = subTabs
         _ = showsHiddenFiles
         _ = newEntryDraft
+        _ = searchQuery
+        _ = showingRecursiveResults
+        _ = searchResults
         if let cached = visibleRowsCache { return cached }
         #if DEBUG
         visibleRowsComputeCount += 1
         #endif
         var rows: [FileTreeRowModel] = []
+        let trimmedQuery = searchQuery.trimmingCharacters(in: .whitespaces)
+
+        // Mode 3: flat recursive results.
+        if showingRecursiveResults {
+            for node in searchResults {
+                rows.append(FileTreeRowModel(
+                    id: "result:" + node.path,
+                    kind: .node(node),
+                    depth: 0,
+                    isSelected: selectedFilePath == node.path,
+                    isExpanded: false,
+                    status: fileStatusByPath[node.path]))
+            }
+            visibleRowsCache = rows
+            return rows
+        }
+
+        // Mode 2: live filter of the loaded tree.
+        if !trimmedQuery.isEmpty {
+            let (visible, expanded) = FileTreeSearch.filter(
+                rootChildren: rootChildren, childrenByPath: childrenByPath, query: trimmedQuery)
+            func emitFiltered(_ nodes: [FileNode], depth: Int) {
+                for node in nodes where visible.contains(node.path) {
+                    let isExp = node.isExpandableDirectory && expanded.contains(node.path)
+                    rows.append(FileTreeRowModel(
+                        id: node.path,
+                        kind: .node(node),
+                        depth: depth,
+                        isSelected: selectedFilePath == node.path,
+                        isExpanded: isExp,
+                        status: fileStatusByPath[node.path]))
+                    if isExp, let kids = childrenByPath[node.path] {
+                        emitFiltered(kids, depth: depth + 1)
+                    }
+                }
+            }
+            emitFiltered(rootChildren, depth: 0)
+            visibleRowsCache = rows
+            return rows
+        }
+
+        // Mode 1: normal tree (existing code path below — the `emit(...)` closure).
         func emit(_ nodes: [FileNode], depth: Int, parent: String) {
             if let draft = newEntryDraft, draft.parentPath == parent {
                 rows.append(FileTreeRowModel(
@@ -588,6 +659,55 @@ final class FileBrowserTabController {
         }
         visibleRowsCache = rows
         return rows
+    }
+
+    // MARK: - Search
+
+    /// Escalate to a bounded, cancellable recursive search (Enter).
+    func performRecursiveSearch() async {
+        let query = searchQuery.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return }
+        searchTask?.cancel()
+        isSearching = true
+        searchError = nil
+        searchResults = []
+        showingRecursiveResults = true
+        let ds = dataSource
+        let root = rootPath
+        let cap = Self.searchMaxResults
+        let task = Task { [weak self] in
+            do {
+                let results = try await ds.searchNames(root: root, query: query, maxResults: cap)
+                guard !Task.isCancelled else { return }
+                self?.searchResults = results
+            } catch {
+                guard !Task.isCancelled else { return }
+                self?.searchError = (error as? LocalizedError)?.errorDescription
+                    ?? error.localizedDescription
+            }
+            if !Task.isCancelled { self?.isSearching = false }
+        }
+        searchTask = task
+        await task.value
+    }
+
+    func clearSearch() {
+        searchQuery = ""   // didSet resets the rest
+    }
+
+    /// Reveal a recursive-result path back in the tree: clear the search and
+    /// expand every ancestor directory so the path becomes visible.
+    func revealInTree(_ path: String) async {
+        clearSearch()
+        let rel = relativePath(path)
+        guard rel != path else { return }   // not under root; nothing to expand
+        var current = rootPath
+        for component in rel.split(separator: "/").dropLast() {
+            current += "/" + component
+            if !expandedDirs.contains(current) {
+                await toggleExpand(current)
+            }
+        }
     }
 
     // MARK: - Git diff / status

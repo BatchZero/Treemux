@@ -412,4 +412,13 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
         directoryListings[parent, default: []].append(
             FileNode(id: path, name: name, path: path, kind: .file, sizeBytes: 0, modifiedAt: nil))
     }
+
+    var searchResultsToReturn: [FileNode] = []
+    var searchError: Error?
+    var searchCallCount = 0
+    func searchNames(root: String, query: String, maxResults: Int) async throws -> [FileNode] {
+        searchCallCount += 1
+        if let searchError { throw searchError }
+        return Array(searchResultsToReturn.prefix(maxResults))
+    }
 }
