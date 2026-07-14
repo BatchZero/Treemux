@@ -318,8 +318,8 @@ Expected: FAIL to compile.
     /// `head` caps the result count (and stops `find` early via SIGPIPE).
     static func recursiveSearchCommand(root: String, query: String,
                                        maxDepth: Int, maxResults: Int) -> String {
-        let escRoot = shellEscapeStatic(root)
-        let glob = shellEscapeStatic("*\(query)*")
+        let escRoot = shellEscape(root)
+        let glob = shellEscape("*\(query)*")
         return "find \(escRoot) -maxdepth \(maxDepth) -iname \(glob) 2>/dev/null "
             + "-exec sh -c 'for p; do if [ -d \"$p\" ]; then printf \"d %s\\n\" \"$p\"; "
             + "else printf \"f %s\\n\" \"$p\"; fi; done' _ {} + | head -n \(maxResults)"
@@ -362,7 +362,7 @@ Expected: FAIL to compile.
     }
 ```
 
-`shellEscapeStatic` is the shared static escaper introduced in Feature 8 Task 2 (or make the existing `shellEscape` static). If Feature 8 is not merged, add the static escaper here.
+`shellEscape` is already `private static func shellEscape(_:)` in `SFTPService` (single-quote wrapping, merged via Feature 8) — call it directly. The methods here are inside `SFTPService`, so no visibility change is needed.
 
 - [ ] **Step 3b: Forward from `RemoteFileBrowserDataSource`**
 
@@ -435,7 +435,7 @@ import XCTest
 final class FileBrowserSearchTests: XCTestCase {
     private func controller(_ mock: MockFileBrowserDataSource) -> FileBrowserTabController {
         FileBrowserTabController(
-            initial: FileBrowserTabState(rootPath: "/root", rootKind: .local),
+            initial: FileBrowserTabState(rootPath: "/root", rootKind: .worktree),
             dataSource: mock)
     }
 
@@ -550,6 +550,11 @@ Add state (near `truncatedDirs`):
     private(set) var searchResults: [FileNode] = [] { didSet { visibleRowsCache = nil } }
     private(set) var searchError: String?
     @ObservationIgnored private var searchTask: Task<Void, Never>?
+
+    /// True when this tab browses a remote host (system-SSH or Citadel). Drives
+    /// the local-vs-remote escalation-hint copy. `rootKind` (.project/.worktree)
+    /// is orthogonal — both are local — so it MUST NOT be used for this.
+    var isRemote: Bool { dataSource is RemoteFileBrowserDataSource }
 ```
 
 Add methods (new `// MARK: - Search` section):
@@ -731,9 +736,9 @@ Below the field, when `searchQuery` is non-empty and not yet showing recursive r
 
 ```swift
         if !controller.searchQuery.isEmpty && !controller.showingRecursiveResults {
-            Text(controller.rootKind == .local
-                 ? LocalizedStringKey("Press ⏎ to search all files")
-                 : LocalizedStringKey("Press ⏎ to search the server"))
+            Text(controller.isRemote
+                 ? LocalizedStringKey("Press ⏎ to search the server")
+                 : LocalizedStringKey("Press ⏎ to search all files"))
                 .font(.system(size: 10)).foregroundStyle(theme.textMuted)
                 .padding(.horizontal, 10).padding(.bottom, 2)
         }
@@ -749,12 +754,12 @@ Below the field, when `searchQuery` is non-empty and not yet showing recursive r
                 .padding(.horizontal, 10)
         }
         if let err = controller.searchError {
-            Text(err).font(.system(size: 10)).foregroundStyle(.orange)
+            Text(err).font(.system(size: 10)).foregroundStyle(theme.dangerColor)
                 .padding(.horizontal, 10).lineLimit(2)
         }
 ```
 
-Verify `FileBrowserRootKind` has a `.local` case (used above); read `FileBrowserTabState.rootKind`'s type and match its real case names.
+`controller.isRemote` (added in Task 4) drives the local-vs-remote copy. Do NOT use `rootKind` — `FileBrowserRootKind` is only `.project`/`.worktree` (both local); remote-ness is `dataSource is RemoteFileBrowserDataSource`.
 
 - [ ] **Step 3: Route clicks on recursive-result rows**
 
