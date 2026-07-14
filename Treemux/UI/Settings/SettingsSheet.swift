@@ -245,11 +245,27 @@ private struct TerminalSettingsView: View {
         )
     }
 
+    // Bridges the integer offset to Slider's Double API; the setter rounds and
+    // clamps through the single source of truth so drags never escape the range.
+    private var offsetSliderBinding: Binding<Double> {
+        Binding(
+            get: { Double(settings.terminal.fontSizeOffset) },
+            set: { settings.terminal.fontSizeOffset = TerminalSettings.clamp(Int($0.rounded())) }
+        )
+    }
+
     var body: some View {
         Form {
             TextField("Default Shell", text: $settings.terminal.defaultShell)
 
             Section {
+                Slider(
+                    value: offsetSliderBinding,
+                    in: Double(AdaptiveFontSizeCalculator.offsetRange.lowerBound)
+                        ... Double(AdaptiveFontSizeCalculator.offsetRange.upperBound),
+                    step: 1
+                )
+
                 HStack(spacing: 8) {
                     Button {
                         settings.terminal.fontSizeOffset = TerminalSettings.clamp(settings.terminal.fontSizeOffset - 1)
