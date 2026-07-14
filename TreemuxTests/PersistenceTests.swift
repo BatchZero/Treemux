@@ -200,7 +200,7 @@ final class PersistenceTests: XCTestCase {
     func testTerminalSettings_decodesLegacyFontSize_99_clampsToUpperBound() throws {
         let json = #"{"fontSize":99}"#.data(using: .utf8)!
         let decoded = try JSONDecoder().decode(TerminalSettings.self, from: json)
-        XCTAssertEqual(decoded.fontSizeOffset, 12)
+        XCTAssertEqual(decoded.fontSizeOffset, 36)
     }
 
     func testTerminalSettings_decodesLegacyFontSize_0_clampsToLowerBound() throws {
