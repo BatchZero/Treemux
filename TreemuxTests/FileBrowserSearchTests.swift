@@ -55,6 +55,9 @@ final class FileBrowserSearchTests: XCTestCase {
         XCTAssertTrue(c.showingRecursiveResults)
         XCTAssertEqual(c.searchResults.map(\.name), ["buried.log"])
         XCTAssertEqual(c.visibleRows().map(\.id), ["result:/root/deep/buried.log"])
+        // `showsHiddenFiles` defaults to false, so the data source must be told
+        // not to include hidden entries unless the user has toggled it on.
+        XCTAssertEqual(mock.lastSearchIncludeHidden, false)
     }
 
     func testEditingQueryExitsRecursiveMode() async {

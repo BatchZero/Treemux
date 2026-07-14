@@ -339,9 +339,26 @@ final class SFTPServiceTests: XCTestCase {
 
     func testRecursiveSearchCommandShapes() {
         let cmd = SFTPService.recursiveSearchCommand(
-            root: "/home/u", query: "log", maxDepth: 12, maxResults: 500)
+            root: "/home/u", query: "log", maxDepth: 12, maxResults: 500, includeHidden: true)
         XCTAssertTrue(cmd.contains("find '/home/u' -maxdepth 12 -iname '*log*'"))
         XCTAssertTrue(cmd.contains("head -n 500"))
+        XCTAssertFalse(cmd.contains("-prune"), "includeHidden: true must not prune hidden entries")
+    }
+
+    // Regression: FIX I1 (remote) — when hidden files are excluded, the
+    // assembled `find` command must prune hidden directories/files so a
+    // non-hidden leaf under a hidden directory (e.g. `.git/config`) can never
+    // be reported.
+    func testRecursiveSearchCommandPrunesHiddenWhenExcluded() {
+        let cmdExcluded = SFTPService.recursiveSearchCommand(
+            root: "/home/u", query: "log", maxDepth: 12, maxResults: 500, includeHidden: false)
+        XCTAssertTrue(cmdExcluded.contains("-name '.?*' -prune"),
+                      "includeHidden: false must prune dotted entries")
+
+        let cmdIncluded = SFTPService.recursiveSearchCommand(
+            root: "/home/u", query: "log", maxDepth: 12, maxResults: 500, includeHidden: true)
+        XCTAssertFalse(cmdIncluded.contains("-prune"),
+                        "includeHidden: true must not contain the prune fragment")
     }
 }
 

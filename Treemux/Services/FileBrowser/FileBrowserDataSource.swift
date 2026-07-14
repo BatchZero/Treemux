@@ -74,7 +74,12 @@ protocol FileBrowserDataSource: AnyObject {
     /// Recursively searches names under `root`, returning up to `maxResults`
     /// nodes whose name contains `query` (case-insensitive). Bounded — remote
     /// uses a single server-side `find`; local walks the FS off-thread.
-    func searchNames(root: String, query: String, maxResults: Int) async throws -> [FileNode]
+    ///
+    /// - Parameter includeHidden: When `false`, the search must not descend
+    ///   into hidden directories nor return hidden files/directories — i.e. it
+    ///   must not leak entries the tree UI could never display when "Show
+    ///   Hidden Files" is off (e.g. `.git/config` under a hidden `.git` dir).
+    func searchNames(root: String, query: String, maxResults: Int, includeHidden: Bool) async throws -> [FileNode]
 }
 
 extension FileBrowserDataSource {
@@ -90,7 +95,7 @@ extension FileBrowserDataSource {
     func createFile(_ path: String) async throws {
         throw FileBrowserError.notWritable(path)
     }
-    func searchNames(root: String, query: String, maxResults: Int) async throws -> [FileNode] {
+    func searchNames(root: String, query: String, maxResults: Int, includeHidden: Bool) async throws -> [FileNode] {
         []
     }
 }

@@ -416,6 +416,10 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
     var searchResultsToReturn: [FileNode] = []
     var searchError: Error?
     var searchCallCount = 0
+    /// Records the `includeHidden` value passed on the most recent `searchNames`
+    /// call, so tests can assert it was threaded through from the controller's
+    /// `showsHiddenFiles`.
+    var lastSearchIncludeHidden: Bool?
 
     /// Test seam: when armed (see `armSearchNamesGate()`), `searchNames` suspends
     /// on this continuation until `releaseSearchNamesGate()` resumes it. Lets tests
@@ -438,8 +442,9 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
         searchNamesGate = nil
     }
 
-    func searchNames(root: String, query: String, maxResults: Int) async throws -> [FileNode] {
+    func searchNames(root: String, query: String, maxResults: Int, includeHidden: Bool) async throws -> [FileNode] {
         searchCallCount += 1
+        lastSearchIncludeHidden = includeHidden
         if searchNamesEnteredContinuationBox != nil {
             await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
                 searchNamesGate = cont

@@ -685,9 +685,10 @@ final class FileBrowserTabController {
         let ds = dataSource
         let root = rootPath
         let cap = Self.searchMaxResults
+        let includeHidden = showsHiddenFiles
         let task = Task { [weak self] in
             do {
-                let results = try await ds.searchNames(root: root, query: query, maxResults: cap)
+                let results = try await ds.searchNames(root: root, query: query, maxResults: cap, includeHidden: includeHidden)
                 guard !Task.isCancelled else { return }
                 self?.searchResults = results
             } catch {

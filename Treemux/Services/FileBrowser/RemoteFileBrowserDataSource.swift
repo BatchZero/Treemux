@@ -78,11 +78,11 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
         return try await BFSTreeLister.list(using: self, root: root, maxDepth: maxDepth, entryCap: entryCap)
     }
 
-    func searchNames(root: String, query: String, maxResults: Int) async throws -> [FileNode] {
+    func searchNames(root: String, query: String, maxResults: Int, includeHidden: Bool) async throws -> [FileNode] {
         try await ensureConnected()
         let entries = try await service.searchNames(
             root: root, query: query,
-            maxDepth: Self.searchMaxDepth, maxResults: maxResults)
+            maxDepth: Self.searchMaxDepth, maxResults: maxResults, includeHidden: includeHidden)
         return entries.map(Self.node(from:))
     }
 

@@ -337,13 +337,35 @@ actor SFTPService {
     /// One-round-trip recursive name search. `find` matches the glob; the
     /// `-exec sh -c` classifies each hit as `d`/`f` portably (GNU + BSD), and
     /// `head` caps the result count (and stops `find` early via SIGPIPE).
+    ///
+    /// - Parameter includeHidden: When `false`, a portable prune
+    ///   (`-name '.?*' -prune -o ...`) is inserted so `find` neither descends
+    ///   into nor reports any dotted entry — mirroring the local walk's
+    ///   hidden-directory pruning (FIX I1), so remote search can't surface a
+    ///   non-hidden leaf living under a hidden directory (e.g. `.git/config`)
+    ///   when "Show Hidden Files" is off. When `true`, the command is emitted
+    ///   exactly as before (no prune).
     static func recursiveSearchCommand(root: String, query: String,
-                                       maxDepth: Int, maxResults: Int) -> String {
+                                       maxDepth: Int, maxResults: Int, includeHidden: Bool) -> String {
         let escRoot = shellEscape(root)
         let glob = shellEscape("*\(query)*")
-        return "find \(escRoot) -maxdepth \(maxDepth) -iname \(glob) 2>/dev/null "
-            + "-exec sh -c 'for p; do if [ -d \"$p\" ]; then printf \"d %s\\n\" \"$p\"; "
-            + "else printf \"f %s\\n\" \"$p\"; fi; done' _ {} + | head -n \(maxResults)"
+        let classify = "-exec sh -c 'for p; do if [ -d \"$p\" ]; then printf \"d %s\\n\" \"$p\"; "
+            + "else printf \"f %s\\n\" \"$p\"; fi; done' _ {} +"
+        if includeHidden {
+            return "find \(escRoot) -maxdepth \(maxDepth) -iname \(glob) 2>/dev/null "
+                + classify + " | head -n \(maxResults)"
+        }
+        // `-name '.?*' -prune -o \( -iname ... \)`: for each entry, `find`
+        // evaluates left-to-right; `-o` has the lowest precedence, so this
+        // splits into two implicit-AND groups — `-name '.?*' -prune` and
+        // `-iname glob -exec ... +` (grouped with `\( \)` for clarity/safety).
+        // A dotted entry matches the left group; `-prune`'s side effect stops
+        // `find` from descending into it (if it's a directory) and its own
+        // truthiness short-circuits the `-o`, so the right group — the
+        // classify+print — never runs for it. A non-dotted entry fails the
+        // left group, falling through to the right group as before.
+        return "find \(escRoot) -maxdepth \(maxDepth) -name '.?*' -prune -o "
+            + "\\( -iname \(glob) " + classify + " \\) 2>/dev/null | head -n \(maxResults)"
     }
 
     /// Parses `d <path>` / `f <path>` lines from `recursiveSearchCommand`.
@@ -365,12 +387,12 @@ actor SFTPService {
     }
 
     func searchNames(root: String, query: String,
-                     maxDepth: Int, maxResults: Int) async throws -> [SFTPRichEntry] {
+                     maxDepth: Int, maxResults: Int, includeHidden: Bool) async throws -> [SFTPRichEntry] {
         guard let mode else { throw SFTPServiceError.notConnected }
         switch mode {
         case .ssh(let target):
             let cmd = Self.recursiveSearchCommand(
-                root: root, query: query, maxDepth: maxDepth, maxResults: maxResults)
+                root: root, query: query, maxDepth: maxDepth, maxResults: maxResults, includeHidden: includeHidden)
             let result = try await runSSH(target: target, command: cmd, timeout: Self.listingCommandTimeout)
             // `head` closing the pipe yields exit 141 (SIGPIPE); treat any output
             // as success rather than gating on exitCode.
