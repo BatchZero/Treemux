@@ -348,17 +348,70 @@ final class SFTPServiceTests: XCTestCase {
     // Regression: FIX I1 (remote) — when hidden files are excluded, the
     // assembled `find` command must prune hidden directories/files so a
     // non-hidden leaf under a hidden directory (e.g. `.git/config`) can never
-    // be reported.
+    // be reported. The prune must also exempt the search ROOT itself (via
+    // `! -path <root>`) so a dotted root (e.g. `/home/u/.config`) is not
+    // pruned before its own contents are ever visited — see
+    // testRecursiveSearchCommandHiddenRootStillSearches for the empirical
+    // proof of that root-exemption behavior.
     func testRecursiveSearchCommandPrunesHiddenWhenExcluded() {
         let cmdExcluded = SFTPService.recursiveSearchCommand(
             root: "/home/u", query: "log", maxDepth: 12, maxResults: 500, includeHidden: false)
-        XCTAssertTrue(cmdExcluded.contains("-name '.?*' -prune"),
-                      "includeHidden: false must prune dotted entries")
+        XCTAssertTrue(cmdExcluded.contains("-name '.?*' ! -path '/home/u' -prune"),
+                      "includeHidden: false must prune dotted entries, exempting the root itself")
 
         let cmdIncluded = SFTPService.recursiveSearchCommand(
             root: "/home/u", query: "log", maxDepth: 12, maxResults: 500, includeHidden: true)
         XCTAssertFalse(cmdIncluded.contains("-prune"),
                         "includeHidden: true must not contain the prune fragment")
+    }
+
+    /// Regression for the hidden-prune fix: POSIX/BSD `find` evaluates its
+    /// own starting pathname against every predicate, so `-name '.?*' -prune`
+    /// alone would match a dotted search ROOT (e.g. an SSH browse root of
+    /// `/home/u/.config`) and prune the entire tree before any child is ever
+    /// visited — silently returning zero results even though matches exist.
+    /// This drives the real generated command through `/bin/sh` against a
+    /// temp directory whose root is itself dotted, asserting non-hidden
+    /// matches at multiple depths ARE returned while a hidden child
+    /// directory's contents are still excluded.
+    func testRecursiveSearchCommandHiddenRootStillSearches() async throws {
+        let tmpBase = FileManager.default.temporaryDirectory
+            .appendingPathComponent("tmx-hidden-root-\(UUID().uuidString)")
+        let dottedRoot = tmpBase.appendingPathComponent(".config")
+        let subDir = dottedRoot.appendingPathComponent("sub")
+        let hiddenChildDir = dottedRoot.appendingPathComponent(".hidden")
+
+        try FileManager.default.createDirectory(at: subDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: hiddenChildDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmpBase) }
+
+        let applogPath = dottedRoot.appendingPathComponent("applog.txt")
+        let deeplogPath = subDir.appendingPathComponent("deeplog.txt")
+        let secretLogPath = hiddenChildDir.appendingPathComponent("secret.log")
+        try "app".write(to: applogPath, atomically: true, encoding: .utf8)
+        try "deep".write(to: deeplogPath, atomically: true, encoding: .utf8)
+        try "secret".write(to: secretLogPath, atomically: true, encoding: .utf8)
+
+        let cmd = SFTPService.recursiveSearchCommand(
+            root: dottedRoot.path, query: "log", maxDepth: 12, maxResults: 500, includeHidden: false)
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", cmd]
+
+        let result = try await withTimeout(seconds: 5) {
+            try await SFTPService.runProcessAndCaptureOutput(process)
+        }
+
+        let entries = SFTPService.parseFindResults(result.output)
+        let paths = Set(entries.map { $0.path })
+
+        XCTAssertTrue(paths.contains(applogPath.path),
+                      "non-hidden match directly under the dotted root must be found")
+        XCTAssertTrue(paths.contains(deeplogPath.path),
+                      "non-hidden match nested under the dotted root must be found")
+        XCTAssertFalse(paths.contains(secretLogPath.path),
+                       "match under a hidden child directory must still be pruned")
     }
 }
 

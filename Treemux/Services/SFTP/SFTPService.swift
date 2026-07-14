@@ -355,16 +355,29 @@ actor SFTPService {
             return "find \(escRoot) -maxdepth \(maxDepth) -iname \(glob) 2>/dev/null "
                 + classify + " | head -n \(maxResults)"
         }
-        // `-name '.?*' -prune -o \( -iname ... \)`: for each entry, `find`
-        // evaluates left-to-right; `-o` has the lowest precedence, so this
-        // splits into two implicit-AND groups — `-name '.?*' -prune` and
-        // `-iname glob -exec ... +` (grouped with `\( \)` for clarity/safety).
-        // A dotted entry matches the left group; `-prune`'s side effect stops
-        // `find` from descending into it (if it's a directory) and its own
-        // truthiness short-circuits the `-o`, so the right group — the
-        // classify+print — never runs for it. A non-dotted entry fails the
-        // left group, falling through to the right group as before.
-        return "find \(escRoot) -maxdepth \(maxDepth) -name '.?*' -prune -o "
+        // `-name '.?*' ! -path <escRoot> -prune -o \( -iname ... \)`: for each
+        // entry, `find` evaluates left-to-right; `-o` has the lowest
+        // precedence, so this splits into two implicit-AND groups —
+        // `-name '.?*' ! -path <escRoot> -prune` and `-iname glob -exec ... +`
+        // (grouped with `\( \)` for clarity/safety). A dotted entry matches
+        // the left group; `-prune`'s side effect stops `find` from descending
+        // into it (if it's a directory) and its own truthiness short-circuits
+        // the `-o`, so the right group — the classify+print — never runs for
+        // it. A non-dotted entry fails the left group, falling through to the
+        // right group as before.
+        //
+        // `! -path <escRoot>` exempts the search ROOT itself from the prune:
+        // `find` evaluates its own starting pathname (the exact string passed
+        // as the start argument) against every predicate just like any other
+        // entry, so if the root itself is a dotted directory (e.g. an SSH
+        // browse root of `/home/u/.config`), `-name '.?*'` would match it and
+        // `-prune` would discard the whole tree before any children are ever
+        // visited — silently returning zero results even though matches
+        // exist. Reusing `escRoot` (the same escaped value passed as the
+        // start argument) for `-path` guarantees the exemption can never
+        // diverge from the actual root, while dotted DESCENDANTS at any depth
+        // are still pruned as before.
+        return "find \(escRoot) -maxdepth \(maxDepth) -name '.?*' ! -path \(escRoot) -prune -o "
             + "\\( -iname \(glob) " + classify + " \\) 2>/dev/null | head -n \(maxResults)"
     }
 
