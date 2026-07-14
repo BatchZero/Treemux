@@ -242,6 +242,39 @@ actor SFTPService {
         }
     }
 
+    /// Create a directory at `path`. Fails if it already exists (no `-p`
+    /// semantics), matching the local `FileBrowserDataSource` implementation.
+    func createDirectory(at path: String) async throws {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let result = try await runSSH(target: target, command: Self.mkdirCommand(path: path))
+            guard result.exitCode == 0 else {
+                throw SFTPServiceError.commandFailed("mkdir failed at \(path)")
+            }
+        case .citadel(_, let sftp):
+            try await sftp.createDirectory(atPath: path)
+        }
+    }
+
+    /// Create an empty file at `path`. Fails if it already exists.
+    func createFile(at path: String) async throws {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let result = try await runSSH(target: target, command: Self.touchNoclobberCommand(path: path))
+            guard result.exitCode == 0 else {
+                throw SFTPServiceError.commandFailed("create file failed at \(path)")
+            }
+        case .citadel(_, let sftp):
+            // Atomic exclusive create (SSH_FXF_EXCL): the server fails the open if the
+            // path already exists, so there is no check-then-truncate race and no
+            // silent overwrite. Mirrors the SSH path's `set -C` noclobber guarantee.
+            let file = try await sftp.openFile(filePath: path, flags: [.write, .create, .forceCreate])
+            try await file.close()
+        }
+    }
+
     // MARK: - Arbitrary command (used by RemoteGitDiffService)
 
     /// Runs an arbitrary shell command on the remote, returning its stdout.
@@ -316,7 +349,7 @@ actor SFTPService {
 
     private func listDirectoriesViaSSH(target: SSHTarget, path: String) async throws -> [SFTPDirectoryEntry] {
         // Use ls -1paL: one-per-line, append / to dirs, include hidden, dereference symlinks
-        let escapedPath = shellEscape(path)
+        let escapedPath = Self.shellEscape(path)
         let result = try await runSSH(
             target: target, command: "ls -1pa \(escapedPath)", timeout: Self.listingCommandTimeout)
 
@@ -391,7 +424,7 @@ actor SFTPService {
         return try await Self.runProcessAndCaptureOutput(process, timeout: timeout)
     }
 
-    private func shellEscape(_ path: String) -> String {
+    private static func shellEscape(_ path: String) -> String {
         return "'" + path.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
@@ -513,7 +546,7 @@ actor SFTPService {
     /// `Mon DD HH:MM:SS YYYY` timestamp format.
     /// TODO: cross-vendor parse — formal feature detection rather than fall-through retry.
     private func listAllEntriesViaSSH(target: SSHTarget, path: String) async throws -> [SFTPRichEntry] {
-        let escapedPath = shellEscape(path)
+        let escapedPath = Self.shellEscape(path)
 
         // Try GNU coreutils first (Linux). If that fails (likely macOS/BSD), retry with -T.
         let gnuCmd = "ls -lA --time-style=+%s -- \(escapedPath)"
@@ -736,6 +769,20 @@ actor SFTPService {
         return "\(listing); __tmx_rc=$?; \(symlinkDirProbeFragment(maxDepth: maxDepth)); exit $__tmx_rc"
     }
 
+    /// Builds the remote command that creates a directory, failing if it
+    /// already exists (plain `mkdir`, no `-p`).
+    static func mkdirCommand(path: String) -> String {
+        "mkdir -- \(Self.shellEscape(path))"
+    }
+
+    /// Builds the remote command that creates an empty file, failing if it
+    /// already exists. `set -C` (noclobber) makes `>` refuse to overwrite an
+    /// existing path; `:` is the shell no-op builtin, so `: > path` truncates/
+    /// creates without invoking an external process.
+    static func touchNoclobberCommand(path: String) -> String {
+        "set -C; : > \(Self.shellEscape(path))"
+    }
+
     /// Parses the recursive `ls -ld` output produced by `bulkListCommand`.
     /// Names arrive as paths relative to `root` (`./a/b.txt`); each entry is
     /// reassembled into an absolute path and grouped under its parent directory.
@@ -886,7 +933,7 @@ actor SFTPService {
     // MARK: - SSH stat
 
     private func statViaSSH(target: SSHTarget, path: String) async throws -> SFTPRichStat {
-        let escaped = shellEscape(path)
+        let escaped = Self.shellEscape(path)
         // Try GNU stat first (Linux), fall back to BSD `stat -f` (macOS/FreeBSD).
         // NOTE: separator is the literal string "|" to keep parsing simple even if filenames
         // contain tabs.
@@ -957,7 +1004,7 @@ actor SFTPService {
         }
 
         // Use base64 to stay binary-safe over the SSH text channel.
-        let cmd = "cat -- \(shellEscape(path)) | base64"
+        let cmd = "cat -- \(Self.shellEscape(path)) | base64"
         let result = try await runSSH(target: target, command: cmd)
         guard result.exitCode == 0 else {
             throw SFTPServiceError.commandFailed("cat failed at \(path)")
@@ -998,7 +1045,7 @@ actor SFTPService {
     private func readPrefixViaSSH(target: SSHTarget, path: String, maxBytes: Int) async throws -> Data {
         // `head -c` bounds the read at the source so we don't transfer more
         // bytes than necessary. base64 keeps the channel binary-safe.
-        let cmd = "head -c \(maxBytes) -- \(shellEscape(path)) | base64"
+        let cmd = "head -c \(maxBytes) -- \(Self.shellEscape(path)) | base64"
         let result = try await runSSH(target: target, command: cmd)
         guard result.exitCode == 0 else {
             throw SFTPServiceError.commandFailed("head failed at \(path)")
@@ -1033,7 +1080,7 @@ actor SFTPService {
     /// TODO: atomic write via mktemp + mv.
     private func writeFileViaSSH(target: SSHTarget, path: String, data: Data) async throws {
         let b64 = data.base64EncodedString()
-        let cmd = "base64 -d > \(shellEscape(path))"
+        let cmd = "base64 -d > \(Self.shellEscape(path))"
         let result = try await runSSHWithStdin(target: target, command: cmd, stdin: b64)
         guard result.exitCode == 0 else {
             throw SFTPServiceError.commandFailed("write failed at \(path)")

@@ -119,6 +119,28 @@ private struct FileTreeToolbar: View {
                 .truncationMode(.middle)
             Spacer()
             Button {
+                let dir = controller.selectedFilePath.map { path -> String in
+                    // Selected path is a file (sub-tab); create in its directory.
+                    (path as NSString).deletingLastPathComponent
+                } ?? controller.rootPath
+                Task { await controller.beginNewEntry(intent: .folder, in: dir) }
+            } label: {
+                Image(systemName: "folder.badge.plus")
+            }
+            .buttonStyle(.plain)
+            .help(LocalizedStringKey("New Folder"))
+
+            Button {
+                let dir = controller.selectedFilePath.map { ($0 as NSString).deletingLastPathComponent }
+                    ?? controller.rootPath
+                Task { await controller.beginNewEntry(intent: .file, in: dir) }
+            } label: {
+                Image(systemName: "doc.badge.plus")
+            }
+            .buttonStyle(.plain)
+            .help(LocalizedStringKey("New File"))
+
+            Button {
                 Task { await controller.refreshTree() }
             } label: {
                 Image(systemName: "arrow.clockwise")
@@ -229,6 +251,9 @@ private struct FileTreeRow: View, Equatable {
             nodeBody(node)
         case .loadMore(let parentPath):
             LoadMoreRow(path: parentPath, depth: row.depth, controller: controller)
+        case .editor(let parentPath, let intent):
+            NewEntryEditorRow(controller: controller, density: density, depth: row.depth,
+                              parentPath: parentPath, intent: intent)
         }
     }
 
@@ -301,6 +326,15 @@ private struct FileTreeRow: View, Equatable {
             }
         )
         .contextMenu {
+            Button(LocalizedStringKey("New Folder")) {
+                Task { await controller.beginNewEntry(intent: .folder,
+                                                      in: controller.targetDirectory(for: node)) }
+            }
+            Button(LocalizedStringKey("New File")) {
+                Task { await controller.beginNewEntry(intent: .file,
+                                                      in: controller.targetDirectory(for: node)) }
+            }
+            Divider()
             Button(LocalizedStringKey("Copy Absolute Path")) {
                 controller.copyPath(node.path, mode: .absolute)
             }
@@ -362,5 +396,60 @@ private struct LoadMoreRow: View {
             .padding(.vertical, 2)
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Inline text field for creating a new file/folder under `parentPath`.
+/// Rendered in place of a `FileTreeRowModel.Kind.editor` row, aligned with
+/// sibling rows via the same depth-hairline / disclosure / git-dot gutters
+/// as `FileTreeRow.nodeBody`.
+private struct NewEntryEditorRow: View {
+    let controller: FileBrowserTabController
+    let density: TreeDensity
+    let depth: Int
+    let parentPath: String
+    let intent: NewEntryIntent
+    @Environment(ThemeManager.self) private var theme
+    @State private var name: String = ""
+    @FocusState private var focused: Bool
+
+    private var iconAsset: String { intent == .folder ? "folder" : "file-document-outline" }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                ForEach(0..<depth, id: \.self) { _ in
+                    Rectangle()
+                        .fill(theme.dividerColor)
+                        .frame(width: 1, height: density.rowHeight)
+                        .padding(.trailing, 13)
+                }
+                Spacer().frame(width: 12)                    // disclosure gutter
+                Color.clear.frame(width: 4, height: 4)       // git-dot gutter
+                Image(iconAsset)
+                    .resizable().renderingMode(.template).scaledToFit()
+                    .frame(width: density.fontSize + 3, height: density.fontSize + 3)
+                    .foregroundStyle(theme.textSecondary)
+                TextField(intent == .folder
+                          ? LocalizedStringKey("New Folder")
+                          : LocalizedStringKey("New File"), text: $name)
+                    .textFieldStyle(.plain)
+                    .font(DesignFonts.dataLayer(size: density.fontSize))
+                    .foregroundStyle(theme.textPrimary)
+                    .focused($focused)
+                    .onSubmit { Task { await controller.commitNewEntry(name: name) } }
+                    .onExitCommand { controller.cancelNewEntry() }   // Esc
+            }
+            .frame(height: density.rowHeight)
+            .padding(.horizontal, 8)
+            if let err = controller.newEntryDraft?.errorMessage {
+                Text(err)
+                    .font(.system(size: 10))
+                    .foregroundStyle(theme.dangerColor)
+                    .padding(.leading, CGFloat(depth) * 14 + 40)
+            }
+        }
+        .padding(.vertical, 2)
+        .onAppear { focused = true }
     }
 }

@@ -254,6 +254,17 @@ final class FileTreeRowModelTests: XCTestCase {
         XCTAssertEqual(c.visibleRowsComputeCount, countBefore + 1, "filter apply must invalidate the memo")
         XCTAssertFalse(rows.contains { $0.id.hasSuffix("/.hidden") })
     }
+
+    // MARK: - .editor row kind (Task 3)
+
+    func testEditorKindEquatable() {
+        let a = FileTreeRowModel(id: "newEntry:/r", kind: .editor(parentPath: "/r", intent: .folder),
+                                 depth: 0, isSelected: false, isExpanded: false, status: nil)
+        let b = FileTreeRowModel(id: "newEntry:/r", kind: .editor(parentPath: "/r", intent: .folder),
+                                 depth: 0, isSelected: false, isExpanded: false, status: nil)
+        XCTAssertEqual(a, b)
+        XCTAssertNotEqual(a.kind, .editor(parentPath: "/r", intent: .file))
+    }
 }
 
 /// Minimal `GitDiffService` stub for isolating `fileStatusByPath` invalidation

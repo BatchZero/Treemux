@@ -311,6 +311,19 @@ final class SFTPServiceTests: XCTestCase {
         // Invocation shape unchanged: target second-to-last, command last.
         XCTAssertEqual(Array(args.suffix(2)), ["u@h", "echo 1"])
     }
+
+    // MARK: - create directory / create file command builders
+
+    func testMkdirCommandQuotesPath() {
+        XCTAssertEqual(SFTPService.mkdirCommand(path: "/home/u/new dir"),
+                       "mkdir -- '/home/u/new dir'")
+    }
+
+    func testTouchNoclobberCommandQuotesPath() {
+        // noclobber (`set -C`) makes `>` fail if the file already exists.
+        XCTAssertEqual(SFTPService.touchNoclobberCommand(path: "/home/u/a.txt"),
+                       "set -C; : > '/home/u/a.txt'")
+    }
 }
 
 // MARK: - Test helpers

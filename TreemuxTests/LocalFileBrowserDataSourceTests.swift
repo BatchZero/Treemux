@@ -179,4 +179,42 @@ final class LocalFileBrowserDataSourceTests: XCTestCase {
         XCTAssertTrue(byName["filelink"]!.isSymlink)
         XCTAssertFalse(byName["filelink"]!.isExpandableDirectory)
     }
+
+    // MARK: - createDirectory / createFile
+
+    func testCreateDirectoryAndFile() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+
+        let source = LocalFileBrowserDataSource()
+        let dirPath = root.appendingPathComponent("newdir").path
+        let filePath = root.appendingPathComponent("new.txt").path
+
+        try await source.createDirectory(dirPath)
+        try await source.createFile(filePath)
+
+        var isDir: ObjCBool = false
+        XCTAssertTrue(fm.fileExists(atPath: dirPath, isDirectory: &isDir))
+        XCTAssertTrue(isDir.boolValue)
+        XCTAssertTrue(fm.fileExists(atPath: filePath, isDirectory: &isDir))
+        XCTAssertFalse(isDir.boolValue)
+    }
+
+    func testCreateDirectoryRejectsExisting() async {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try? fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        let source = LocalFileBrowserDataSource()
+        let p = root.appendingPathComponent("dup").path
+        try? await source.createDirectory(p)
+        do {
+            try await source.createDirectory(p)
+            XCTFail("expected an error for existing path")
+        } catch {
+            // expected
+        }
+    }
 }

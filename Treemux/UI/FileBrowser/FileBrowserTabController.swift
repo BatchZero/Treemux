@@ -94,6 +94,17 @@ final class FileBrowserTabController {
         didSet { visibleRowsCache = nil }
     }
 
+    /// Inline "new folder / new file" editor state. Non-nil while the user is
+    /// typing a name. Drives an `.editor` row in `visibleRows()`.
+    struct NewEntryDraft: Equatable {
+        let parentPath: String
+        let intent: NewEntryIntent
+        var errorMessage: String?
+    }
+    private(set) var newEntryDraft: NewEntryDraft? {
+        didSet { visibleRowsCache = nil }
+    }
+
     /// Memoized result of the last `visibleRows()` flatten. Invalidated (set
     /// to `nil`) via `didSet` on every observed property the flatten
     /// reads: `rootChildren`, `childrenByPath`, `expandedDirs`,
@@ -435,6 +446,81 @@ final class FileBrowserTabController {
         showsHiddenFiles ? nodes : nodes.filter { !$0.isHidden }
     }
 
+    // MARK: - New entry
+
+    /// The directory a new entry should be created in, given a right-clicked
+    /// node: the node itself when it is a directory, else its parent.
+    func targetDirectory(for node: FileNode) -> String {
+        node.isExpandableDirectory ? node.path : (node.path as NSString).deletingLastPathComponent
+    }
+
+    func beginNewEntry(intent: NewEntryIntent, in directory: String) async {
+        // Expand the full ancestor chain so the editor row's parent is actually
+        // reachable during visibleRows() flatten — not just the immediate dir.
+        if directory != rootPath {
+            let rel = relativePath(directory)
+            var current = rootPath
+            for component in rel.split(separator: "/") {
+                current += "/" + component
+                if !expandedDirs.contains(current) {
+                    await toggleExpand(current)
+                    // If a level failed to expand (data-source error), don't leave a
+                    // draft that can never render — bail; loadError already surfaces.
+                    guard expandedDirs.contains(current) else { return }
+                }
+            }
+        }
+        newEntryDraft = NewEntryDraft(parentPath: directory, intent: intent, errorMessage: nil)
+    }
+
+    func cancelNewEntry() {
+        newEntryDraft = nil
+    }
+
+    /// Returns a localized error message for an invalid name, or nil if valid.
+    func validateNewEntryName(_ name: String, in directory: String) -> String? {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return String(localized: "Name cannot be empty") }
+        if trimmed.contains("/") { return String(localized: "Name cannot contain a slash") }
+        let siblings = (directory == rootPath) ? rootChildren : (childrenByPath[directory] ?? [])
+        if siblings.contains(where: { $0.name == trimmed }) {
+            return String.localizedStringWithFormat(
+                String(localized: "An item named \"%@\" already exists"), trimmed)
+        }
+        return nil
+    }
+
+    func commitNewEntry(name: String) async {
+        guard let draft = newEntryDraft else { return }
+        let dir = draft.parentPath
+        if let err = validateNewEntryName(name, in: dir) {
+            newEntryDraft?.errorMessage = err
+            return
+        }
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        let newPath = (dir == "/" ? "" : dir) + "/" + trimmed
+        do {
+            switch draft.intent {
+            case .folder: try await dataSource.createDirectory(newPath)
+            case .file:   try await dataSource.createFile(newPath)
+            }
+        } catch {
+            newEntryDraft?.errorMessage = String.localizedStringWithFormat(
+                String(localized: "Could not create \"%@\""), trimmed)
+            return
+        }
+        newEntryDraft = nil
+        // Refresh the parent so the new entry appears. A new folder is expanded
+        // (it is empty); a new file is NOT auto-opened — it simply appears.
+        await refresh(dir)
+        if draft.intent == .folder, !expandedDirs.contains(newPath) {
+            expandedDirs.insert(newPath)
+            childrenByPath[newPath] = []
+            rawChildrenByPath[newPath] = []
+        }
+        onPersistableStateChanged?()
+    }
+
     /// Flattens the expanded tree into visible rows, depth-first. This is the
     /// single source the tree view renders from; rows are pure values so
     /// SwiftUI can skip unchanged rows via Equatable.
@@ -457,12 +543,19 @@ final class FileBrowserTabController {
         _ = activeSubTabID
         _ = subTabs
         _ = showsHiddenFiles
+        _ = newEntryDraft
         if let cached = visibleRowsCache { return cached }
         #if DEBUG
         visibleRowsComputeCount += 1
         #endif
         var rows: [FileTreeRowModel] = []
-        func emit(_ nodes: [FileNode], depth: Int) {
+        func emit(_ nodes: [FileNode], depth: Int, parent: String) {
+            if let draft = newEntryDraft, draft.parentPath == parent {
+                rows.append(FileTreeRowModel(
+                    id: "newEntry:" + parent,
+                    kind: .editor(parentPath: parent, intent: draft.intent),
+                    depth: depth, isSelected: false, isExpanded: false, status: nil))
+            }
             for node in nodes {
                 let expanded = node.isExpandableDirectory && expandedDirs.contains(node.path)
                 rows.append(FileTreeRowModel(
@@ -474,7 +567,7 @@ final class FileBrowserTabController {
                     status: fileStatusByPath[node.path]
                 ))
                 if expanded, let kids = childrenByPath[node.path] {
-                    emit(kids, depth: depth + 1)
+                    emit(kids, depth: depth + 1, parent: node.path)
                     if truncatedDirs.contains(node.path) {
                         rows.append(FileTreeRowModel(
                             id: "loadMore:" + node.path,
@@ -486,7 +579,7 @@ final class FileBrowserTabController {
                 }
             }
         }
-        emit(rootChildren, depth: 0)
+        emit(rootChildren, depth: 0, parent: rootPath)
         if truncatedDirs.contains(rootPath) {
             rows.append(FileTreeRowModel(
                 id: "loadMore:" + rootPath, kind: .loadMore(parentPath: rootPath),
