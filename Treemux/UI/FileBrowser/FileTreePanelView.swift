@@ -24,6 +24,10 @@ struct FileTreePanelView: View {
     /// accepted until content is settled — otherwise we'd finish early and the
     /// later reflow would be mistaken for the user's position.
     @State private var contentSettled = false
+    /// Owned here (not inside `FileTreeToolbar`) so Cmd+F, handled at the
+    /// panel level via `.onKeyPress`, can drive focus down into the
+    /// toolbar's search field via `FocusState<Bool>.Binding`.
+    @FocusState private var searchFocused: Bool
 
     init(controller: FileBrowserTabController) {
         self.controller = controller
@@ -43,7 +47,7 @@ struct FileTreePanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             FileTreeErrorBanner(controller: controller)
-            FileTreeToolbar(controller: controller)
+            FileTreeToolbar(controller: controller, searchFocused: $searchFocused)
             Divider()
             ScrollView {
                 // A plain VStack (not LazyVStack) gives the ScrollView a
@@ -59,7 +63,9 @@ struct FileTreePanelView: View {
                             row: row,
                             density: store.settings.fileTree.density,
                             controller: controller,
-                            themeID: theme.activeTheme.id
+                            themeID: theme.activeTheme.id,
+                            searchQuery: controller.searchQuery,
+                            showingRecursiveResults: controller.showingRecursiveResults
                         )
                         .equatable()
                     }
@@ -105,59 +111,143 @@ struct FileTreePanelView: View {
             }
         }
         .background(theme.paneBackground)
+        // Cmd+F focuses the toolbar's search field, regardless of which
+        // subview currently has keyboard focus within the panel.
+        .onKeyPress(.init("f"), phases: .down) { press in
+            if press.modifiers.contains(.command) {
+                searchFocused = true
+                return .handled
+            }
+            return .ignored
+        }
     }
 }
 
 private struct FileTreeToolbar: View {
-    let controller: FileBrowserTabController
+    /// `@Bindable` (rather than plain `let`) so the search field below can
+    /// bind directly to `controller.searchQuery` via `$controller.searchQuery`.
+    @Bindable var controller: FileBrowserTabController
+    /// Focus binding owned by `FileTreePanelView`, so Cmd+F (handled at the
+    /// panel level) can focus this field regardless of what else has focus.
+    var searchFocused: FocusState<Bool>.Binding
+    @Environment(ThemeManager.self) private var theme
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(URL(fileURLWithPath: controller.rootPath).lastPathComponent)
-                .font(.system(size: 11, weight: .semibold))
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Spacer()
-            Button {
-                let dir = controller.selectedFilePath.map { path -> String in
-                    // Selected path is a file (sub-tab); create in its directory.
-                    (path as NSString).deletingLastPathComponent
-                } ?? controller.rootPath
-                Task { await controller.beginNewEntry(intent: .folder, in: dir) }
-            } label: {
-                Image(systemName: "folder.badge.plus")
-            }
-            .buttonStyle(.plain)
-            .help(LocalizedStringKey("New Folder"))
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Text(URL(fileURLWithPath: controller.rootPath).lastPathComponent)
+                    .font(.system(size: 11, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer()
+                Button {
+                    let dir = controller.selectedFilePath.map { path -> String in
+                        // Selected path is a file (sub-tab); create in its directory.
+                        (path as NSString).deletingLastPathComponent
+                    } ?? controller.rootPath
+                    Task { await controller.beginNewEntry(intent: .folder, in: dir) }
+                } label: {
+                    Image(systemName: "folder.badge.plus")
+                }
+                .buttonStyle(.plain)
+                .help(LocalizedStringKey("New Folder"))
 
-            Button {
-                let dir = controller.selectedFilePath.map { ($0 as NSString).deletingLastPathComponent }
-                    ?? controller.rootPath
-                Task { await controller.beginNewEntry(intent: .file, in: dir) }
-            } label: {
-                Image(systemName: "doc.badge.plus")
-            }
-            .buttonStyle(.plain)
-            .help(LocalizedStringKey("New File"))
+                Button {
+                    let dir = controller.selectedFilePath.map { ($0 as NSString).deletingLastPathComponent }
+                        ?? controller.rootPath
+                    Task { await controller.beginNewEntry(intent: .file, in: dir) }
+                } label: {
+                    Image(systemName: "doc.badge.plus")
+                }
+                .buttonStyle(.plain)
+                .help(LocalizedStringKey("New File"))
 
-            Button {
-                Task { await controller.refreshTree() }
-            } label: {
-                Image(systemName: "arrow.clockwise")
-            }
-            .buttonStyle(.plain)
-            .help(LocalizedStringKey("Refresh"))
+                Button {
+                    Task { await controller.refreshTree() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.plain)
+                .help(LocalizedStringKey("Refresh"))
 
-            Button {
-                controller.setShowsHiddenFiles(!controller.showsHiddenFiles)
-            } label: {
-                Image(systemName: controller.showsHiddenFiles ? "eye" : "eye.slash")
+                Button {
+                    controller.setShowsHiddenFiles(!controller.showsHiddenFiles)
+                } label: {
+                    Image(systemName: controller.showsHiddenFiles ? "eye" : "eye.slash")
+                }
+                .buttonStyle(.plain)
+                .help(LocalizedStringKey("Toggle Hidden Files"))
             }
-            .buttonStyle(.plain)
-            .help(LocalizedStringKey("Toggle Hidden Files"))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+
+            searchRow
+            statusRow
+        }
+    }
+
+    /// The search field row: magnifying-glass icon, text field bound to
+    /// `controller.searchQuery`, and a clear (×) button when non-empty.
+    private var searchRow: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 10))
+                .foregroundStyle(theme.textMuted)
+            TextField(LocalizedStringKey("Search"), text: $controller.searchQuery)
+                .textFieldStyle(.plain)
+                .font(.system(size: 11))
+                .focused(searchFocused)
+                .onSubmit { Task { await controller.performRecursiveSearch() } }
+            if !controller.searchQuery.isEmpty {
+                Button {
+                    controller.clearSearch()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(theme.textMuted)
+                }
+                .buttonStyle(.plain)
+            }
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.vertical, 4)
+    }
+
+    /// Escalation hint (before Enter) and search-status/error line (after).
+    @ViewBuilder
+    private var statusRow: some View {
+        if !controller.searchQuery.isEmpty && !controller.showingRecursiveResults {
+            Text(controller.isRemote
+                 ? LocalizedStringKey("Press ⏎ to search the server")
+                 : LocalizedStringKey("Press ⏎ to search all files"))
+                .font(.system(size: 10))
+                .foregroundStyle(theme.textMuted)
+                .padding(.horizontal, 10)
+                .padding(.bottom, 4)
+        }
+        if controller.isSearching {
+            Text(LocalizedStringKey("Searching…"))
+                .font(.system(size: 10))
+                .foregroundStyle(theme.textMuted)
+                .padding(.horizontal, 10)
+                .padding(.bottom, 4)
+        } else if controller.showingRecursiveResults {
+            Text(controller.searchResults.isEmpty
+                 ? LocalizedStringKey("No matches")
+                 : LocalizedStringKey("\(controller.searchResults.count) matches"))
+                .font(.system(size: 10))
+                .foregroundStyle(theme.textMuted)
+                .padding(.horizontal, 10)
+                .padding(.bottom, 4)
+        }
+        if let err = controller.searchError {
+            Text(err)
+                .font(.system(size: 10))
+                .foregroundStyle(theme.dangerColor)
+                .padding(.horizontal, 10)
+                .padding(.bottom, 4)
+                .lineLimit(2)
+        }
     }
 }
 
@@ -234,6 +324,15 @@ private struct FileTreeRow: View, Equatable {
     /// skip recomputing rows whose `row`/`density` didn't change, leaving
     /// them painted with the old theme's colors (a half-recolored tree).
     let themeID: String
+    /// The live search query and result-mode flag, passed in (rather than
+    /// read from `controller` in the body) so they participate in `==`
+    /// below. Without this, a keystroke that narrows the query without
+    /// changing the *set* of visible rows (e.g. "a" -> "ab" while the same
+    /// single node still matches) would produce an identical
+    /// `FileTreeRowModel` array, and the Equatable short-circuit would skip
+    /// re-rendering — leaving the highlighted span stale.
+    let searchQuery: String
+    let showingRecursiveResults: Bool
     @Environment(ThemeManager.self) private var theme
     @State private var isHovered = false
 
@@ -243,6 +342,8 @@ private struct FileTreeRow: View, Equatable {
     // invalidate the cached row.
     nonisolated static func == (lhs: FileTreeRow, rhs: FileTreeRow) -> Bool {
         lhs.row == rhs.row && lhs.density == rhs.density && lhs.themeID == rhs.themeID
+            && lhs.searchQuery == rhs.searchQuery
+            && lhs.showingRecursiveResults == rhs.showingRecursiveResults
     }
 
     var body: some View {
@@ -284,7 +385,7 @@ private struct FileTreeRow: View, Equatable {
             }
             iconView(node)
                 .frame(width: density.fontSize + 3, height: density.fontSize + 3)
-            Text(node.name)
+            nameText(node.name)
                 .font(DesignFonts.dataLayer(size: density.fontSize))
                 .foregroundStyle(theme.textPrimary)
                 .lineLimit(1)
@@ -318,7 +419,19 @@ private struct FileTreeRow: View, Equatable {
         )
         .simultaneousGesture(
             TapGesture(count: 1).onEnded {
-                if node.isExpandableDirectory {
+                if showingRecursiveResults {
+                    // Flat recursive-search result row: a directory hit reveals
+                    // its place in the (now un-filtered) tree; a file hit opens
+                    // it and returns to normal browsing.
+                    if node.isExpandableDirectory {
+                        Task { await controller.revealInTree(node.path) }
+                    } else {
+                        Task {
+                            await controller.openInTree(node.path)
+                            controller.clearSearch()
+                        }
+                    }
+                } else if node.isExpandableDirectory {
                     Task { await controller.toggleExpand(node.path) }
                 } else {
                     Task { await controller.openInTree(node.path) }
@@ -343,6 +456,24 @@ private struct FileTreeRow: View, Equatable {
             }
             .disabled(node.path == controller.rootPath)
         }
+    }
+
+    /// Renders `name`, tinting the substring matching the live search query
+    /// (live-filter mode only — recursive result rows and empty queries fall
+    /// back to a plain `Text`).
+    private func nameText(_ name: String) -> Text {
+        let query = searchQuery.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty, !showingRecursiveResults,
+              let range = name.range(of: query, options: [.caseInsensitive]) else {
+            return Text(name)
+        }
+        var attr = AttributedString(name)
+        if let lower = AttributedString.Index(range.lowerBound, within: attr),
+           let upper = AttributedString.Index(range.upperBound, within: attr) {
+            attr[lower..<upper].foregroundColor = theme.accentColor
+            attr[lower..<upper].inlinePresentationIntent = .stronglyEmphasized
+        }
+        return Text(attr)
     }
 
     @ViewBuilder

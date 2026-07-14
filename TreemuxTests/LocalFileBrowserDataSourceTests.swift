@@ -217,4 +217,131 @@ final class LocalFileBrowserDataSourceTests: XCTestCase {
             // expected
         }
     }
+
+    // MARK: - searchNames
+
+    func testSearchNamesFindsNestedMatches() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let sub = root.appendingPathComponent("sub")
+        try fm.createDirectory(at: sub, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        try Data("x".utf8).write(to: root.appendingPathComponent("alpha.txt"))
+        try Data("x".utf8).write(to: sub.appendingPathComponent("alphabet.md"))
+        try Data("x".utf8).write(to: sub.appendingPathComponent("other.txt"))
+
+        let source = LocalFileBrowserDataSource()
+        let results = try await source.searchNames(root: root.path, query: "ALPHA", maxResults: 100, includeHidden: true)
+        let names = Set(results.map(\.name))
+        XCTAssertTrue(names.contains("alpha.txt"))
+        XCTAssertTrue(names.contains("alphabet.md"))
+        XCTAssertFalse(names.contains("other.txt"))
+    }
+
+    func testSearchNamesHonorsMaxResults() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        for i in 0..<10 { try Data("x".utf8).write(to: root.appendingPathComponent("match\(i).txt")) }
+        let source = LocalFileBrowserDataSource()
+        let results = try await source.searchNames(root: root.path, query: "match", maxResults: 3, includeHidden: true)
+        XCTAssertEqual(results.count, 3)
+    }
+
+    // Core of the depth-bound fix: a no-match (or few-match) query over a
+    // very deep tree must not walk past the bound (12, mirroring the remote
+    // search's searchMaxDepth), or it stalls the shared serial queue.
+    func testSearchNamesRespectsDepthBound() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+
+        // Build a chain of 14 nested directories: d1/d2/.../d14. This is
+        // deeper than the 12-level bound, so the walk must not descend into
+        // d13/d14.
+        var current = root
+        var dirs: [URL] = []
+        for i in 1...14 {
+            current = current.appendingPathComponent("d\(i)")
+            dirs.append(current)
+        }
+        try fm.createDirectory(at: dirs.last!, withIntermediateDirectories: true)
+
+        // Shallow match: inside d5 (enumerator level 6), well within the bound.
+        let shallowFile = dirs[4].appendingPathComponent("findme_shallow.md")
+        try Data("x".utf8).write(to: shallowFile)
+
+        // Deep match: inside d13 (enumerator level 14). d12 sits at the
+        // bound (level 12), so its descendants — d13 onward — are pruned
+        // and this file must never be visited.
+        let deepFile = dirs[12].appendingPathComponent("findme_deep.md")
+        try Data("x".utf8).write(to: deepFile)
+
+        let source = LocalFileBrowserDataSource()
+        let results = try await source.searchNames(root: root.path, query: "findme", maxResults: 100, includeHidden: true)
+        let names = Set(results.map(\.name))
+        XCTAssertTrue(names.contains("findme_shallow.md"))
+        XCTAssertFalse(names.contains("findme_deep.md"))
+    }
+
+    // Regression: FIX I1 — a recursive search with hidden files off must not
+    // surface non-hidden leaves living under a hidden directory (e.g.
+    // `.git/config`), since the tree UI can never display/navigate to such a
+    // result when "Show Hidden Files" is off.
+    func testSearchNamesExcludesFilesUnderHiddenDirWhenHiddenOff() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let gitDir = root.appendingPathComponent(".git")
+        try fm.createDirectory(at: gitDir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        try Data("x".utf8).write(to: gitDir.appendingPathComponent("config"))
+        try Data("x".utf8).write(to: root.appendingPathComponent("config.txt"))
+
+        let source = LocalFileBrowserDataSource()
+
+        // Compare by (name, parent-directory-name) rather than absolute path:
+        // `FileManager`'s enumerator resolves the temp dir through its
+        // /var → /private/var symlink, so `url.path` on results differs from
+        // `root.appendingPathComponent(...).path` even though they name the
+        // same file — the existing tests in this file sidestep this by
+        // comparing names, matched here for consistency.
+        func parentName(_ path: String) -> String {
+            ((path as NSString).deletingLastPathComponent as NSString).lastPathComponent
+        }
+
+        let hiddenOff = try await source.searchNames(root: root.path, query: "config", maxResults: 100, includeHidden: false)
+        XCTAssertTrue(hiddenOff.contains { $0.name == "config.txt" && parentName($0.path) == root.lastPathComponent })
+        XCTAssertFalse(hiddenOff.contains { $0.name == "config" && parentName($0.path) == ".git" },
+                        "FIX I1: a leaf under a hidden directory must not leak when hidden files are off")
+
+        let hiddenOn = try await source.searchNames(root: root.path, query: "config", maxResults: 100, includeHidden: true)
+        XCTAssertTrue(hiddenOn.contains { $0.name == "config.txt" && parentName($0.path) == root.lastPathComponent })
+        XCTAssertTrue(hiddenOn.contains { $0.name == "config" && parentName($0.path) == ".git" })
+    }
+
+    // Regression: FIX M1 — a symlink to a directory must be classified so the
+    // tree can route a tap to `revealInTree`, not `openInTree` (which would
+    // try to read the directory as a file and open an error tab).
+    func testSearchNamesClassifiesSymlinkedDirectory() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let realDir = root.appendingPathComponent("realdir")
+        try fm.createDirectory(at: realDir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: root) }
+        let linkURL = root.appendingPathComponent("linktodir")
+        try fm.createSymbolicLink(at: linkURL, withDestinationURL: realDir)
+
+        let source = LocalFileBrowserDataSource()
+        let results = try await source.searchNames(root: root.path, query: "linktodir", maxResults: 100, includeHidden: true)
+        guard let node = results.first(where: { $0.name == "linktodir" }) else {
+            XCTFail("expected a result for the symlink")
+            return
+        }
+        XCTAssertTrue(node.isSymlink)
+        XCTAssertTrue(node.symlinkTargetIsDirectory)
+        XCTAssertTrue(node.isExpandableDirectory,
+                      "FIX M1: a symlinked directory must be expandable so it routes to revealInTree, not openInTree")
+    }
 }

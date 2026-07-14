@@ -412,4 +412,48 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
         directoryListings[parent, default: []].append(
             FileNode(id: path, name: name, path: path, kind: .file, sizeBytes: 0, modifiedAt: nil))
     }
+
+    var searchResultsToReturn: [FileNode] = []
+    var searchError: Error?
+    var searchCallCount = 0
+    /// Records the `includeHidden` value passed on the most recent `searchNames`
+    /// call, so tests can assert it was threaded through from the controller's
+    /// `showsHiddenFiles`.
+    var lastSearchIncludeHidden: Bool?
+
+    /// Test seam: when armed (see `armSearchNamesGate()`), `searchNames` suspends
+    /// on this continuation until `releaseSearchNamesGate()` resumes it. Lets tests
+    /// deterministically observe/interact with an in-flight recursive search
+    /// instead of racing a real async data source.
+    private var searchNamesGate: CheckedContinuation<Void, Never>?
+    private var searchNamesEnteredContinuationBox: AsyncStream<Void>.Continuation?
+
+    /// Call before invoking `searchNames` to make it suspend until `releaseSearchNamesGate()`
+    /// is called. Returns an async sequence the test awaits one element from to know the
+    /// mock has entered `searchNames` and is now parked on the gate.
+    func armSearchNamesGate() -> AsyncStream<Void> {
+        let (stream, continuation) = AsyncStream<Void>.makeStream()
+        searchNamesEnteredContinuationBox = continuation
+        return stream
+    }
+
+    func releaseSearchNamesGate() {
+        searchNamesGate?.resume()
+        searchNamesGate = nil
+    }
+
+    func searchNames(root: String, query: String, maxResults: Int, includeHidden: Bool) async throws -> [FileNode] {
+        searchCallCount += 1
+        lastSearchIncludeHidden = includeHidden
+        if searchNamesEnteredContinuationBox != nil {
+            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                searchNamesGate = cont
+                searchNamesEnteredContinuationBox?.yield(())
+                searchNamesEnteredContinuationBox?.finish()
+                searchNamesEnteredContinuationBox = nil
+            }
+        }
+        if let searchError { throw searchError }
+        return Array(searchResultsToReturn.prefix(maxResults))
+    }
 }

@@ -9,6 +9,10 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
     let sshTarget: SSHTarget
     private let service: SFTPService
 
+    /// Depth cap for recursive name search. Kept local (rather than referencing
+    /// `FileBrowserTabController.searchMaxDepth`) to avoid a UI→service dependency.
+    private static let searchMaxDepth = 12
+
     init(sshTarget: SSHTarget, service: SFTPService = SFTPService()) {
         self.sshTarget = sshTarget
         self.service = service
@@ -72,6 +76,14 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
         }
         // Citadel password path: no arbitrary exec → sequential per-dir BFS.
         return try await BFSTreeLister.list(using: self, root: root, maxDepth: maxDepth, entryCap: entryCap)
+    }
+
+    func searchNames(root: String, query: String, maxResults: Int, includeHidden: Bool) async throws -> [FileNode] {
+        try await ensureConnected()
+        let entries = try await service.searchNames(
+            root: root, query: query,
+            maxDepth: Self.searchMaxDepth, maxResults: maxResults, includeHidden: includeHidden)
+        return entries.map(Self.node(from:))
     }
 
     func fileMetadata(_ path: String) async throws -> FileMetadata {

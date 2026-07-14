@@ -8,6 +8,14 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
     let supportsWrite = true
     private let queue = DispatchQueue(label: "treemux.localfs", qos: .userInitiated)
 
+    // Dedicated queue for `searchNames`. A no-match recursive search over a
+    // wide tree can visit tens of thousands of entries; running it on the
+    // shared `queue` above would block every other file op (listDirectory,
+    // readFile, writeFile, createFile) queued behind it for the duration of
+    // the walk. Search only reads the FS, so isolating it here is safe and
+    // keeps interactive file ops responsive while a search is in flight.
+    private let searchQueue = DispatchQueue(label: "treemux.localfs.search", qos: .userInitiated)
+
     func listDirectory(_ path: String) async throws -> [FileNode] {
         try await runOnQueue {
             let parentURL = URL(fileURLWithPath: path)
@@ -100,6 +108,90 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
         URL(fileURLWithPath: path)
     }
 
+    // Mirrors the remote search depth bound (`searchMaxDepth = 12`) so a
+    // no-match query over a large/deep tree (e.g. node_modules, .build)
+    // cannot walk the entire hierarchy before returning — that would stall
+    // other file operations queued behind this on the shared serial queue.
+    private static let searchMaxDepth = 12
+
+    // Hard ceiling on the number of entries examined during a single
+    // `searchNames` walk, independent of the depth bound. The depth bound
+    // caps how deep the walk goes but not its fan-out — a wide, shallow,
+    // non-hidden tree (e.g. a top-level `node_modules`) can still contain
+    // 100k+ entries within 12 levels. Without this cap a no-match query over
+    // such a tree would visit every entry before returning. Silent when hit
+    // (no error surfaced) — a partial, capped result set is preferable to a
+    // stalled search; worth logging if this ever needs diagnosis.
+    private static let searchMaxVisited = 50_000
+
+    func searchNames(root: String, query: String, maxResults: Int, includeHidden: Bool) async throws -> [FileNode] {
+        try await runOnSearchQueue {
+            let fm = FileManager.default
+            let rootURL = URL(fileURLWithPath: root)
+            guard let enumerator = fm.enumerator(
+                at: rootURL,
+                includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
+                options: []) else { return [] }
+
+            var results: [FileNode] = []
+            var visited = 0
+            for case let url as URL in enumerator {
+                visited += 1
+                if visited >= Self.searchMaxVisited { break }
+
+                // `level` is 1 for direct children of rootURL. Once we're at
+                // or beyond the depth bound, stop descending further (but
+                // still consider the current entry itself for a match).
+                if enumerator.level >= Self.searchMaxDepth {
+                    enumerator.skipDescendants()
+                }
+
+                let name = url.lastPathComponent
+                let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+
+                // FIX I1: prune hidden directories during the walk itself —
+                // not just filter the leaf name after the fact. The tree UI
+                // can only ever show a hidden directory's contents when
+                // "Show Hidden Files" is on, so descending into one and
+                // returning a non-hidden leaf underneath it (e.g.
+                // `.git/config`) would surface a result the tree can never
+                // navigate to.
+                if !includeHidden && name.hasPrefix(".") {
+                    if isDir { enumerator.skipDescendants() }
+                    continue
+                }
+
+                guard name.range(of: query, options: [.caseInsensitive]) != nil else { continue }
+
+                // FIX M1: classify symlinks the same way `makeNode` does —
+                // `.isDirectoryKey` reflects the LINK, not its target, so a
+                // symlink-to-directory would otherwise come back as `.file`
+                // and get routed to `openInTree` (read-as-file → error tab)
+                // instead of `revealInTree`.
+                let isSymlink = (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) ?? false
+                let kind: FileNode.Kind
+                var symlinkTargetIsDirectory = false
+                if isSymlink {
+                    let target = try? fm.destinationOfSymbolicLink(atPath: url.path)
+                    kind = .symlink(target: target)
+                    var isTargetDir: ObjCBool = false
+                    if fm.fileExists(atPath: url.path, isDirectory: &isTargetDir) {
+                        symlinkTargetIsDirectory = isTargetDir.boolValue
+                    }
+                } else {
+                    kind = isDir ? .directory : .file
+                }
+
+                results.append(FileNode(
+                    id: url.path, name: name, path: url.path,
+                    kind: kind, sizeBytes: nil, modifiedAt: nil,
+                    symlinkTargetIsDirectory: symlinkTargetIsDirectory))
+                if results.count >= maxResults { break }
+            }
+            return results
+        }
+    }
+
     // MARK: - helpers
 
     /// Builds `FileNode`s from raw directory entries, skipping any entry whose
@@ -160,6 +252,18 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
     private func runOnQueue<T>(_ body: @escaping () throws -> T) async throws -> T {
         try await withCheckedThrowingContinuation { cont in
             queue.async {
+                do { cont.resume(returning: try body()) }
+                catch { cont.resume(throwing: error) }
+            }
+        }
+    }
+
+    /// Like `runOnQueue`, but dispatches onto `searchQueue` instead of the
+    /// shared `queue` so a long-running search walk never blocks interactive
+    /// file operations (see `searchQueue`'s doc comment).
+    private func runOnSearchQueue<T>(_ body: @escaping () throws -> T) async throws -> T {
+        try await withCheckedThrowingContinuation { cont in
+            searchQueue.async {
                 do { cont.resume(returning: try body()) }
                 catch { cont.resume(throwing: error) }
             }
