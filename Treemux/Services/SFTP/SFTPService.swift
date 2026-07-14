@@ -332,6 +332,56 @@ actor SFTPService {
         "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
+    // MARK: - Recursive name search
+
+    /// One-round-trip recursive name search. `find` matches the glob; the
+    /// `-exec sh -c` classifies each hit as `d`/`f` portably (GNU + BSD), and
+    /// `head` caps the result count (and stops `find` early via SIGPIPE).
+    static func recursiveSearchCommand(root: String, query: String,
+                                       maxDepth: Int, maxResults: Int) -> String {
+        let escRoot = shellEscape(root)
+        let glob = shellEscape("*\(query)*")
+        return "find \(escRoot) -maxdepth \(maxDepth) -iname \(glob) 2>/dev/null "
+            + "-exec sh -c 'for p; do if [ -d \"$p\" ]; then printf \"d %s\\n\" \"$p\"; "
+            + "else printf \"f %s\\n\" \"$p\"; fi; done' _ {} + | head -n \(maxResults)"
+    }
+
+    /// Parses `d <path>` / `f <path>` lines from `recursiveSearchCommand`.
+    static func parseFindResults(_ output: String) -> [SFTPRichEntry] {
+        var out: [SFTPRichEntry] = []
+        for line in output.components(separatedBy: "\n") {
+            guard line.count > 2 else { continue }
+            let typeChar = line.first!
+            guard typeChar == "d" || typeChar == "f" else { continue }
+            let path = String(line.dropFirst(2))
+            guard !path.isEmpty else { continue }
+            let name = (path as NSString).lastPathComponent
+            out.append(SFTPRichEntry(
+                name: name, path: path,
+                kind: typeChar == "d" ? .directory : .file,
+                sizeBytes: nil, modifiedAt: nil))
+        }
+        return out
+    }
+
+    func searchNames(root: String, query: String,
+                     maxDepth: Int, maxResults: Int) async throws -> [SFTPRichEntry] {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let cmd = Self.recursiveSearchCommand(
+                root: root, query: query, maxDepth: maxDepth, maxResults: maxResults)
+            let result = try await runSSH(target: target, command: cmd, timeout: Self.listingCommandTimeout)
+            // `head` closing the pipe yields exit 141 (SIGPIPE); treat any output
+            // as success rather than gating on exitCode.
+            return Self.parseFindResults(result.output)
+        case .citadel:
+            // No arbitrary exec on the Citadel password path.
+            throw SFTPServiceError.commandFailed(
+                "Recursive search requires key-based (system SSH) auth")
+        }
+    }
+
     // MARK: - Disconnection
 
     func disconnect() async {

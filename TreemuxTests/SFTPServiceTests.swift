@@ -324,6 +324,25 @@ final class SFTPServiceTests: XCTestCase {
         XCTAssertEqual(SFTPService.touchNoclobberCommand(path: "/home/u/a.txt"),
                        "set -C; : > '/home/u/a.txt'")
     }
+
+    // MARK: - recursive name search (find)
+
+    func testParseFindResultsTypePrefixed() {
+        let out = "f /home/u/alpha.txt\nd /home/u/sub/alphadir\n\nf /home/u/beta\n"
+        let entries = SFTPService.parseFindResults(out)
+        let byName = Dictionary(uniqueKeysWithValues: entries.map { ($0.name, $0) })
+        XCTAssertEqual(entries.count, 3)
+        XCTAssertEqual(byName["alpha.txt"]?.path, "/home/u/alpha.txt")
+        XCTAssertTrue(byName["alphadir"]!.isDirectory)
+        XCTAssertFalse(byName["alpha.txt"]!.isDirectory)
+    }
+
+    func testRecursiveSearchCommandShapes() {
+        let cmd = SFTPService.recursiveSearchCommand(
+            root: "/home/u", query: "log", maxDepth: 12, maxResults: 500)
+        XCTAssertTrue(cmd.contains("find '/home/u' -maxdepth 12 -iname '*log*'"))
+        XCTAssertTrue(cmd.contains("head -n 500"))
+    }
 }
 
 // MARK: - Test helpers
