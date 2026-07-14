@@ -14,6 +14,22 @@ struct FileSubTabBarView: View {
     let controller: FileBrowserTabController
     @State private var hoveredID: UUID?
     @State private var draggedID: UUID?
+    @State private var viewportWidth: CGFloat = 0
+    @State private var contentWidth: CGFloat = 0
+    @State private var scrollPosition = ScrollPosition()
+    @State private var liveScrollX: CGFloat = 0
+
+    private var uniformTabWidth: CGFloat {
+        TabBarLayout.uniformWidth(
+            viewport: viewportWidth,
+            tabCount: controller.subTabs.count,
+            reservedChrome: Spacing.xs * 2,
+            minWidth: TabBarLayout.minTabWidth,
+            maxWidth: TabBarLayout.maxTabWidth
+        )
+    }
+
+    private var maxScrollX: CGFloat { max(0, contentWidth - viewportWidth) }
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -25,6 +41,7 @@ struct FileSubTabBarView: View {
                         isHovered: hoveredID == tab.id,
                         isDirty: dirtyState(for: tab),
                         rootPath: controller.rootPath,
+                        width: uniformTabWidth,
                         onSelect: { controller.activateSubTab(tab.id) },
                         onClose: { controller.closeSubTab(tab.id) },
                         onCopyAbsolute: { controller.copyPath(tab.path, mode: .absolute) },
@@ -46,7 +63,31 @@ struct FileSubTabBarView: View {
                 }
             }
             .padding(.horizontal, Spacing.xs)
+            .background(
+                GeometryReader { g in
+                    Color.clear.preference(key: TabBarContentWidthKey.self, value: g.size.width)
+                }
+            )
         }
+        .scrollPosition($scrollPosition)
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.x } action: { _, x in
+            liveScrollX = x
+        }
+        .background(
+            GeometryReader { g in
+                Color.clear.preference(key: TabBarViewportWidthKey.self, value: g.size.width)
+            }
+        )
+        .onPreferenceChange(TabBarViewportWidthKey.self) { viewportWidth = $0 }
+        .onPreferenceChange(TabBarContentWidthKey.self) { contentWidth = $0 }
+        .overlay(
+            ScrollWheelHorizontalRedirect { deltaY in
+                // Wheel down scrolls toward the trailing edge. Sign/step
+                // calibrated during GUI smoke; flip the sign if inverted.
+                let target = min(max(liveScrollX - deltaY * 3, 0), maxScrollX)
+                scrollPosition.scrollTo(x: target)
+            }
+        )
         .frame(height: 32)
         .background(theme.tabBarBackground)
     }
@@ -105,6 +146,7 @@ private struct SubTabButton: View {
     let isHovered: Bool
     let isDirty: Bool
     let rootPath: String
+    let width: CGFloat
     let onSelect: () -> Void
     let onClose: () -> Void
     let onCopyAbsolute: () -> Void
@@ -123,6 +165,9 @@ private struct SubTabButton: View {
                     .font(.system(size: 11, weight: isActive ? .semibold : .regular))
                     .italic(!tab.isPinned)
                     .foregroundStyle(isActive ? .primary : .secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 if isDirty {
                     Circle()
                         .fill(theme.accentColor)
@@ -151,6 +196,7 @@ private struct SubTabButton: View {
             .tabAccentIndicator(theme.accentColor, active: isActive, inset: Spacing.xxs)
         }
         .buttonStyle(.plain)
+        .frame(width: width)
         .contextMenu {
             Button(LocalizedStringKey("Copy Absolute Path")) { onCopyAbsolute() }
             Button(LocalizedStringKey("Copy Relative Path")) { onCopyRelative() }

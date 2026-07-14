@@ -65,6 +65,7 @@
 		3C1BD4702DECC75E0A4ABD1A /* WorkspaceSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8354D57B9898A0C0ADBD959 /* WorkspaceSidebarView.swift */; };
 		3C1F3562DE4FA89E8C580B30 /* TreemuxGhosttyBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16FE9D700089232316516F73 /* TreemuxGhosttyBootstrap.swift */; };
 		3CE12C1E3DF620B8D18564C0 /* DirectoryTreeFetch.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0AB6110DCDDCCD5520353E0 /* DirectoryTreeFetch.swift */; };
+		3F188D8B2B3A27256F1E5141 /* ScrollWheelHorizontalRedirect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 938EF990581C5D5F78F501BA /* ScrollWheelHorizontalRedirect.swift */; };
 		423A99DD3918742FC88745B3 /* TreemuxGhosttyResourcePaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01B85899C7236D215CECDD /* TreemuxGhosttyResourcePaths.swift */; };
 		430EEC769877E62F8575D557 /* TabGrouping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C1C770D0164AFC6938989F /* TabGrouping.swift */; };
 		439B7154F34CC1DC69D74A6E /* TreemuxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE43F77B5BDC0AB70604EC9B /* TreemuxApp.swift */; };
@@ -175,6 +176,7 @@
 		B7E2539E316B55AA17521CC6 /* HardenedWebContentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785A007738BED05612150627 /* HardenedWebContentTests.swift */; };
 		B840AF41A36001568C69698A /* TreeSitterCodeHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4407EBDC733583FA3CF08209 /* TreeSitterCodeHighlighter.swift */; };
 		BA43688BF20C69AB068391F6 /* FileNodeSymlinkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7210E86710CF2B3C7EA0022 /* FileNodeSymlinkTests.swift */; };
+		BBCD29138D6A5534C7468092 /* TabBarLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6387EE6929DC5193C09E16D0 /* TabBarLayout.swift */; };
 		BCEB4C8CE71A07F316E67D13 /* SplitDivider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F23062A273124B6BBE28B71 /* SplitDivider.swift */; };
 		BD1E15B46C40E1A341C3B5B6 /* SidebarContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 562B8C6A2EC32280F3C88E13 /* SidebarContainerView.swift */; };
 		BF6AC7D0EC7DBA0469366D91 /* WorkspaceMetadataWatchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FED0327A7E59732F42304316 /* WorkspaceMetadataWatchService.swift */; };
@@ -225,8 +227,8 @@
 		F456345A8C56133D248B5234 /* FileNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03F44873E99A802B3C59BE39 /* FileNode.swift */; };
 		F53BBCE71ADC60E6B6F3BAE2 /* WorkspaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C208C2F03C2398D1F9492 /* WorkspaceModels.swift */; };
 		F8644091777403C59611547D /* LocalFileBrowserDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E3AB47E2F0BA80F74F955AD /* LocalFileBrowserDataSource.swift */; };
+		FAF95D064B6284F2E37B0FB9 /* TreemuxTabLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F5D08DEA1593F9CF50CA11C /* TreemuxTabLayoutTests.swift */; };
 		FBA39534A25C607A48314803 /* GhosttyKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = AC606574E1DF3045291D300B /* GhosttyKit.xcframework */; };
-		FC0884EBD132C797A61FC4A1 /* TreemuxTabSizingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9B87785B633D3E01905E33E /* TreemuxTabSizingTests.swift */; };
 		FD887F150996252DCF338CEE /* AdaptiveFontSizeCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78EDFC7E23962DB5BFF6AFED /* AdaptiveFontSizeCalculator.swift */; };
 		FE9822AA382F00FAA78C4FDF /* FileBrowserTreeAccelerationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 327C1AAEDC6474147999425B /* FileBrowserTreeAccelerationTests.swift */; };
 /* End PBXBuildFile section */
@@ -330,12 +332,14 @@
 		5F04CC27D705CD0274D08465 /* FileViewModeCodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileViewModeCodingTests.swift; sourceTree = "<group>"; };
 		62A28ABD1501991FC6757F16 /* BatchUnsavedChangesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchUnsavedChangesSheet.swift; sourceTree = "<group>"; };
 		62EB76FEF501CC1380FB2607 /* SidebarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarCoordinator.swift; sourceTree = "<group>"; };
+		6387EE6929DC5193C09E16D0 /* TabBarLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarLayout.swift; sourceTree = "<group>"; };
 		656D4A17827E564EDD5A8918 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 		68300DAD2E46A8B3E6E11839 /* FileTreePanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreePanelView.swift; sourceTree = "<group>"; };
 		6A819DB0837783D1D2411CB8 /* ThemeManagerOnAccentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManagerOnAccentTests.swift; sourceTree = "<group>"; };
 		6AECC7D7718049E6DE71D772 /* Notifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Notifications.swift; sourceTree = "<group>"; };
 		6C319BEBFF08316768F7BEBB /* ThemeModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeModelTests.swift; sourceTree = "<group>"; };
 		6DD2CC0A8B9D60B36E1F8105 /* Treemux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Treemux.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6F5D08DEA1593F9CF50CA11C /* TreemuxTabLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxTabLayoutTests.swift; sourceTree = "<group>"; };
 		6FC62B470DAB68E322CA5904 /* PerfSignpostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerfSignpostTests.swift; sourceTree = "<group>"; };
 		719F86B8BC90BA882B83152E /* SettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheet.swift; sourceTree = "<group>"; };
 		71FCB95357127BEE31A3AC96 /* WorkspaceTabKindCodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTabKindCodingTests.swift; sourceTree = "<group>"; };
@@ -366,6 +370,7 @@
 		927AE345DA56C1F2D6D035AC /* GitRepositoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitRepositoryService.swift; sourceTree = "<group>"; };
 		92B0D1DFEE9B34109844D751 /* TreemuxGhosttyLogFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyLogFilter.swift; sourceTree = "<group>"; };
 		92B183417582C15AE89A8698 /* SidebarIconCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarIconCatalog.swift; sourceTree = "<group>"; };
+		938EF990581C5D5F78F501BA /* ScrollWheelHorizontalRedirect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollWheelHorizontalRedirect.swift; sourceTree = "<group>"; };
 		952549886E5EC47896CBCF66 /* ShellCommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellCommandRunner.swift; sourceTree = "<group>"; };
 		952DFCA114D8DE9B65E79BCC /* ThemeLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeLoaderTests.swift; sourceTree = "<group>"; };
 		9D8662706F495A0DA4CCB1F0 /* WindowContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowContext.swift; sourceTree = "<group>"; };
@@ -442,7 +447,6 @@
 		E6D465051B71CA3275A58719 /* TreeCacheOffMainLoadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreeCacheOffMainLoadTests.swift; sourceTree = "<group>"; };
 		E8354D57B9898A0C0ADBD959 /* WorkspaceSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSidebarView.swift; sourceTree = "<group>"; };
 		E993B2E72B0AA5FA2CD8F136 /* TreemuxGhosttyClipboardSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxGhosttyClipboardSupport.swift; sourceTree = "<group>"; };
-		E9B87785B633D3E01905E33E /* TreemuxTabSizingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreemuxTabSizingTests.swift; sourceTree = "<group>"; };
 		E9C397C881AF1E9C2590736E /* BufferWordIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BufferWordIndex.swift; sourceTree = "<group>"; };
 		EAD730723C379BFA4C7D00F8 /* SidebarItemIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarItemIconView.swift; sourceTree = "<group>"; };
 		EBEED7D7270F7B9253C166D3 /* LargeFileConfirmView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LargeFileConfirmView.swift; sourceTree = "<group>"; };
@@ -571,7 +575,7 @@
 				33DBD7F6E96DFD37B6863693 /* ThemeTests.swift */,
 				3791DE3E069CBBE9382CA4BF /* TmuxServiceTests.swift */,
 				E6D465051B71CA3275A58719 /* TreeCacheOffMainLoadTests.swift */,
-				E9B87785B633D3E01905E33E /* TreemuxTabSizingTests.swift */,
+				6F5D08DEA1593F9CF50CA11C /* TreemuxTabLayoutTests.swift */,
 				3477DE6F674F94B9457073F4 /* TreemuxTests.swift */,
 				F0ED89DE63336C3B913F0C77 /* TreeSitterCodeHighlighterTests.swift */,
 				0D66279CB21EA721C605457C /* WordIndexSnapshotStoreTests.swift */,
@@ -613,6 +617,7 @@
 				076410C949B44BB7C357EBF0 /* ButtonStyles.swift */,
 				2F39E1FBD27C95A889EF16AF /* CommandPaletteView.swift */,
 				860BE08474960AA84EB76155 /* Hairline.swift */,
+				938EF990581C5D5F78F501BA /* ScrollWheelHorizontalRedirect.swift */,
 				36FB4E7DCC3318B7E1832016 /* TabAccentIndicator.swift */,
 				5C2110A46976203DDBF9D707 /* TerminalHostView.swift */,
 			);
@@ -713,6 +718,7 @@
 				383CC60F01FDAD8B71C8EF65 /* EmptyTabStateView.swift */,
 				9F23062A273124B6BBE28B71 /* SplitDivider.swift */,
 				A7CF1673C70DBE89F480A010 /* SplitNodeView.swift */,
+				6387EE6929DC5193C09E16D0 /* TabBarLayout.swift */,
 				17C1C770D0164AFC6938989F /* TabGrouping.swift */,
 				A9B01277529CEA9D185C95B0 /* TerminalPaneView.swift */,
 				E45B70C0F236F9F0FA025A53 /* WorkspaceDetailView.swift */,
@@ -1130,6 +1136,7 @@
 				13B9B8CC2251E6814CA4897F /* SSHRawConfigSheet.swift in Sources */,
 				4DE2CEAEC3114FC1C79E784C /* SSHServerEditSheet.swift in Sources */,
 				E72FAED1376EB9235DA523BF /* SSHTarget.swift in Sources */,
+				3F188D8B2B3A27256F1E5141 /* ScrollWheelHorizontalRedirect.swift in Sources */,
 				4F93E2B9A2A6EC003FCAB4BE /* SessionBackend.swift in Sources */,
 				A7746DB757BF4458229659E0 /* SessionBackendLaunch.swift in Sources */,
 				11799B542DF852B119E2960A /* SettingsSheet.swift in Sources */,
@@ -1154,6 +1161,7 @@
 				385A3EF810559BD598E183D9 /* StoredShortcut.swift in Sources */,
 				7405B7C02F6B819CB0A772E5 /* String+Helpers.swift in Sources */,
 				E2C72C794E93E57094D67663 /* TabAccentIndicator.swift in Sources */,
+				BBCD29138D6A5534C7468092 /* TabBarLayout.swift in Sources */,
 				430EEC769877E62F8575D557 /* TabGrouping.swift in Sources */,
 				44D9A39F7E62E88E88ED2DAD /* TerminalHostView.swift in Sources */,
 				BF9448F0B1E9C5D3B71C956C /* TerminalPaneView.swift in Sources */,
@@ -1264,7 +1272,7 @@
 				8B1F02071634EF5A0330144B /* TmuxServiceTests.swift in Sources */,
 				A58BFDBCC84A785FF2F011AA /* TreeCacheOffMainLoadTests.swift in Sources */,
 				D19A23C46D175B48CE53A9E4 /* TreeSitterCodeHighlighterTests.swift in Sources */,
-				FC0884EBD132C797A61FC4A1 /* TreemuxTabSizingTests.swift in Sources */,
+				FAF95D064B6284F2E37B0FB9 /* TreemuxTabLayoutTests.swift in Sources */,
 				CA8A454F37FDDB71C48B6069 /* TreemuxTests.swift in Sources */,
 				D28A8434A7ED5469EA3D2E14 /* WordIndexSnapshotStoreTests.swift in Sources */,
 				A04CA84B2C50B4E52EC8B119 /* WorkspaceModelTabKindTests.swift in Sources */,
