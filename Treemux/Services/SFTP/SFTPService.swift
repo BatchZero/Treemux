@@ -1203,24 +1203,38 @@ actor SFTPService {
         do {
             let canonical = try await sftp.getRealPath(atPath: path)
             let attrs = try await sftp.getAttributes(at: canonical)
-            guard let permissions = attrs.permissions else {
-                return .unresolved(reason: "target type unavailable")
-            }
-            return (permissions & Self.S_IFMT) == Self.S_IFDIR
-                ? .directory(canonicalIdentity: canonical)
-                : .file
+            return Self.resolutionForCitadelAttributes(
+                canonicalIdentity: canonical,
+                permissions: attrs.permissions
+            )
         } catch SFTPError.errorStatus(let status) {
-            switch status.errorCode {
-            case .noSuchFile:
-                return .broken
-            case .permissionDenied:
-                return .inaccessible
-            default:
-                return .unresolved(reason: status.errorCode.debugDescription)
-            }
+            return Self.resolutionForCitadelStatusCode(status.errorCode)
         } catch {
             if error is CancellationError { return .unresolved(reason: nil) }
             return .unresolved(reason: error.localizedDescription)
+        }
+    }
+
+    static func resolutionForCitadelAttributes(
+        canonicalIdentity: String,
+        permissions: UInt32?
+    ) -> SymlinkTargetResolution {
+        guard let permissions else { return .unresolved(reason: nil) }
+        return (permissions & Self.S_IFMT) == Self.S_IFDIR
+            ? .directory(canonicalIdentity: canonicalIdentity)
+            : .file
+    }
+
+    static func resolutionForCitadelStatusCode(
+        _ statusCode: SFTPStatusCode
+    ) -> SymlinkTargetResolution {
+        switch statusCode {
+        case .noSuchFile:
+            return .broken
+        case .permissionDenied:
+            return .inaccessible
+        default:
+            return .unresolved(reason: nil)
         }
     }
 

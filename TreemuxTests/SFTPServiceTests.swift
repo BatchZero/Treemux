@@ -3,6 +3,7 @@
 //  TreemuxTests
 //
 
+import Citadel
 import XCTest
 @testable import Treemux
 
@@ -247,6 +248,43 @@ final class SFTPServiceTests: XCTestCase {
         }
 
         XCTAssertEqual(results, expected)
+    }
+
+    func testCitadelStatusCodesMapToSymlinkResolutionFailures() {
+        XCTAssertEqual(
+            SFTPService.resolutionForCitadelStatusCode(.noSuchFile),
+            .broken
+        )
+        XCTAssertEqual(
+            SFTPService.resolutionForCitadelStatusCode(.permissionDenied),
+            .inaccessible
+        )
+        XCTAssertEqual(
+            SFTPService.resolutionForCitadelStatusCode(.unsupportedOperation),
+            .unresolved(reason: nil)
+        )
+        XCTAssertEqual(
+            SFTPService.resolutionForCitadelStatusCode(.failure),
+            .unresolved(reason: nil)
+        )
+    }
+
+    func testCitadelAttributesMapDirectoryFileAndMissingPermissions() {
+        XCTAssertEqual(
+            SFTPService.resolutionForCitadelAttributes(
+                canonicalIdentity: "/canonical/dir", permissions: 0o040755),
+            .directory(canonicalIdentity: "/canonical/dir")
+        )
+        XCTAssertEqual(
+            SFTPService.resolutionForCitadelAttributes(
+                canonicalIdentity: "/canonical/file", permissions: 0o100644),
+            .file
+        )
+        XCTAssertEqual(
+            SFTPService.resolutionForCitadelAttributes(
+                canonicalIdentity: "/canonical/unknown", permissions: nil),
+            .unresolved(reason: nil)
+        )
     }
 
     func testBoundedSymlinkResolutionCancelsCooperativeRequestsPromptly() async throws {
