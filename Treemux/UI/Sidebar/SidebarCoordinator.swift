@@ -11,6 +11,7 @@ import SwiftUI
 final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineViewDelegate {
 
     private static let workspaceDragType = NSPasteboard.PasteboardType("com.treemux.workspace.ids")
+    private static let remoteGroupDragType = NSPasteboard.PasteboardType("com.treemux.remote-group.key")
 
     weak var container: SidebarContainerView?
     weak var store: WorkspaceStore?
@@ -33,7 +34,7 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         outlineView.dataSource = self
         outlineView.delegate = self
 
-        outlineView.registerForDraggedTypes([Self.workspaceDragType])
+        outlineView.registerForDraggedTypes([Self.workspaceDragType, Self.remoteGroupDragType])
 
         outlineView.menuProvider = { [weak self] row in
             self?.contextMenu(forRow: row)
@@ -89,10 +90,11 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         let localWorkspaces = store.localWorkspaces
         let remoteGroups = store.remoteWorkspaceGroups
         let allWorkspaces = localWorkspaces + remoteGroups.flatMap(\.targets)
-        let fingerprint = dataFingerprint(workspaces: allWorkspaces)
+        let fingerprint = dataFingerprint(workspaces: allWorkspaces, remoteGroups: remoteGroups)
         let dataChanged = fingerprint != lastDataFingerprint
 
         if dataChanged {
+            let collapsedBeforeReload = collapsedSectionKeys(on: container?.outlineView)
             lastDataFingerprint = fingerprint
             rootNodes = buildNodes(
                 localWorkspaces: localWorkspaces,
@@ -111,10 +113,12 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
                     }
                 }
             }
-            // Apply persisted collapsed state
+            // Keep currently collapsed sections collapsed through a structural
+            // reload, including a remote-header move.
+            let collapsedSectionKeys = store.collapsedSections.union(collapsedBeforeReload)
             for node in rootNodes {
                 if case .section(let section) = node.kind,
-                   store.collapsedSections.contains(section.persistenceKey) {
+                   collapsedSectionKeys.contains(section.persistenceKey) {
                     outlineView.collapseItem(node)
                 }
             }
@@ -127,8 +131,12 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
 
     // MARK: - Fingerprint
 
-    private func dataFingerprint(workspaces: [WorkspaceModel]) -> String {
+    private func dataFingerprint(
+        workspaces: [WorkspaceModel],
+        remoteGroups: [(key: String, targets: [WorkspaceModel])]
+    ) -> String {
         var parts: [String] = []
+        parts.append(contentsOf: remoteGroups.map { "section:\($0.key)" })
         for ws in workspaces {
             let iconKey = ws.workspaceIcon.map { "\($0)" } ?? "-"
             parts.append("\(ws.id)|\(ws.name)|\(ws.currentBranch ?? "-")|\(ws.activeWorktreePath)|\(ws.worktrees.count)|\(iconKey)")
@@ -138,6 +146,16 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
             }
         }
         return parts.joined(separator: "\n")
+    }
+
+    private func collapsedSectionKeys(on outlineView: NSOutlineView?) -> Set<String> {
+        guard let outlineView else { return [] }
+        return Set(rootNodes.compactMap { node in
+            guard case .section(let section) = node.kind,
+                  node.isExpandable,
+                  !outlineView.isItemExpanded(node) else { return nil }
+            return section.persistenceKey
+        })
     }
 
     // MARK: - Build Nodes
@@ -454,12 +472,71 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         return nil
     }
 
+    /// Converts a root-level outline insertion point into the corresponding
+    /// remote-group insertion point. The local section, when present, stays fixed.
+    private func remoteGroupDestination(
+        for groupKey: String,
+        proposedItem item: Any?,
+        proposedChildIndex index: Int
+    ) -> (rootIndex: Int, groupIndex: Int)? {
+        let rootIndex: Int
+        if let targetNode = item as? SidebarNodeItem {
+            guard case .section(.remote) = targetNode.kind,
+                  let targetRootIndex = rootNodes.firstIndex(where: { $0 === targetNode }) else {
+                return nil
+            }
+            rootIndex = index <= 0 ? targetRootIndex : targetRootIndex + 1
+        } else {
+            rootIndex = index == -1 ? rootNodes.count : index
+        }
+
+        let sections = rootNodes.compactMap { node -> SidebarSection? in
+            guard case .section(let section) = node.kind else { return nil }
+            return section
+        }
+        guard let groupIndex = Self.remoteGroupInsertionIndex(
+            for: groupKey,
+            rootSections: sections,
+            rootIndex: rootIndex
+        ) else { return nil }
+
+        return (rootIndex, groupIndex)
+    }
+
+    /// Returns a remote-group insertion index for a root-level outline drop.
+    /// Keeping this separate makes the local-section pinning rule explicit.
+    static func remoteGroupInsertionIndex(
+        for groupKey: String,
+        rootSections: [SidebarSection],
+        rootIndex: Int
+    ) -> Int? {
+        guard let firstRemoteRootIndex = rootSections.firstIndex(where: { section in
+            if case .remote = section { return true }
+            return false
+        }),
+        rootIndex >= firstRemoteRootIndex,
+        rootIndex <= rootSections.count,
+        rootSections.contains(where: { section in
+            if case .remote(let key, _) = section { return key == groupKey }
+            return false
+        }) else {
+            return nil
+        }
+        return rootIndex - firstRemoteRootIndex
+    }
+
     func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> NSPasteboardWriting? {
-        guard let node = item as? SidebarNodeItem,
-              case .workspace(let ws) = node.kind else { return nil }
+        guard let node = item as? SidebarNodeItem else { return nil }
 
         let pasteboardItem = NSPasteboardItem()
-        pasteboardItem.setString(ws.id.uuidString, forType: Self.workspaceDragType)
+        switch node.kind {
+        case .section(.remote(let groupKey, _)):
+            pasteboardItem.setString(groupKey, forType: Self.remoteGroupDragType)
+        case .section(.local), .worktree:
+            return nil
+        case .workspace(let ws):
+            pasteboardItem.setString(ws.id.uuidString, forType: Self.workspaceDragType)
+        }
         return pasteboardItem
     }
 
@@ -469,6 +546,16 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         proposedItem item: Any?,
         proposedChildIndex index: Int
     ) -> NSDragOperation {
+        if let groupKey = info.draggingPasteboard.string(forType: Self.remoteGroupDragType) {
+            guard let destination = remoteGroupDestination(
+                for: groupKey,
+                proposedItem: item,
+                proposedChildIndex: index
+            ) else { return [] }
+            outlineView.setDropItem(nil, dropChildIndex: destination.rootIndex)
+            return .move
+        }
+
         guard let payload = info.draggingPasteboard.string(forType: Self.workspaceDragType),
               let draggedID = UUID(uuidString: payload) else { return [] }
 
@@ -522,6 +609,16 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         item: Any?,
         childIndex index: Int
     ) -> Bool {
+        if let groupKey = info.draggingPasteboard.string(forType: Self.remoteGroupDragType) {
+            guard let destination = remoteGroupDestination(
+                for: groupKey,
+                proposedItem: item,
+                proposedChildIndex: index
+            ) else { return false }
+            store?.moveRemoteGroup(groupKey, to: destination.groupIndex)
+            return true
+        }
+
         guard let payload = info.draggingPasteboard.string(forType: Self.workspaceDragType),
               let draggedID = UUID(uuidString: payload) else { return false }
 

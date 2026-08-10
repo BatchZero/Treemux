@@ -610,6 +610,20 @@ final class WorkspaceModelsTests: XCTestCase {
         let data = json.data(using: .utf8)!
         let decoded = try JSONDecoder().decode(PersistedWorkspaceState.self, from: data)
         XCTAssertNil(decoded.collapsedSections)
+        XCTAssertNil(decoded.remoteGroupOrder)
+    }
+
+    func testPersistedWorkspaceStateRemoteGroupOrderRoundTrip() throws {
+        let state = PersistedWorkspaceState(
+            version: 1,
+            selectedWorkspaceID: nil,
+            workspaces: [],
+            remoteGroupOrder: ["beta|root", "alpha|root"]
+        )
+        let data = try JSONEncoder().encode(state)
+        let decoded = try JSONDecoder().decode(PersistedWorkspaceState.self, from: data)
+
+        XCTAssertEqual(decoded.remoteGroupOrder, ["beta|root", "alpha|root"])
     }
 
     func testSidebarSectionPersistenceKey() {

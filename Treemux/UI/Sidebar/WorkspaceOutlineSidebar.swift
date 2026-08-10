@@ -44,6 +44,7 @@ struct WorkspaceOutlineSidebar: NSViewRepresentable {
         // metadata refreshes, and selection drives the highlight sync.
         _ = store.workspaceMetadataGeneration
         _ = store.selectedWorkspaceID
+        _ = store.remoteGroupOrder
 
         let coordinator = context.coordinator
         coordinator.store = store
