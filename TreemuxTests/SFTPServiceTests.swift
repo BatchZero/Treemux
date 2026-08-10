@@ -171,25 +171,33 @@ final class SFTPServiceTests: XCTestCase {
     func testCanonicalIdentityCommandPreservesWhitespaceAndNewlines() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("treemux-canonical-\(UUID().uuidString)")
-        let directory = root.appendingPathComponent(" leading\tline\ntrailing ")
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let directories = [
+            root.appendingPathComponent(" leading\tline\ntrailing "),
+            root.appendingPathComponent(" leading\tline\ntrailing \n\n")
+        ]
+        for directory in directories {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        }
         defer { try? FileManager.default.removeItem(at: root) }
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", SFTPService.canonicalDirectoryIdentityCommand(path: directory.path)]
-        let result = try await SFTPService.runProcessAndCaptureOutput(process)
-        let expectedProcess = Process()
-        expectedProcess.executableURL = URL(fileURLWithPath: "/bin/realpath")
-        expectedProcess.arguments = ["--", directory.path]
-        let expectedResult = try await SFTPService.runProcessAndCaptureOutput(expectedProcess)
+        for directory in directories {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/sh")
+            process.arguments = ["-c", SFTPService.canonicalDirectoryIdentityCommand(path: directory.path)]
+            let result = try await SFTPService.runProcessAndCaptureOutput(process)
+            let expectedProcess = Process()
+            expectedProcess.executableURL = URL(fileURLWithPath: "/bin/realpath")
+            expectedProcess.arguments = ["--", directory.path]
+            let expectedResult = try await SFTPService.runProcessAndCaptureOutput(expectedProcess)
 
-        XCTAssertEqual(result.exitCode, 0)
-        XCTAssertEqual(expectedResult.exitCode, 0)
-        XCTAssertEqual(
-            SFTPService.parseCanonicalDirectoryIdentityOutput(result.output),
-            String(expectedResult.output.dropLast())
-        )
+            XCTAssertEqual(result.exitCode, 0)
+            XCTAssertEqual(expectedResult.exitCode, 0)
+            XCTAssertEqual(expectedResult.output.last, "\n")
+            XCTAssertEqual(
+                SFTPService.parseCanonicalDirectoryIdentityOutput(result.output),
+                String(expectedResult.output.dropLast())
+            )
+        }
     }
 
     func testProbeClassifiesPermissionDeniedTargetAsInaccessible() async throws {
