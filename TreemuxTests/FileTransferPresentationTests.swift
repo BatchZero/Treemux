@@ -2,6 +2,29 @@ import XCTest
 @testable import Treemux
 
 final class FileTransferPresentationTests: XCTestCase {
+    func testUploadDropAcceptanceRequiresIdleRemoteTabWithoutPendingConfirmation() {
+        XCTAssertTrue(FileTransferPresentation.canAcceptUploadDrop(
+            isRemote: true,
+            isTransferActive: false,
+            hasPendingUpload: false
+        ))
+        XCTAssertFalse(FileTransferPresentation.canAcceptUploadDrop(
+            isRemote: false,
+            isTransferActive: false,
+            hasPendingUpload: false
+        ))
+        XCTAssertFalse(FileTransferPresentation.canAcceptUploadDrop(
+            isRemote: true,
+            isTransferActive: true,
+            hasPendingUpload: false
+        ))
+        XCTAssertFalse(FileTransferPresentation.canAcceptUploadDrop(
+            isRemote: true,
+            isTransferActive: false,
+            hasPendingUpload: true
+        ))
+    }
+
     func testDropTargetRoutesDirectoryAndEmptyTreeToExpectedDestination() {
         let directory = FileNode(
             id: "/remote/folder",
