@@ -2,6 +2,7 @@
 //  FileBrowserTabControllerTests.swift
 //  TreemuxTests
 
+import Observation
 import XCTest
 @testable import Treemux
 
@@ -190,6 +191,89 @@ final class FileBrowserTabControllerTests: XCTestCase {
         XCTAssertTrue(controller.expandedDirs.contains("/root/two"))
     }
 
+    func testRefreshCycleValidationFailureClearsOnlyInvalidAliasSubtree() async throws {
+        let mock = MockFileBrowserDataSource()
+        let invalidatedLinkPath = "/root/link"
+        let nestedPath = "/root/link/nested"
+        let brokenPath = "/root/link/nested/broken"
+        let otherAliasPath = "/root/other"
+        let safeLink = FileNode(
+            id: invalidatedLinkPath, name: "link", path: invalidatedLinkPath,
+            kind: .symlink(target: "/shared"), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .directory(canonicalIdentity: "/canonical/shared")
+        )
+        let otherAlias = FileNode(
+            id: otherAliasPath, name: "other", path: otherAliasPath,
+            kind: .symlink(target: "/shared"), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .directory(canonicalIdentity: "/canonical/shared")
+        )
+        let nested = FileNode(
+            id: nestedPath, name: "nested", path: nestedPath,
+            kind: .directory, sizeBytes: nil, modifiedAt: nil
+        )
+        let broken = FileNode(
+            id: brokenPath, name: "broken", path: brokenPath,
+            kind: .symlink(target: "missing"), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .broken
+        )
+        let otherChild = FileNode(
+            id: "/root/other/kept.txt", name: "kept.txt", path: "/root/other/kept.txt",
+            kind: .file, sizeBytes: 1, modifiedAt: nil
+        )
+        mock.directoryListings["/root"] = [safeLink, otherAlias]
+        mock.directoryListings[invalidatedLinkPath] = [nested]
+        mock.directoryListings[nestedPath] = [broken]
+        mock.directoryListings[otherAliasPath] = [otherChild]
+        mock.canonicalIdentities["/root"] = "/canonical/root"
+        let controller = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/root", rootKind: .project),
+            dataSource: mock
+        )
+        await controller.refreshTree()
+        await controller.toggleExpand(invalidatedLinkPath)
+        await controller.toggleExpand(nestedPath)
+        await controller.activateNode(broken)
+        await controller.toggleExpand(otherAliasPath)
+        controller.markTruncatedForTesting(invalidatedLinkPath)
+        controller.markTruncatedForTesting(nestedPath)
+        controller.markTruncatedForTesting(otherAliasPath)
+        let invalidatedLinkListingsBeforeRefresh = mock.listDirectoryCalls.filter {
+            $0 == invalidatedLinkPath
+        }.count
+
+        let cyclicLink = FileNode(
+            id: invalidatedLinkPath, name: "link", path: invalidatedLinkPath,
+            kind: .symlink(target: "/root"), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .directory(canonicalIdentity: "/canonical/root")
+        )
+        mock.directoryListings["/root"] = [cyclicLink, otherAlias]
+
+        await controller.refreshTree()
+
+        XCTAssertEqual(
+            mock.listDirectoryCalls.filter { $0 == invalidatedLinkPath }.count,
+            invalidatedLinkListingsBeforeRefresh,
+            "the invalid alias must not be listed after cycle validation fails"
+        )
+        XCTAssertFalse(controller.expandedDirs.contains(invalidatedLinkPath))
+        XCTAssertFalse(controller.expandedDirs.contains(nestedPath))
+        XCTAssertNil(controller.childrenByPath[invalidatedLinkPath])
+        XCTAssertNil(controller.childrenByPath[nestedPath])
+        XCTAssertFalse(controller.truncatedDirs.contains(invalidatedLinkPath))
+        XCTAssertFalse(controller.truncatedDirs.contains(nestedPath))
+        XCTAssertNil(controller.symlinkErrorsByPath[brokenPath])
+        let cycleRow = try XCTUnwrap(controller.visibleRows().first {
+            $0.id == invalidatedLinkPath
+        })
+        XCTAssertNotNil(cycleRow.symlinkError)
+        XCTAssertFalse(controller.visibleRows().contains { $0.id == brokenPath })
+
+        XCTAssertTrue(controller.expandedDirs.contains(otherAliasPath))
+        XCTAssertEqual(controller.childrenByPath[otherAliasPath], [otherChild])
+        XCTAssertTrue(controller.truncatedDirs.contains(otherAliasPath))
+        XCTAssertTrue(controller.visibleRows().contains { $0.id == otherChild.path })
+    }
+
     func testTwoDirectorySymlinkCycleStopsAtSecondLink() async throws {
         let mock = MockFileBrowserDataSource()
         let directoryA = FileNode(
@@ -286,6 +370,47 @@ final class FileBrowserTabControllerTests: XCTestCase {
         XCTAssertFalse(controller.expandedDirs.contains(link.path))
         XCTAssertNil(controller.childrenByPath[link.path])
         XCTAssertNil(controller.loadError)
+    }
+
+    func testCollapseAfterExpansionPublishesBeforeOperationCleanupCollapsesDirectory() async {
+        let mock = MockFileBrowserDataSource()
+        let directoryPath = "/root/fast"
+        let directory = FileNode(
+            id: directoryPath, name: "fast", path: directoryPath,
+            kind: .directory, sizeBytes: nil, modifiedAt: nil
+        )
+        let child = FileNode(
+            id: "/root/fast/child.txt", name: "child.txt", path: "/root/fast/child.txt",
+            kind: .file, sizeBytes: 1, modifiedAt: nil
+        )
+        mock.directoryListings["/root"] = [directory]
+        mock.directoryListings[directoryPath] = [child]
+        let controller = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/root", rootKind: .project),
+            dataSource: mock
+        )
+        await controller.refreshTree()
+        let (collapseTasks, collapseTaskContinuation) = AsyncStream<Task<Void, Never>>.makeStream()
+        withObservationTracking {
+            _ = controller.expandedDirs
+        } onChange: {
+            collapseTaskContinuation.yield(Task { @MainActor in
+                await controller.toggleExpand(directoryPath)
+            })
+            collapseTaskContinuation.finish()
+        }
+
+        let expansion = Task { @MainActor in
+            await controller.toggleExpand(directoryPath)
+        }
+        for await collapse in collapseTasks {
+            await collapse.value
+            break
+        }
+        await expansion.value
+
+        XCTAssertFalse(controller.expandedDirs.contains(directoryPath))
+        XCTAssertNil(controller.childrenByPath[directoryPath])
     }
 
     func testRefreshCancelsInFlightExpansionTask() async {
@@ -585,6 +710,55 @@ final class FileBrowserTabControllerTests: XCTestCase {
         XCTAssertNil(ctrl.loadError)
     }
 
+    func testLateAuthenticationFailureFromStaleRefreshDoesNotOverwriteNewSuccess() async {
+        let mock = MockFileBrowserDataSource()
+        let stale = mock.enqueueGatedTreeResult(.failure(SFTPServiceError.authenticationFailed))
+        let freshNode = FileNode(
+            id: "/r/fresh.txt", name: "fresh.txt", path: "/r/fresh.txt",
+            kind: .file, sizeBytes: 1, modifiedAt: nil
+        )
+        mock.enqueueTreeResult(.success(DirectoryTreeFetch(
+            childrenByPath: ["/r": [freshNode]]
+        )))
+        let controller = FileBrowserTabController(
+            initial: .init(rootPath: "/r", rootKind: .project),
+            dataSource: mock
+        )
+        let oldRefresh = Task { @MainActor in await controller.refreshTree() }
+        for await _ in stale.entered { break }
+
+        await controller.refreshTree()
+        stale.release()
+        await oldRefresh.value
+
+        XCTAssertEqual(controller.rootChildren, [freshNode])
+        XCTAssertNil(controller.loadError)
+    }
+
+    func testLateGenericFailureFromStaleRefreshDoesNotOverwriteNewEmptySuccess() async {
+        struct StaleFailure: Error, LocalizedError {
+            var errorDescription: String? { "stale failure" }
+        }
+        let mock = MockFileBrowserDataSource()
+        let stale = mock.enqueueGatedTreeResult(.failure(StaleFailure()))
+        mock.enqueueTreeResult(.success(DirectoryTreeFetch(
+            childrenByPath: ["/r": []]
+        )))
+        let controller = FileBrowserTabController(
+            initial: .init(rootPath: "/r", rootKind: .project),
+            dataSource: mock
+        )
+        let oldRefresh = Task { @MainActor in await controller.refreshTree() }
+        for await _ in stale.entered { break }
+
+        await controller.refreshTree()
+        stale.release()
+        await oldRefresh.value
+
+        XCTAssertTrue(controller.rootChildren.isEmpty)
+        XCTAssertNil(controller.loadError)
+    }
+
     func test_treeScrollOffset_defaultsToZeroAndPersists() {
         let ctrl = FileBrowserTabController(
             initial: .init(rootPath: "/r", rootKind: .project),
@@ -650,6 +824,17 @@ final class FileBrowserTabControllerTests: XCTestCase {
 }
 
 final class MockFileBrowserDataSource: FileBrowserDataSource {
+    enum ScriptedTreeResult {
+        case success(DirectoryTreeFetch)
+        case failure(Error)
+    }
+
+    private struct ScriptedTreeCall {
+        let result: ScriptedTreeResult
+        let gate: AsyncStream<Void>?
+        let enteredContinuation: AsyncStream<Void>.Continuation?
+    }
+
     var supportsWrite = true
     var directoryListings: [String: [FileNode]] = [:]
     var fileContents: [String: Data] = [:]
@@ -670,6 +855,24 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
     private var gatedCanonicalIdentityPath: String?
     private var canonicalIdentityGate: CheckedContinuation<Void, Never>?
     private var canonicalIdentityEnteredContinuation: AsyncStream<Void>.Continuation?
+    private var scriptedTreeCalls: [ScriptedTreeCall] = []
+
+    func enqueueTreeResult(_ result: ScriptedTreeResult) {
+        scriptedTreeCalls.append(ScriptedTreeCall(
+            result: result, gate: nil, enteredContinuation: nil
+        ))
+    }
+
+    func enqueueGatedTreeResult(
+        _ result: ScriptedTreeResult
+    ) -> (entered: AsyncStream<Void>, release: () -> Void) {
+        let (entered, enteredContinuation) = AsyncStream<Void>.makeStream()
+        let (gate, gateContinuation) = AsyncStream<Void>.makeStream()
+        scriptedTreeCalls.append(ScriptedTreeCall(
+            result: result, gate: gate, enteredContinuation: enteredContinuation
+        ))
+        return (entered, { gateContinuation.finish() })
+    }
 
     func armListDirectoryGate(path: String) -> AsyncStream<Void> {
         let (stream, continuation) = AsyncStream<Void>.makeStream()
@@ -732,6 +935,29 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
         if let listError { throw listError }
         return directoryListings[path] ?? []
     }
+
+    func listTree(
+        _ root: String, maxDepth: Int, entryCap: Int
+    ) async throws -> DirectoryTreeFetch {
+        guard !scriptedTreeCalls.isEmpty else {
+            return try await BFSTreeLister.list(
+                using: self, root: root, maxDepth: maxDepth, entryCap: entryCap
+            )
+        }
+        let call = scriptedTreeCalls.removeFirst()
+        call.enteredContinuation?.yield(())
+        call.enteredContinuation?.finish()
+        if let gate = call.gate {
+            for await _ in gate { }
+        }
+        switch call.result {
+        case .success(let fetch):
+            return fetch
+        case .failure(let error):
+            throw error
+        }
+    }
+
     func canonicalDirectoryIdentity(_ path: String) async throws -> String {
         let identity = canonicalIdentities[path] ?? path
         if gatedCanonicalIdentityPath == path {

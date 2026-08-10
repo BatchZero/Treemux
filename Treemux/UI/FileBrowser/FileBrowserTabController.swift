@@ -331,9 +331,19 @@ final class FileBrowserTabController {
                 rootPath, maxDepth: Self.treeFetchDepth, entryCap: Self.treeEntryCap)
             guard treeLoadGeneration == generation else { return }
             applyFetch(fetch)
-            for path in expandedDirs where path != rootPath && fetch.childrenByPath[path] == nil {
-                guard await validateExpansion(
-                    path, generation: generation, expansionToken: nil) else { continue }
+            let expandedPaths = expandedDirs.sorted {
+                $0.split(separator: "/").count < $1.split(separator: "/").count
+            }
+            for path in expandedPaths
+            where path != rootPath && fetch.childrenByPath[path] == nil {
+                guard expandedDirs.contains(path) else { continue }
+                let isValid = await validateExpansion(
+                    path, generation: generation, expansionToken: nil)
+                guard treeLoadGeneration == generation else { return }
+                guard isValid else {
+                    clearExpansionSubtree(path, preservingRootError: true)
+                    continue
+                }
                 if let kids = try? await dataSource.listDirectory(path) {
                     guard treeLoadGeneration == generation else { return }
                     rawChildrenByPath[path] = kids
@@ -347,12 +357,28 @@ final class FileBrowserTabController {
             treeContentGeneration &+= 1
             await refreshGitStatus()
         } catch {
+            guard treeLoadGeneration == generation else { return }
             let mapped = mapError(error)
             if case .needsPassword = mapped {
                 loadError = mapped
             } else if rootChildren.isEmpty {
                 loadError = mapped
             }
+        }
+    }
+
+    private func clearExpansionSubtree(_ path: String, preservingRootError: Bool) {
+        let descendantPrefix = path + "/"
+        let belongsToSubtree: (String) -> Bool = {
+            $0 == path || $0.hasPrefix(descendantPrefix)
+        }
+        expandedDirs = expandedDirs.filter { !belongsToSubtree($0) }
+        rawChildrenByPath = rawChildrenByPath.filter { !belongsToSubtree($0.key) }
+        childrenByPath = childrenByPath.filter { !belongsToSubtree($0.key) }
+        truncatedDirs = truncatedDirs.filter { !belongsToSubtree($0) }
+        canonicalIdentityByPath = canonicalIdentityByPath.filter { !belongsToSubtree($0.key) }
+        symlinkErrorsByPath = symlinkErrorsByPath.filter {
+            (preservingRootError && $0.key == path) || !belongsToSubtree($0.key)
         }
     }
 
@@ -399,18 +425,17 @@ final class FileBrowserTabController {
     }
 
     func toggleExpand(_ path: String) async {
-        if let operation = expansionOperationsByPath[path] {
-            operation.task.cancel()
-            expansionOperationsByPath[path] = nil
-            expansionTokens[path] = nil
-            loadingPaths.remove(path)
-            return
-        }
         if expandedDirs.contains(path) {
             expansionTokens[path] = nil
             expandedDirs.remove(path)
             rawChildrenByPath[path] = nil
             childrenByPath[path] = nil
+        } else if let operation = expansionOperationsByPath[path] {
+            operation.task.cancel()
+            expansionOperationsByPath[path] = nil
+            expansionTokens[path] = nil
+            loadingPaths.remove(path)
+            return
         } else {
             let token = UUID()
             let generation = treeLoadGeneration
