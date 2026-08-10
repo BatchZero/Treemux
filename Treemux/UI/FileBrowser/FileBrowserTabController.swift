@@ -552,12 +552,17 @@ final class FileBrowserTabController {
     }
 
     private func ancestorPaths(of path: String) -> [String] {
+        let root = (rootPath as NSString).standardizingPath
+        var current = ((path as NSString).standardizingPath as NSString)
+            .deletingLastPathComponent
         var paths: [String] = []
-        var current = (path as NSString).deletingLastPathComponent
-        while current == rootPath || current.hasPrefix(rootPath + "/") {
+
+        while current == root || (root == "/" ? current.hasPrefix("/") : current.hasPrefix(root + "/")) {
             paths.append(current)
-            if current == rootPath { break }
-            current = (current as NSString).deletingLastPathComponent
+            if current == root { break }
+            let parent = (current as NSString).deletingLastPathComponent
+            guard parent != current else { break }
+            current = parent
         }
         return paths.reversed()
     }

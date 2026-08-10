@@ -131,6 +131,36 @@ final class FileBrowserTabControllerTests: XCTestCase {
         XCTAssertNotNil(row.symlinkError)
     }
 
+    func testNestedSymlinkCycleStopsWhenBrowserRootIsSlash() async throws {
+        let mock = MockFileBrowserDataSource()
+        let directory = FileNode(
+            id: "/a", name: "a", path: "/a",
+            kind: .directory, sizeBytes: nil, modifiedAt: nil
+        )
+        let backLink = FileNode(
+            id: "/a/back-to-a", name: "back-to-a", path: "/a/back-to-a",
+            kind: .symlink(target: "/a"), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .directory(canonicalIdentity: "/canonical/a")
+        )
+        mock.directoryListings["/"] = [directory]
+        mock.directoryListings["/a"] = [backLink]
+        mock.canonicalIdentities["/"] = "/canonical/root"
+        mock.canonicalIdentities["/a"] = "/canonical/a"
+        let controller = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/", rootKind: .project),
+            dataSource: mock
+        )
+        await controller.refreshTree()
+        await controller.toggleExpand("/a")
+
+        await controller.toggleExpand("/a/back-to-a")
+
+        XCTAssertFalse(controller.expandedDirs.contains("/a/back-to-a"))
+        XCTAssertFalse(mock.listDirectoryCalls.contains("/a/back-to-a"))
+        let row = try XCTUnwrap(controller.visibleRows().first { $0.id == "/a/back-to-a" })
+        XCTAssertNotNil(row.symlinkError)
+    }
+
     func testAliasesToSameTargetCanExpandInSeparateBranches() async {
         let mock = MockFileBrowserDataSource()
         let first = FileNode(
