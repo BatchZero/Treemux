@@ -12,7 +12,10 @@ actor LocalFileTransferEndpoint: FileTransferEndpoint {
                 .standardizedFileURL.path
             return FileTransferMetadata(kind: .directory, sizeBytes: 0, canonicalIdentity: identity)
         }
-        let attributes = try fileManager.attributesOfItem(atPath: path)
+        let resolvedPath = URL(fileURLWithPath: path)
+            .resolvingSymlinksInPath()
+            .standardizedFileURL.path
+        let attributes = try fileManager.attributesOfItem(atPath: resolvedPath)
         let size = (attributes[.size] as? NSNumber)?.int64Value ?? 0
         return FileTransferMetadata(kind: .file, sizeBytes: size, canonicalIdentity: nil)
     }

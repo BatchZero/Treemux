@@ -484,11 +484,30 @@ actor SFTPService {
     }
 
     nonisolated static func transferReadCommand(path: String, offset: Int64, length: Int) -> String {
-        "dd if=\(shellEscape(path)) bs=1 skip=\(offset) count=\(length) 2>/dev/null | base64"
+        let blockSize: Int64 = 64 * 1024
+        let positiveOffset = max(0, offset)
+        let skipBlocks = positiveOffset / blockSize
+        let remainder = positiveOffset % blockSize
+        let byteCount = max(0, Int64(length))
+        let blockCount = max(1, (remainder + byteCount + blockSize - 1) / blockSize)
+        var command = "dd if=\(shellEscape(path)) bs=\(blockSize) skip=\(skipBlocks) "
+            + "count=\(blockCount) 2>/dev/null"
+        if remainder > 0 {
+            command += " | tail -c +\(remainder + 1)"
+        }
+        return command + " | head -c \(byteCount) | base64"
     }
 
     nonisolated static func transferWriteCommand(path: String, offset: Int64) -> String {
-        "base64 -d | dd of=\(shellEscape(path)) bs=1 seek=\(offset) conv=notrunc 2>/dev/null"
+        let blockSize: Int64 = 64 * 1024
+        let positiveOffset = max(0, offset)
+        let seekBlocks = positiveOffset / blockSize
+        let remainder = positiveOffset % blockSize
+        let destination = shellEscape(path)
+        let writer = "dd of=\(destination) bs=\(blockSize) seek=\(seekBlocks) conv=notrunc 2>/dev/null"
+        guard remainder > 0 else { return "base64 -d | \(writer)" }
+        return "{ dd if=\(destination) bs=\(blockSize) skip=\(seekBlocks) count=1 2>/dev/null "
+            + "| head -c \(remainder); base64 -d; } | \(writer)"
     }
 
     nonisolated static func transferCreateCommand(path: String) -> String {

@@ -60,15 +60,82 @@ final class FileTransferEndpointTests: XCTestCase {
         XCTAssertEqual(metadata?.canonicalIdentity, nested.resolvingSymlinksInPath().standardizedFileURL.path)
     }
 
-    func testSSHChunkCommandsAreBoundedBinarySafeAndOffsetAware() {
-        let read = SFTPService.transferReadCommand(path: "/tmp/a b", offset: 1024, length: 4096)
-        let write = SFTPService.transferWriteCommand(path: "/tmp/a b", offset: 1024)
+    func testLocalEndpointUsesResolvedFileSizeForSymbolicLink() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("treemux-transfer-file-symlink-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let targetURL = root.appendingPathComponent("target.bin")
+        let linkURL = root.appendingPathComponent("link.bin")
+        let targetData = Data(repeating: 0xAB, count: 100)
+        try targetData.write(to: targetURL)
+        try FileManager.default.createSymbolicLink(at: linkURL, withDestinationURL: targetURL)
+        let endpoint = LocalFileTransferEndpoint()
+
+        let metadata = try await endpoint.metadata(at: linkURL.path)
+        let chunk = try await endpoint.readChunk(at: linkURL.path, offset: 0, length: targetData.count)
+
+        XCTAssertEqual(metadata?.kind, .file)
+        XCTAssertEqual(metadata?.sizeBytes, Int64(targetData.count))
+        XCTAssertEqual(chunk, targetData)
+    }
+
+    func testSSHChunkCommandsUseEfficientBlocksAndPreserveExactOffsets() {
+        let read = SFTPService.transferReadCommand(path: "/tmp/a b", offset: 262_144, length: 4096)
+        let write = SFTPService.transferWriteCommand(path: "/tmp/a b", offset: 262_144)
         let replace = SFTPService.transferReplaceCommand(temporaryPath: "/tmp/a.part", destinationPath: "/tmp/a")
 
-        XCTAssertTrue(read.contains("dd if='/tmp/a b' bs=1 skip=1024 count=4096"))
+        XCTAssertTrue(read.contains("dd if='/tmp/a b' bs=65536 skip=4 count=1"))
+        XCTAssertTrue(read.contains("| head -c 4096 | base64"))
+        XCTAssertFalse(read.contains("bs=1 "))
         XCTAssertTrue(read.hasSuffix("| base64"))
-        XCTAssertTrue(write.contains("base64 -d | dd of='/tmp/a b' bs=1 seek=1024 conv=notrunc"))
+        XCTAssertTrue(write.contains("base64 -d | dd of='/tmp/a b' bs=65536 seek=4 conv=notrunc"))
+        XCTAssertFalse(write.contains("bs=1 "))
         XCTAssertEqual(replace, "mv -f -- '/tmp/a.part' '/tmp/a'")
+    }
+
+    func testSSHChunkCommandsAvoidByteBlocksForUnalignedOffsets() {
+        let read = SFTPService.transferReadCommand(path: "/tmp/data", offset: 1025, length: 4096)
+        let write = SFTPService.transferWriteCommand(path: "/tmp/data", offset: 1025)
+
+        XCTAssertTrue(read.contains("dd if='/tmp/data' bs=65536 skip=0 count=1"))
+        XCTAssertTrue(read.contains("| tail -c +1026 | head -c 4096 | base64"))
+        XCTAssertFalse(read.contains("bs=1 "))
+        XCTAssertTrue(write.contains("dd if='/tmp/data' bs=65536 skip=0 count=1"))
+        XCTAssertTrue(write.contains("| head -c 1025; base64 -d;"))
+        XCTAssertTrue(write.contains("dd of='/tmp/data' bs=65536 seek=0 conv=notrunc"))
+        XCTAssertFalse(write.contains("bs=1 "))
+    }
+
+    func testSSHChunkCommandsReadAndWriteUnalignedOffsets() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("treemux-transfer-shell-chunks-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fileURL = root.appendingPathComponent("data.bin")
+        let original = Data((0..<100_000).map { UInt8($0 % 251) })
+        try original.write(to: fileURL)
+
+        let readCommand = SFTPService.transferReadCommand(
+            path: fileURL.path,
+            offset: 1025,
+            length: 4096
+        )
+        let encodedChunk = try runShell(readCommand)
+        let cleanedChunk = encodedChunk.filter { !$0.isWhitespace }
+        let chunk = try XCTUnwrap(Data(base64Encoded: cleanedChunk))
+        XCTAssertEqual(chunk, original.subdata(in: 1025..<(1025 + 4096)))
+
+        let replacement = Data(repeating: 0xEE, count: 4096)
+        let writeCommand = SFTPService.transferWriteCommand(path: fileURL.path, offset: 1025)
+        _ = try runShell(writeCommand, stdin: replacement.base64EncodedData())
+        let written = try Data(contentsOf: fileURL)
+        XCTAssertEqual(written.prefix(1025), original.prefix(1025))
+        XCTAssertEqual(written.subdata(in: 1025..<(1025 + replacement.count)), replacement)
+        XCTAssertEqual(
+            written.suffix(from: 1025 + replacement.count),
+            original.suffix(from: 1025 + replacement.count)
+        )
     }
 
     func testCitadelAtomicOverwriteFailureNeverMovesExistingDestination() async {
@@ -179,5 +246,27 @@ final class FileTransferEndpointTests: XCTestCase {
         )
         XCTAssertTrue(command.contains("stat -L -c"))
         XCTAssertTrue(command.contains("stat -L -f"))
+    }
+
+    private func runShell(_ command: String, stdin: Data? = nil) throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", command]
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = output
+        let input = Pipe()
+        if stdin != nil {
+            process.standardInput = input
+        }
+        try process.run()
+        if let stdin {
+            try input.fileHandleForWriting.write(contentsOf: stdin)
+            try input.fileHandleForWriting.close()
+        }
+        process.waitUntilExit()
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        XCTAssertEqual(process.terminationStatus, 0, String(decoding: data, as: UTF8.self))
+        return String(decoding: data, as: UTF8.self)
     }
 }
