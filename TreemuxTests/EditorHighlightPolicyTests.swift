@@ -25,4 +25,25 @@ final class EditorHighlightPolicyTests: XCTestCase {
     func test_unknownLanguage_isNotHighlighted() {
         XCTAssertFalse(EditorHighlightPolicy.shouldHighlight(path: "/r/notes.unknownext", byteCount: 10))
     }
+
+    func test_markdownProviderRequiresMarkdownAndHighlightEligibility() {
+        XCTAssertTrue(
+            EditorHighlightPolicy.shouldUseMarkdownProvider(
+                isMarkdown: true,
+                highlightEligible: true
+            )
+        )
+        XCTAssertFalse(
+            EditorHighlightPolicy.shouldUseMarkdownProvider(
+                isMarkdown: true,
+                highlightEligible: false
+            )
+        )
+        XCTAssertFalse(
+            EditorHighlightPolicy.shouldUseMarkdownProvider(
+                isMarkdown: false,
+                highlightEligible: true
+            )
+        )
+    }
 }

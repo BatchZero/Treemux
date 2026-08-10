@@ -105,7 +105,6 @@ private struct CodeEditorRepresentable: View {
     let wordIndex: BufferWordIndex
     let isCompletionEnabled: () -> Bool
     let editorTheme: EditorTheme
-    let isMarkdown: Bool
     let scrollSync: ScrollSync?
     let onChange: (String) -> Void
 
@@ -117,6 +116,7 @@ private struct CodeEditorRepresentable: View {
     /// render (i.e. on every keystroke), which is the exact per-key overhead
     /// Task 7 removes.
     private let highlightEligible: Bool
+    private let usesMarkdownProvider: Bool
     /// Persisted across view updates so we can push fresh hunks into the
     /// existing overlay without forcing CodeEditSourceEditor to rebuild.
     @State private var stripeCoordinator = DiffStripeCoordinator()
@@ -148,11 +148,15 @@ private struct CodeEditorRepresentable: View {
         self.wordIndex = wordIndex
         self.isCompletionEnabled = isCompletionEnabled
         self.editorTheme = editorTheme
-        self.isMarkdown = isMarkdown
         self.scrollSync = scrollSync
         self.onChange = onChange
-        self.highlightEligible = EditorHighlightPolicy.shouldHighlight(
+        let highlightEligible = EditorHighlightPolicy.shouldHighlight(
             path: path, byteCount: content.utf8.count
+        )
+        self.highlightEligible = highlightEligible
+        self.usesMarkdownProvider = EditorHighlightPolicy.shouldUseMarkdownProvider(
+            isMarkdown: isMarkdown,
+            highlightEligible: highlightEligible
         )
         self._text = State(initialValue: content)
         let delegate = WordCompletionDelegate(wordIndex: wordIndex, isEnabled: isCompletionEnabled)
@@ -188,7 +192,7 @@ private struct CodeEditorRepresentable: View {
             language: language,
             configuration: configuration,
             state: $editorState,
-            highlightProviders: isMarkdown ? [markdownProvider] : nil,
+            highlightProviders: usesMarkdownProvider ? [markdownProvider] : nil,
             coordinators: editorCoordinators,
             completionDelegate: completionCoordinator.delegate
         )

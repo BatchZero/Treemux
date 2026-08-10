@@ -47,8 +47,9 @@ final class MarkdownHighlightProvider: HighlightProviding {
         completion: @escaping @MainActor (Result<[HighlightRange], Error>) -> Void
     ) {
         let highlights: [HighlightRange] = MarkdownHighlightScanner.scan(textView.string).compactMap { token -> HighlightRange? in
-            guard NSIntersectionRange(token.range, range).length > 0 else { return nil }
-            return HighlightRange(range: token.range, capture: Self.captureName(for: token.element))
+            let intersection = NSIntersectionRange(token.range, range)
+            guard intersection.length > 0 else { return nil }
+            return HighlightRange(range: intersection, capture: Self.captureName(for: token.element))
         }
         completion(.success(highlights))
     }

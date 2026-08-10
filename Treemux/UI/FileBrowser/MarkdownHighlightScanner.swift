@@ -92,7 +92,12 @@ enum MarkdownHighlightScanner {
             index += 1
         }
 
-        return tokens
+        return tokens.sorted {
+            if $0.range.location == $1.range.location {
+                return $0.range.length < $1.range.length
+            }
+            return $0.range.location < $1.range.location
+        }
     }
 
     private static func lines(in text: String) -> [Line] {

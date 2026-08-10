@@ -3,6 +3,8 @@
 //  TreemuxTests
 //
 
+import CodeEditSourceEditor
+import CodeEditTextView
 import XCTest
 @testable import Treemux
 
@@ -97,5 +99,50 @@ final class MarkdownHighlightMappingTests: XCTestCase {
         XCTAssertEqual(MarkdownHighlightProvider.captureName(for: .link), .variable)
         XCTAssertEqual(MarkdownHighlightProvider.captureName(for: .listMarker), .number)
         XCTAssertEqual(MarkdownHighlightProvider.captureName(for: .blockquote), .typeAlternate)
+    }
+
+    @MainActor
+    func testProviderReturnsHighlightsInSourceOrder() {
+        let markdown = "**bold** then `code`"
+
+        let highlights = queryHighlights(markdown, range: NSRange(location: 0, length: 20))
+
+        XCTAssertEqual(
+            highlights,
+            [
+                HighlightRange(range: NSRange(location: 0, length: 8), capture: .type),
+                HighlightRange(range: NSRange(location: 14, length: 6), capture: .string),
+            ]
+        )
+    }
+
+    @MainActor
+    func testProviderClipsHighlightsToRequestedRange() {
+        let markdown = "xx **bold** yy"
+        let requestedRange = NSRange(location: 5, length: 3)
+
+        let highlights = queryHighlights(markdown, range: requestedRange)
+
+        XCTAssertEqual(
+            highlights,
+            [HighlightRange(range: requestedRange, capture: .type)]
+        )
+    }
+
+    @MainActor
+    private func queryHighlights(_ markdown: String, range: NSRange) -> [HighlightRange] {
+        let textView = TextView(string: markdown)
+        var highlights: [HighlightRange] = []
+
+        MarkdownHighlightProvider().queryHighlightsFor(textView: textView, range: range) { result in
+            switch result {
+            case .success(let value):
+                highlights = value
+            case .failure(let error):
+                XCTFail("Unexpected highlight error: \(error)")
+            }
+        }
+
+        return highlights
     }
 }

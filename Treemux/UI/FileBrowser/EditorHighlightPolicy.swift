@@ -21,4 +21,8 @@ enum EditorHighlightPolicy {
         guard FileTypeClassifier.language(forPath: path) != nil else { return false }
         return byteCount <= highlightSizeLimit
     }
+
+    static func shouldUseMarkdownProvider(isMarkdown: Bool, highlightEligible: Bool) -> Bool {
+        isMarkdown && highlightEligible
+    }
 }
