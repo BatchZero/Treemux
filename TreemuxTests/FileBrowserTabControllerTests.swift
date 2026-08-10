@@ -107,6 +107,151 @@ final class FileBrowserTabControllerTests: XCTestCase {
                       "symlink-dir should list its target's children when expanded")
     }
 
+    func testSelfSymlinkCycleStopsBeforeListingTarget() async throws {
+        let mock = MockFileBrowserDataSource()
+        let link = FileNode(
+            id: "/root/self", name: "self", path: "/root/self",
+            kind: .symlink(target: "."), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .directory(canonicalIdentity: "/canonical/root")
+        )
+        mock.directoryListings["/root"] = [link]
+        mock.canonicalIdentities["/root"] = "/canonical/root"
+        let controller = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/root", rootKind: .project),
+            dataSource: mock
+        )
+        await controller.refreshTree()
+        let callsBeforeExpand = mock.listDirectoryCalls.count
+
+        await controller.toggleExpand("/root/self")
+
+        XCTAssertFalse(controller.expandedDirs.contains("/root/self"))
+        XCTAssertEqual(mock.listDirectoryCalls.count, callsBeforeExpand)
+        let row = try XCTUnwrap(controller.visibleRows().first { $0.id == "/root/self" })
+        XCTAssertNotNil(row.symlinkError)
+    }
+
+    func testAliasesToSameTargetCanExpandInSeparateBranches() async {
+        let mock = MockFileBrowserDataSource()
+        let first = FileNode(
+            id: "/root/one", name: "one", path: "/root/one",
+            kind: .symlink(target: "/shared"), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .directory(canonicalIdentity: "/canonical/shared")
+        )
+        let second = FileNode(
+            id: "/root/two", name: "two", path: "/root/two",
+            kind: .symlink(target: "/shared"), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .directory(canonicalIdentity: "/canonical/shared")
+        )
+        mock.directoryListings["/root"] = [first, second]
+        mock.directoryListings["/root/one"] = []
+        mock.directoryListings["/root/two"] = []
+        mock.canonicalIdentities["/root"] = "/canonical/root"
+        let controller = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/root", rootKind: .project),
+            dataSource: mock
+        )
+        await controller.refreshTree()
+
+        await controller.toggleExpand("/root/one")
+        await controller.toggleExpand("/root/two")
+
+        XCTAssertTrue(controller.expandedDirs.contains("/root/one"))
+        XCTAssertTrue(controller.expandedDirs.contains("/root/two"))
+    }
+
+    func testTwoDirectorySymlinkCycleStopsAtSecondLink() async throws {
+        let mock = MockFileBrowserDataSource()
+        let directoryA = FileNode(
+            id: "/root/A", name: "A", path: "/root/A",
+            kind: .directory, sizeBytes: nil, modifiedAt: nil
+        )
+        let linkToB = FileNode(
+            id: "/root/A/to-B", name: "to-B", path: "/root/A/to-B",
+            kind: .symlink(target: "/root/B"), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .directory(canonicalIdentity: "/canonical/B")
+        )
+        let linkBackToA = FileNode(
+            id: "/root/A/to-B/back-to-A", name: "back-to-A",
+            path: "/root/A/to-B/back-to-A",
+            kind: .symlink(target: "/root/A"), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .directory(canonicalIdentity: "/canonical/A")
+        )
+        mock.directoryListings["/root"] = [directoryA]
+        mock.directoryListings["/root/A"] = [linkToB]
+        mock.directoryListings["/root/A/to-B"] = [linkBackToA]
+        mock.canonicalIdentities["/root"] = "/canonical/root"
+        mock.canonicalIdentities["/root/A"] = "/canonical/A"
+        let controller = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/root", rootKind: .project),
+            dataSource: mock
+        )
+        await controller.refreshTree()
+        await controller.toggleExpand("/root/A")
+        await controller.toggleExpand("/root/A/to-B")
+
+        await controller.toggleExpand("/root/A/to-B/back-to-A")
+
+        XCTAssertFalse(mock.listDirectoryCalls.contains("/root/A/to-B/back-to-A"))
+        let row = try XCTUnwrap(controller.visibleRows().first {
+            $0.id == "/root/A/to-B/back-to-A"
+        })
+        XCTAssertNotNil(row.symlinkError)
+    }
+
+    func testCancelledExpansionDoesNotApplyLateChildren() async {
+        let mock = MockFileBrowserDataSource()
+        let directory = FileNode(
+            id: "/root/slow", name: "slow", path: "/root/slow",
+            kind: .directory, sizeBytes: nil, modifiedAt: nil
+        )
+        mock.directoryListings["/root"] = [directory]
+        mock.directoryListings["/root/slow"] = []
+        let controller = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/root", rootKind: .project),
+            dataSource: mock
+        )
+        await controller.refreshTree()
+        mock.directoryListings["/root/slow"] = [
+            FileNode(id: "/root/slow/late.txt", name: "late.txt",
+                     path: "/root/slow/late.txt", kind: .file,
+                     sizeBytes: 1, modifiedAt: nil)
+        ]
+        let entered = mock.armListDirectoryGate(path: "/root/slow")
+        let expansion = Task { @MainActor in
+            await controller.toggleExpand("/root/slow")
+        }
+        for await _ in entered { break }
+
+        await controller.toggleExpand("/root/slow")
+        mock.releaseListDirectoryGate()
+        await expansion.value
+
+        XCTAssertFalse(controller.expandedDirs.contains("/root/slow"))
+        XCTAssertEqual(controller.childrenByPath["/root/slow"], [])
+    }
+
+    func testBrokenSymlinkActivationReportsRowErrorInsteadOfOpeningFile() async throws {
+        let mock = MockFileBrowserDataSource()
+        let link = FileNode(
+            id: "/root/broken", name: "broken", path: "/root/broken",
+            kind: .symlink(target: "missing"), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .broken
+        )
+        mock.directoryListings["/root"] = [link]
+        let controller = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/root", rootKind: .project),
+            dataSource: mock
+        )
+        await controller.refreshTree()
+
+        await controller.activateNode(link)
+
+        XCTAssertTrue(controller.subTabs.isEmpty)
+        let row = try XCTUnwrap(controller.visibleRows().first { $0.id == link.path })
+        XCTAssertNotNil(row.symlinkError)
+    }
+
     // Stage D rewires file loading to operate on the active sub-tab. The tests
     // below now go through `openInTree`, which seeds a preview sub-tab and then
     // dispatches to the same metadata/content loading code path the previous
@@ -366,10 +511,40 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
     var listError: Error?
     var cacheIdentity: String? = nil
     var treeCacheIdentity: String? { cacheIdentity }
+    var canonicalIdentities: [String: String] = [:]
+    var listDirectoryCalls: [String] = []
+    private var gatedListDirectoryPath: String?
+    private var listDirectoryGate: CheckedContinuation<Void, Never>?
+    private var listDirectoryEnteredContinuation: AsyncStream<Void>.Continuation?
+
+    func armListDirectoryGate(path: String) -> AsyncStream<Void> {
+        let (stream, continuation) = AsyncStream<Void>.makeStream()
+        gatedListDirectoryPath = path
+        listDirectoryEnteredContinuation = continuation
+        return stream
+    }
+
+    func releaseListDirectoryGate() {
+        listDirectoryGate?.resume()
+        listDirectoryGate = nil
+        gatedListDirectoryPath = nil
+    }
 
     func listDirectory(_ path: String) async throws -> [FileNode] {
+        listDirectoryCalls.append(path)
+        if gatedListDirectoryPath == path {
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                listDirectoryGate = continuation
+                listDirectoryEnteredContinuation?.yield(())
+                listDirectoryEnteredContinuation?.finish()
+                listDirectoryEnteredContinuation = nil
+            }
+        }
         if let listError { throw listError }
         return directoryListings[path] ?? []
+    }
+    func canonicalDirectoryIdentity(_ path: String) async throws -> String {
+        canonicalIdentities[path] ?? path
     }
     var fileMetadataCallCount = 0
     func fileMetadata(_ path: String) async throws -> FileMetadata {

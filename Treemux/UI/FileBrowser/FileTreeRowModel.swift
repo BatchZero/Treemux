@@ -26,4 +26,23 @@ struct FileTreeRowModel: Equatable, Identifiable {
     let isSelected: Bool
     let isExpanded: Bool
     let status: FileStatus?
+    let symlinkError: String?
+
+    init(
+        id: String,
+        kind: Kind,
+        depth: Int,
+        isSelected: Bool,
+        isExpanded: Bool,
+        status: FileStatus?,
+        symlinkError: String? = nil
+    ) {
+        self.id = id
+        self.kind = kind
+        self.depth = depth
+        self.isSelected = isSelected
+        self.isExpanded = isExpanded
+        self.status = status
+        self.symlinkError = symlinkError
+    }
 }

@@ -390,6 +390,12 @@ private struct FileTreeRow: View, Equatable {
                 .foregroundStyle(theme.textPrimary)
                 .lineLimit(1)
                 .truncationMode(.middle)
+            if let error = row.symlinkError {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(theme.dangerColor)
+                    .help(error)
+            }
             Spacer()
         }
         .frame(height: density.rowHeight)
@@ -412,7 +418,7 @@ private struct FileTreeRow: View, Equatable {
         .onHover { isHovered = $0 }
         .gesture(
             TapGesture(count: 2).onEnded {
-                if !node.isExpandableDirectory {
+                if canOpenAsFile(node) {
                     Task { await controller.pinFile(node.path) }
                 }
             }
@@ -427,14 +433,12 @@ private struct FileTreeRow: View, Equatable {
                         Task { await controller.revealInTree(node.path) }
                     } else {
                         Task {
-                            await controller.openInTree(node.path)
+                            await controller.activateNode(node)
                             controller.clearSearch()
                         }
                     }
-                } else if node.isExpandableDirectory {
-                    Task { await controller.toggleExpand(node.path) }
                 } else {
-                    Task { await controller.openInTree(node.path) }
+                    Task { await controller.activateNode(node) }
                 }
             }
         )
@@ -456,6 +460,12 @@ private struct FileTreeRow: View, Equatable {
             }
             .disabled(node.path == controller.rootPath)
         }
+    }
+
+    private func canOpenAsFile(_ node: FileNode) -> Bool {
+        guard !node.isExpandableDirectory else { return false }
+        guard node.isSymlink else { return true }
+        return node.symlinkTargetResolution == .file
     }
 
     /// Renders `name`, tinting the substring matching the live search query

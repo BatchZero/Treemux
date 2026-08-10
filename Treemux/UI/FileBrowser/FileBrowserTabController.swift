@@ -71,6 +71,12 @@ final class FileBrowserTabController {
     }
     private(set) var loadingPaths: Set<String> = []
     private(set) var loadError: LoadError?
+    private(set) var symlinkErrorsByPath: [String: String] = [:] {
+        didSet { visibleRowsCache = nil }
+    }
+    @ObservationIgnored private var canonicalIdentityByPath: [String: String] = [:]
+    @ObservationIgnored private var expansionTokens: [String: UUID] = [:]
+    @ObservationIgnored private var treeLoadGeneration = 0
 
     // Git diff/status caches. `diffHunksByPath` keyed by absolute path of the
     // active sub-tab; `fileStatusByPath` keyed by absolute path under `repoRoot`.
@@ -308,13 +314,22 @@ final class FileBrowserTabController {
     /// reached, then persist the snapshot. Refresh errors are swallowed when a
     /// cache is already on screen.
     func refreshTree() async {
+        treeLoadGeneration &+= 1
+        let generation = treeLoadGeneration
+        expansionTokens.removeAll()
+        loadingPaths.removeAll()
+        symlinkErrorsByPath.removeAll()
+        canonicalIdentityByPath.removeAll()
         loadError = nil
         do {
             let fetch = try await dataSource.listTree(
                 rootPath, maxDepth: Self.treeFetchDepth, entryCap: Self.treeEntryCap)
+            guard treeLoadGeneration == generation else { return }
             applyFetch(fetch)
             for path in expandedDirs where path != rootPath && fetch.childrenByPath[path] == nil {
+                guard await validateExpansion(path) else { continue }
                 if let kids = try? await dataSource.listDirectory(path) {
+                    guard treeLoadGeneration == generation else { return }
                     rawChildrenByPath[path] = kids
                     childrenByPath[path] = filtered(kids)
                 }
@@ -378,20 +393,49 @@ final class FileBrowserTabController {
     }
 
     func toggleExpand(_ path: String) async {
+        if loadingPaths.contains(path) {
+            expansionTokens[path] = nil
+            loadingPaths.remove(path)
+            return
+        }
         if expandedDirs.contains(path) {
+            expansionTokens[path] = nil
             expandedDirs.remove(path)
             rawChildrenByPath[path] = nil
             childrenByPath[path] = nil
         } else {
+            let token = UUID()
+            let generation = treeLoadGeneration
+            expansionTokens[path] = token
             loadingPaths.insert(path)
-            defer { loadingPaths.remove(path) }
+            var retainedAsExpansionIdentity = false
+            defer {
+                if expansionTokens[path] == token {
+                    loadingPaths.remove(path)
+                    if !retainedAsExpansionIdentity {
+                        expansionTokens[path] = nil
+                    }
+                }
+            }
             do {
+                guard await validateExpansion(path),
+                      expansionTokens[path] == token,
+                      treeLoadGeneration == generation else { return }
                 let kids = try await dataSource.listDirectory(path)
+                guard expansionTokens[path] == token,
+                      treeLoadGeneration == generation else { return }
                 rawChildrenByPath[path] = kids
                 childrenByPath[path] = filtered(kids)
                 expandedDirs.insert(path)
-                Task { [weak self] in await self?.prefetchChildren(of: path) }
+                symlinkErrorsByPath[path] = nil
+                retainedAsExpansionIdentity = true
+                Task { [weak self] in
+                    await self?.prefetchChildren(
+                        of: path, generation: generation, expansionToken: token)
+                }
             } catch {
+                guard expansionTokens[path] == token,
+                      treeLoadGeneration == generation else { return }
                 // Leave collapsed on error; surface via loadError so the UI banner can show.
                 loadError = mapError(error)
             }
@@ -402,14 +446,108 @@ final class FileBrowserTabController {
     /// Background-prefetch a directory's grandchildren so expanding its children
     /// is instant. Internal (not private) so it is unit-testable directly.
     func prefetchChildren(of path: String) async {
+        await prefetchChildren(
+            of: path, generation: treeLoadGeneration, expansionToken: nil)
+    }
+
+    private func prefetchChildren(
+        of path: String,
+        generation: Int,
+        expansionToken: UUID?
+    ) async {
         guard let fetch = try? await dataSource.listTree(
             path, maxDepth: Self.treeFetchDepth, entryCap: Self.treeEntryCap) else { return }
-        guard expandedDirs.contains(path) else { return }
+        guard treeLoadGeneration == generation, expandedDirs.contains(path) else { return }
+        if let expansionToken {
+            guard expansionTokens[path] == expansionToken else { return }
+        }
         for (p, kids) in fetch.childrenByPath where rawChildrenByPath[p] != kids {
             rawChildrenByPath[p] = kids
             childrenByPath[p] = filtered(kids)
         }
         truncatedDirs.formUnion(fetch.truncatedDirs)
+    }
+
+    private func validateExpansion(_ path: String) async -> Bool {
+        guard let node = node(at: path), node.isSymlink else { return true }
+        guard case .directory(let targetIdentity) = node.symlinkTargetResolution else {
+            symlinkErrorsByPath[path] = symlinkErrorMessage(for: node.symlinkTargetResolution)
+            return false
+        }
+
+        do {
+            for ancestor in ancestorPaths(of: path) {
+                let identity = try await canonicalIdentity(for: ancestor)
+                if identity == targetIdentity {
+                    symlinkErrorsByPath[path] = String(localized: "This symbolic link points to an ancestor, so expansion was stopped.")
+                    return false
+                }
+            }
+            return true
+        } catch {
+            symlinkErrorsByPath[path] = error.localizedDescription
+            return false
+        }
+    }
+
+    private func canonicalIdentity(for path: String) async throws -> String {
+        if let cached = canonicalIdentityByPath[path] { return cached }
+        if let embedded = node(at: path)?.canonicalDirectoryIdentity {
+            canonicalIdentityByPath[path] = embedded
+            return embedded
+        }
+        let identity = try await dataSource.canonicalDirectoryIdentity(path)
+        canonicalIdentityByPath[path] = identity
+        return identity
+    }
+
+    private func ancestorPaths(of path: String) -> [String] {
+        var paths: [String] = []
+        var current = (path as NSString).deletingLastPathComponent
+        while current == rootPath || current.hasPrefix(rootPath + "/") {
+            paths.append(current)
+            if current == rootPath { break }
+            current = (current as NSString).deletingLastPathComponent
+        }
+        return paths.reversed()
+    }
+
+    private func node(at path: String) -> FileNode? {
+        let parent = (path as NSString).deletingLastPathComponent
+        let siblings = parent == rootPath ? rootChildren : childrenByPath[parent]
+        return siblings?.first { $0.path == path }
+    }
+
+    private func symlinkErrorMessage(for resolution: SymlinkTargetResolution) -> String {
+        switch resolution {
+        case .directory:
+            return String(localized: "The symbolic link could not be expanded.")
+        case .file:
+            return ""
+        case .broken:
+            return String(localized: "The symbolic link target no longer exists.")
+        case .inaccessible:
+            return String(localized: "The symbolic link target cannot be read.")
+        case .unresolved(let reason):
+            return reason ?? String(localized: "The server could not resolve this symbolic link target.")
+        }
+    }
+
+    func activateNode(_ node: FileNode) async {
+        if node.isExpandableDirectory {
+            await toggleExpand(node.path)
+            return
+        }
+        if node.isSymlink {
+            switch node.symlinkTargetResolution {
+            case .file:
+                break
+            default:
+                symlinkErrorsByPath[node.path] = symlinkErrorMessage(for: node.symlinkTargetResolution)
+                return
+            }
+        }
+        await openInTree(node.path)
     }
 
     func setShowsHiddenFiles(_ show: Bool) {
@@ -578,6 +716,7 @@ final class FileBrowserTabController {
         _ = searchQuery
         _ = showingRecursiveResults
         _ = searchResults
+        _ = symlinkErrorsByPath
         if let cached = visibleRowsCache { return cached }
         #if DEBUG
         visibleRowsComputeCount += 1
@@ -599,7 +738,8 @@ final class FileBrowserTabController {
                     depth: 0,
                     isSelected: selectedFilePath == node.path,
                     isExpanded: false,
-                    status: fileStatusByPath[node.path]))
+                    status: fileStatusByPath[node.path],
+                    symlinkError: symlinkErrorsByPath[node.path]))
             }
             visibleRowsCache = rows
             return rows
@@ -618,7 +758,8 @@ final class FileBrowserTabController {
                         depth: depth,
                         isSelected: selectedFilePath == node.path,
                         isExpanded: isExp,
-                        status: fileStatusByPath[node.path]))
+                        status: fileStatusByPath[node.path],
+                        symlinkError: symlinkErrorsByPath[node.path]))
                     if isExp, let kids = childrenByPath[node.path] {
                         emitFiltered(kids, depth: depth + 1)
                     }
@@ -645,7 +786,8 @@ final class FileBrowserTabController {
                     depth: depth,
                     isSelected: selectedFilePath == node.path,
                     isExpanded: expanded,
-                    status: fileStatusByPath[node.path]
+                    status: fileStatusByPath[node.path],
+                    symlinkError: symlinkErrorsByPath[node.path]
                 ))
                 if expanded, let kids = childrenByPath[node.path] {
                     emit(kids, depth: depth + 1, parent: node.path)
