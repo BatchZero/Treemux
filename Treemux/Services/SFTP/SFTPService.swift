@@ -207,11 +207,13 @@ actor SFTPService {
         guard let mode else { throw SFTPServiceError.notConnected }
         switch mode {
         case .ssh(let target):
-            let escaped = Self.shellEscape(path)
-            let command = "realpath -- \(escaped) 2>/dev/null || (cd -P \(escaped) 2>/dev/null && pwd -P)"
-            let result = try await runSSH(target: target, command: command)
-            let identity = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard result.exitCode == 0, !identity.isEmpty else {
+            let result = try await runSSH(
+                target: target,
+                command: Self.canonicalDirectoryIdentityCommand(path: path)
+            )
+            guard result.exitCode == 0,
+                  let identity = Self.parseCanonicalDirectoryIdentityOutput(result.output),
+                  !identity.isEmpty else {
                 throw SFTPServiceError.commandFailed("cannot resolve directory at \(path)")
             }
             return identity
@@ -771,6 +773,35 @@ actor SFTPService {
             index = next
         }
         return String(data: Data(bytes), encoding: .utf8)
+    }
+
+    /// Builds a shell command that resolves `path` and writes its exact UTF-8
+    /// bytes as a hex record. The sentinel preserves trailing newlines through
+    /// command substitution before the resolver's terminating newline is removed.
+    static func canonicalDirectoryIdentityCommand(path: String) -> String {
+        let escaped = shellEscape(path)
+        return """
+        if identity=$(
+          (realpath -- \(escaped) 2>/dev/null || (cd -P \(escaped) 2>/dev/null && pwd -P)) && printf '\\001'
+        ); then
+          identity=${identity%?}
+          identity=${identity%
+        }
+          printf 'H'
+          printf '%s' "$identity" | od -An -v -tx1 | tr -d ' \\n'
+          printf '\\n'
+        else
+          exit 1
+        fi
+        """
+    }
+
+    /// Decodes one canonical identity hex record without modifying its bytes.
+    static func parseCanonicalDirectoryIdentityOutput(_ output: String) -> String? {
+        guard output.last == "\n" else { return nil }
+        let record = output.dropLast()
+        guard record.first == "H" else { return nil }
+        return decodeHexString(String(record.dropFirst()))
     }
 
     /// Shell fragment that emits a NUL-delimited frame followed by hex-encoded
