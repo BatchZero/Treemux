@@ -72,3 +72,15 @@ enum FileTransferState: Sendable, Equatable {
     case completed
     case failed
 }
+
+enum FileTransferPresentation {
+    static func dropDestination(for node: FileNode?, rootPath: String) -> String? {
+        guard let node else { return rootPath }
+        return node.isExpandableDirectory ? node.path : nil
+    }
+
+    static func canDownload(_ node: FileNode, isRemote: Bool) -> Bool {
+        isRemote && (node.isExpandableDirectory || !node.isSymlink
+            || node.symlinkTargetResolution == .file)
+    }
+}

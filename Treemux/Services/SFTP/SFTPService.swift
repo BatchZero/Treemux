@@ -294,6 +294,142 @@ actor SFTPService {
         }
     }
 
+    func readTransferChunk(at path: String, offset: Int64, length: Int) async throws -> Data {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let result = try await runSSH(
+                target: target,
+                command: Self.transferReadCommand(path: path, offset: offset, length: length)
+            )
+            guard result.exitCode == 0 else {
+                throw SFTPServiceError.commandFailed("chunk read failed at \(path)")
+            }
+            let cleaned = result.output
+                .replacingOccurrences(of: "\n", with: "")
+                .replacingOccurrences(of: "\r", with: "")
+                .replacingOccurrences(of: " ", with: "")
+            guard let data = Data(base64Encoded: cleaned) else {
+                throw SFTPServiceError.commandFailed("base64 decode failed for \(path)")
+            }
+            return data
+        case .citadel(_, let sftp):
+            let file = try await sftp.openFile(filePath: path, flags: .read)
+            do {
+                let buffer = try await file.read(
+                    from: UInt64(offset),
+                    length: UInt32(min(length, Int(UInt32.max)))
+                )
+                try await file.close()
+                return Data(buffer.readableBytesView)
+            } catch {
+                try? await file.close()
+                throw error
+            }
+        }
+    }
+
+    func createTransferTemporaryFile(at path: String) async throws {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let result = try await runSSH(target: target, command: ": > \(Self.shellEscape(path))")
+            guard result.exitCode == 0 else {
+                throw SFTPServiceError.commandFailed("temporary file create failed at \(path)")
+            }
+        case .citadel(_, let sftp):
+            let file = try await sftp.openFile(
+                filePath: path,
+                flags: [.write, .create, .truncate]
+            )
+            try await file.close()
+        }
+    }
+
+    func writeTransferChunk(_ data: Data, at path: String, offset: Int64) async throws {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let result = try await runSSHWithStdin(
+                target: target,
+                command: Self.transferWriteCommand(path: path, offset: offset),
+                stdin: data.base64EncodedString()
+            )
+            guard result.exitCode == 0 else {
+                throw SFTPServiceError.commandFailed("chunk write failed at \(path)")
+            }
+        case .citadel(_, let sftp):
+            let file = try await sftp.openFile(filePath: path, flags: .write)
+            do {
+                var buffer = ByteBuffer()
+                buffer.writeBytes(data)
+                try await file.write(buffer, at: UInt64(offset))
+                try await file.close()
+            } catch {
+                try? await file.close()
+                throw error
+            }
+        }
+    }
+
+    func replaceTransferItem(at path: String, withTemporaryItemAt temporaryPath: String) async throws {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let result = try await runSSH(
+                target: target,
+                command: Self.transferReplaceCommand(
+                    temporaryPath: temporaryPath,
+                    destinationPath: path
+                )
+            )
+            guard result.exitCode == 0 else {
+                throw SFTPServiceError.commandFailed("temporary replace failed at \(path)")
+            }
+        case .citadel(_, let sftp):
+            try? await sftp.remove(at: path)
+            try await sftp.rename(at: temporaryPath, to: path)
+        }
+    }
+
+    func removeTransferItem(at path: String) async throws {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let result = try await runSSH(target: target, command: "rm -rf -- \(Self.shellEscape(path))")
+            guard result.exitCode == 0 else {
+                throw SFTPServiceError.commandFailed("remove failed at \(path)")
+            }
+        case .citadel(_, let sftp):
+            let attributes = try await sftp.getAttributes(at: path)
+            let typeBits = (attributes.permissions ?? 0) & Self.S_IFMT
+            if typeBits == Self.S_IFDIR {
+                let children = try await listAllEntriesViaSFTP(sftp: sftp, path: path)
+                for child in children {
+                    try await removeTransferItem(at: child.path)
+                }
+                try await sftp.rmdir(at: path)
+            } else {
+                try await sftp.remove(at: path)
+            }
+        }
+    }
+
+    nonisolated static func transferReadCommand(path: String, offset: Int64, length: Int) -> String {
+        "dd if=\(shellEscape(path)) bs=1 skip=\(offset) count=\(length) 2>/dev/null | base64"
+    }
+
+    nonisolated static func transferWriteCommand(path: String, offset: Int64) -> String {
+        "base64 -d | dd of=\(shellEscape(path)) bs=1 seek=\(offset) conv=notrunc 2>/dev/null"
+    }
+
+    nonisolated static func transferReplaceCommand(
+        temporaryPath: String,
+        destinationPath: String
+    ) -> String {
+        "mv -f -- \(shellEscape(temporaryPath)) \(shellEscape(destinationPath))"
+    }
+
     // MARK: - Arbitrary command (used by RemoteGitDiffService)
 
     /// Runs an arbitrary shell command on the remote, returning its stdout.

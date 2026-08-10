@@ -2,6 +2,7 @@
 //  RemoteFileBrowserDataSource.swift
 //  Treemux
 
+import Citadel
 import Foundation
 
 final class RemoteFileBrowserDataSource: FileBrowserDataSource {
@@ -121,6 +122,65 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
     func createFile(_ path: String) async throws {
         try await ensureConnected()
         try await service.createFile(at: path)
+    }
+
+    func transferMetadata(_ path: String) async throws -> FileTransferMetadata? {
+        try await ensureConnected()
+        do {
+            let stat = try await service.stat(path)
+            if stat.isDirectory {
+                return FileTransferMetadata(
+                    kind: .directory,
+                    sizeBytes: 0,
+                    canonicalIdentity: try await service.canonicalDirectoryIdentity(path)
+                )
+            }
+            if stat.isSymlink {
+                let parent = (path as NSString).deletingLastPathComponent
+                if let node = try await listDirectory(parent).first(where: { $0.path == path }),
+                   node.isExpandableDirectory {
+                    return FileTransferMetadata(
+                        kind: .directory,
+                        sizeBytes: 0,
+                        canonicalIdentity: try await service.canonicalDirectoryIdentity(path)
+                    )
+                }
+            }
+            return FileTransferMetadata(
+                kind: .file,
+                sizeBytes: stat.sizeBytes,
+                canonicalIdentity: nil
+            )
+        } catch SFTPError.errorStatus(let status) where status.errorCode == .noSuchFile {
+            return nil
+        } catch SFTPServiceError.commandFailed(let message) where message.contains("stat failed") {
+            return nil
+        }
+    }
+
+    func readTransferChunk(_ path: String, offset: Int64, length: Int) async throws -> Data {
+        try await ensureConnected()
+        return try await service.readTransferChunk(at: path, offset: offset, length: length)
+    }
+
+    func createTransferTemporaryFile(_ path: String) async throws {
+        try await ensureConnected()
+        try await service.createTransferTemporaryFile(at: path)
+    }
+
+    func writeTransferChunk(_ data: Data, to path: String, offset: Int64) async throws {
+        try await ensureConnected()
+        try await service.writeTransferChunk(data, at: path, offset: offset)
+    }
+
+    func replaceTransferItem(at path: String, withTemporaryItemAt temporaryPath: String) async throws {
+        try await ensureConnected()
+        try await service.replaceTransferItem(at: path, withTemporaryItemAt: temporaryPath)
+    }
+
+    func removeTransferItem(_ path: String) async throws {
+        try await ensureConnected()
+        try await service.removeTransferItem(at: path)
     }
 
     func downloadForQuickLook(_ path: String, progress: @escaping (Double) -> Void) async throws -> URL {
