@@ -58,34 +58,20 @@ final class WorkspaceSessionController {
         let snapshotMap = Dictionary(paneSnapshots.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         for paneID in savedLayout.paneIDs {
             let snapshot = snapshotMap[paneID]
-            var backend = snapshot?.backend ?? .defaultBackend(for: sshTarget)
-
-            // If the pane had a detected tmux session, reattach instead of starting a fresh shell.
-            if let tmuxSession = snapshot?.detectedTmuxSession {
-                switch backend {
-                case .localShell:
-                    backend = .tmuxAttach(TmuxAttachConfig(
-                        sessionName: tmuxSession,
-                        windowIndex: nil,
-                        isRemote: false,
-                        sshTarget: nil
-                    ))
-                case .ssh(let sshConfig):
-                    backend = .tmuxAttach(TmuxAttachConfig(
-                        sessionName: tmuxSession,
-                        windowIndex: nil,
-                        isRemote: true,
-                        sshTarget: sshConfig.target
-                    ))
-                default:
-                    break
-                }
-            }
+            let backend = snapshot?.backend ?? .defaultBackend(for: sshTarget)
+            let detectedTmuxSession = snapshot?.detectedTmuxSession
+            let reconnectBackend = ReconnectBackendResolver.resolve(
+                originalBackend: backend,
+                detectedTmuxSession: detectedTmuxSession
+            )
+            let initialLaunchBackend = reconnectBackend == backend ? nil : reconnectBackend
 
             let session = ShellSession(
                 id: paneID,
                 backendConfiguration: backend,
-                preferredWorkingDirectory: snapshot?.workingDirectory ?? workingDirectory
+                preferredWorkingDirectory: snapshot?.workingDirectory ?? workingDirectory,
+                initialLaunchBackend: initialLaunchBackend,
+                initialDetectedTmuxSession: detectedTmuxSession == "tmux" ? nil : detectedTmuxSession
             )
             session.onFocus = { [weak self] in
                 self?.focusedPaneID = paneID

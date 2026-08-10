@@ -5,6 +5,41 @@
 
 import SwiftUI
 
+enum TerminalReconnectControlState: Equatable {
+    case enabled
+    case reconnecting
+    case failed
+
+    static func resolve(isReconnecting: Bool, reconnectError: String?) -> Self {
+        if reconnectError != nil { return .failed }
+        if isReconnecting { return .reconnecting }
+        return .enabled
+    }
+}
+
+enum TerminalReconnectThemeRole: Equatable {
+    case accent
+    case secondaryText
+}
+
+enum TerminalReconnectRecoveryAction: Equatable {
+    case retry
+    case startShell
+}
+
+enum TerminalReconnectPresentation {
+    static let progressRole = TerminalReconnectThemeRole.accent
+
+    static func role(for action: TerminalReconnectRecoveryAction) -> TerminalReconnectThemeRole {
+        switch action {
+        case .retry:
+            return .accent
+        case .startShell:
+            return .secondaryText
+        }
+    }
+}
+
 /// Displays a single terminal pane with a compact header showing status,
 /// title, and working directory, followed by the Ghostty terminal surface.
 struct TerminalPaneView: View {
@@ -12,11 +47,17 @@ struct TerminalPaneView: View {
     let session: ShellSession
     var onClose: () -> Void
     @State private var isCloseHovered = false
+    @State private var isReconnectHovered = false
+    @State private var showsReconnectConfirmation = false
 
     var body: some View {
         VStack(spacing: 0) {
             // Pane header
             paneHeader
+
+            if session.reconnectError != nil {
+                reconnectFailureBar
+            }
 
             // Terminal surface
             TerminalHostView(session: session, shouldRestoreFocus: true)
@@ -27,6 +68,18 @@ struct TerminalPaneView: View {
                 .strokeBorder(theme.dividerColor, lineWidth: 1)
         )
         .padding(2)
+        .confirmationDialog(
+            "Reconnect this pane?",
+            isPresented: $showsReconnectConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Reconnect", role: .destructive) {
+                session.reconnect()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Reconnect the terminal in this pane. The current foreground process will stop. Programs running in tmux will stay alive and Treemux will reattach when possible.")
+        }
     }
 
     // MARK: - Pane header
@@ -65,6 +118,34 @@ struct TerminalPaneView: View {
                     .lineLimit(1)
             }
 
+            Button {
+                showsReconnectConfirmation = true
+            } label: {
+                Group {
+                    if session.isReconnecting {
+                        ProgressView()
+                            .controlSize(.mini)
+                            .tint(themeColor(for: TerminalReconnectPresentation.progressRole))
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 9, weight: .medium))
+                    }
+                }
+                .foregroundStyle(isReconnectHovered ? theme.accentColor : theme.textSecondary)
+                .frame(width: 16, height: 16)
+                .background(
+                    Circle()
+                        .fill(isReconnectHovered ? theme.dividerColor : .clear)
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(session.isReconnecting)
+            .onHover { hovering in
+                isReconnectHovered = hovering
+            }
+            .help("Reconnect Pane")
+            .accessibilityLabel("Reconnect Pane")
+
             // Close button
             Button(action: onClose) {
                 Image(systemName: "xmark")
@@ -87,7 +168,45 @@ struct TerminalPaneView: View {
         .background(theme.paneHeaderBackground)
     }
 
+    private var reconnectFailureBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle")
+                .foregroundStyle(theme.dangerColor)
+            Text(session.reconnectError ?? "")
+                .font(.system(size: 10))
+                .foregroundStyle(theme.textSecondary)
+                .lineLimit(1)
+            Spacer()
+            Button("Retry") {
+                session.retryReconnect()
+            }
+            .foregroundStyle(themeColor(for: TerminalReconnectPresentation.role(for: .retry)))
+            Button("Start Shell") {
+                session.startShellAfterReconnectFailure()
+            }
+            .foregroundStyle(themeColor(for: TerminalReconnectPresentation.role(for: .startShell)))
+        }
+        .buttonStyle(.borderless)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(theme.paneHeaderBackground)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(theme.dividerColor)
+                .frame(height: 1)
+        }
+    }
+
     // MARK: - Helpers
+
+    private func themeColor(for role: TerminalReconnectThemeRole) -> Color {
+        switch role {
+        case .accent:
+            return theme.accentColor
+        case .secondaryText:
+            return theme.textSecondary
+        }
+    }
 
     private var statusColor: Color {
         switch session.lifecycle {

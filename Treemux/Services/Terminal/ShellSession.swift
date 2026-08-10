@@ -42,6 +42,8 @@ final class ShellSession: Identifiable {
     var rows: Int = 24
     var cols: Int = 80
     var surfaceStatus = TerminalSurfaceStatusSnapshot()
+    private(set) var isReconnecting = false
+    private(set) var reconnectError: String?
 
     /// Detected tmux session name, if the shell is running inside tmux.
     var detectedTmuxSession: String?
@@ -50,19 +52,28 @@ final class ShellSession: Identifiable {
     @ObservationIgnored var onFocus: (() -> Void)?
 
     private let surfaceController: ManagedTerminalSessionSurfaceController
+    @ObservationIgnored private let shellPIDResolver: (String) async -> Int32?
     @ObservationIgnored private var launchConfiguration: TerminalLaunchConfiguration
     @ObservationIgnored private var isFocusedInWorkspace = false
+    @ObservationIgnored private var reconnectBackend: SessionBackendConfiguration?
+    @ObservationIgnored private var pendingInitialLaunchBackend: SessionBackendConfiguration?
+    @ObservationIgnored private var activeLaunchBackend: SessionBackendConfiguration?
+    @ObservationIgnored private var shellPIDResolutionTask: Task<Void, Never>?
+    @ObservationIgnored private var launchGeneration: UInt = 0
 
     // MARK: - Initialization
 
     init(
         id: UUID = UUID(),
         backendConfiguration: SessionBackendConfiguration,
-        preferredWorkingDirectory: String
+        preferredWorkingDirectory: String,
+        initialLaunchBackend: SessionBackendConfiguration? = nil,
+        initialDetectedTmuxSession: String? = nil
     ) {
         var baseEnv = ShellSession.defaultEnvironment()
         baseEnv["TREEMUX_PANE_ID"] = id.uuidString
-        let launchConfiguration = backendConfiguration.makeLaunchConfiguration(
+        let launchBackend = initialLaunchBackend ?? backendConfiguration
+        let launchConfiguration = launchBackend.makeLaunchConfiguration(
             preferredWorkingDirectory: preferredWorkingDirectory,
             baseEnvironment: baseEnv
         )
@@ -77,6 +88,9 @@ final class ShellSession: Identifiable {
         self.launchConfiguration = launchConfiguration
         self.title = launchConfiguration.command.displayName
         self.surfaceController = surface
+        self.shellPIDResolver = Self.defaultShellPIDResolver
+        self.pendingInitialLaunchBackend = initialLaunchBackend
+        self.detectedTmuxSession = initialDetectedTmuxSession
         configureSurfaceCallbacks()
     }
 
@@ -84,19 +98,26 @@ final class ShellSession: Identifiable {
         id: UUID = UUID(),
         backendConfiguration: SessionBackendConfiguration,
         preferredWorkingDirectory: String,
-        surfaceController: ManagedTerminalSessionSurfaceController
+        surfaceController: ManagedTerminalSessionSurfaceController,
+        initialLaunchBackend: SessionBackendConfiguration? = nil,
+        initialDetectedTmuxSession: String? = nil,
+        shellPIDResolver: ((String) async -> Int32?)? = nil
     ) {
         self.id = id
         self.backendConfiguration = backendConfiguration
         self.preferredWorkingDirectory = preferredWorkingDirectory
         var baseEnv = ShellSession.defaultEnvironment()
         baseEnv["TREEMUX_PANE_ID"] = id.uuidString
-        self.launchConfiguration = backendConfiguration.makeLaunchConfiguration(
+        let launchBackend = initialLaunchBackend ?? backendConfiguration
+        self.launchConfiguration = launchBackend.makeLaunchConfiguration(
             preferredWorkingDirectory: preferredWorkingDirectory,
             baseEnvironment: baseEnv
         )
         self.title = launchConfiguration.command.displayName
         self.surfaceController = surfaceController
+        self.shellPIDResolver = shellPIDResolver ?? Self.defaultShellPIDResolver
+        self.pendingInitialLaunchBackend = initialLaunchBackend
+        self.detectedTmuxSession = initialDetectedTmuxSession
         configureSurfaceCallbacks()
     }
 
@@ -182,7 +203,13 @@ final class ShellSession: Identifiable {
     func start() {
         var baseEnv = Self.defaultEnvironment()
         baseEnv["TREEMUX_PANE_ID"] = id.uuidString
-        launchConfiguration = backendConfiguration.makeLaunchConfiguration(
+        let launchBackend = pendingInitialLaunchBackend ?? backendConfiguration
+        if case .tmuxAttach = launchBackend {
+            reconnectBackend = launchBackend
+        }
+        pendingInitialLaunchBackend = nil
+        activeLaunchBackend = launchBackend
+        launchConfiguration = launchBackend.makeLaunchConfiguration(
             preferredWorkingDirectory: preferredWorkingDirectory,
             baseEnvironment: baseEnv
         )
@@ -208,12 +235,31 @@ final class ShellSession: Identifiable {
             preferredWorkingDirectory: preferredWorkingDirectory,
             baseEnvironment: baseEnv
         )
+        activeLaunchBackend = backendConfiguration
         surfaceController.updateLaunchConfiguration(launchConfiguration)
         exitCode = nil
         lifecycle = .starting
         surfaceController.restartManagedSession()
         surfaceController.setFocused(isFocusedInWorkspace)
         syncManagedProcessStateAfterLaunch()
+    }
+
+    func reconnect() {
+        let backend = ReconnectBackendResolver.resolve(
+            originalBackend: backendConfiguration,
+            detectedTmuxSession: detectedTmuxSession
+        )
+        performReconnect(using: backend)
+    }
+
+    func retryReconnect() {
+        guard let reconnectBackend, reconnectError != nil else { return }
+        performReconnect(using: reconnectBackend)
+    }
+
+    func startShellAfterReconnectFailure() {
+        guard reconnectError != nil else { return }
+        performReconnect(using: ReconnectBackendResolver.shellFallback(for: backendConfiguration))
     }
 
     func updatePreferredWorkingDirectory(_ path: String, restartIfRunning: Bool) {
@@ -225,9 +271,12 @@ final class ShellSession: Identifiable {
     }
 
     func terminate() {
+        invalidatePIDResolution()
         surfaceController.terminateManagedSession()
         lifecycle = .exited
         pid = nil
+        isReconnecting = false
+        activeLaunchBackend = nil
     }
 
     // MARK: - Focus
@@ -330,43 +379,97 @@ final class ShellSession: Identifiable {
         resolveShellPID()
     }
 
-    /// Discovers this pane's shell PID by searching the process tree for a descendant
-    /// of the app process whose environment contains our TREEMUX_PANE_ID.
+    private func performReconnect(using backend: SessionBackendConfiguration) {
+        guard !isReconnecting else { return }
+
+        isReconnecting = true
+        reconnectError = nil
+        reconnectBackend = backend
+        activeLaunchBackend = backend
+
+        var baseEnvironment = Self.defaultEnvironment()
+        baseEnvironment["TREEMUX_PANE_ID"] = id.uuidString
+        launchConfiguration = backend.makeLaunchConfiguration(
+            preferredWorkingDirectory: preferredWorkingDirectory,
+            baseEnvironment: baseEnvironment
+        )
+
+        title = launchConfiguration.command.displayName
+        reportedWorkingDirectory = nil
+        detectedTmuxSession = nil
+        surfaceStatus = TerminalSurfaceStatusSnapshot()
+        exitCode = nil
+        pid = nil
+        lifecycle = .starting
+
+        surfaceController.terminateManagedSession()
+        surfaceController.updateLaunchConfiguration(launchConfiguration)
+        surfaceController.startManagedSessionIfNeeded()
+        surfaceController.setFocused(isFocusedInWorkspace)
+        if isFocusedInWorkspace {
+            surfaceController.focus()
+        }
+        syncManagedProcessStateAfterLaunch()
+    }
+
     private func resolveShellPID() {
         let paneID = id.uuidString
-        let appPID = ProcessInfo.processInfo.processIdentifier
-        Task { [weak self] in
-            let maxAttempts = 10   // 10 × 200ms = 2s
-            for _ in 0..<maxAttempts {
-                try? await Task.sleep(nanoseconds: 200_000_000)
-                if let shellPID = ProcessTree.findDescendant(
-                    of: appPID, envKey: "TREEMUX_PANE_ID", envValue: paneID
-                ) {
-                    await MainActor.run { [weak self] in
-                        guard let self else { return }
-                        self.pid = shellPID
-                        if self.lifecycle == .starting {
-                            self.lifecycle = .running
-                        }
-                    }
-                    return
-                }
+        invalidatePIDResolution()
+        let generation = launchGeneration
+        let resolver = shellPIDResolver
+        shellPIDResolutionTask = Task { [weak self] in
+            let shellPID = await resolver(paneID)
+            guard !Task.isCancelled, let self, self.launchGeneration == generation else { return }
+            self.pid = shellPID
+            if self.lifecycle == .starting {
+                self.lifecycle = .running
             }
-            // Timeout — log and leave pid as nil. Not fatal; tmux detection
-            // falls back to the placeholder filter in snapshot().
-            await MainActor.run { [weak self] in
-                guard let self else { return }
-                if self.lifecycle == .starting {
-                    self.lifecycle = .running
-                }
-            }
+            self.isReconnecting = false
+            self.shellPIDResolutionTask = nil
         }
     }
 
+    private func invalidatePIDResolution() {
+        launchGeneration &+= 1
+        shellPIDResolutionTask?.cancel()
+        shellPIDResolutionTask = nil
+    }
+
+    /// Discovers this pane's shell PID by searching the process tree for a descendant
+    /// of the app process whose environment contains our TREEMUX_PANE_ID.
+    private static func defaultShellPIDResolver(paneID: String) async -> Int32? {
+        let appPID = ProcessInfo.processInfo.processIdentifier
+        let maxAttempts = 10   // 10 × 200ms = 2s
+        for _ in 0..<maxAttempts {
+            do {
+                try await Task.sleep(nanoseconds: 200_000_000)
+            } catch {
+                return nil
+            }
+            if let shellPID = ProcessTree.findDescendant(
+                of: appPID,
+                envKey: "TREEMUX_PANE_ID",
+                envValue: paneID
+            ) {
+                return shellPID
+            }
+        }
+        // A missing PID is not fatal; tmux detection falls back to snapshot filtering.
+        return nil
+    }
+
     private func applyProcessExit(_ exitCode: Int32?) {
+        let exitedBackend = activeLaunchBackend
+        invalidatePIDResolution()
         self.exitCode = exitCode
         lifecycle = .exited
         pid = nil
+        isReconnecting = false
+        activeLaunchBackend = nil
+        if case .tmuxAttach = exitedBackend {
+            reconnectBackend = exitedBackend
+            reconnectError = String(localized: "Unable to reattach to the tmux session.")
+        }
     }
 
     /// Detect if the shell is running inside tmux based on the terminal title.

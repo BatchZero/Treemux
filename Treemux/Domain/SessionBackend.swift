@@ -101,3 +101,47 @@ enum SessionBackendConfiguration: Codable, Hashable {
         }
     }
 }
+
+// MARK: - Reconnect backend resolution
+
+enum ReconnectBackendResolver {
+    static func resolve(
+        originalBackend: SessionBackendConfiguration,
+        detectedTmuxSession: String?
+    ) -> SessionBackendConfiguration {
+        guard let sessionName = detectedTmuxSession,
+              !sessionName.isEmpty,
+              sessionName != "tmux" else {
+            return originalBackend
+        }
+
+        switch originalBackend {
+        case .localShell:
+            return .tmuxAttach(TmuxAttachConfig(
+                sessionName: sessionName,
+                windowIndex: nil,
+                isRemote: false,
+                sshTarget: nil
+            ))
+        case .ssh(let config):
+            return .tmuxAttach(TmuxAttachConfig(
+                sessionName: sessionName,
+                windowIndex: nil,
+                isRemote: true,
+                sshTarget: config.target
+            ))
+        case .tmuxAttach, .agent:
+            return originalBackend
+        }
+    }
+
+    static func shellFallback(
+        for backend: SessionBackendConfiguration
+    ) -> SessionBackendConfiguration {
+        guard case .tmuxAttach(let config) = backend else { return backend }
+        if config.isRemote, let target = config.sshTarget {
+            return .ssh(SSHSessionConfig(target: target, remoteCommand: nil))
+        }
+        return .localShell(LocalShellConfig.defaultShell())
+    }
+}

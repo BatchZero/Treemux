@@ -348,6 +348,29 @@ final class WorkspaceModelsTests: XCTestCase {
     }
 
     @MainActor
+    func testRestoringTmuxPanePreservesOriginalBackendInSnapshot() {
+        let paneID = UUID()
+        let originalBackend = SessionBackendConfiguration.localShell(LocalShellConfig(
+            shellPath: "/bin/fish",
+            arguments: ["-l"]
+        ))
+        let controller = WorkspaceSessionController(
+            workingDirectory: "/tmp",
+            savedLayout: .pane(PaneLeaf(paneID: paneID)),
+            paneSnapshots: [PaneSnapshot(
+                id: paneID,
+                backend: originalBackend,
+                workingDirectory: "/tmp",
+                detectedTmuxSession: "dev"
+            )],
+            focusedPaneID: paneID,
+            zoomedPaneID: nil
+        )
+
+        XCTAssertEqual(controller.sessionSnapshots().first?.backend, originalBackend)
+    }
+
+    @MainActor
     func testWorktreeSwitchPreservesAndRestoresState() {
         let ws = WorkspaceModel(
             name: "test",
