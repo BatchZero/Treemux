@@ -159,6 +159,35 @@ final class ShellSessionPublishDedupTests: XCTestCase {
         XCTAssertEqual(surface.calls.suffix(2), ["focused:true", "focus"])
     }
 
+    func testInitialTmuxRestoreFailureOffersRecovery() {
+        let surface = FakeSurfaceController()
+        let session = ShellSession(
+            backendConfiguration: .localShell(LocalShellConfig(
+                shellPath: "/bin/fish",
+                arguments: ["-l"]
+            )),
+            preferredWorkingDirectory: "/tmp",
+            surfaceController: surface,
+            initialLaunchBackend: .tmuxAttach(TmuxAttachConfig(
+                sessionName: "dev",
+                windowIndex: nil,
+                isRemote: false,
+                sshTarget: nil
+            )),
+            initialDetectedTmuxSession: "dev"
+        )
+
+        session.startIfNeeded()
+        surface.onProcessExit?(1)
+
+        XCTAssertNotNil(session.reconnectError)
+        surface.calls.removeAll()
+        session.startShellAfterReconnectFailure()
+
+        XCTAssertEqual(surface.latestLaunchConfiguration?.command.executablePath, "/bin/fish")
+        XCTAssertEqual(surface.latestLaunchConfiguration?.command.arguments, ["-l"])
+    }
+
     func testFailedTmuxReconnectCanFallBackToOriginalShell() {
         let surface = FakeSurfaceController()
         let session = makeSession(surface: surface)

@@ -55,17 +55,22 @@ final class ShellSession: Identifiable {
     @ObservationIgnored private var launchConfiguration: TerminalLaunchConfiguration
     @ObservationIgnored private var isFocusedInWorkspace = false
     @ObservationIgnored private var reconnectBackend: SessionBackendConfiguration?
+    @ObservationIgnored private var pendingInitialLaunchBackend: SessionBackendConfiguration?
+    @ObservationIgnored private var isInitialTmuxRestorePending = false
 
     // MARK: - Initialization
 
     init(
         id: UUID = UUID(),
         backendConfiguration: SessionBackendConfiguration,
-        preferredWorkingDirectory: String
+        preferredWorkingDirectory: String,
+        initialLaunchBackend: SessionBackendConfiguration? = nil,
+        initialDetectedTmuxSession: String? = nil
     ) {
         var baseEnv = ShellSession.defaultEnvironment()
         baseEnv["TREEMUX_PANE_ID"] = id.uuidString
-        let launchConfiguration = backendConfiguration.makeLaunchConfiguration(
+        let launchBackend = initialLaunchBackend ?? backendConfiguration
+        let launchConfiguration = launchBackend.makeLaunchConfiguration(
             preferredWorkingDirectory: preferredWorkingDirectory,
             baseEnvironment: baseEnv
         )
@@ -80,6 +85,8 @@ final class ShellSession: Identifiable {
         self.launchConfiguration = launchConfiguration
         self.title = launchConfiguration.command.displayName
         self.surfaceController = surface
+        self.pendingInitialLaunchBackend = initialLaunchBackend
+        self.detectedTmuxSession = initialDetectedTmuxSession
         configureSurfaceCallbacks()
     }
 
@@ -87,19 +94,24 @@ final class ShellSession: Identifiable {
         id: UUID = UUID(),
         backendConfiguration: SessionBackendConfiguration,
         preferredWorkingDirectory: String,
-        surfaceController: ManagedTerminalSessionSurfaceController
+        surfaceController: ManagedTerminalSessionSurfaceController,
+        initialLaunchBackend: SessionBackendConfiguration? = nil,
+        initialDetectedTmuxSession: String? = nil
     ) {
         self.id = id
         self.backendConfiguration = backendConfiguration
         self.preferredWorkingDirectory = preferredWorkingDirectory
         var baseEnv = ShellSession.defaultEnvironment()
         baseEnv["TREEMUX_PANE_ID"] = id.uuidString
-        self.launchConfiguration = backendConfiguration.makeLaunchConfiguration(
+        let launchBackend = initialLaunchBackend ?? backendConfiguration
+        self.launchConfiguration = launchBackend.makeLaunchConfiguration(
             preferredWorkingDirectory: preferredWorkingDirectory,
             baseEnvironment: baseEnv
         )
         self.title = launchConfiguration.command.displayName
         self.surfaceController = surfaceController
+        self.pendingInitialLaunchBackend = initialLaunchBackend
+        self.detectedTmuxSession = initialDetectedTmuxSession
         configureSurfaceCallbacks()
     }
 
@@ -185,7 +197,13 @@ final class ShellSession: Identifiable {
     func start() {
         var baseEnv = Self.defaultEnvironment()
         baseEnv["TREEMUX_PANE_ID"] = id.uuidString
-        launchConfiguration = backendConfiguration.makeLaunchConfiguration(
+        let launchBackend = pendingInitialLaunchBackend ?? backendConfiguration
+        if let pendingInitialLaunchBackend, case .tmuxAttach = pendingInitialLaunchBackend {
+            reconnectBackend = pendingInitialLaunchBackend
+            isInitialTmuxRestorePending = true
+        }
+        pendingInitialLaunchBackend = nil
+        launchConfiguration = launchBackend.makeLaunchConfiguration(
             preferredWorkingDirectory: preferredWorkingDirectory,
             baseEnvironment: baseEnv
         )
@@ -356,6 +374,7 @@ final class ShellSession: Identifiable {
         guard !isReconnecting else { return }
 
         isReconnecting = true
+        isInitialTmuxRestorePending = false
         reconnectError = nil
         reconnectBackend = backend
 
@@ -403,6 +422,7 @@ final class ShellSession: Identifiable {
                             self.lifecycle = .running
                         }
                         self.isReconnecting = false
+                        self.isInitialTmuxRestorePending = false
                     }
                     return
                 }
@@ -415,17 +435,20 @@ final class ShellSession: Identifiable {
                     self.lifecycle = .running
                 }
                 self.isReconnecting = false
+                self.isInitialTmuxRestorePending = false
             }
         }
     }
 
     private func applyProcessExit(_ exitCode: Int32?) {
         let wasReconnecting = isReconnecting
+        let wasInitialTmuxRestorePending = isInitialTmuxRestorePending
         self.exitCode = exitCode
         lifecycle = .exited
         pid = nil
         isReconnecting = false
-        if wasReconnecting, case .tmuxAttach = reconnectBackend {
+        isInitialTmuxRestorePending = false
+        if (wasReconnecting || wasInitialTmuxRestorePending), case .tmuxAttach = reconnectBackend {
             reconnectError = String(localized: "Unable to reattach to the tmux session.")
         }
     }
