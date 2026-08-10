@@ -27,6 +27,11 @@ struct DataURIInlineImageProvider: InlineImageProvider {
 struct RenderedMarkdownView: View {
     @Environment(ThemeManager.self) private var theme
     let content: String
+    var scrollSync: ScrollSync? = nil
+    @State private var scrollPosition = ScrollPosition()
+    @State private var renderMaxY: CGFloat = 0
+    @State private var liveRenderY: CGFloat = 0
+    @State private var suppressNextPublication = false
 
     var body: some View {
         ScrollView {
@@ -45,6 +50,41 @@ struct RenderedMarkdownView: View {
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .scrollPosition($scrollPosition)
+        .onScrollGeometryChange(for: RenderScrollGeometry.self) { geometry in
+            RenderScrollGeometry(
+                offsetY: geometry.contentOffset.y,
+                contentHeight: geometry.contentSize.height,
+                viewportHeight: geometry.containerSize.height
+            )
+        } action: { _, geometry in
+            liveRenderY = geometry.offsetY
+            renderMaxY = geometry.maxY
+            if suppressNextPublication {
+                suppressNextPublication = false
+                return
+            }
+            guard let scrollSync else { return }
+            scrollSync.publish(
+                fraction: ScrollSyncMetrics.fraction(
+                    offsetY: geometry.offsetY,
+                    contentHeight: geometry.contentHeight,
+                    viewportHeight: geometry.viewportHeight
+                ),
+                from: .render
+            )
+        }
+        .onChange(of: scrollSync?.revision) { _, _ in
+            guard let scrollSync, scrollSync.driver == .source else { return }
+            let targetY = min(max(scrollSync.fraction, 0), 1) * renderMaxY
+            guard abs(liveRenderY - targetY) > 0.5 else {
+                scrollSync.finish(.source)
+                return
+            }
+            suppressNextPublication = true
+            scrollPosition.scrollTo(y: targetY)
+            scrollSync.finish(.source)
+        }
         .background(theme.paneBackground)
         .environment(\.openURL, OpenURLAction { url in
             guard RenderedDocumentPolicy.isAllowedLinkScheme(url.scheme) else {
@@ -53,5 +93,15 @@ struct RenderedMarkdownView: View {
             NSWorkspace.shared.open(url)
             return .handled
         })
+    }
+}
+
+private struct RenderScrollGeometry: Equatable {
+    let offsetY: CGFloat
+    let contentHeight: CGFloat
+    let viewportHeight: CGFloat
+
+    var maxY: CGFloat {
+        max(0, contentHeight - viewportHeight)
     }
 }

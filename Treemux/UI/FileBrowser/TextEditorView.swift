@@ -15,6 +15,9 @@ struct TextEditorView: View {
     let encoding: String.Encoding
     let dirty: Bool
     let controller: FileBrowserTabController
+    /// Shared only by the two panes in Split mode. Source-only editors leave
+    /// this nil and retain their independent scrolling behavior.
+    var scrollSync: ScrollSync? = nil
     /// Optional side-channel notified with the raw editor text on every
     /// keystroke, in addition to `controller.updateBuffer`. Lets a host view
     /// (e.g. `DocumentViewerView`'s debounced Split/Render preview) follow
@@ -52,6 +55,7 @@ struct TextEditorView: View {
                     ? TreemuxEditorTheme.markdown(uiColors: themeManager.activeTheme.ui)
                     : TreemuxEditorTheme.from(uiColors: themeManager.activeTheme.ui),
                 isMarkdown: isMarkdown,
+                scrollSync: scrollSync,
                 onChange: {
                     controller.updateBuffer(content: $0, forSubTab: subTabID)
                     onLiveChange?($0)
@@ -102,6 +106,7 @@ private struct CodeEditorRepresentable: View {
     let isCompletionEnabled: () -> Bool
     let editorTheme: EditorTheme
     let isMarkdown: Bool
+    let scrollSync: ScrollSync?
     let onChange: (String) -> Void
 
     @State private var text: String
@@ -118,6 +123,7 @@ private struct CodeEditorRepresentable: View {
     /// A stable provider instance prevents SourceEditor from rebuilding its
     /// highlighter on every SwiftUI update.
     @State private var markdownProvider = MarkdownHighlightProvider()
+    @State private var scrollSyncCoordinator: ScrollSyncCoordinator?
     /// Owns the `WordCompletionDelegate` and re-indexes the buffer on edits.
     /// Held as `@State` so a single instance survives view updates and
     /// can keep its weak `controller` reference connected.
@@ -132,6 +138,7 @@ private struct CodeEditorRepresentable: View {
         isCompletionEnabled: @escaping () -> Bool,
         editorTheme: EditorTheme,
         isMarkdown: Bool,
+        scrollSync: ScrollSync?,
         onChange: @escaping (String) -> Void
     ) {
         self.path = path
@@ -142,6 +149,7 @@ private struct CodeEditorRepresentable: View {
         self.isCompletionEnabled = isCompletionEnabled
         self.editorTheme = editorTheme
         self.isMarkdown = isMarkdown
+        self.scrollSync = scrollSync
         self.onChange = onChange
         self.highlightEligible = EditorHighlightPolicy.shouldHighlight(
             path: path, byteCount: content.utf8.count
@@ -155,6 +163,17 @@ private struct CodeEditorRepresentable: View {
                 delegate: delegate
             )
         )
+        self._scrollSyncCoordinator = State(
+            initialValue: scrollSync.map { ScrollSyncCoordinator(sync: $0) }
+        )
+    }
+
+    private var editorCoordinators: [any TextViewCoordinator] {
+        var coordinators: [any TextViewCoordinator] = [stripeCoordinator, completionCoordinator]
+        if let scrollSyncCoordinator {
+            coordinators.append(scrollSyncCoordinator)
+        }
+        return coordinators
     }
 
     var body: some View {
@@ -170,9 +189,14 @@ private struct CodeEditorRepresentable: View {
             configuration: configuration,
             state: $editorState,
             highlightProviders: isMarkdown ? [markdownProvider] : nil,
-            coordinators: [stripeCoordinator, completionCoordinator],
+            coordinators: editorCoordinators,
             completionDelegate: completionCoordinator.delegate
         )
+        .onChange(of: scrollSync?.revision) { _, _ in
+            guard let scrollSync, scrollSync.driver == .render else { return }
+            scrollSyncCoordinator?.applyFractionFromRender()
+            scrollSync.finish(.render)
+        }
         // When the sub-tab swaps the underlying file or content (e.g. activating
         // a different sub-tab, or saving / reloading), refresh the editor's
         // buffer without re-emitting onChange.

@@ -27,6 +27,10 @@ struct DocumentViewerView: View {
     /// new content arrives before the delay elapses.
     @State private var debounceTask: Task<Void, Never>?
 
+    /// Shared only by the Markdown source/render pair while Split mode is
+    /// visible. The single-pane modes deliberately receive nil.
+    @State private var scrollSync = ScrollSync()
+
     init(
         subTabID: UUID,
         path: String,
@@ -95,13 +99,13 @@ struct DocumentViewerView: View {
     private func viewContent(for mode: FileViewMode) -> some View {
         switch mode {
         case .source:
-            sourceEditor
+            sourceEditor()
         case .render:
-            renderedSide
+            renderedSide()
         case .split:
             HSplitView {
-                sourceEditor
-                renderedSide
+                sourceEditor(scrollSync: kind == .markdown ? scrollSync : nil)
+                renderedSide(scrollSync: kind == .markdown ? scrollSync : nil)
             }
         }
     }
@@ -113,7 +117,7 @@ struct DocumentViewerView: View {
     /// same 300 ms debounce used for the `content` (load/save/reload) path,
     /// so `debouncedContent` settles to whichever update — typing or an
     /// external reload — landed most recently.
-    private var sourceEditor: some View {
+    private func sourceEditor(scrollSync: ScrollSync? = nil) -> some View {
         TextEditorView(
             subTabID: subTabID,
             path: path,
@@ -121,16 +125,17 @@ struct DocumentViewerView: View {
             encoding: encoding,
             dirty: dirty,
             controller: controller,
+            scrollSync: scrollSync,
             onLiveChange: { scheduleDebouncedUpdate(to: $0) }
         )
     }
 
     /// The render side — reads the debounced content to avoid rerendering every keystroke.
     @ViewBuilder
-    private var renderedSide: some View {
+    private func renderedSide(scrollSync: ScrollSync? = nil) -> some View {
         switch kind {
         case .markdown:
-            RenderedMarkdownView(content: debouncedContent)
+            RenderedMarkdownView(content: debouncedContent, scrollSync: scrollSync)
         case .html:
             HardenedWebView(html: debouncedContent)
         }
