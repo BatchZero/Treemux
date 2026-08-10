@@ -45,7 +45,7 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
         }
         return FileNode(id: entry.path, name: entry.name, path: entry.path,
                         kind: kind, sizeBytes: entry.sizeBytes, modifiedAt: entry.modifiedAt,
-                        symlinkTargetIsDirectory: entry.symlinkTargetIsDirectory)
+                        symlinkTargetResolution: entry.symlinkTargetResolution)
     }
 
     func listDirectory(_ path: String) async throws -> [FileNode] {
@@ -55,6 +55,11 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
             if a.isDirectory != b.isDirectory { return a.isDirectory }
             return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
         }
+    }
+
+    func canonicalDirectoryIdentity(_ path: String) async throws -> String {
+        try await ensureConnected()
+        return try await service.canonicalDirectoryIdentity(path)
     }
 
     /// Host/port/user-scoped cache identity. Stable across sessions so a project

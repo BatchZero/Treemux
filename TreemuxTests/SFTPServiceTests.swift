@@ -116,6 +116,57 @@ final class SFTPServiceTests: XCTestCase {
         XCTAssertFalse(byName["flink"]!.symlinkTargetIsDirectory)
     }
 
+    func testStructuredSymlinkProbeCarriesDirectoryIdentityAndFailures() {
+        let output = """
+        D\t./dir link\t/srv/real dir
+        F\t./file-link
+        B\t./broken-link
+        I\t./private-link
+        U\t./unknown-link\trealpath unsupported
+        """
+
+        let resolutions = SFTPService.parseSymlinkProbe(output, parentPath: "/home/u")
+
+        XCTAssertEqual(resolutions["/home/u/dir link"], .directory(canonicalIdentity: "/srv/real dir"))
+        XCTAssertEqual(resolutions["/home/u/file-link"], .file)
+        XCTAssertEqual(resolutions["/home/u/broken-link"], .broken)
+        XCTAssertEqual(resolutions["/home/u/private-link"], .inaccessible)
+        XCTAssertEqual(resolutions["/home/u/unknown-link"], .unresolved(reason: "realpath unsupported"))
+    }
+
+    func testParseListingUsesStructuredSymlinkResolution() throws {
+        let output = "lrwxrwxrwx 1 0 0 5 1700000000 dlink -> realdir"
+        let entries = SFTPService.parseListing(
+            output: output,
+            parentPath: "/home/u",
+            symlinkResolutions: [
+                "/home/u/dlink": .directory(canonicalIdentity: "/srv/realdir")
+            ]
+        )
+
+        let entry = try XCTUnwrap(entries.first)
+        XCTAssertEqual(entry.symlinkTargetResolution, .directory(canonicalIdentity: "/srv/realdir"))
+    }
+
+    func testBoundedSymlinkResolutionNeverExceedsLimit() async {
+        let tracker = SymlinkConcurrencyTracker()
+        let paths = (0..<12).map { "/link-\($0)" }
+
+        let results = await SFTPService.resolveSymlinkMetadata(
+            paths: paths,
+            maxConcurrent: 3
+        ) { path in
+            await tracker.started()
+            try? await Task.sleep(for: .milliseconds(20))
+            await tracker.finished()
+            return .directory(canonicalIdentity: "/resolved\(path)")
+        }
+
+        XCTAssertEqual(results.count, paths.count)
+        let maximum = await tracker.maximum()
+        XCTAssertLessThanOrEqual(maximum, 3)
+    }
+
     func testParseSymlinkDirProbeAbsolute() {
         let out = "/home/u/dlink\n/home/u/nested/dlink2\n"
         let set = SFTPService.parseSymlinkDirProbe(out, parentPath: nil)
@@ -413,6 +464,22 @@ final class SFTPServiceTests: XCTestCase {
         XCTAssertFalse(paths.contains(secretLogPath.path),
                        "match under a hidden child directory must still be pruned")
     }
+}
+
+private actor SymlinkConcurrencyTracker {
+    private var active = 0
+    private var maximumActive = 0
+
+    func started() {
+        active += 1
+        maximumActive = max(maximumActive, active)
+    }
+
+    func finished() {
+        active -= 1
+    }
+
+    func maximum() -> Int { maximumActive }
 }
 
 // MARK: - Test helpers

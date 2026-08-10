@@ -203,6 +203,23 @@ actor SFTPService {
         }
     }
 
+    func canonicalDirectoryIdentity(_ path: String) async throws -> String {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let escaped = Self.shellEscape(path)
+            let command = "realpath -- \(escaped) 2>/dev/null || (cd -P \(escaped) 2>/dev/null && pwd -P)"
+            let result = try await runSSH(target: target, command: command)
+            let identity = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard result.exitCode == 0, !identity.isEmpty else {
+                throw SFTPServiceError.commandFailed("cannot resolve directory at \(path)")
+            }
+            return identity
+        case .citadel(_, let sftp):
+            return try await sftp.getRealPath(atPath: path)
+        }
+    }
+
     /// Read the contents of a remote file. Refuses files larger than `maxBytes`.
     func readFile(at path: String, maxBytes: Int) async throws -> Data {
         guard let mode else { throw SFTPServiceError.notConnected }
@@ -318,8 +335,12 @@ actor SFTPService {
         let probeOut = sections.count > 1 ? sections[1] : ""
         // `runCommand(_:in:)` supplies the leading `cd <root>`, so the probe's
         // `find .` names are ./-relative to `root`.
-        let symlinkDirs = Self.parseSymlinkDirProbe(probeOut, parentPath: root)
-        var grouped = Self.parseRecursiveListing(output: listingOut, root: root, symlinkDirPaths: symlinkDirs)
+        let resolutions = Self.parseSymlinkProbe(probeOut, parentPath: root)
+        var grouped = Self.parseRecursiveListing(
+            output: listingOut,
+            root: root,
+            symlinkResolutions: resolutions
+        )
         var truncated: Set<String> = []
         for (dir, entries) in grouped where entries.count > entryCap {
             grouped[dir] = Array(entries.prefix(entryCap))
@@ -656,8 +677,12 @@ actor SFTPService {
         let sections = result.output.components(separatedBy: Self.symlinkProbeMarker)
         let listingOut = sections.first ?? result.output
         let probeOut = sections.count > 1 ? sections[1] : ""
-        let symlinkDirs = Self.parseSymlinkDirProbe(probeOut, parentPath: path)
-        return Self.parseListing(output: listingOut, parentPath: path, symlinkDirPaths: symlinkDirs)
+        let resolutions = Self.parseSymlinkProbe(probeOut, parentPath: path)
+        return Self.parseListing(
+            output: listingOut,
+            parentPath: path,
+            symlinkResolutions: resolutions
+        )
     }
 
     /// Marker separating the listing section from the symlink-dir probe section
@@ -684,20 +709,69 @@ actor SFTPService {
         return set
     }
 
+    /// Parses tab-delimited probe records. The first field is the outcome, the
+    /// second is the displayed path, and directory/unresolved records carry a
+    /// third canonical identity or reason field.
+    static func parseSymlinkProbe(
+        _ output: String,
+        parentPath: String?
+    ) -> [String: SymlinkTargetResolution] {
+        let base = parentPath.map { $0.hasSuffix("/") ? String($0.dropLast()) : $0 }
+        var results: [String: SymlinkTargetResolution] = [:]
+
+        for line in output.components(separatedBy: "\n") where !line.isEmpty {
+            let fields = line.components(separatedBy: "\t")
+            guard fields.count >= 2 else { continue }
+            var path = fields[1]
+            if let base {
+                if path.hasPrefix("./") { path.removeFirst(2) }
+                guard !path.isEmpty else { continue }
+                path = base + "/" + path
+            }
+
+            switch fields[0] {
+            case "D" where fields.count >= 3 && !fields[2].isEmpty:
+                results[path] = .directory(canonicalIdentity: fields[2])
+            case "F":
+                results[path] = .file
+            case "B":
+                results[path] = .broken
+            case "I":
+                results[path] = .inaccessible
+            case "U":
+                results[path] = .unresolved(reason: fields.count >= 3 ? fields[2] : nil)
+            default:
+                continue
+            }
+        }
+        return results
+    }
+
     /// Shell fragment that, after the main listing, emits the marker followed by
     /// one line per symlink (to `maxDepth`) whose target is a directory. Portable:
     /// `[ -d "$l/" ]` dereferences the link on both GNU and BSD userlands.
     static func symlinkDirProbeFragment(maxDepth: Int) -> String {
         "echo \(symlinkProbeMarker); "
         + "find . -mindepth 1 -maxdepth \(maxDepth) -type l 2>/dev/null "
-        + "| while IFS= read -r l; do [ -d \"$l/\" ] && printf '%s\\n' \"$l\"; done"
+        + "| while IFS= read -r l; do "
+        + "if [ -d \"$l/\" ]; then "
+        + "if [ ! -r \"$l/\" ] || [ ! -x \"$l/\" ]; then printf 'I\\t%s\\n' \"$l\"; "
+        + "else c=$(realpath -- \"$l\" 2>/dev/null || (cd -P \"$l\" 2>/dev/null && pwd -P)); "
+        + "if [ -n \"$c\" ]; then printf 'D\\t%s\\t%s\\n' \"$l\" \"$c\"; "
+        + "else printf 'U\\t%s\\t%s\\n' \"$l\" 'canonical path unavailable'; fi; fi; "
+        + "elif [ -e \"$l\" ]; then printf 'F\\t%s\\n' \"$l\"; "
+        + "else printf 'B\\t%s\\n' \"$l\"; fi; done"
     }
 
     /// Parse `ls -lA` style output. Auto-detects whether the timestamp is a single epoch field
     /// (Linux `--time-style=+%s`) or 4 BSD fields (`Mon DD HH:MM:SS YYYY`).
     /// Exposed at internal scope (and as a static function) so unit tests can drive it directly.
-    static func parseListing(output: String, parentPath: String,
-                              symlinkDirPaths: Set<String> = []) -> [SFTPRichEntry] {
+    static func parseListing(
+        output: String,
+        parentPath: String,
+        symlinkDirPaths: Set<String> = [],
+        symlinkResolutions: [String: SymlinkTargetResolution] = [:]
+    ) -> [SFTPRichEntry] {
         var entries: [SFTPRichEntry] = []
         // Hoisted out of the loop — see `parseRecursiveListing` for why per-line
         // `DateFormatter` allocation is a performance problem on big listings.
@@ -779,13 +853,17 @@ actor SFTPService {
                 fullPath = parentPath + "/" + name
             }
 
+            let resolution = symlinkResolutions[fullPath]
+                ?? (symlinkDirPaths.contains(fullPath)
+                    ? .directory(canonicalIdentity: fullPath)
+                    : .unresolved(reason: nil))
             entries.append(SFTPRichEntry(
                 name: name,
                 path: fullPath,
                 kind: resolvedKind,
                 sizeBytes: size,
                 modifiedAt: mtime,
-                symlinkTargetIsDirectory: symlinkDirPaths.contains(fullPath)
+                symlinkTargetResolution: resolution
             ))
         }
 
@@ -873,8 +951,12 @@ actor SFTPService {
     /// reassembled into an absolute path and grouped under its parent directory.
     /// Each group is sorted directories-first, then case-insensitive by name —
     /// matching `RemoteFileBrowserDataSource.listDirectory`'s ordering.
-    static func parseRecursiveListing(output: String, root: String,
-                                       symlinkDirPaths: Set<String> = []) -> [String: [SFTPRichEntry]] {
+    static func parseRecursiveListing(
+        output: String,
+        root: String,
+        symlinkDirPaths: Set<String> = [],
+        symlinkResolutions: [String: SymlinkTargetResolution] = [:]
+    ) -> [String: [SFTPRichEntry]] {
         let normalizedRoot = root.hasSuffix("/") ? String(root.dropLast()) : root
         var grouped: [String: [SFTPRichEntry]] = [:]
         // Hoisted out of the per-line loop: `DateFormatter` init + locale setup
@@ -936,10 +1018,14 @@ actor SFTPService {
                 return baseKind
             }()
 
+            let resolution = symlinkResolutions[absolutePath]
+                ?? (symlinkDirPaths.contains(absolutePath)
+                    ? .directory(canonicalIdentity: absolutePath)
+                    : .unresolved(reason: nil))
             grouped[parent, default: []].append(
                 SFTPRichEntry(name: name, path: absolutePath, kind: kind,
                               sizeBytes: size, modifiedAt: mtime,
-                              symlinkTargetIsDirectory: symlinkDirPaths.contains(absolutePath))
+                              symlinkTargetResolution: resolution)
             )
         }
 
@@ -955,10 +1041,6 @@ actor SFTPService {
 
     // MARK: - SFTP rich listing (Citadel)
 
-    // NOTE: symlink target-type resolution needs the `[ -d ]` probe, which requires
-    // arbitrary command exec — unavailable on the Citadel password-auth path. Over
-    // Citadel, symlink-directories therefore render as plain (non-expandable) links.
-    // The common key-auth system-SSH path (listAllEntriesViaSSH) is fully supported.
     private func listAllEntriesViaSFTP(sftp: SFTPClient, path: String) async throws -> [SFTPRichEntry] {
         let names = try await sftp.listDirectory(atPath: path)
         var entries: [SFTPRichEntry] = []
@@ -1011,8 +1093,90 @@ actor SFTPService {
             }
         }
 
-        entries.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        return entries
+        try Task.checkCancellation()
+        let symlinkPaths = entries.compactMap { entry -> String? in
+            if case .symlink = entry.kind { return entry.path }
+            return nil
+        }
+        let resolutions = await Self.resolveSymlinkMetadata(paths: symlinkPaths) { symlinkPath in
+            await Self.resolveCitadelSymlink(sftp: sftp, path: symlinkPath)
+        }
+        try Task.checkCancellation()
+
+        return entries.map { entry in
+            guard let resolution = resolutions[entry.path] else { return entry }
+            return SFTPRichEntry(
+                name: entry.name,
+                path: entry.path,
+                kind: entry.kind,
+                sizeBytes: entry.sizeBytes,
+                modifiedAt: entry.modifiedAt,
+                symlinkTargetResolution: resolution
+            )
+        }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
+    static func resolveSymlinkMetadata(
+        paths: [String],
+        maxConcurrent: Int = 4,
+        resolver: @escaping @Sendable (String) async -> SymlinkTargetResolution
+    ) async -> [String: SymlinkTargetResolution] {
+        guard !paths.isEmpty, maxConcurrent > 0 else { return [:] }
+        var iterator = paths.makeIterator()
+
+        return await withTaskGroup(of: (String, SymlinkTargetResolution)?.self) { group in
+            for _ in 0..<min(maxConcurrent, paths.count) {
+                guard let path = iterator.next() else { break }
+                group.addTask {
+                    guard !Task.isCancelled else { return nil }
+                    return (path, await resolver(path))
+                }
+            }
+
+            var results: [String: SymlinkTargetResolution] = [:]
+            while let result = await group.next() {
+                if Task.isCancelled {
+                    group.cancelAll()
+                    break
+                }
+                if let result { results[result.0] = result.1 }
+                if let path = iterator.next() {
+                    group.addTask {
+                        guard !Task.isCancelled else { return nil }
+                        return (path, await resolver(path))
+                    }
+                }
+            }
+            return results
+        }
+    }
+
+    private static func resolveCitadelSymlink(
+        sftp: SFTPClient,
+        path: String
+    ) async -> SymlinkTargetResolution {
+        do {
+            let canonical = try await sftp.getRealPath(atPath: path)
+            let attrs = try await sftp.getAttributes(at: canonical)
+            guard let permissions = attrs.permissions else {
+                return .unresolved(reason: "target type unavailable")
+            }
+            return (permissions & Self.S_IFMT) == Self.S_IFDIR
+                ? .directory(canonicalIdentity: canonical)
+                : .file
+        } catch SFTPError.errorStatus(let status) {
+            switch status.errorCode {
+            case .noSuchFile:
+                return .broken
+            case .permissionDenied:
+                return .inaccessible
+            default:
+                return .unresolved(reason: status.errorCode.debugDescription)
+            }
+        } catch {
+            if error is CancellationError { return .unresolved(reason: nil) }
+            return .unresolved(reason: error.localizedDescription)
+        }
     }
 
     // MARK: - SSH stat

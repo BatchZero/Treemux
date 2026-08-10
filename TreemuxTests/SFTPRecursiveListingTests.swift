@@ -82,4 +82,21 @@ final class SFTPRecursiveListingTests: XCTestCase {
         XCTAssertTrue(node.isSymlink)
         XCTAssertTrue(node.isExpandableDirectory)
     }
+
+    func testRecursiveParserCarriesCanonicalSymlinkIdentity() throws {
+        let output = "lrwxr-xr-x 1 0 0 7 1714000000 ./link -> ../dest"
+        let grouped = SFTPService.parseRecursiveListing(
+            output: output,
+            root: "/r",
+            symlinkResolutions: [
+                "/r/link": .directory(canonicalIdentity: "/dest")
+            ]
+        )
+
+        let link = try XCTUnwrap(grouped["/r"]?.first)
+        XCTAssertEqual(link.symlinkTargetResolution, .directory(canonicalIdentity: "/dest"))
+
+        let node = RemoteFileBrowserDataSource.node(from: link)
+        XCTAssertEqual(node.canonicalDirectoryIdentity, "/dest")
+    }
 }
