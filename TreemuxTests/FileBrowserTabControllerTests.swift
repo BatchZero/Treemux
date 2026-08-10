@@ -64,6 +64,26 @@ final class FileBrowserTabControllerTests: XCTestCase {
         XCTAssertNil(controller.pendingUpload)
     }
 
+    func testConfirmPendingUploadRejectsImmediateSecondDrop() async throws {
+        let controller = makeRemoteController()
+        XCTAssertTrue(controller.stageUpload(
+            urls: [URL(fileURLWithPath: "/tmp/first")],
+            destination: "/remote/target"
+        ))
+
+        let confirmationTask = try XCTUnwrap(controller.confirmPendingUpload())
+
+        XCTAssertNil(controller.pendingUpload)
+        XCTAssertFalse(controller.stageUpload(
+            urls: [URL(fileURLWithPath: "/tmp/second")],
+            destination: "/remote/target"
+        ))
+
+        confirmationTask.cancel()
+        await confirmationTask.value
+        XCTAssertTrue(controller.canAcceptUploadDrop)
+    }
+
     func testStageUploadRejectsNonFileEmptyLocalAndDuplicateRequests() {
         let remote = makeRemoteController()
         XCTAssertFalse(remote.stageUpload(urls: [], destination: "/remote"))

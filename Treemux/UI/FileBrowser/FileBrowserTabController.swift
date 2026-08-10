@@ -140,6 +140,7 @@ final class FileBrowserTabController {
     private(set) var transferCoordinator: FileTransferCoordinator?
     private(set) var transferSummary: FileTransferSummary?
     private(set) var pendingUpload: PendingUploadRequest?
+    private(set) var isTransferStarting = false
 
     /// True when this tab browses a remote host (system-SSH or Citadel). Drives
     /// the local-vs-remote escalation-hint copy. `rootKind` (.project/.worktree)
@@ -155,7 +156,7 @@ final class FileBrowserTabController {
     var canAcceptUploadDrop: Bool {
         FileTransferPresentation.canAcceptUploadDrop(
             isRemote: isRemote,
-            isTransferActive: isTransferActive,
+            isTransferActive: isTransferActive || isTransferStarting,
             hasPendingUpload: pendingUpload != nil
         )
     }
@@ -762,9 +763,14 @@ final class FileBrowserTabController {
         return pendingUpload
     }
 
-    func confirmPendingUpload() {
-        guard let request = consumePendingUpload() else { return }
-        Task {
+    @discardableResult
+    func confirmPendingUpload() -> Task<Void, Never>? {
+        guard let request = consumePendingUpload() else { return nil }
+        isTransferStarting = true
+        return Task { [weak self] in
+            guard let self else { return }
+            defer { isTransferStarting = false }
+            guard !Task.isCancelled else { return }
             await beginUpload(urls: request.urls, destination: request.destination)
         }
     }

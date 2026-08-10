@@ -25,7 +25,6 @@ struct FileTreePanelView: View {
     /// accepted until content is settled — otherwise we'd finish early and the
     /// later reflow would be mistaken for the user's position.
     @State private var contentSettled = false
-    @State private var isRootUploadTargeted = false
     /// Owned here (not inside `FileTreeToolbar`) so Cmd+F, handled at the
     /// panel level via `.onKeyPress`, can drive focus down into the
     /// toolbar's search field via `FocusState<Bool>.Binding`.
@@ -111,22 +110,6 @@ struct FileTreePanelView: View {
             .onDisappear {
                 controller.treeScrollOffset = liveOffset
                 controller.cancelPendingUpload()
-            }
-            .dropDestination(for: URL.self) { urls, _ in
-                controller.stageUpload(urls: urls, destination: controller.rootPath)
-            } isTargeted: { targeted in
-                isRootUploadTargeted = targeted && controller.canAcceptUploadDrop
-            }
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isRootUploadTargeted ? theme.accentColor.opacity(0.10) : Color.clear)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(
-                        isRootUploadTargeted ? theme.accentColor : Color.clear,
-                        lineWidth: 1.5
-                    )
             }
         }
         .background(theme.paneBackground)
@@ -222,6 +205,7 @@ private struct FileTreeToolbar: View {
     /// panel level) can focus this field regardless of what else has focus.
     var searchFocused: FocusState<Bool>.Binding
     @Environment(ThemeManager.self) private var theme
+    @State private var isRootUploadTargeted = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -271,6 +255,22 @@ private struct FileTreeToolbar: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isRootUploadTargeted ? theme.accentColor.opacity(0.10) : Color.clear)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(
+                        isRootUploadTargeted ? theme.accentColor : Color.clear,
+                        lineWidth: 1.5
+                    )
+            }
+            .dropDestination(for: URL.self) { urls, _ in
+                controller.stageUpload(urls: urls, destination: controller.rootPath)
+            } isTargeted: { targeted in
+                isRootUploadTargeted = targeted && controller.canAcceptUploadDrop
+            }
 
             searchRow
             statusRow
