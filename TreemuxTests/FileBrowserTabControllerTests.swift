@@ -261,6 +261,60 @@ final class FileBrowserTabControllerTests: XCTestCase {
         XCTAssertEqual(controller.childrenByPath["/root/slow"], [])
     }
 
+    func testSecondToggleCancelsInFlightExpansionTask() async {
+        let mock = MockFileBrowserDataSource()
+        let link = FileNode(
+            id: "/root/slow", name: "slow", path: "/root/slow",
+            kind: .symlink(target: "/target"), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .directory(canonicalIdentity: "/canonical/target")
+        )
+        mock.directoryListings["/root"] = [link]
+        mock.canonicalIdentities["/root"] = "/canonical/root"
+        let controller = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/root", rootKind: .project),
+            dataSource: mock
+        )
+        await controller.refreshTree()
+        let signals = mock.armCancellableListDirectory(path: link.path)
+        let expansion = Task { @MainActor in await controller.toggleExpand(link.path) }
+        for await _ in signals.entered { break }
+
+        await controller.toggleExpand(link.path)
+        for await _ in signals.cancelled { break }
+        await expansion.value
+
+        XCTAssertFalse(controller.expandedDirs.contains(link.path))
+        XCTAssertNil(controller.childrenByPath[link.path])
+        XCTAssertNil(controller.loadError)
+    }
+
+    func testRefreshCancelsInFlightExpansionTask() async {
+        let mock = MockFileBrowserDataSource()
+        let link = FileNode(
+            id: "/root/slow", name: "slow", path: "/root/slow",
+            kind: .symlink(target: "/target"), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .directory(canonicalIdentity: "/canonical/target")
+        )
+        mock.directoryListings["/root"] = [link]
+        mock.canonicalIdentities["/root"] = "/canonical/root"
+        let controller = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/root", rootKind: .project),
+            dataSource: mock
+        )
+        await controller.refreshTree()
+        let signals = mock.armCancellableListDirectory(path: link.path)
+        let expansion = Task { @MainActor in await controller.toggleExpand(link.path) }
+        for await _ in signals.entered { break }
+
+        await controller.refreshTree()
+        for await _ in signals.cancelled { break }
+        await expansion.value
+
+        XCTAssertFalse(controller.expandedDirs.contains(link.path))
+        XCTAssertNil(controller.childrenByPath[link.path])
+        XCTAssertNil(controller.loadError)
+    }
+
     func testRefreshDuringCanonicalLookupDoesNotCacheStaleIdentityOrError() async {
         let mock = MockFileBrowserDataSource()
         let link = FileNode(
@@ -610,6 +664,9 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
     private var gatedListDirectoryPath: String?
     private var listDirectoryGate: CheckedContinuation<Void, Never>?
     private var listDirectoryEnteredContinuation: AsyncStream<Void>.Continuation?
+    var cancellableListDirectoryPath: String?
+    private var cancellableListEnteredContinuation: AsyncStream<Void>.Continuation?
+    private var cancellableListCancelledContinuation: AsyncStream<Void>.Continuation?
     private var gatedCanonicalIdentityPath: String?
     private var canonicalIdentityGate: CheckedContinuation<Void, Never>?
     private var canonicalIdentityEnteredContinuation: AsyncStream<Void>.Continuation?
@@ -625,6 +682,15 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
         listDirectoryGate?.resume()
         listDirectoryGate = nil
         gatedListDirectoryPath = nil
+    }
+
+    func armCancellableListDirectory(path: String) -> (entered: AsyncStream<Void>, cancelled: AsyncStream<Void>) {
+        let (entered, enteredContinuation) = AsyncStream<Void>.makeStream()
+        let (cancelled, cancelledContinuation) = AsyncStream<Void>.makeStream()
+        cancellableListDirectoryPath = path
+        cancellableListEnteredContinuation = enteredContinuation
+        cancellableListCancelledContinuation = cancelledContinuation
+        return (entered, cancelled)
     }
 
     func armCanonicalIdentityGate(path: String) -> AsyncStream<Void> {
@@ -648,6 +714,19 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
                 listDirectoryEnteredContinuation?.yield(())
                 listDirectoryEnteredContinuation?.finish()
                 listDirectoryEnteredContinuation = nil
+            }
+        }
+        if cancellableListDirectoryPath == path {
+            cancellableListEnteredContinuation?.yield(())
+            cancellableListEnteredContinuation?.finish()
+            cancellableListEnteredContinuation = nil
+            do {
+                try await Task.sleep(for: .seconds(30))
+            } catch is CancellationError {
+                cancellableListCancelledContinuation?.yield(())
+                cancellableListCancelledContinuation?.finish()
+                cancellableListCancelledContinuation = nil
+                throw CancellationError()
             }
         }
         if let listError { throw listError }

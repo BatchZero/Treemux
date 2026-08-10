@@ -26,6 +26,11 @@ struct SubTabRuntime: Identifiable, Equatable {
 @MainActor
 @Observable
 final class FileBrowserTabController {
+    private struct ExpansionOperation {
+        let token: UUID
+        let task: Task<Void, Never>
+    }
+
     /// Surfaced load failure for the file tree. UI binds this to a banner
     /// (Task B4) so SSH-key/permission failures stop being silently swallowed.
     enum LoadError: Equatable {
@@ -76,6 +81,7 @@ final class FileBrowserTabController {
     }
     @ObservationIgnored private var canonicalIdentityByPath: [String: String] = [:]
     @ObservationIgnored private var expansionTokens: [String: UUID] = [:]
+    @ObservationIgnored private var expansionOperationsByPath: [String: ExpansionOperation] = [:]
     @ObservationIgnored private var treeLoadGeneration = 0
 
     // Git diff/status caches. `diffHunksByPath` keyed by absolute path of the
@@ -314,10 +320,9 @@ final class FileBrowserTabController {
     /// reached, then persist the snapshot. Refresh errors are swallowed when a
     /// cache is already on screen.
     func refreshTree() async {
+        cancelAllExpansionOperations()
         treeLoadGeneration &+= 1
         let generation = treeLoadGeneration
-        expansionTokens.removeAll()
-        loadingPaths.removeAll()
         symlinkErrorsByPath.removeAll()
         canonicalIdentityByPath.removeAll()
         loadError = nil
@@ -394,7 +399,9 @@ final class FileBrowserTabController {
     }
 
     func toggleExpand(_ path: String) async {
-        if loadingPaths.contains(path) {
+        if let operation = expansionOperationsByPath[path] {
+            operation.task.cancel()
+            expansionOperationsByPath[path] = nil
             expansionTokens[path] = nil
             loadingPaths.remove(path)
             return
@@ -409,40 +416,61 @@ final class FileBrowserTabController {
             let generation = treeLoadGeneration
             expansionTokens[path] = token
             loadingPaths.insert(path)
-            var retainedAsExpansionIdentity = false
-            defer {
-                if expansionTokens[path] == token {
-                    loadingPaths.remove(path)
-                    if !retainedAsExpansionIdentity {
-                        expansionTokens[path] = nil
-                    }
-                }
+            let task: Task<Void, Never> = Task { [weak self] in
+                guard let self else { return }
+                await self.performExpansion(path, generation: generation, token: token)
             }
-            do {
-                guard await validateExpansion(
-                    path, generation: generation, expansionToken: token),
-                      expansionTokens[path] == token,
-                      treeLoadGeneration == generation else { return }
-                let kids = try await dataSource.listDirectory(path)
-                guard expansionTokens[path] == token,
-                      treeLoadGeneration == generation else { return }
-                rawChildrenByPath[path] = kids
-                childrenByPath[path] = filtered(kids)
-                expandedDirs.insert(path)
-                symlinkErrorsByPath[path] = nil
-                retainedAsExpansionIdentity = true
-                Task { [weak self] in
-                    await self?.prefetchChildren(
-                        of: path, generation: generation, expansionToken: token)
+            expansionOperationsByPath[path] = ExpansionOperation(token: token, task: task)
+            await task.value
+            if expansionOperationsByPath[path]?.token == token {
+                expansionOperationsByPath[path] = nil
+                loadingPaths.remove(path)
+                if !expandedDirs.contains(path) {
+                    expansionTokens[path] = nil
                 }
-            } catch {
-                guard expansionTokens[path] == token,
-                      treeLoadGeneration == generation else { return }
-                // Leave collapsed on error; surface via loadError so the UI banner can show.
-                loadError = mapError(error)
             }
         }
         onPersistableStateChanged?()
+    }
+
+    private func performExpansion(_ path: String, generation: Int, token: UUID) async {
+        do {
+            try Task.checkCancellation()
+            guard await validateExpansion(
+                path, generation: generation, expansionToken: token) else { return }
+            try Task.checkCancellation()
+            guard expansionTokens[path] == token,
+                  treeLoadGeneration == generation else { return }
+            try Task.checkCancellation()
+            let kids = try await dataSource.listDirectory(path)
+            try Task.checkCancellation()
+            guard expansionTokens[path] == token,
+                  treeLoadGeneration == generation else { return }
+            rawChildrenByPath[path] = kids
+            childrenByPath[path] = filtered(kids)
+            expandedDirs.insert(path)
+            symlinkErrorsByPath[path] = nil
+            Task { [weak self] in
+                await self?.prefetchChildren(
+                    of: path, generation: generation, expansionToken: token)
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            guard expansionTokens[path] == token,
+                  treeLoadGeneration == generation else { return }
+            // Leave collapsed on error; surface via loadError so the UI banner can show.
+            loadError = mapError(error)
+        }
+    }
+
+    private func cancelAllExpansionOperations() {
+        for operation in expansionOperationsByPath.values {
+            operation.task.cancel()
+        }
+        expansionOperationsByPath.removeAll()
+        loadingPaths.removeAll()
+        expansionTokens.removeAll()
     }
 
     /// Background-prefetch a directory's grandchildren so expanding its children
