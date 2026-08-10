@@ -87,3 +87,15 @@ final class MarkdownHighlightScannerTests: XCTestCase {
         })
     }
 }
+
+final class MarkdownHighlightMappingTests: XCTestCase {
+    func testElementToCaptureMapping() {
+        XCTAssertEqual(MarkdownHighlightProvider.captureName(for: .heading), .keyword)
+        XCTAssertEqual(MarkdownHighlightProvider.captureName(for: .strong), .type)
+        XCTAssertEqual(MarkdownHighlightProvider.captureName(for: .emphasis), .comment)
+        XCTAssertEqual(MarkdownHighlightProvider.captureName(for: .code), .string)
+        XCTAssertEqual(MarkdownHighlightProvider.captureName(for: .link), .variable)
+        XCTAssertEqual(MarkdownHighlightProvider.captureName(for: .listMarker), .number)
+        XCTAssertEqual(MarkdownHighlightProvider.captureName(for: .blockquote), .typeAlternate)
+    }
+}

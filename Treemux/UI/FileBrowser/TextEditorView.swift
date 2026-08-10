@@ -35,6 +35,10 @@ struct TextEditorView: View {
         controller.liveBuffer(for: subTabID) ?? content
     }
 
+    private var isMarkdown: Bool {
+        FileTypeClassifier.language(forPath: path) == .markdown
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             CodeEditorRepresentable(
@@ -44,7 +48,10 @@ struct TextEditorView: View {
                 bufferID: subTabID,
                 wordIndex: controller.wordIndex,
                 isCompletionEnabled: { store.settings.enableCodeCompletion },
-                editorTheme: TreemuxEditorTheme.from(uiColors: themeManager.activeTheme.ui),
+                editorTheme: isMarkdown
+                    ? TreemuxEditorTheme.markdown(uiColors: themeManager.activeTheme.ui)
+                    : TreemuxEditorTheme.from(uiColors: themeManager.activeTheme.ui),
+                isMarkdown: isMarkdown,
                 onChange: {
                     controller.updateBuffer(content: $0, forSubTab: subTabID)
                     onLiveChange?($0)
@@ -94,6 +101,7 @@ private struct CodeEditorRepresentable: View {
     let wordIndex: BufferWordIndex
     let isCompletionEnabled: () -> Bool
     let editorTheme: EditorTheme
+    let isMarkdown: Bool
     let onChange: (String) -> Void
 
     @State private var text: String
@@ -107,6 +115,9 @@ private struct CodeEditorRepresentable: View {
     /// Persisted across view updates so we can push fresh hunks into the
     /// existing overlay without forcing CodeEditSourceEditor to rebuild.
     @State private var stripeCoordinator = DiffStripeCoordinator()
+    /// A stable provider instance prevents SourceEditor from rebuilding its
+    /// highlighter on every SwiftUI update.
+    @State private var markdownProvider = MarkdownHighlightProvider()
     /// Owns the `WordCompletionDelegate` and re-indexes the buffer on edits.
     /// Held as `@State` so a single instance survives view updates and
     /// can keep its weak `controller` reference connected.
@@ -120,6 +131,7 @@ private struct CodeEditorRepresentable: View {
         wordIndex: BufferWordIndex,
         isCompletionEnabled: @escaping () -> Bool,
         editorTheme: EditorTheme,
+        isMarkdown: Bool,
         onChange: @escaping (String) -> Void
     ) {
         self.path = path
@@ -129,6 +141,7 @@ private struct CodeEditorRepresentable: View {
         self.wordIndex = wordIndex
         self.isCompletionEnabled = isCompletionEnabled
         self.editorTheme = editorTheme
+        self.isMarkdown = isMarkdown
         self.onChange = onChange
         self.highlightEligible = EditorHighlightPolicy.shouldHighlight(
             path: path, byteCount: content.utf8.count
@@ -156,6 +169,7 @@ private struct CodeEditorRepresentable: View {
             language: language,
             configuration: configuration,
             state: $editorState,
+            highlightProviders: isMarkdown ? [markdownProvider] : nil,
             coordinators: [stripeCoordinator, completionCoordinator],
             completionDelegate: completionCoordinator.delegate
         )
@@ -267,6 +281,25 @@ private enum TreemuxEditorTheme {
             characters: .init(color: NSColor.systemRed.editorThemeColor),
             comments: .init(color: textSecondary, italic: true)
         )
+    }
+
+    /// Markdown reuses supported capture slots, with every visible color
+    /// derived from the active theme or its existing code-token styling.
+    static func markdown(uiColors ui: ThemeUIColors) -> EditorTheme {
+        var theme = from(uiColors: ui)
+        let accent = NSColor(Color(hex: ui.accent)).editorThemeColor
+        let primary = NSColor(Color(hex: ui.textPrimary)).editorThemeColor
+        let secondary = NSColor(Color(hex: ui.textSecondary)).editorThemeColor
+        let code = theme.strings.color
+
+        theme.keywords = .init(color: accent, bold: true)
+        theme.types = .init(color: primary, bold: true)
+        theme.comments = .init(color: primary, italic: true)
+        theme.strings = .init(color: code)
+        theme.variables = .init(color: accent)
+        theme.numbers = .init(color: secondary)
+        theme.attributes = .init(color: secondary)
+        return theme
     }
 }
 
