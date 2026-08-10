@@ -3,6 +3,7 @@
 //  Treemux
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct FileTreePanelView: View {
     let controller: FileBrowserTabController
@@ -109,6 +110,12 @@ struct FileTreePanelView: View {
             .onDisappear {
                 controller.treeScrollOffset = liveOffset
             }
+            .dropDestination(for: URL.self) { urls, _ in
+                let fileURLs = urls.filter(\.isFileURL)
+                guard controller.isRemote, !fileURLs.isEmpty else { return false }
+                Task { await controller.beginUpload(urls: fileURLs, destination: controller.rootPath) }
+                return true
+            }
         }
         .background(theme.paneBackground)
         // Cmd+F focuses the toolbar's search field, regardless of which
@@ -119,6 +126,55 @@ struct FileTreePanelView: View {
                 return .handled
             }
             return .ignored
+        }
+        .safeAreaInset(edge: .bottom) {
+            if controller.isTransferActive, let coordinator = controller.transferCoordinator {
+                FileTransferProgressView(
+                    coordinator: coordinator,
+                    retry: { controller.retryTransfer() },
+                    cancel: { controller.cancelTransfer() }
+                )
+            }
+        }
+        .alert(
+            LocalizedStringKey("An item already exists"),
+            isPresented: Binding(
+                get: { controller.transferCoordinator?.pendingConflict != nil },
+                set: { presented in
+                    if !presented, controller.transferCoordinator?.pendingConflict != nil {
+                        controller.resolveTransferConflict(.cancelAll)
+                    }
+                }
+            )
+        ) {
+            Button(LocalizedStringKey("Overwrite"), role: .destructive) {
+                controller.resolveTransferConflict(.overwrite)
+            }
+            Button(LocalizedStringKey("Skip")) {
+                controller.resolveTransferConflict(.skip)
+            }
+            Button(LocalizedStringKey("Cancel All"), role: .cancel) {
+                controller.resolveTransferConflict(.cancelAll)
+            }
+        } message: {
+            if let conflict = controller.transferCoordinator?.pendingConflict {
+                Text(String.localizedStringWithFormat(
+                    String(localized: "A destination item already exists at %@."),
+                    conflict.destinationPath
+                ))
+            }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { controller.transferSummary != nil },
+                set: { if !$0 { controller.dismissTransferSummary() } }
+            )
+        ) {
+            if let summary = controller.transferSummary {
+                FileTransferSummaryView(summary: summary) {
+                    controller.dismissTransferSummary()
+                }
+            }
         }
     }
 }
@@ -443,6 +499,12 @@ private struct FileTreeRow: View, Equatable {
             }
         )
         .contextMenu {
+            if FileTransferPresentation.canDownload(node, isRemote: controller.isRemote) {
+                Button(LocalizedStringKey("Download…")) {
+                    controller.chooseDownloadDestination(for: node)
+                }
+                Divider()
+            }
             Button(LocalizedStringKey("New Folder")) {
                 Task { await controller.beginNewEntry(intent: .folder,
                                                       in: controller.targetDirectory(for: node)) }
@@ -459,6 +521,17 @@ private struct FileTreeRow: View, Equatable {
                 controller.copyPath(node.path, mode: .relative)
             }
             .disabled(node.path == controller.rootPath)
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            guard controller.isRemote,
+                  let destination = FileTransferPresentation.dropDestination(
+                    for: node,
+                    rootPath: controller.rootPath
+                  ) else { return false }
+            let fileURLs = urls.filter(\.isFileURL)
+            guard !fileURLs.isEmpty else { return false }
+            Task { await controller.beginUpload(urls: fileURLs, destination: destination) }
+            return true
         }
     }
 
@@ -503,6 +576,105 @@ private struct FileTreeRow: View, Equatable {
         case .added: return .green
         case .deleted: return .red
         }
+    }
+}
+
+private struct FileTransferProgressView: View {
+    let coordinator: FileTransferCoordinator
+    let retry: () -> Void
+    let cancel: () -> Void
+    @Environment(ThemeManager.self) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(LocalizedStringKey(
+                    coordinator.state == .paused ? "Transfer paused" : "Transferring files…"
+                ))
+                    .font(DesignFonts.dataLayer(size: 11))
+                    .foregroundStyle(theme.textPrimary)
+                Spacer()
+                if coordinator.state == .paused {
+                    Button(LocalizedStringKey("Retry"), action: retry)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(theme.accentColor)
+                }
+                Button(LocalizedStringKey("Cancel"), action: cancel)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(theme.dangerColor)
+            }
+            if coordinator.pendingRetryableError != nil {
+                Text(LocalizedStringKey("The connection was interrupted. Retry when it is available."))
+                    .font(DesignFonts.dataLayer(size: 10))
+                    .foregroundStyle(theme.textSecondary)
+            }
+            ProgressView(
+                value: Double(coordinator.summary.completedBytes),
+                total: Double(max(1, coordinator.summary.totalBytes))
+            )
+            .tint(theme.accentColor)
+            Text(String.localizedStringWithFormat(
+                String(localized: "%lld completed, %lld failed"),
+                Int64(coordinator.summary.completedItems),
+                Int64(coordinator.summary.failedItems)
+            ))
+                .font(DesignFonts.dataLayer(size: 10))
+                .foregroundStyle(theme.textMuted)
+        }
+        .padding(10)
+        .background(theme.paneBackground)
+        .overlay(alignment: .top) { Divider() }
+    }
+}
+
+private struct FileTransferSummaryView: View {
+    let summary: FileTransferSummary
+    let dismiss: () -> Void
+    @Environment(ThemeManager.self) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(LocalizedStringKey("Transfer Summary"))
+                .font(.headline)
+                .foregroundStyle(theme.textPrimary)
+            Text(String.localizedStringWithFormat(
+                String(localized: "%lld completed, %lld skipped, %lld failed, %lld cancelled"),
+                Int64(summary.completedItems),
+                Int64(summary.skippedItems),
+                Int64(summary.failedItems),
+                Int64(summary.cancelledItems)
+            ))
+                .foregroundStyle(theme.textSecondary)
+            if summary.cancelled {
+                Text(LocalizedStringKey("The remaining transfer was cancelled."))
+                    .foregroundStyle(theme.textSecondary)
+            }
+            if !summary.failures.isEmpty {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(Array(summary.failures.enumerated()), id: \.offset) { _, failure in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(failure.sourcePath)
+                                    .font(DesignFonts.dataLayer(size: 11))
+                                    .foregroundStyle(theme.textPrimary)
+                                Text(failure.message)
+                                    .font(DesignFonts.dataLayer(size: 10))
+                                    .foregroundStyle(theme.dangerColor)
+                            }
+                        }
+                    }
+                }
+                .frame(maxHeight: 220)
+            }
+            HStack {
+                Spacer()
+                Button(LocalizedStringKey("Done"), action: dismiss)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 420)
+        .background(theme.paneBackground)
     }
 }
 

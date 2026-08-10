@@ -16,6 +16,9 @@ enum SFTPServiceError: LocalizedError {
     case keyFileNotFound(String)
     case unsupportedKeyType(String)
     case authenticationFailed
+    case connectionLost(String)
+    case notFound(String)
+    case atomicOverwriteUnsupported
     case commandFailed(String)
     case commandTimedOut(TimeInterval)
 
@@ -31,6 +34,12 @@ enum SFTPServiceError: LocalizedError {
             return "Unsupported SSH key type: \(type)"
         case .authenticationFailed:
             return "SSH authentication failed"
+        case .connectionLost(let detail):
+            return "SSH connection lost: \(detail)"
+        case .notFound(let path):
+            return "Remote item not found: \(path)"
+        case .atomicOverwriteUnsupported:
+            return String(localized: "Remote server cannot safely replace this file.")
         case .commandFailed(let detail):
             return "SSH command failed: \(detail)"
         case .commandTimedOut(let seconds):
@@ -99,7 +108,13 @@ actor SFTPService {
     /// Whether this service currently holds an active SSH/SFTP connection.
     /// Used by data sources sharing one service to avoid redundant `connect()` calls,
     /// which would tear down sibling sessions via the leading `disconnect()`.
-    var isConnected: Bool { mode != nil }
+    var isConnected: Bool {
+        switch mode {
+        case .none: false
+        case .ssh: true
+        case .citadel(let client, let sftp): client.isConnected && sftp.isActive
+        }
+    }
 
     /// The POSIX file-type mask for directories (S_IFDIR).
     private static let S_IFMT: UInt32 = 0o170000
@@ -203,6 +218,17 @@ actor SFTPService {
         }
     }
 
+    /// Returns target metadata for transfer sizing, following a symbolic link.
+    func transferTargetStat(_ path: String) async throws -> SFTPRichStat {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            return try await statViaSSH(target: target, path: path, followSymbolicLinks: true)
+        case .citadel(_, let sftp):
+            return try await statViaSFTP(sftp: sftp, path: path)
+        }
+    }
+
     func canonicalDirectoryIdentity(_ path: String) async throws -> String {
         guard let mode else { throw SFTPServiceError.notConnected }
         switch mode {
@@ -214,6 +240,11 @@ actor SFTPService {
             guard result.exitCode == 0,
                   let identity = Self.parseCanonicalDirectoryIdentityOutput(result.output),
                   !identity.isEmpty else {
+                if result.exitCode == 255 {
+                    throw SFTPServiceError.connectionLost(
+                        "cannot resolve directory at \(path)"
+                    )
+                }
                 throw SFTPServiceError.commandFailed("cannot resolve directory at \(path)")
             }
             return identity
@@ -269,7 +300,10 @@ actor SFTPService {
         case .ssh(let target):
             let result = try await runSSH(target: target, command: Self.mkdirCommand(path: path))
             guard result.exitCode == 0 else {
-                throw SFTPServiceError.commandFailed("mkdir failed at \(path)")
+                throw Self.transferCommandFailure(
+                    exitCode: result.exitCode,
+                    detail: "mkdir failed at \(path)"
+                )
             }
         case .citadel(_, let sftp):
             try await sftp.createDirectory(atPath: path)
@@ -292,6 +326,237 @@ actor SFTPService {
             let file = try await sftp.openFile(filePath: path, flags: [.write, .create, .forceCreate])
             try await file.close()
         }
+    }
+
+    func readTransferChunk(at path: String, offset: Int64, length: Int) async throws -> Data {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let result = try await runSSH(
+                target: target,
+                command: Self.transferReadCommand(path: path, offset: offset, length: length)
+            )
+            guard result.exitCode == 0 else {
+                throw Self.transferCommandFailure(
+                    exitCode: result.exitCode,
+                    detail: "chunk read failed at \(path)"
+                )
+            }
+            let cleaned = result.output
+                .replacingOccurrences(of: "\n", with: "")
+                .replacingOccurrences(of: "\r", with: "")
+                .replacingOccurrences(of: " ", with: "")
+            guard let data = Data(base64Encoded: cleaned) else {
+                throw SFTPServiceError.commandFailed("base64 decode failed for \(path)")
+            }
+            return data
+        case .citadel(_, let sftp):
+            let file = try await sftp.openFile(filePath: path, flags: .read)
+            do {
+                let buffer = try await file.read(
+                    from: UInt64(offset),
+                    length: UInt32(min(length, Int(UInt32.max)))
+                )
+                try await file.close()
+                return Data(buffer.readableBytesView)
+            } catch {
+                try? await file.close()
+                throw error
+            }
+        }
+    }
+
+    func createTransferTemporaryFile(at path: String) async throws {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let result = try await runSSH(
+                target: target,
+                command: Self.transferCreateCommand(path: path)
+            )
+            guard result.exitCode == 0 else {
+                throw Self.transferCommandFailure(
+                    exitCode: result.exitCode,
+                    detail: "temporary file create failed at \(path)"
+                )
+            }
+        case .citadel(_, let sftp):
+            let file = try await sftp.openFile(
+                filePath: path,
+                flags: [.write, .create, .forceCreate]
+            )
+            try await file.close()
+        }
+    }
+
+    func writeTransferChunk(_ data: Data, at path: String, offset: Int64) async throws {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let result = try await runSSHWithStdin(
+                target: target,
+                command: Self.transferWriteCommand(path: path, offset: offset),
+                stdin: data.base64EncodedString()
+            )
+            guard result.exitCode == 0 else {
+                throw Self.transferCommandFailure(
+                    exitCode: result.exitCode,
+                    detail: "chunk write failed at \(path)"
+                )
+            }
+        case .citadel(_, let sftp):
+            let file = try await sftp.openFile(filePath: path, flags: .write)
+            do {
+                var buffer = ByteBuffer()
+                buffer.writeBytes(data)
+                try await file.write(buffer, at: UInt64(offset))
+                try await file.close()
+            } catch {
+                try? await file.close()
+                throw error
+            }
+        }
+    }
+
+    func replaceTransferItem(at path: String, withTemporaryItemAt temporaryPath: String) async throws {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let result = try await runSSH(
+                target: target,
+                command: Self.transferReplaceCommand(
+                    temporaryPath: temporaryPath,
+                    destinationPath: path
+                )
+            )
+            guard result.exitCode == 0 else {
+                throw Self.transferCommandFailure(
+                    exitCode: result.exitCode,
+                    detail: "temporary replace failed at \(path)"
+                )
+            }
+        case .citadel(let client, _):
+            do {
+                try await Self.atomicallyReplaceCitadelItem(
+                    temporaryPath: temporaryPath,
+                    destinationPath: path,
+                    execute: { command in
+                        _ = try await client.executeCommand(
+                            command,
+                            mergeStreams: true,
+                            inShell: true
+                        )
+                    }
+                )
+            } catch {
+                if !client.isConnected {
+                    throw SFTPServiceError.connectionLost("atomic overwrite failed at \(path)")
+                }
+                throw SFTPServiceError.atomicOverwriteUnsupported
+            }
+        }
+    }
+
+    func removeTransferItem(at path: String) async throws {
+        guard let mode else { throw SFTPServiceError.notConnected }
+        switch mode {
+        case .ssh(let target):
+            let result = try await runSSH(target: target, command: "rm -rf -- \(Self.shellEscape(path))")
+            guard result.exitCode == 0 else {
+                throw Self.transferCommandFailure(
+                    exitCode: result.exitCode,
+                    detail: "remove failed at \(path)"
+                )
+            }
+        case .citadel(_, let sftp):
+            let attributes = try await sftp.getAttributes(at: path)
+            let typeBits = (attributes.permissions ?? 0) & Self.S_IFMT
+            if typeBits == Self.S_IFDIR {
+                let children = try await listAllEntriesViaSFTP(sftp: sftp, path: path)
+                for child in children {
+                    try await removeTransferItem(at: child.path)
+                }
+                try await sftp.rmdir(at: path)
+            } else {
+                try await sftp.remove(at: path)
+            }
+        }
+    }
+
+    nonisolated static func transferReadCommand(path: String, offset: Int64, length: Int) -> String {
+        let blockSize: Int64 = 64 * 1024
+        let positiveOffset = max(0, offset)
+        let skipBlocks = positiveOffset / blockSize
+        let remainder = positiveOffset % blockSize
+        let byteCount = max(0, Int64(length))
+        let blockCount = max(1, (remainder + byteCount + blockSize - 1) / blockSize)
+        var command = "dd if=\(shellEscape(path)) bs=\(blockSize) skip=\(skipBlocks) "
+            + "count=\(blockCount) 2>/dev/null"
+        if remainder > 0 {
+            command += " | tail -c +\(remainder + 1)"
+        }
+        return command + " | head -c \(byteCount) | base64"
+    }
+
+    nonisolated static func transferWriteCommand(path: String, offset: Int64) -> String {
+        let blockSize: Int64 = 64 * 1024
+        let positiveOffset = max(0, offset)
+        let seekBlocks = positiveOffset / blockSize
+        let remainder = positiveOffset % blockSize
+        let destination = shellEscape(path)
+        let writer = "dd of=\(destination) bs=\(blockSize) seek=\(seekBlocks) conv=notrunc 2>/dev/null"
+        guard remainder > 0 else { return "base64 -d | \(writer)" }
+        return "{ dd if=\(destination) bs=\(blockSize) skip=\(seekBlocks) count=1 2>/dev/null "
+            + "| head -c \(remainder); base64 -d; } | \(writer)"
+    }
+
+    nonisolated static func transferCreateCommand(path: String) -> String {
+        "( set -C; umask 077; : > \(shellEscape(path)) )"
+    }
+
+    nonisolated static func transferReplaceCommand(
+        temporaryPath: String,
+        destinationPath: String
+    ) -> String {
+        "mv -f -- \(shellEscape(temporaryPath)) \(shellEscape(destinationPath))"
+    }
+
+    nonisolated static func transferCommandFailure(
+        exitCode: Int32,
+        detail: String
+    ) -> SFTPServiceError {
+        exitCode == 255 ? .connectionLost(detail) : .commandFailed(detail)
+    }
+
+    nonisolated static func transferStatFailure(exitCode: Int32, path: String) -> SFTPServiceError {
+        switch exitCode {
+        case 44: .notFound(path)
+        case 255: .connectionLost("stat failed at \(path)")
+        default: .commandFailed("stat failed at \(path)")
+        }
+    }
+
+    nonisolated static func transferStatCommand(
+        path: String,
+        followSymbolicLinks: Bool
+    ) -> String {
+        let escaped = shellEscape(path)
+        let followOption = followSymbolicLinks ? "-L " : ""
+        let gnu = "stat \(followOption)-c '%F|%s|%Y' -- \(escaped)"
+        let bsd = "stat \(followOption)-f '%HT|%z|%m' -- \(escaped)"
+        let missingCheck = "[ ! -e \(escaped) ] && [ ! -L \(escaped) ] && exit 44"
+        return "\(missingCheck); \(gnu) 2>/dev/null || \(bsd)"
+    }
+
+    nonisolated static func atomicallyReplaceCitadelItem(
+        temporaryPath: String,
+        destinationPath: String,
+        execute: (String) async throws -> Void
+    ) async throws {
+        try await execute(transferReplaceCommand(
+            temporaryPath: temporaryPath,
+            destinationPath: destinationPath
+        ))
     }
 
     // MARK: - Arbitrary command (used by RemoteGitDiffService)
@@ -671,6 +936,9 @@ actor SFTPService {
 
         let result = try await runSSH(target: target, command: combined, timeout: Self.listingCommandTimeout)
         guard result.exitCode == 0 else {
+            if result.exitCode == 255 {
+                throw SFTPServiceError.connectionLost("ls failed at \(path)")
+            }
             throw SFTPServiceError.commandFailed("ls failed at \(path)")
         }
 
@@ -1279,18 +1547,22 @@ actor SFTPService {
 
     // MARK: - SSH stat
 
-    private func statViaSSH(target: SSHTarget, path: String) async throws -> SFTPRichStat {
-        let escaped = Self.shellEscape(path)
+    private func statViaSSH(
+        target: SSHTarget,
+        path: String,
+        followSymbolicLinks: Bool = false
+    ) async throws -> SFTPRichStat {
         // Try GNU stat first (Linux), fall back to BSD `stat -f` (macOS/FreeBSD).
         // NOTE: separator is the literal string "|" to keep parsing simple even if filenames
         // contain tabs.
-        let gnu = "stat -c '%F|%s|%Y' -- \(escaped)"
-        let bsd = "stat -f '%HT|%z|%m' -- \(escaped)"
-        let cmd = "\(gnu) 2>/dev/null || \(bsd)"
+        let cmd = Self.transferStatCommand(
+            path: path,
+            followSymbolicLinks: followSymbolicLinks
+        )
 
         let result = try await runSSH(target: target, command: cmd)
         guard result.exitCode == 0 else {
-            throw SFTPServiceError.commandFailed("stat failed at \(path)")
+            throw Self.transferStatFailure(exitCode: result.exitCode, path: path)
         }
 
         let output = result.output.trimmingCharacters(in: .whitespacesAndNewlines)

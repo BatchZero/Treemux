@@ -1,6 +1,36 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%lld completed, %lld failed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已完成 %1$lld 项，失败 %2$lld 项"
+          }
+        }
+      }
+    },
+    "%lld completed, %lld skipped, %lld failed, %lld cancelled": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已完成 %1$lld 项，跳过 %2$lld 项，失败 %3$lld 项，取消 %4$lld 项"
+          }
+        }
+      }
+    },
+    "%lld completed, %lld skipped, %lld failed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已完成 %1$lld 项，跳过 %2$lld 项，失败 %3$lld 项"
+          }
+        }
+      }
+    },
     "%@ has unsaved changes.": {
       "localizations": {
         "zh-Hans": {
@@ -1731,6 +1761,16 @@
         }
       }
     },
+    "Remote server cannot safely replace this file.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "远程服务器无法安全地替换此文件。"
+          }
+        }
+      }
+    },
     "Retry": {
       "localizations": {
         "zh-Hans": {
@@ -2627,6 +2667,156 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法解析此符号链接的目标。"
+          }
+        }
+      }
+    },
+    "A destination item already exists at %@.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标位置已存在项目：%@。"
+          }
+        }
+      }
+    },
+    "An item already exists": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "项目已存在"
+          }
+        }
+      }
+    },
+    "Cancel All": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部取消"
+          }
+        }
+      }
+    },
+    "Choose Download Destination": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择下载位置"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成"
+          }
+        }
+      }
+    },
+    "Download": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载"
+          }
+        }
+      }
+    },
+    "Download…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载…"
+          }
+        }
+      }
+    },
+    "Overwrite": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "覆盖"
+          }
+        }
+      }
+    },
+    "Skip": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跳过"
+          }
+        }
+      }
+    },
+    "The connection was interrupted. Retry when it is available.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接已中断，请在连接恢复后重试。"
+          }
+        }
+      }
+    },
+    "The remaining transfer was cancelled.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "剩余传输已取消。"
+          }
+        }
+      }
+    },
+    "Transfer paused": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "传输已暂停"
+          }
+        }
+      }
+    },
+    "Transfer stopped because a symbolic link points to an ancestor.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "符号链接指向上级目录，传输已停止。"
+          }
+        }
+      }
+    },
+    "Transfer Summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "传输摘要"
+          }
+        }
+      }
+    },
+    "Transferring files…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在传输文件…"
           }
         }
       }

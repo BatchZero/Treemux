@@ -83,6 +83,14 @@ protocol FileBrowserDataSource: AnyObject {
     ///   must not leak entries the tree UI could never display when "Show
     ///   Hidden Files" is off (e.g. `.git/config` under a hidden `.git` dir).
     func searchNames(root: String, query: String, maxResults: Int, includeHidden: Bool) async throws -> [FileNode]
+
+    func transferMetadata(_ path: String) async throws -> FileTransferMetadata?
+    func transferChildren(_ path: String) async throws -> [String]
+    func readTransferChunk(_ path: String, offset: Int64, length: Int) async throws -> Data
+    func createTransferTemporaryFile(_ path: String) async throws
+    func writeTransferChunk(_ data: Data, to path: String, offset: Int64) async throws
+    func replaceTransferItem(at path: String, withTemporaryItemAt temporaryPath: String) async throws
+    func removeTransferItem(_ path: String) async throws
 }
 
 extension FileBrowserDataSource {
@@ -104,5 +112,52 @@ extension FileBrowserDataSource {
     }
     func searchNames(root: String, query: String, maxResults: Int, includeHidden: Bool) async throws -> [FileNode] {
         []
+    }
+
+    func transferMetadata(_ path: String) async throws -> FileTransferMetadata? {
+        do {
+            let metadata = try await fileMetadata(path)
+            let kind: FileTransferItemKind = metadata.isDirectory ? .directory : .file
+            let identity = metadata.isDirectory ? try await canonicalDirectoryIdentity(path) : nil
+            return FileTransferMetadata(
+                kind: kind,
+                sizeBytes: metadata.sizeBytes,
+                canonicalIdentity: identity
+            )
+        } catch FileBrowserError.notFound {
+            return nil
+        }
+    }
+
+    func transferChildren(_ path: String) async throws -> [String] {
+        try await listDirectory(path).map(\.path)
+    }
+
+    func readTransferChunk(_ path: String, offset: Int64, length: Int) async throws -> Data {
+        let upperBound = Int(offset) + length
+        let data = try await readFile(path, maxBytes: upperBound)
+        let start = min(Int(offset), data.count)
+        return data.subdata(in: start..<min(start + length, data.count))
+    }
+
+    func createTransferTemporaryFile(_ path: String) async throws {
+        try await writeFile(path, data: Data())
+    }
+
+    func writeTransferChunk(_ data: Data, to path: String, offset: Int64) async throws {
+        var existing = try await readFile(path, maxBytes: Int(offset) + data.count)
+        if existing.count < Int(offset) {
+            existing.append(Data(repeating: 0, count: Int(offset) - existing.count))
+        }
+        existing.replaceSubrange(Int(offset)..<existing.count, with: data)
+        try await writeFile(path, data: existing)
+    }
+
+    func replaceTransferItem(at path: String, withTemporaryItemAt temporaryPath: String) async throws {
+        throw FileBrowserError.notWritable(path)
+    }
+
+    func removeTransferItem(_ path: String) async throws {
+        throw FileBrowserError.notWritable(path)
     }
 }

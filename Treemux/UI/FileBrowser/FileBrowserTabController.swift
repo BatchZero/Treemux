@@ -132,10 +132,19 @@ final class FileBrowserTabController {
     private(set) var searchError: String?
     @ObservationIgnored private var searchTask: Task<Void, Never>?
 
+    private(set) var transferCoordinator: FileTransferCoordinator?
+    private(set) var transferSummary: FileTransferSummary?
+
     /// True when this tab browses a remote host (system-SSH or Citadel). Drives
     /// the local-vs-remote escalation-hint copy. `rootKind` (.project/.worktree)
     /// is orthogonal — both are local — so it MUST NOT be used for this.
     var isRemote: Bool { dataSource is RemoteFileBrowserDataSource }
+
+    var isTransferActive: Bool {
+        guard let state = transferCoordinator?.state else { return false }
+        return state == .running || state == .waitingForConflict
+            || state == .paused || state == .cancelling
+    }
 
     /// Inline "new folder / new file" editor state. Non-nil while the user is
     /// typing a name. Drives an `.editor` row in `visibleRows()`.
@@ -716,6 +725,92 @@ final class FileBrowserTabController {
             // Surface via loadError so the UI banner can show (do not reset on entry —
             // user-driven retries go through loadRoot, which clears).
             loadError = mapError(error)
+        }
+    }
+
+    // MARK: - File transfer
+
+    func beginUpload(urls: [URL], destination: String) async {
+        guard isRemote, !urls.isEmpty, !isTransferActive else { return }
+        let coordinator = FileTransferCoordinator(
+            source: LocalFileTransferEndpoint(),
+            destination: FileBrowserTransferEndpoint(dataSource: dataSource)
+        )
+        transferCoordinator = coordinator
+        transferSummary = nil
+        let result = await coordinator.start(
+            direction: .upload,
+            sources: urls.map(\.path),
+            destinationRoot: destination
+        )
+        transferSummary = result
+        await refreshTransferredDirectories(root: destination)
+    }
+
+    func chooseDownloadDestination(for node: FileNode) {
+        guard FileTransferPresentation.canDownload(node, isRemote: isRemote),
+              !isTransferActive else { return }
+        let panel = NSOpenPanel()
+        panel.title = String(localized: "Choose Download Destination")
+        panel.prompt = String(localized: "Download")
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.begin { [weak self] response in
+            guard response == .OK, let destinationURL = panel.url else { return }
+            Task { @MainActor [weak self] in
+                await self?.beginDownload(node: node, destinationURL: destinationURL)
+            }
+        }
+    }
+
+    func beginDownload(node: FileNode, destinationURL: URL) async {
+        guard FileTransferPresentation.canDownload(node, isRemote: isRemote),
+              !isTransferActive else { return }
+        let coordinator = FileTransferCoordinator(
+            source: FileBrowserTransferEndpoint(dataSource: dataSource),
+            destination: LocalFileTransferEndpoint()
+        )
+        transferCoordinator = coordinator
+        transferSummary = nil
+        let result = await coordinator.start(
+            direction: .download,
+            sources: [node.path],
+            destinationRoot: destinationURL.path
+        )
+        transferSummary = result
+        if !result.cancelled, result.failedItems == 0 {
+            let downloadedURL = destinationURL.appendingPathComponent(node.name)
+            NSWorkspace.shared.activateFileViewerSelecting([downloadedURL])
+        }
+    }
+
+    func resolveTransferConflict(_ decision: FileTransferConflictDecision) {
+        transferCoordinator?.resolveConflict(decision)
+    }
+
+    func cancelTransfer() {
+        transferCoordinator?.cancel()
+    }
+
+    func retryTransfer() {
+        transferCoordinator?.retry()
+    }
+
+    func dismissTransferSummary() {
+        transferSummary = nil
+        if transferCoordinator?.state == .completed {
+            transferCoordinator = nil
+        }
+    }
+
+    private func refreshTransferredDirectories(root: String) async {
+        let prefix = root == "/" ? "/" : root + "/"
+        var paths = expandedDirs.filter { $0 == root || $0.hasPrefix(prefix) }
+        paths.insert(root)
+        for path in paths.sorted(by: { $0.count < $1.count }) {
+            await refresh(path)
         }
     }
 
