@@ -41,8 +41,35 @@ struct SFTPRichEntry: Equatable {
     let kind: Kind
     let sizeBytes: Int64?
     let modifiedAt: Date?
-    /// Only meaningful for `.symlink` — true when the link resolves to a directory.
-    var symlinkTargetIsDirectory: Bool = false
+    let symlinkTargetResolution: SymlinkTargetResolution
+
+    var symlinkTargetIsDirectory: Bool {
+        if case .directory = symlinkTargetResolution { return true }
+        return false
+    }
+
+    init(
+        name: String,
+        path: String,
+        kind: Kind,
+        sizeBytes: Int64?,
+        modifiedAt: Date?,
+        symlinkTargetIsDirectory: Bool = false,
+        symlinkTargetResolution: SymlinkTargetResolution? = nil
+    ) {
+        self.name = name
+        self.path = path
+        self.kind = kind
+        self.sizeBytes = sizeBytes
+        self.modifiedAt = modifiedAt
+        if let symlinkTargetResolution {
+            self.symlinkTargetResolution = symlinkTargetResolution
+        } else if symlinkTargetIsDirectory {
+            self.symlinkTargetResolution = .directory(canonicalIdentity: path)
+        } else {
+            self.symlinkTargetResolution = .unresolved(reason: nil)
+        }
+    }
 
     var isDirectory: Bool {
         if case .directory = kind { return true }
@@ -57,4 +84,21 @@ struct SFTPRichStat: Equatable {
     let isSymlink: Bool
     let sizeBytes: Int64
     let modifiedAt: Date?
+    let symlinkTargetResolution: SymlinkTargetResolution
+
+    init(
+        path: String,
+        isDirectory: Bool,
+        isSymlink: Bool,
+        sizeBytes: Int64,
+        modifiedAt: Date?,
+        symlinkTargetResolution: SymlinkTargetResolution = .unresolved(reason: nil)
+    ) {
+        self.path = path
+        self.isDirectory = isDirectory
+        self.isSymlink = isSymlink
+        self.sizeBytes = sizeBytes
+        self.modifiedAt = modifiedAt
+        self.symlinkTargetResolution = symlinkTargetResolution
+    }
 }
