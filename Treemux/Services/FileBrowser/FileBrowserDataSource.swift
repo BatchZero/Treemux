@@ -42,6 +42,9 @@ protocol FileBrowserDataSource: AnyObject {
     func listTree(_ root: String, maxDepth: Int, entryCap: Int) async throws -> DirectoryTreeFetch
 
     func listDirectory(_ path: String) async throws -> [FileNode]
+    /// Returns a stable identity for a directory after resolving symbolic links.
+    /// Controllers use it for path-local ancestry cycle checks.
+    func canonicalDirectoryIdentity(_ path: String) async throws -> String
     func fileMetadata(_ path: String) async throws -> FileMetadata
 
     /// Reads up to `maxBytes` from the file. Throws `.fileTooLarge` if the file
@@ -87,6 +90,10 @@ extension FileBrowserDataSource {
 
     func listTree(_ root: String, maxDepth: Int, entryCap: Int) async throws -> DirectoryTreeFetch {
         try await BFSTreeLister.list(using: self, root: root, maxDepth: maxDepth, entryCap: entryCap)
+    }
+
+    func canonicalDirectoryIdentity(_ path: String) async throws -> String {
+        URL(fileURLWithPath: path).standardizedFileURL.path
     }
 
     func createDirectory(_ path: String) async throws {

@@ -30,6 +30,19 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
         }
     }
 
+    func canonicalDirectoryIdentity(_ path: String) async throws -> String {
+        try await runOnQueue {
+            let resolved = URL(fileURLWithPath: path)
+                .resolvingSymlinksInPath()
+                .standardizedFileURL
+            let values = try resolved.resourceValues(forKeys: [.isDirectoryKey])
+            guard values.isDirectory == true else {
+                throw FileBrowserError.notReadable(path)
+            }
+            return resolved.path
+        }
+    }
+
     func fileMetadata(_ path: String) async throws -> FileMetadata {
         try await runOnQueue {
             let url = URL(fileURLWithPath: path)
@@ -168,24 +181,8 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
                 // symlink-to-directory would otherwise come back as `.file`
                 // and get routed to `openInTree` (read-as-file → error tab)
                 // instead of `revealInTree`.
-                let isSymlink = (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) ?? false
-                let kind: FileNode.Kind
-                var symlinkTargetIsDirectory = false
-                if isSymlink {
-                    let target = try? fm.destinationOfSymbolicLink(atPath: url.path)
-                    kind = .symlink(target: target)
-                    var isTargetDir: ObjCBool = false
-                    if fm.fileExists(atPath: url.path, isDirectory: &isTargetDir) {
-                        symlinkTargetIsDirectory = isTargetDir.boolValue
-                    }
-                } else {
-                    kind = isDir ? .directory : .file
-                }
-
-                results.append(FileNode(
-                    id: url.path, name: name, path: url.path,
-                    kind: kind, sizeBytes: nil, modifiedAt: nil,
-                    symlinkTargetIsDirectory: symlinkTargetIsDirectory))
+                guard let node = try? Self.makeNode(from: url) else { continue }
+                results.append(node)
                 if results.count >= maxResults { break }
             }
             return results
@@ -216,17 +213,11 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
     private static func makeNode(from url: URL) throws -> FileNode {
         let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey, .contentModificationDateKey])
         let kind: FileNode.Kind
-        var symlinkTargetIsDirectory = false
+        var symlinkTargetResolution: SymlinkTargetResolution = .unresolved(reason: nil)
         if values.isSymbolicLink == true {
-            // Resolve target lazily — readlink not exposed via URLResourceKey.
             let target = (try? FileManager.default.destinationOfSymbolicLink(atPath: url.path))
             kind = .symlink(target: target)
-            // Follow the link to classify the target. `isDirectory` on the resolved
-            // path follows symlinks; a broken link yields false (not expandable).
-            var isDir: ObjCBool = false
-            if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) {
-                symlinkTargetIsDirectory = isDir.boolValue
-            }
+            symlinkTargetResolution = resolveSymlinkTarget(linkURL: url, rawTarget: target)
         } else if values.isDirectory == true {
             kind = .directory
         } else {
@@ -239,8 +230,45 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
             kind: kind,
             sizeBytes: values.fileSize.map(Int64.init),
             modifiedAt: values.contentModificationDate,
-            symlinkTargetIsDirectory: symlinkTargetIsDirectory
+            symlinkTargetResolution: symlinkTargetResolution
         )
+    }
+
+    private static func resolveSymlinkTarget(
+        linkURL: URL,
+        rawTarget: String?
+    ) -> SymlinkTargetResolution {
+        guard let rawTarget else {
+            return .unresolved(reason: nil)
+        }
+
+        let targetURL: URL
+        if rawTarget.hasPrefix("/") {
+            targetURL = URL(fileURLWithPath: rawTarget)
+        } else {
+            targetURL = linkURL.deletingLastPathComponent().appendingPathComponent(rawTarget)
+        }
+        let canonicalURL = targetURL.standardizedFileURL.resolvingSymlinksInPath()
+
+        do {
+            let values = try canonicalURL.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey])
+            if values.isDirectory == true {
+                return .directory(canonicalIdentity: canonicalURL.standardizedFileURL.path)
+            }
+            return .file
+        } catch let error as NSError {
+            if error.domain == NSCocoaErrorDomain {
+                switch error.code {
+                case NSFileNoSuchFileError, NSFileReadNoSuchFileError:
+                    return .broken
+                case NSFileReadNoPermissionError:
+                    return .inaccessible
+                default:
+                    break
+                }
+            }
+            return .unresolved(reason: error.localizedDescription)
+        }
     }
 
     /// Natural ordering: directories first, then case-insensitive alpha.

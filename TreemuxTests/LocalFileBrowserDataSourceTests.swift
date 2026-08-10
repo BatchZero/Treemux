@@ -176,8 +176,49 @@ final class LocalFileBrowserDataSourceTests: XCTestCase {
 
         XCTAssertTrue(byName["dirlink"]!.isSymlink)
         XCTAssertTrue(byName["dirlink"]!.isExpandableDirectory)
+        XCTAssertEqual(
+            byName["dirlink"]!.symlinkTargetResolution,
+            .directory(canonicalIdentity: realDir.resolvingSymlinksInPath().standardizedFileURL.path)
+        )
         XCTAssertTrue(byName["filelink"]!.isSymlink)
         XCTAssertFalse(byName["filelink"]!.isExpandableDirectory)
+        XCTAssertEqual(byName["filelink"]!.symlinkTargetResolution, .file)
+    }
+
+    func testRelativeDirectorySymlinkUsesResolvedCanonicalIdentity() async throws {
+        let realDir = tmpDir.appendingPathComponent("targets/real")
+        try FileManager.default.createDirectory(at: realDir, withIntermediateDirectories: true)
+        let link = tmpDir.appendingPathComponent("relative-link")
+        try FileManager.default.createSymbolicLink(
+            atPath: link.path,
+            withDestinationPath: "targets/../targets/real"
+        )
+
+        let source = LocalFileBrowserDataSource()
+        let nodes = try await source.listDirectory(tmpDir.path)
+        let node = try XCTUnwrap(nodes.first { $0.name == "relative-link" })
+
+        XCTAssertEqual(
+            node.symlinkTargetResolution,
+            .directory(canonicalIdentity: realDir.resolvingSymlinksInPath().standardizedFileURL.path)
+        )
+        let canonicalIdentity = try await source.canonicalDirectoryIdentity(link.path)
+        XCTAssertEqual(canonicalIdentity, realDir.resolvingSymlinksInPath().standardizedFileURL.path)
+    }
+
+    func testBrokenSymlinkRemainsVisibleWithBrokenResolution() async throws {
+        let link = tmpDir.appendingPathComponent("missing-link")
+        try FileManager.default.createSymbolicLink(
+            atPath: link.path,
+            withDestinationPath: "does-not-exist"
+        )
+
+        let nodes = try await LocalFileBrowserDataSource().listDirectory(tmpDir.path)
+        let node = try XCTUnwrap(nodes.first { $0.name == "missing-link" })
+
+        XCTAssertTrue(node.isSymlink)
+        XCTAssertEqual(node.symlinkTargetResolution, .broken)
+        XCTAssertFalse(node.isExpandableDirectory)
     }
 
     // MARK: - createDirectory / createFile
@@ -343,5 +384,9 @@ final class LocalFileBrowserDataSourceTests: XCTestCase {
         XCTAssertTrue(node.symlinkTargetIsDirectory)
         XCTAssertTrue(node.isExpandableDirectory,
                       "FIX M1: a symlinked directory must be expandable so it routes to revealInTree, not openInTree")
+        XCTAssertEqual(
+            node.symlinkTargetResolution,
+            .directory(canonicalIdentity: realDir.resolvingSymlinksInPath().standardizedFileURL.path)
+        )
     }
 }
