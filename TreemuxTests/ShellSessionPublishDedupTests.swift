@@ -10,6 +10,8 @@ import AppKit
 /// Minimal surface fake: records callbacks, no real terminal.
 @MainActor
 private final class FakeSurfaceController: ManagedTerminalSessionSurfaceController {
+    var calls: [String] = []
+    var latestLaunchConfiguration: TerminalLaunchConfiguration?
     var resolvedEngine: TerminalEngineKind { .libghosttyPreferred }
     let view = NSView()
     var onResize: ((Int, Int) -> Void)?
@@ -24,18 +26,21 @@ private final class FakeSurfaceController: ManagedTerminalSessionSurfaceControll
     var needsConfirmQuit: Bool { false }
     var onProcessExit: ((Int32?) -> Void)?
     func sendText(_ text: String) {}
-    func focus() {}
-    func setFocused(_ isFocused: Bool) {}
+    func focus() { calls.append("focus") }
+    func setFocused(_ isFocused: Bool) { calls.append("focused:\(isFocused)") }
     func beginSearch(initialText: String?) {}
     func updateSearch(_ text: String) {}
     func searchNext() {}
     func searchPrevious() {}
     func endSearch() {}
     func toggleReadOnly() {}
-    func updateLaunchConfiguration(_ configuration: TerminalLaunchConfiguration) {}
-    func startManagedSessionIfNeeded() {}
+    func updateLaunchConfiguration(_ configuration: TerminalLaunchConfiguration) {
+        latestLaunchConfiguration = configuration
+        calls.append("update")
+    }
+    func startManagedSessionIfNeeded() { calls.append("start") }
     func restartManagedSession() {}
-    func terminateManagedSession() {}
+    func terminateManagedSession() { calls.append("terminate") }
 }
 
 /// All-property counter for a ShellSession (see ObservationChangeCounter in
@@ -111,5 +116,84 @@ final class ShellSessionPublishDedupTests: XCTestCase {
         surface.onTitleChange?("zsh")
         surface.onWorkingDirectoryChange?("/tmp")
         XCTAssertEqual(counter.count, afterFirst)
+    }
+
+    func testReconnectReattachesDetectedTmuxAndClearsTransientState() {
+        let surface = FakeSurfaceController()
+        let session = makeSession(surface: surface)
+        surface.onTitleChange?("tmux attach -t dev")
+        surface.onWorkingDirectoryChange?("/tmp/project")
+        surface.calls.removeAll()
+
+        session.reconnect()
+
+        XCTAssertEqual(surface.calls, ["terminate", "update", "start", "focused:false"])
+        XCTAssertTrue(
+            surface.latestLaunchConfiguration?.command.arguments.joined(separator: " ").contains("dev") == true
+        )
+        XCTAssertNil(session.reportedWorkingDirectory)
+        XCTAssertNil(session.detectedTmuxSession)
+        XCTAssertTrue(session.isReconnecting)
+        XCTAssertNil(session.reconnectError)
+    }
+
+    func testReconnectIsSuppressedWhileAlreadyInProgress() {
+        let surface = FakeSurfaceController()
+        let session = makeSession(surface: surface)
+
+        session.reconnect()
+        let firstCalls = surface.calls
+        session.reconnect()
+
+        XCTAssertEqual(surface.calls, firstCalls)
+    }
+
+    func testReconnectRestoresFocusedPane() {
+        let surface = FakeSurfaceController()
+        let session = makeSession(surface: surface)
+        session.setFocused(true)
+        surface.calls.removeAll()
+
+        session.reconnect()
+
+        XCTAssertEqual(surface.calls.suffix(2), ["focused:true", "focus"])
+    }
+
+    func testFailedTmuxReconnectCanFallBackToOriginalShell() {
+        let surface = FakeSurfaceController()
+        let session = makeSession(surface: surface)
+        surface.onTitleChange?("tmux attach -t dev")
+        session.reconnect()
+        surface.onProcessExit?(1)
+
+        XCTAssertFalse(session.isReconnecting)
+        XCTAssertNotNil(session.reconnectError)
+        surface.calls.removeAll()
+
+        session.startShellAfterReconnectFailure()
+
+        XCTAssertEqual(surface.calls.prefix(3), ["terminate", "update", "start"])
+        XCTAssertFalse(
+            surface.latestLaunchConfiguration?.command.arguments.joined(separator: " ").contains("dev") == true
+        )
+        XCTAssertNil(session.reconnectError)
+    }
+
+    func testFailedTmuxReconnectCanRetrySameAttachment() {
+        let surface = FakeSurfaceController()
+        let session = makeSession(surface: surface)
+        surface.onTitleChange?("tmux attach -t dev")
+        session.reconnect()
+        surface.onProcessExit?(1)
+        surface.calls.removeAll()
+
+        session.retryReconnect()
+
+        XCTAssertEqual(surface.calls.prefix(3), ["terminate", "update", "start"])
+        XCTAssertTrue(
+            surface.latestLaunchConfiguration?.command.arguments.joined(separator: " ").contains("dev") == true
+        )
+        XCTAssertNil(session.reconnectError)
+        XCTAssertTrue(session.isReconnecting)
     }
 }

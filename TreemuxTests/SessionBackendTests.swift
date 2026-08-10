@@ -175,4 +175,124 @@ final class SessionBackendTests: XCTestCase {
             "Must cd to the preferred working directory"
         )
     }
+
+    // MARK: - Reconnect backend resolution
+
+    func testReconnectUsesDetectedLocalTmuxSession() {
+        let original = SessionBackendConfiguration.localShell(LocalShellConfig(
+            shellPath: "/bin/zsh",
+            arguments: ["--login"]
+        ))
+
+        XCTAssertEqual(
+            ReconnectBackendResolver.resolve(
+                originalBackend: original,
+                detectedTmuxSession: "dev"
+            ),
+            .tmuxAttach(TmuxAttachConfig(
+                sessionName: "dev",
+                windowIndex: nil,
+                isRemote: false,
+                sshTarget: nil
+            ))
+        )
+    }
+
+    func testReconnectWithoutTmuxKeepsLocalBackend() {
+        let original = SessionBackendConfiguration.localShell(LocalShellConfig(
+            shellPath: "/bin/zsh",
+            arguments: ["--login"]
+        ))
+
+        XCTAssertEqual(
+            ReconnectBackendResolver.resolve(
+                originalBackend: original,
+                detectedTmuxSession: nil
+            ),
+            original
+        )
+    }
+
+    func testReconnectUsesDetectedRemoteTmuxSessionAndPreservesTarget() {
+        let target = makeSSHTarget(host: "prod.example.com", port: 2202, user: "deploy")
+        let original = SessionBackendConfiguration.ssh(SSHSessionConfig(
+            target: target,
+            remoteCommand: nil
+        ))
+
+        XCTAssertEqual(
+            ReconnectBackendResolver.resolve(
+                originalBackend: original,
+                detectedTmuxSession: "ops"
+            ),
+            .tmuxAttach(TmuxAttachConfig(
+                sessionName: "ops",
+                windowIndex: nil,
+                isRemote: true,
+                sshTarget: target
+            ))
+        )
+    }
+
+    func testReconnectWithoutTmuxKeepsSSHBackend() {
+        let original = SessionBackendConfiguration.ssh(SSHSessionConfig(
+            target: makeSSHTarget(),
+            remoteCommand: nil
+        ))
+
+        XCTAssertEqual(
+            ReconnectBackendResolver.resolve(
+                originalBackend: original,
+                detectedTmuxSession: nil
+            ),
+            original
+        )
+    }
+
+    func testReconnectKeepsExistingTmuxAttachment() {
+        let original = SessionBackendConfiguration.tmuxAttach(TmuxAttachConfig(
+            sessionName: "dev",
+            windowIndex: 2,
+            isRemote: false,
+            sshTarget: nil
+        ))
+
+        XCTAssertEqual(
+            ReconnectBackendResolver.resolve(
+                originalBackend: original,
+                detectedTmuxSession: "another"
+            ),
+            original
+        )
+    }
+
+    func testReconnectIgnoresUnresolvedTmuxPlaceholder() {
+        let original = SessionBackendConfiguration.localShell(LocalShellConfig(
+            shellPath: "/bin/fish",
+            arguments: ["-l"]
+        ))
+
+        XCTAssertEqual(
+            ReconnectBackendResolver.resolve(
+                originalBackend: original,
+                detectedTmuxSession: "tmux"
+            ),
+            original
+        )
+    }
+
+    func testShellFallbackDropsTmuxAttachmentButPreservesRemoteTarget() {
+        let target = makeSSHTarget(host: "prod.example.com", port: 2202, user: "deploy")
+        let attachment = SessionBackendConfiguration.tmuxAttach(TmuxAttachConfig(
+            sessionName: "ops",
+            windowIndex: nil,
+            isRemote: true,
+            sshTarget: target
+        ))
+
+        XCTAssertEqual(
+            ReconnectBackendResolver.shellFallback(for: attachment),
+            .ssh(SSHSessionConfig(target: target, remoteCommand: nil))
+        )
+    }
 }

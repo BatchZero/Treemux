@@ -59,4 +59,19 @@ final class PaneLayoutTests: XCTestCase {
         )
         XCTAssertGreaterThanOrEqual(node.clampedFraction, 0.12)
     }
+
+    func testReconnectPresentationStates() {
+        XCTAssertEqual(
+            TerminalReconnectControlState.resolve(isReconnecting: false, reconnectError: nil),
+            .enabled
+        )
+        XCTAssertEqual(
+            TerminalReconnectControlState.resolve(isReconnecting: true, reconnectError: nil),
+            .reconnecting
+        )
+        XCTAssertEqual(
+            TerminalReconnectControlState.resolve(isReconnecting: false, reconnectError: "failed"),
+            .failed
+        )
+    }
 }

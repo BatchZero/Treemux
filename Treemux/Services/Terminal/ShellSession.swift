@@ -42,6 +42,8 @@ final class ShellSession: Identifiable {
     var rows: Int = 24
     var cols: Int = 80
     var surfaceStatus = TerminalSurfaceStatusSnapshot()
+    private(set) var isReconnecting = false
+    private(set) var reconnectError: String?
 
     /// Detected tmux session name, if the shell is running inside tmux.
     var detectedTmuxSession: String?
@@ -52,6 +54,7 @@ final class ShellSession: Identifiable {
     private let surfaceController: ManagedTerminalSessionSurfaceController
     @ObservationIgnored private var launchConfiguration: TerminalLaunchConfiguration
     @ObservationIgnored private var isFocusedInWorkspace = false
+    @ObservationIgnored private var reconnectBackend: SessionBackendConfiguration?
 
     // MARK: - Initialization
 
@@ -216,6 +219,24 @@ final class ShellSession: Identifiable {
         syncManagedProcessStateAfterLaunch()
     }
 
+    func reconnect() {
+        let backend = ReconnectBackendResolver.resolve(
+            originalBackend: backendConfiguration,
+            detectedTmuxSession: detectedTmuxSession
+        )
+        performReconnect(using: backend)
+    }
+
+    func retryReconnect() {
+        guard let reconnectBackend, reconnectError != nil else { return }
+        performReconnect(using: reconnectBackend)
+    }
+
+    func startShellAfterReconnectFailure() {
+        guard reconnectError != nil else { return }
+        performReconnect(using: ReconnectBackendResolver.shellFallback(for: backendConfiguration))
+    }
+
     func updatePreferredWorkingDirectory(_ path: String, restartIfRunning: Bool) {
         preferredWorkingDirectory = path
         reportedWorkingDirectory = nil
@@ -228,6 +249,7 @@ final class ShellSession: Identifiable {
         surfaceController.terminateManagedSession()
         lifecycle = .exited
         pid = nil
+        isReconnecting = false
     }
 
     // MARK: - Focus
@@ -330,6 +352,38 @@ final class ShellSession: Identifiable {
         resolveShellPID()
     }
 
+    private func performReconnect(using backend: SessionBackendConfiguration) {
+        guard !isReconnecting else { return }
+
+        isReconnecting = true
+        reconnectError = nil
+        reconnectBackend = backend
+
+        var baseEnvironment = Self.defaultEnvironment()
+        baseEnvironment["TREEMUX_PANE_ID"] = id.uuidString
+        launchConfiguration = backend.makeLaunchConfiguration(
+            preferredWorkingDirectory: preferredWorkingDirectory,
+            baseEnvironment: baseEnvironment
+        )
+
+        title = launchConfiguration.command.displayName
+        reportedWorkingDirectory = nil
+        detectedTmuxSession = nil
+        surfaceStatus = TerminalSurfaceStatusSnapshot()
+        exitCode = nil
+        pid = nil
+        lifecycle = .starting
+
+        surfaceController.terminateManagedSession()
+        surfaceController.updateLaunchConfiguration(launchConfiguration)
+        surfaceController.startManagedSessionIfNeeded()
+        surfaceController.setFocused(isFocusedInWorkspace)
+        if isFocusedInWorkspace {
+            surfaceController.focus()
+        }
+        syncManagedProcessStateAfterLaunch()
+    }
+
     /// Discovers this pane's shell PID by searching the process tree for a descendant
     /// of the app process whose environment contains our TREEMUX_PANE_ID.
     private func resolveShellPID() {
@@ -348,6 +402,7 @@ final class ShellSession: Identifiable {
                         if self.lifecycle == .starting {
                             self.lifecycle = .running
                         }
+                        self.isReconnecting = false
                     }
                     return
                 }
@@ -359,14 +414,20 @@ final class ShellSession: Identifiable {
                 if self.lifecycle == .starting {
                     self.lifecycle = .running
                 }
+                self.isReconnecting = false
             }
         }
     }
 
     private func applyProcessExit(_ exitCode: Int32?) {
+        let wasReconnecting = isReconnecting
         self.exitCode = exitCode
         lifecycle = .exited
         pid = nil
+        isReconnecting = false
+        if wasReconnecting, case .tmuxAttach = reconnectBackend {
+            reconnectError = String(localized: "Unable to reattach to the tmux session.")
+        }
     }
 
     /// Detect if the shell is running inside tmux based on the terminal title.

@@ -1,6 +1,66 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Reconnect": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新连接"
+          }
+        }
+      }
+    },
+    "Reconnect Pane": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新连接面板"
+          }
+        }
+      }
+    },
+    "Reconnect the terminal in this pane. The current foreground process will stop. Programs running in tmux will stay alive and Treemux will reattach when possible.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新连接此面板中的终端。当前前台进程将停止；tmux 中运行的程序会继续存活，Treemux 将尽可能重新附加。"
+          }
+        }
+      }
+    },
+    "Reconnect this pane?": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新连接此面板？"
+          }
+        }
+      }
+    },
+    "Start Shell": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动 Shell"
+          }
+        }
+      }
+    },
+    "Unable to reattach to the tmux session.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法重新附加到 tmux 会话。"
+          }
+        }
+      }
+    },
     "%@ has unsaved changes.": {
       "localizations": {
         "zh-Hans": {
