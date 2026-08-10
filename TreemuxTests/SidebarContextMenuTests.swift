@@ -65,4 +65,74 @@ final class SidebarContextMenuTests: XCTestCase {
         let items = coordinator.workspaceContextMenuItems(for: localTerm)
         XCTAssertEqual(nonSeparatorTitles(items), [changeIconTitle, deleteTitle])
     }
+
+    func testOnlyRemoteSectionsWriteTheDedicatedServerGroupDragPayload() {
+        let coordinator = makeCoordinator()
+        let outlineView = NSOutlineView()
+        let workspace = WorkspaceModel(
+            id: UUID(),
+            name: "remote-project",
+            kind: .repository,
+            sshTarget: SSHTarget(
+                host: "example.test",
+                port: 22,
+                user: "root",
+                identityFile: nil,
+                displayName: "example",
+                remotePath: "/srv/project"
+            )
+        )
+        let remoteSection = SidebarNodeItem(
+            kind: .section(.remote(groupKey: "example|root", displayTitle: "example (root@example.test)"))
+        )
+        let localSection = SidebarNodeItem(kind: .section(.local))
+        let workspaceNode = SidebarNodeItem(kind: .workspace(workspace))
+
+        let remoteWriter = coordinator.outlineView(outlineView, pasteboardWriterForItem: remoteSection)
+            as? NSPasteboardItem
+        XCTAssertEqual(remoteWriter?.string(forType: NSPasteboard.PasteboardType("com.treemux.remote-group.key")), "example|root")
+        XCTAssertNil(remoteWriter?.string(forType: NSPasteboard.PasteboardType("com.treemux.workspace.ids")))
+
+        XCTAssertNil(coordinator.outlineView(outlineView, pasteboardWriterForItem: localSection))
+
+        let workspaceWriter = coordinator.outlineView(outlineView, pasteboardWriterForItem: workspaceNode)
+            as? NSPasteboardItem
+        XCTAssertEqual(workspaceWriter?.string(forType: NSPasteboard.PasteboardType("com.treemux.workspace.ids")), workspace.id.uuidString)
+        XCTAssertNil(workspaceWriter?.string(forType: NSPasteboard.PasteboardType("com.treemux.remote-group.key")))
+    }
+
+    func testRemoteGroupRootDropKeepsLocalSectionPinned() {
+        let sections: [SidebarSection] = [
+            .local,
+            .remote(groupKey: "alpha|root", displayTitle: "Alpha"),
+            .remote(groupKey: "bravo|root", displayTitle: "Bravo")
+        ]
+
+        XCTAssertNil(
+            SidebarCoordinator.remoteGroupInsertionIndex(
+                for: "bravo|root",
+                rootSections: sections,
+                rootIndex: 0
+            ),
+            "a remote header must never move above the local section"
+        )
+        XCTAssertEqual(
+            SidebarCoordinator.remoteGroupInsertionIndex(
+                for: "bravo|root",
+                rootSections: sections,
+                rootIndex: 1
+            ),
+            0,
+            "the root insertion point immediately after local is before the first remote group"
+        )
+        XCTAssertEqual(
+            SidebarCoordinator.remoteGroupInsertionIndex(
+                for: "alpha|root",
+                rootSections: sections,
+                rootIndex: 3
+            ),
+            2,
+            "the final root insertion point is after every remote group"
+        )
+    }
 }

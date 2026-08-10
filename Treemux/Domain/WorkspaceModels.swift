@@ -213,6 +213,7 @@ struct PersistedWorkspaceState: Codable {
     let selectedWorkspaceID: UUID?
     let workspaces: [WorkspaceRecord]
     var collapsedSections: [String]?
+    var remoteGroupOrder: [String]?
 }
 
 // MARK: - Runtime Models

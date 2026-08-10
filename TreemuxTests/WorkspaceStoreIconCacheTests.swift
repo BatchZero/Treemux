@@ -243,4 +243,103 @@ final class WorkspaceStoreIconCacheTests: XCTestCase {
         XCTAssertEqual(store.remoteWorkspaceGroups.count, 1,
                        "cache must be invalidated after adding a remote workspace")
     }
+
+    func testRemoteGroupsUseAlphabeticalOrderForLegacyState() throws {
+        try writeState(PersistedWorkspaceState(
+            version: 1,
+            selectedWorkspaceID: nil,
+            workspaces: remoteRecords(hosts: ["charlie", "alpha", "bravo"])
+        ))
+
+        let store = WorkspaceStore()
+
+        XCTAssertEqual(store.remoteWorkspaceGroups.map(\.key), ["alpha|root", "bravo|root", "charlie|root"])
+    }
+
+    func testRemoteGroupsUseSavedOrderAndAppendNewGroupsAlphabetically() throws {
+        try writeState(PersistedWorkspaceState(
+            version: 1,
+            selectedWorkspaceID: nil,
+            workspaces: remoteRecords(hosts: ["delta", "bravo", "charlie", "alpha"]),
+            remoteGroupOrder: ["bravo|root", "alpha|root"]
+        ))
+
+        let store = WorkspaceStore()
+
+        XCTAssertEqual(
+            store.remoteWorkspaceGroups.map(\.key),
+            ["bravo|root", "alpha|root", "charlie|root", "delta|root"]
+        )
+    }
+
+    func testMoveRemoteGroupForwardAndBackward() throws {
+        try writeState(PersistedWorkspaceState(
+            version: 1,
+            selectedWorkspaceID: nil,
+            workspaces: remoteRecords(hosts: ["alpha", "bravo", "charlie"])
+        ))
+        let store = WorkspaceStore()
+
+        store.moveRemoteGroup("charlie|root", to: 0)
+        XCTAssertEqual(store.remoteWorkspaceGroups.map(\.key), ["charlie|root", "alpha|root", "bravo|root"])
+
+        store.moveRemoteGroup("charlie|root", to: 3)
+        XCTAssertEqual(store.remoteWorkspaceGroups.map(\.key), ["alpha|root", "bravo|root", "charlie|root"])
+    }
+
+    func testMovedRemoteGroupOrderSurvivesRestart() throws {
+        try writeState(PersistedWorkspaceState(
+            version: 1,
+            selectedWorkspaceID: nil,
+            workspaces: remoteRecords(hosts: ["alpha", "bravo", "charlie"])
+        ))
+        let store = WorkspaceStore()
+
+        store.moveRemoteGroup("charlie|root", to: 0)
+        store.flushPendingPersistence()
+        let restarted = WorkspaceStore()
+
+        XCTAssertEqual(restarted.remoteWorkspaceGroups.map(\.key), ["charlie|root", "alpha|root", "bravo|root"])
+    }
+
+    func testRemoteGroupOrderPrunesStaleKeysOnSaveAndSurvivesRestart() throws {
+        try writeState(PersistedWorkspaceState(
+            version: 1,
+            selectedWorkspaceID: nil,
+            workspaces: remoteRecords(hosts: ["alpha", "bravo"]),
+            remoteGroupOrder: ["missing|root", "bravo|root"]
+        ))
+        let store = WorkspaceStore()
+
+        store.saveWorkspaceState()
+        store.flushPendingPersistence()
+        let restarted = WorkspaceStore()
+
+        XCTAssertEqual(restarted.remoteWorkspaceGroups.map(\.key), ["bravo|root", "alpha|root"])
+        XCTAssertEqual(WorkspaceStatePersistence().load().remoteGroupOrder, ["bravo|root", "alpha|root"])
+    }
+
+    func testChangedRemoteGroupIdentityAppendsAsNewGroup() throws {
+        try writeState(PersistedWorkspaceState(
+            version: 1,
+            selectedWorkspaceID: nil,
+            workspaces: remoteRecords(hosts: ["stable", "renamed"]),
+            remoteGroupOrder: ["old-name|root", "stable|root"]
+        ))
+
+        let store = WorkspaceStore()
+
+        XCTAssertEqual(store.remoteWorkspaceGroups.map(\.key), ["stable|root", "renamed|root"])
+    }
+
+    private func remoteRecords(hosts: [String]) -> [WorkspaceRecord] {
+        hosts.map { host in
+            makeRepoRecord(
+                id: UUID(),
+                name: "\(host)-project",
+                path: nil,
+                sshTarget: makeSSHTarget(host: host, remotePath: "/srv/\(host)")
+            )
+        }
+    }
 }

@@ -36,6 +36,7 @@ final class WorkspaceStore {
     }
 
     var collapsedSections: Set<String> = []
+    var remoteGroupOrder: [String]?
 
     var showSettings = false
     var showCommandPalette = false
@@ -209,8 +210,13 @@ final class WorkspaceStore {
             guard let target = ws.sshTarget else { return "unknown" }
             return Self.remoteGroupKey(for: target)
         }
-        let result = grouped.map { (key: $0.key, targets: $0.value) }
-            .sorted { $0.key < $1.key }
+        let orderedKeys = Self.resolveRemoteGroupOrder(
+            savedOrder: remoteGroupOrder,
+            discoveredKeys: Array(grouped.keys)
+        )
+        let result = orderedKeys.compactMap { key in
+            grouped[key].map { (key: key, targets: $0) }
+        }
         remoteGroupsCache = result
         return result
     }
@@ -380,6 +386,30 @@ final class WorkspaceStore {
             return "\(target.displayName) (\(user)@\(target.host))"
         }
         return "\(target.displayName) (\(target.host))"
+    }
+
+    static func resolveRemoteGroupOrder(
+        savedOrder: [String]?,
+        discoveredKeys: [String]
+    ) -> [String] {
+        let discovered = Set(discoveredKeys)
+        var seen = Set<String>()
+        let retained = (savedOrder ?? []).filter { key in
+            discovered.contains(key) && seen.insert(key).inserted
+        }
+        let appended = discovered.subtracting(seen).sorted()
+        return retained + appended
+    }
+
+    /// Moves a remote server header while leaving workspace row order untouched.
+    func moveRemoteGroup(_ groupKey: String, to destination: Int) {
+        var keys = remoteWorkspaceGroups.map(\.key)
+        guard let source = keys.firstIndex(of: groupKey) else { return }
+        let clampedDestination = min(max(destination, 0), keys.count)
+        keys.move(fromOffsets: IndexSet(integer: source), toOffset: clampedDestination)
+        guard keys != remoteWorkspaceGroups.map(\.key) else { return }
+        remoteGroupOrder = keys
+        saveWorkspaceState()
     }
 
     /// Moves remote workspaces within a specific server group.
@@ -616,6 +646,7 @@ final class WorkspaceStore {
         let state = workspaceStatePersistence.load()
         selectedWorkspaceID = state.selectedWorkspaceID
         collapsedSections = Set(state.collapsedSections ?? [])
+        remoteGroupOrder = state.remoteGroupOrder
         workspaces = state.workspaces.map { WorkspaceModel(from: $0) }
         startWatchingAll()
 
@@ -659,11 +690,22 @@ final class WorkspaceStore {
             return nil
         }()
         let persistedSelectedID = resolvedID
+        let discoveredRemoteKeys = workspaces.compactMap { workspace -> String? in
+            guard !workspace.isArchived,
+                  workspace.kind == .repository,
+                  let target = workspace.sshTarget else { return nil }
+            return Self.remoteGroupKey(for: target)
+        }
+        let persistedRemoteOrder = Self.resolveRemoteGroupOrder(
+            savedOrder: remoteGroupOrder,
+            discoveredKeys: discoveredRemoteKeys
+        )
         return PersistedWorkspaceState(
             version: 1,
             selectedWorkspaceID: persistedSelectedID,
             workspaces: workspaces.map { $0.toRecord() },
-            collapsedSections: collapsedSections.isEmpty ? nil : Array(collapsedSections)
+            collapsedSections: collapsedSections.isEmpty ? nil : Array(collapsedSections),
+            remoteGroupOrder: persistedRemoteOrder.isEmpty ? nil : persistedRemoteOrder
         )
     }
 
