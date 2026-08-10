@@ -74,4 +74,10 @@ final class PaneLayoutTests: XCTestCase {
             .failed
         )
     }
+
+    func testTerminalReconnectPresentationUsesThemeRoles() {
+        XCTAssertEqual(TerminalReconnectPresentation.progressRole, .accent)
+        XCTAssertEqual(TerminalReconnectPresentation.role(for: .retry), .accent)
+        XCTAssertEqual(TerminalReconnectPresentation.role(for: .startShell), .secondaryText)
+    }
 }

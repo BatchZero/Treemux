@@ -62,6 +62,27 @@ private func makeCounter(for session: ShellSession) -> ObservationChangeCounter 
 }
 
 @MainActor
+private final class ControlledShellPIDResolver {
+    private(set) var continuations: [CheckedContinuation<Int32?, Never>] = []
+
+    func resolve(paneID _: String) async -> Int32? {
+        await withCheckedContinuation { continuation in
+            continuations.append(continuation)
+        }
+    }
+
+    func waitForAttemptCount(_ count: Int) async {
+        while continuations.count < count {
+            await Task.yield()
+        }
+    }
+
+    func completeAttempt(_ index: Int, with pid: Int32?) {
+        continuations[index].resume(returning: pid)
+    }
+}
+
+@MainActor
 final class ShellSessionPublishDedupTests: XCTestCase {
     private func makeSession(surface: FakeSurfaceController) -> ShellSession {
         ShellSession(
@@ -188,6 +209,26 @@ final class ShellSessionPublishDedupTests: XCTestCase {
         XCTAssertEqual(surface.latestLaunchConfiguration?.command.arguments, ["-l"])
     }
 
+    func testOriginalTmuxAttachInitialFailureOffersRecovery() {
+        let surface = FakeSurfaceController()
+        let backend = SessionBackendConfiguration.tmuxAttach(TmuxAttachConfig(
+            sessionName: "dev",
+            windowIndex: nil,
+            isRemote: false,
+            sshTarget: nil
+        ))
+        let session = ShellSession(
+            backendConfiguration: backend,
+            preferredWorkingDirectory: "/tmp",
+            surfaceController: surface
+        )
+
+        session.startIfNeeded()
+        surface.onProcessExit?(1)
+
+        XCTAssertNotNil(session.reconnectError)
+    }
+
     func testFailedTmuxReconnectCanFallBackToOriginalShell() {
         let surface = FakeSurfaceController()
         let session = makeSession(surface: surface)
@@ -224,5 +265,68 @@ final class ShellSessionPublishDedupTests: XCTestCase {
         )
         XCTAssertNil(session.reconnectError)
         XCTAssertTrue(session.isReconnecting)
+    }
+
+    func testStalePIDResolutionCannotFinishNewRetry() async {
+        let surface = FakeSurfaceController()
+        let resolver = ControlledShellPIDResolver()
+        let session = ShellSession(
+            backendConfiguration: .localShell(LocalShellConfig(
+                shellPath: "/bin/zsh",
+                arguments: ["--login"]
+            )),
+            preferredWorkingDirectory: "/tmp",
+            surfaceController: surface,
+            shellPIDResolver: resolver.resolve
+        )
+        surface.onTitleChange?("tmux attach -t dev")
+
+        session.reconnect()
+        await resolver.waitForAttemptCount(1)
+        surface.onProcessExit?(1)
+        session.retryReconnect()
+        await resolver.waitForAttemptCount(2)
+
+        resolver.completeAttempt(0, with: 111)
+        await Task.yield()
+
+        XCTAssertTrue(session.isReconnecting)
+        XCTAssertNil(session.pid)
+
+        resolver.completeAttempt(1, with: 222)
+        while session.isReconnecting {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(session.pid, 222)
+    }
+
+    func testRemoteTmuxExitAfterPIDResolutionTimeoutStillOffersRecovery() async {
+        let surface = FakeSurfaceController()
+        let sshTarget = SSHTarget(
+            host: "server.example.com",
+            port: 22,
+            user: "developer",
+            identityFile: nil,
+            displayName: "Server",
+            remotePath: "/srv/project"
+        )
+        let session = ShellSession(
+            backendConfiguration: .ssh(SSHSessionConfig(target: sshTarget, remoteCommand: nil)),
+            preferredWorkingDirectory: "/tmp",
+            surfaceController: surface,
+            shellPIDResolver: { _ in nil }
+        )
+        surface.onTitleChange?("tmux attach -t dev")
+
+        session.reconnect()
+        while session.isReconnecting {
+            await Task.yield()
+        }
+        XCTAssertNil(session.reconnectError)
+
+        surface.onProcessExit?(1)
+
+        XCTAssertNotNil(session.reconnectError)
     }
 }

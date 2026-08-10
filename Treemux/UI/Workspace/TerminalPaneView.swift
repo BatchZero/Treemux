@@ -17,6 +17,29 @@ enum TerminalReconnectControlState: Equatable {
     }
 }
 
+enum TerminalReconnectThemeRole: Equatable {
+    case accent
+    case secondaryText
+}
+
+enum TerminalReconnectRecoveryAction: Equatable {
+    case retry
+    case startShell
+}
+
+enum TerminalReconnectPresentation {
+    static let progressRole = TerminalReconnectThemeRole.accent
+
+    static func role(for action: TerminalReconnectRecoveryAction) -> TerminalReconnectThemeRole {
+        switch action {
+        case .retry:
+            return .accent
+        case .startShell:
+            return .secondaryText
+        }
+    }
+}
+
 /// Displays a single terminal pane with a compact header showing status,
 /// title, and working directory, followed by the Ghostty terminal surface.
 struct TerminalPaneView: View {
@@ -102,6 +125,7 @@ struct TerminalPaneView: View {
                     if session.isReconnecting {
                         ProgressView()
                             .controlSize(.mini)
+                            .tint(themeColor(for: TerminalReconnectPresentation.progressRole))
                     } else {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 9, weight: .medium))
@@ -156,9 +180,11 @@ struct TerminalPaneView: View {
             Button("Retry") {
                 session.retryReconnect()
             }
+            .foregroundStyle(themeColor(for: TerminalReconnectPresentation.role(for: .retry)))
             Button("Start Shell") {
                 session.startShellAfterReconnectFailure()
             }
+            .foregroundStyle(themeColor(for: TerminalReconnectPresentation.role(for: .startShell)))
         }
         .buttonStyle(.borderless)
         .padding(.horizontal, 8)
@@ -172,6 +198,15 @@ struct TerminalPaneView: View {
     }
 
     // MARK: - Helpers
+
+    private func themeColor(for role: TerminalReconnectThemeRole) -> Color {
+        switch role {
+        case .accent:
+            return theme.accentColor
+        case .secondaryText:
+            return theme.textSecondary
+        }
+    }
 
     private var statusColor: Color {
         switch session.lifecycle {
