@@ -27,6 +27,21 @@ protocol FileTransferEndpoint: Sendable {
     func removeItem(at path: String) async throws
 }
 
+enum FileTransferEndpointError: LocalizedError, Sendable, Equatable {
+    case retryable(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .retryable(let message): message
+        }
+    }
+}
+
+struct FileTransferRetryableError: Identifiable, Sendable, Equatable {
+    let id = UUID()
+    let message: String
+}
+
 enum FileTransferConflictDecision: Sendable {
     case overwrite
     case skip
@@ -43,6 +58,7 @@ struct FileTransferConflict: Identifiable, Sendable, Equatable {
 
 enum FileTransferFailureKind: Sendable, Equatable {
     case cycle
+    case cleanup
     case operation
 }
 
@@ -69,6 +85,7 @@ enum FileTransferState: Sendable, Equatable {
     case idle
     case running
     case waitingForConflict
+    case paused
     case cancelling
     case completed
     case failed

@@ -208,6 +208,42 @@ final class FileTransferCoordinatorTests: XCTestCase {
         XCTAssertFalse(hasTemporaryItems)
     }
 
+    func testCancelledTransferRetriesCleanupAfterLostResponse() async {
+        let source = MemoryTransferEndpoint(nodes: [
+            "/source/item.txt": .file(Data("contents".utf8))
+        ])
+        let destination = MemoryTransferEndpoint(nodes: [
+            "/target": .directory(identity: "/target")
+        ])
+        await destination.suspendNextWrite()
+        await destination.commitNextTemporaryRemovalThenLoseConnection()
+        let coordinator = FileTransferCoordinator(
+            source: source,
+            destination: destination,
+            chunkSize: 64
+        )
+
+        let task = Task {
+            await coordinator.start(
+                direction: .download,
+                sources: ["/source/item.txt"],
+                destinationRoot: "/target"
+            )
+        }
+        await destination.waitForSuspendedWrite()
+        coordinator.cancel()
+        await destination.resumeSuspendedWrite()
+        await waitUntil { coordinator.state == .paused }
+
+        coordinator.retry()
+        let summary = await task.value
+
+        XCTAssertTrue(summary.cancelled)
+        XCTAssertFalse(summary.failures.contains { $0.kind == .cleanup })
+        let hasTemporaryItems = await destination.containsTemporaryItems
+        XCTAssertFalse(hasTemporaryItems)
+    }
+
     func testSiblingFailureDoesNotAbortBatch() async {
         let source = MemoryTransferEndpoint(nodes: [
             "/source/bad.txt": .file(Data("bad".utf8)),
@@ -230,6 +266,191 @@ final class FileTransferCoordinatorTests: XCTestCase {
         XCTAssertEqual(summary.failures.map { $0.sourcePath }, ["/source/bad.txt"])
         XCTAssertEqual(copiedData, Data("good".utf8))
         XCTAssertFalse(hasTemporaryItems)
+    }
+
+    func testRetryableFailurePausesNewWorkUntilRetry() async {
+        let source = MemoryTransferEndpoint(nodes: [
+            "/source/a.txt": .file(Data("a".utf8)),
+            "/source/b.txt": .file(Data("b".utf8))
+        ])
+        await source.failNextReadRetryably(at: "/source/a.txt")
+        let destination = MemoryTransferEndpoint(nodes: ["/target": .directory(identity: "/target")])
+        let coordinator = FileTransferCoordinator(
+            source: source,
+            destination: destination,
+            concurrencyLimit: 1
+        )
+
+        let task = Task {
+            await coordinator.start(
+                direction: .upload,
+                sources: ["/source/a.txt", "/source/b.txt"],
+                destinationRoot: "/target"
+            )
+        }
+        await waitUntil { coordinator.state == .paused }
+
+        XCTAssertNotNil(coordinator.pendingRetryableError)
+        let siblingBeforeRetry = await destination.fileData(at: "/target/b.txt")
+        XCTAssertNil(siblingBeforeRetry)
+
+        coordinator.retry()
+        let summary = await task.value
+
+        XCTAssertEqual(summary.completedItems, 2)
+        XCTAssertEqual(summary.failedItems, 0)
+        let first = await destination.fileData(at: "/target/a.txt")
+        let second = await destination.fileData(at: "/target/b.txt")
+        XCTAssertEqual(first, Data("a".utf8))
+        XCTAssertEqual(second, Data("b".utf8))
+    }
+
+    func testCommittedTemporaryCreationIsRecoveredAfterLostResponse() async {
+        let source = MemoryTransferEndpoint(nodes: [
+            "/source/item.txt": .file(Data("new".utf8))
+        ])
+        let destination = MemoryTransferEndpoint(nodes: ["/target": .directory(identity: "/target")])
+        await destination.commitNextTemporaryCreationThenLoseConnection()
+        let coordinator = FileTransferCoordinator(source: source, destination: destination)
+
+        let task = Task {
+            await coordinator.start(
+                direction: .upload,
+                sources: ["/source/item.txt"],
+                destinationRoot: "/target"
+            )
+        }
+        await waitUntil { coordinator.state == .paused }
+        coordinator.retry()
+        let summary = await task.value
+
+        XCTAssertEqual(summary.completedItems, 1)
+        XCTAssertEqual(summary.failedItems, 0)
+        let copied = await destination.fileData(at: "/target/item.txt")
+        XCTAssertEqual(copied, Data("new".utf8))
+    }
+
+    func testCommittedReplacementIsRecoveredAfterLostResponse() async {
+        let source = MemoryTransferEndpoint(nodes: [
+            "/source/item.txt": .file(Data("new".utf8))
+        ])
+        let destination = MemoryTransferEndpoint(nodes: ["/target": .directory(identity: "/target")])
+        await destination.commitNextReplacementThenLoseConnection()
+        let coordinator = FileTransferCoordinator(source: source, destination: destination)
+
+        let task = Task {
+            await coordinator.start(
+                direction: .upload,
+                sources: ["/source/item.txt"],
+                destinationRoot: "/target"
+            )
+        }
+        await waitUntil { coordinator.state == .paused }
+        coordinator.retry()
+        let summary = await task.value
+
+        XCTAssertEqual(summary.completedItems, 1)
+        XCTAssertEqual(summary.failedItems, 0)
+        let copied = await destination.fileData(at: "/target/item.txt")
+        XCTAssertEqual(copied, Data("new".utf8))
+    }
+
+    func testCommittedRemovalIsRecoveredAfterLostResponse() async {
+        let source = MemoryTransferEndpoint(nodes: [
+            "/source/item": .file(Data("new".utf8))
+        ])
+        let destination = MemoryTransferEndpoint(nodes: [
+            "/target": .directory(identity: "/target"),
+            "/target/item": .directory(identity: "/target/item")
+        ])
+        await destination.commitNextRemovalThenLoseConnection(at: "/target/item")
+        let coordinator = FileTransferCoordinator(source: source, destination: destination)
+
+        let task = Task {
+            await coordinator.start(
+                direction: .upload,
+                sources: ["/source/item"],
+                destinationRoot: "/target"
+            )
+        }
+        await waitUntil { coordinator.state == .waitingForConflict }
+        coordinator.resolveConflict(.overwrite)
+        await waitUntil { coordinator.state == .paused }
+        coordinator.retry()
+        let summary = await task.value
+
+        XCTAssertEqual(summary.completedItems, 1)
+        XCTAssertEqual(summary.failedItems, 0)
+        let copied = await destination.fileData(at: "/target/item")
+        XCTAssertEqual(copied, Data("new".utf8))
+    }
+
+    func testTemporaryCleanupFailureIsReported() async {
+        let source = MemoryTransferEndpoint(nodes: [
+            "/source/bad.txt": .file(Data("bad".utf8))
+        ])
+        await source.failReads(at: "/source/bad.txt")
+        let destination = MemoryTransferEndpoint(nodes: ["/target": .directory(identity: "/target")])
+        await destination.failTemporaryRemovals()
+        let coordinator = FileTransferCoordinator(source: source, destination: destination)
+
+        let summary = await coordinator.start(
+            direction: .upload,
+            sources: ["/source/bad.txt"],
+            destinationRoot: "/target"
+        )
+
+        XCTAssertEqual(summary.failedItems, 1)
+        XCTAssertEqual(summary.failures.map(\.kind), [.cleanup, .operation])
+    }
+
+    func testCommittedTemporaryCleanupIsRecoveredAfterLostResponse() async {
+        let source = MemoryTransferEndpoint(nodes: [
+            "/source/bad.txt": .file(Data("bad".utf8))
+        ])
+        await source.failReads(at: "/source/bad.txt")
+        let destination = MemoryTransferEndpoint(nodes: ["/target": .directory(identity: "/target")])
+        await destination.commitNextTemporaryRemovalThenLoseConnection()
+        let coordinator = FileTransferCoordinator(source: source, destination: destination)
+
+        let task = Task {
+            await coordinator.start(
+                direction: .upload,
+                sources: ["/source/bad.txt"],
+                destinationRoot: "/target"
+            )
+        }
+        await waitUntil { coordinator.state == .paused }
+
+        coordinator.retry()
+        let summary = await task.value
+
+        XCTAssertEqual(summary.failedItems, 1)
+        XCTAssertEqual(summary.failures.map(\.kind), [.operation])
+        let hasTemporaryItems = await destination.containsTemporaryItems
+        XCTAssertFalse(hasTemporaryItems)
+    }
+
+    func testLegacyTemporarySuffixFileIsNeverTouched() async {
+        let source = MemoryTransferEndpoint(nodes: [
+            "/source/item.txt": .file(Data("new".utf8))
+        ])
+        let legacyPath = "/target/item.txt.treemux-transfer-part"
+        let destination = MemoryTransferEndpoint(nodes: [
+            "/target": .directory(identity: "/target"),
+            legacyPath: .file(Data("legitimate".utf8))
+        ])
+        let coordinator = FileTransferCoordinator(source: source, destination: destination)
+
+        let summary = await coordinator.start(
+            direction: .upload,
+            sources: ["/source/item.txt"],
+            destinationRoot: "/target"
+        )
+
+        XCTAssertEqual(summary.completedItems, 1)
+        let preserved = await destination.fileData(at: legacyPath)
+        XCTAssertEqual(preserved, Data("legitimate".utf8))
     }
 
     func testSymlinkCycleIsReportedWithoutAbortingSibling() async {
@@ -272,10 +493,16 @@ private actor MemoryTransferEndpoint: FileTransferEndpoint {
         case directory(identity: String)
     }
 
-    enum TestError: Error { case readFailed }
+    enum TestError: Error { case readFailed, removeFailed, alreadyExists }
 
     private var nodes: [String: Node]
     private var failedReadPaths: Set<String> = []
+    private var retryableReadPaths: Set<String> = []
+    private var failsTemporaryRemoval = false
+    private var losesNextTemporaryCreateResponse = false
+    private var losesNextReplaceResponse = false
+    private var losesNextRemoveResponseAt: String?
+    private var losesNextTemporaryRemoveResponse = false
     private(set) var readCount = 0
     private var readDelay: Duration?
     private var concurrentReads = 0
@@ -307,6 +534,9 @@ private actor MemoryTransferEndpoint: FileTransferEndpoint {
 
     func readChunk(at path: String, offset: Int64, length: Int) async throws -> Data {
         readCount += 1
+        if retryableReadPaths.remove(path) != nil {
+            throw FileTransferEndpointError.retryable("Connection lost")
+        }
         if failedReadPaths.contains(path) { throw TestError.readFailed }
         concurrentReads += 1
         maximumConcurrentReads = max(maximumConcurrentReads, concurrentReads)
@@ -325,7 +555,12 @@ private actor MemoryTransferEndpoint: FileTransferEndpoint {
     }
 
     func createTemporaryFile(at path: String) async throws {
+        guard nodes[path] == nil else { throw TestError.alreadyExists }
         nodes[path] = .file(Data())
+        if losesNextTemporaryCreateResponse {
+            losesNextTemporaryCreateResponse = false
+            throw FileTransferEndpointError.retryable("Connection lost after create")
+        }
     }
 
     func writeChunk(_ data: Data, to path: String, offset: Int64) async throws {
@@ -347,14 +582,53 @@ private actor MemoryTransferEndpoint: FileTransferEndpoint {
     func replaceItem(at path: String, withTemporaryItemAt temporaryPath: String) async throws {
         nodes[path] = nodes[temporaryPath]
         nodes.removeValue(forKey: temporaryPath)
+        if losesNextReplaceResponse {
+            losesNextReplaceResponse = false
+            throw FileTransferEndpointError.retryable("Connection lost after replace")
+        }
     }
 
     func removeItem(at path: String) async throws {
+        if failsTemporaryRemoval, FileTransferCoordinator.isTemporaryPath(path) {
+            throw TestError.removeFailed
+        }
         nodes.removeValue(forKey: path)
+        if losesNextTemporaryRemoveResponse, FileTransferCoordinator.isTemporaryPath(path) {
+            losesNextTemporaryRemoveResponse = false
+            throw FileTransferEndpointError.retryable("Connection lost after cleanup")
+        }
+        if losesNextRemoveResponseAt == path {
+            losesNextRemoveResponseAt = nil
+            throw FileTransferEndpointError.retryable("Connection lost after remove")
+        }
     }
 
     func failReads(at path: String) {
         failedReadPaths.insert(path)
+    }
+
+    func failNextReadRetryably(at path: String) {
+        retryableReadPaths.insert(path)
+    }
+
+    func failTemporaryRemovals() {
+        failsTemporaryRemoval = true
+    }
+
+    func commitNextTemporaryCreationThenLoseConnection() {
+        losesNextTemporaryCreateResponse = true
+    }
+
+    func commitNextReplacementThenLoseConnection() {
+        losesNextReplaceResponse = true
+    }
+
+    func commitNextRemovalThenLoseConnection(at path: String) {
+        losesNextRemoveResponseAt = path
+    }
+
+    func commitNextTemporaryRemovalThenLoseConnection() {
+        losesNextTemporaryRemoveResponse = true
     }
 
     func delayEachRead(by duration: Duration) {
@@ -390,6 +664,6 @@ private actor MemoryTransferEndpoint: FileTransferEndpoint {
     }
 
     var containsTemporaryItems: Bool {
-        nodes.keys.contains { $0.hasSuffix(FileTransferCoordinator.temporarySuffix) }
+        nodes.keys.contains(where: FileTransferCoordinator.isTemporaryPath)
     }
 }

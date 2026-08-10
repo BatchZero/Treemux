@@ -4,7 +4,8 @@ import Observation
 @MainActor
 @Observable
 final class FileTransferCoordinator {
-    nonisolated static let temporarySuffix = ".treemux-transfer-part"
+    nonisolated static let temporaryMarker = ".treemux-transfer-"
+    nonisolated static let temporarySuffix = ".part"
 
     private struct PendingFile: Sendable {
         let sourcePath: String
@@ -21,6 +22,7 @@ final class FileTransferCoordinator {
     private let chunkSize: Int
     private let concurrencyLimit: Int
     private var conflictContinuation: CheckedContinuation<FileTransferConflictDecision, Never>?
+    private var retryContinuations: [CheckedContinuation<Bool, Never>] = []
     private var cancellationRequested = false
     private var pendingFiles: [PendingFile] = []
 
@@ -29,6 +31,7 @@ final class FileTransferCoordinator {
     private(set) var currentItem: String?
     private(set) var summary = FileTransferSummary()
     private(set) var pendingConflict: FileTransferConflict?
+    private(set) var pendingRetryableError: FileTransferRetryableError?
 
     init(
         source: any FileTransferEndpoint,
@@ -47,11 +50,12 @@ final class FileTransferCoordinator {
         sources: [String],
         destinationRoot: String
     ) async -> FileTransferSummary {
-        guard state != .running, state != .waitingForConflict else { return summary }
+        guard state != .running, state != .waitingForConflict, state != .paused else { return summary }
         self.direction = direction
         summary = FileTransferSummary()
         cancellationRequested = false
         pendingConflict = nil
+        pendingRetryableError = nil
         pendingFiles = []
         state = .running
 
@@ -71,6 +75,7 @@ final class FileTransferCoordinator {
 
         currentItem = nil
         pendingConflict = nil
+        pendingRetryableError = nil
         summary.cancelled = cancellationRequested
         if cancellationRequested {
             summary.cancelledItems += max(
@@ -99,12 +104,25 @@ final class FileTransferCoordinator {
     }
 
     func cancel() {
-        guard state == .running || state == .waitingForConflict else { return }
+        guard state == .running || state == .waitingForConflict || state == .paused else { return }
         cancellationRequested = true
         state = .cancelling
         if conflictContinuation != nil {
             resolveConflict(.cancelAll)
         }
+        let continuations = retryContinuations
+        retryContinuations = []
+        pendingRetryableError = nil
+        continuations.forEach { $0.resume(returning: false) }
+    }
+
+    func retry() {
+        guard state == .paused else { return }
+        pendingRetryableError = nil
+        state = .running
+        let continuations = retryContinuations
+        retryContinuations = []
+        continuations.forEach { $0.resume(returning: true) }
     }
 
     private func prepareTransferItem(
@@ -116,7 +134,9 @@ final class FileTransferCoordinator {
         currentItem = sourcePath
 
         do {
-            guard let sourceMetadata = try await source.metadata(at: sourcePath) else {
+            guard let sourceMetadata = try await performWithRetry({
+                try await source.metadata(at: sourcePath)
+            }) else {
                 throw CocoaError(.fileNoSuchFile)
             }
             summary.discoveredItems += 1
@@ -136,7 +156,9 @@ final class FileTransferCoordinator {
                 return
             }
 
-            if let destinationMetadata = try await destination.metadata(at: destinationPath) {
+            if let destinationMetadata = try await performWithRetry({
+                try await destination.metadata(at: destinationPath)
+            }) {
                 let mergesDirectories = sourceMetadata.kind == .directory
                     && destinationMetadata.kind == .directory
                 if !mergesDirectories {
@@ -154,7 +176,12 @@ final class FileTransferCoordinator {
                         return
                     case .overwrite:
                         if sourceMetadata.kind == .directory || destinationMetadata.kind == .directory {
-                            try await destination.removeItem(at: destinationPath)
+                            try await performRecoverableMutation(
+                                operation: { try await destination.removeItem(at: destinationPath) },
+                                committed: {
+                                    try await destination.metadata(at: destinationPath) == nil
+                                }
+                            )
                         }
                     }
                 }
@@ -169,15 +196,24 @@ final class FileTransferCoordinator {
                     sizeBytes: sourceMetadata.sizeBytes
                 ))
             case .directory:
-                if try await destination.metadata(at: destinationPath) == nil {
-                    try await destination.createDirectory(at: destinationPath)
+                if try await performWithRetry({
+                    try await destination.metadata(at: destinationPath)
+                }) == nil {
+                    try await performRecoverableMutation(
+                        operation: { try await destination.createDirectory(at: destinationPath) },
+                        committed: {
+                            try await destination.metadata(at: destinationPath)?.kind == .directory
+                        }
+                    )
                 }
                 summary.completedItems += 1
                 var nextAncestry = ancestry
                 if let identity = sourceMetadata.canonicalIdentity {
                     nextAncestry.insert(identity)
                 }
-                let children = try await source.children(at: sourcePath)
+                let children = try await performWithRetry {
+                    try await source.children(at: sourcePath)
+                }
                 for (index, child) in children.enumerated() {
                     if cancellationRequested {
                         summary.cancelledItems += children.count - index
@@ -219,7 +255,7 @@ final class FileTransferCoordinator {
             }
 
             while await group.next() != nil {
-                guard !cancellationRequested, nextIndex < files.count else { continue }
+                guard !cancellationRequested, state == .running, nextIndex < files.count else { continue }
                 let file = files[nextIndex]
                 nextIndex += 1
                 group.addTask { [weak self] in
@@ -257,37 +293,129 @@ final class FileTransferCoordinator {
         destinationPath: String,
         sizeBytes: Int64
     ) async throws {
-        let temporaryPath = destinationPath + Self.temporarySuffix
-        if try await destination.metadata(at: temporaryPath) != nil {
-            try await destination.removeItem(at: temporaryPath)
-        }
-        try await destination.createTemporaryFile(at: temporaryPath)
+        let temporaryPath = Self.temporaryPath(for: destinationPath)
+        try await performRecoverableMutation(
+            operation: { try await destination.createTemporaryFile(at: temporaryPath) },
+            committed: { try await destination.metadata(at: temporaryPath) != nil }
+        )
 
         do {
             var offset: Int64 = 0
             while offset < sizeBytes {
                 guard !cancellationRequested else { throw TransferControl.cancelled }
                 let requestedLength = min(chunkSize, Int(sizeBytes - offset))
-                let data = try await source.readChunk(
-                    at: sourcePath,
-                    offset: offset,
-                    length: requestedLength
-                )
+                let data = try await performWithRetry {
+                    try await source.readChunk(
+                        at: sourcePath,
+                        offset: offset,
+                        length: requestedLength
+                    )
+                }
                 guard !data.isEmpty else {
                     throw CocoaError(.fileReadUnknown)
                 }
-                try await destination.writeChunk(data, to: temporaryPath, offset: offset)
+                try await performWithRetry {
+                    try await destination.writeChunk(data, to: temporaryPath, offset: offset)
+                }
                 offset += Int64(data.count)
                 summary.completedBytes += Int64(data.count)
             }
             guard !cancellationRequested else { throw TransferControl.cancelled }
-            try await destination.replaceItem(
-                at: destinationPath,
-                withTemporaryItemAt: temporaryPath
+            try await performRecoverableMutation(
+                operation: {
+                    try await destination.replaceItem(
+                        at: destinationPath,
+                        withTemporaryItemAt: temporaryPath
+                    )
+                },
+                committed: {
+                    let temporary = try await destination.metadata(at: temporaryPath)
+                    let final = try await destination.metadata(at: destinationPath)
+                    return temporary == nil
+                        && final?.kind == .file
+                        && final?.sizeBytes == sizeBytes
+                }
             )
         } catch {
-            try? await destination.removeItem(at: temporaryPath)
+            do {
+                try await performRecoverableMutation(
+                    respectingCancellation: false,
+                    operation: { try await destination.removeItem(at: temporaryPath) },
+                    committed: { try await destination.metadata(at: temporaryPath) == nil }
+                )
+            } catch {
+                summary.failures.append(FileTransferFailure(
+                    sourcePath: sourcePath,
+                    destinationPath: temporaryPath,
+                    kind: .cleanup,
+                    message: error.localizedDescription
+                ))
+            }
             throw error
+        }
+    }
+
+    private func performWithRetry<T>(_ operation: () async throws -> T) async throws -> T {
+        while true {
+            guard !cancellationRequested else { throw TransferControl.cancelled }
+            do {
+                return try await operation()
+            } catch FileTransferEndpointError.retryable(let message) {
+                let shouldRetry = await waitForRetry(message: message)
+                guard shouldRetry else { throw TransferControl.cancelled }
+            }
+        }
+    }
+
+    private func performRecoverableMutation(
+        respectingCancellation: Bool = true,
+        operation: () async throws -> Void,
+        committed: () async throws -> Bool
+    ) async throws {
+        while true {
+            if respectingCancellation, cancellationRequested {
+                throw TransferControl.cancelled
+            }
+            do {
+                try await operation()
+                return
+            } catch FileTransferEndpointError.retryable(let message) {
+                let shouldRetry = await waitForRetry(message: message)
+                guard shouldRetry else { throw TransferControl.cancelled }
+                if try await performWithRetry(
+                    respectingCancellation: respectingCancellation,
+                    committed
+                ) {
+                    return
+                }
+            }
+        }
+    }
+
+    private func performWithRetry<T>(
+        respectingCancellation: Bool,
+        _ operation: () async throws -> T
+    ) async throws -> T {
+        while true {
+            if respectingCancellation, cancellationRequested {
+                throw TransferControl.cancelled
+            }
+            do {
+                return try await operation()
+            } catch FileTransferEndpointError.retryable(let message) {
+                let shouldRetry = await waitForRetry(message: message)
+                guard shouldRetry else { throw TransferControl.cancelled }
+            }
+        }
+    }
+
+    private func waitForRetry(message: String) async -> Bool {
+        if pendingRetryableError == nil {
+            pendingRetryableError = FileTransferRetryableError(message: message)
+        }
+        state = .paused
+        return await withCheckedContinuation { continuation in
+            retryContinuations.append(continuation)
         }
     }
 
@@ -331,5 +459,13 @@ final class FileTransferCoordinator {
     private static func join(_ parent: String, _ child: String) -> String {
         if parent == "/" { return "/" + child }
         return parent.hasSuffix("/") ? parent + child : parent + "/" + child
+    }
+
+    nonisolated static func temporaryPath(for destinationPath: String) -> String {
+        destinationPath + temporaryMarker + UUID().uuidString + temporarySuffix
+    }
+
+    nonisolated static func isTemporaryPath(_ path: String) -> Bool {
+        path.contains(temporaryMarker) && path.hasSuffix(temporarySuffix)
     }
 }

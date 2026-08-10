@@ -1761,6 +1761,16 @@
         }
       }
     },
+    "Remote server cannot safely replace this file.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "远程服务器无法安全地替换此文件。"
+          }
+        }
+      }
+    },
     "Retry": {
       "localizations": {
         "zh-Hans": {
@@ -2751,12 +2761,32 @@
         }
       }
     },
+    "The connection was interrupted. Retry when it is available.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接已中断，请在连接恢复后重试。"
+          }
+        }
+      }
+    },
     "The remaining transfer was cancelled.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "剩余传输已取消。"
+          }
+        }
+      }
+    },
+    "Transfer paused": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "传输已暂停"
           }
         }
       }

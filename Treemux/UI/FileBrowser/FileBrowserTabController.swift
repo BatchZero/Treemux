@@ -142,7 +142,8 @@ final class FileBrowserTabController {
 
     var isTransferActive: Bool {
         guard let state = transferCoordinator?.state else { return false }
-        return state == .running || state == .waitingForConflict || state == .cancelling
+        return state == .running || state == .waitingForConflict
+            || state == .paused || state == .cancelling
     }
 
     /// Inline "new folder / new file" editor state. Non-nil while the user is
@@ -791,6 +792,10 @@ final class FileBrowserTabController {
 
     func cancelTransfer() {
         transferCoordinator?.cancel()
+    }
+
+    func retryTransfer() {
+        transferCoordinator?.retry()
     }
 
     func dismissTransferSummary() {

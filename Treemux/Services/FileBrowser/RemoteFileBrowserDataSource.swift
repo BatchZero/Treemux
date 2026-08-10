@@ -5,10 +5,31 @@
 import Citadel
 import Foundation
 
+actor AsyncSingleFlight {
+    private var inFlight: Task<Void, any Error>?
+
+    func run(_ operation: @escaping @Sendable () async throws -> Void) async throws {
+        if let inFlight {
+            return try await inFlight.value
+        }
+        let task = Task { try await operation() }
+        inFlight = task
+        do {
+            try await task.value
+            inFlight = nil
+        } catch {
+            inFlight = nil
+            throw error
+        }
+    }
+}
+
 final class RemoteFileBrowserDataSource: FileBrowserDataSource {
     let supportsWrite = true
     let sshTarget: SSHTarget
     private let service: SFTPService
+    private let connectionGate = AsyncSingleFlight()
+    private var retryPassword: String?
 
     /// Depth cap for recursive name search. Kept local (rather than referencing
     /// `FileBrowserTabController.searchMaxDepth`) to avoid a UI→service dependency.
@@ -25,7 +46,15 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
         // call `service.connect(target:)` and tear down sibling tabs' sessions
         // (connect() begins with `await disconnect()`).
         if await service.isConnected { return }
-        try await service.connect(target: sshTarget)
+        let password = retryPassword
+        try await connectionGate.run { [service, sshTarget] in
+            if await service.isConnected { return }
+            if let password {
+                try await service.connectWithPassword(target: sshTarget, password: password)
+            } else {
+                try await service.connect(target: sshTarget)
+            }
+        }
     }
 
     /// Connect using interactive password auth, bypassing SSH key auth entirely.
@@ -33,6 +62,7 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
     /// initial key-auth attempt surfaces `.authenticationFailed`.
     func connectWithPassword(_ password: String) async throws {
         try await service.connectWithPassword(target: sshTarget, password: password)
+        retryPassword = password
     }
 
     /// Maps an SFTP rich entry to a file-tree node. Shared by `listDirectory`
@@ -137,25 +167,40 @@ final class RemoteFileBrowserDataSource: FileBrowserDataSource {
             }
             if stat.isSymlink {
                 let parent = (path as NSString).deletingLastPathComponent
-                if let node = try await listDirectory(parent).first(where: { $0.path == path }),
-                   node.isExpandableDirectory {
-                    return FileTransferMetadata(
-                        kind: .directory,
-                        sizeBytes: 0,
-                        canonicalIdentity: try await service.canonicalDirectoryIdentity(path)
-                    )
+                if let node = try await listDirectory(parent).first(where: { $0.path == path }) {
+                    if node.isExpandableDirectory {
+                        return FileTransferMetadata(
+                            kind: .directory,
+                            sizeBytes: 0,
+                            canonicalIdentity: try await service.canonicalDirectoryIdentity(path)
+                        )
+                    }
+                    if node.symlinkTargetResolution == .file {
+                        let targetStat = try await service.transferTargetStat(path)
+                        return Self.transferFileMetadata(
+                            stat: stat,
+                            resolvedTargetStat: targetStat
+                        )
+                    }
                 }
             }
-            return FileTransferMetadata(
-                kind: .file,
-                sizeBytes: stat.sizeBytes,
-                canonicalIdentity: nil
-            )
+            return Self.transferFileMetadata(stat: stat, resolvedTargetStat: nil)
         } catch SFTPError.errorStatus(let status) where status.errorCode == .noSuchFile {
             return nil
-        } catch SFTPServiceError.commandFailed(let message) where message.contains("stat failed") {
+        } catch SFTPServiceError.notFound {
             return nil
         }
+    }
+
+    static func transferFileMetadata(
+        stat: SFTPRichStat,
+        resolvedTargetStat: SFTPRichStat?
+    ) -> FileTransferMetadata {
+        FileTransferMetadata(
+            kind: .file,
+            sizeBytes: resolvedTargetStat?.sizeBytes ?? stat.sizeBytes,
+            canonicalIdentity: nil
+        )
     }
 
     func readTransferChunk(_ path: String, offset: Int64, length: Int) async throws -> Data {

@@ -45,9 +45,7 @@ actor LocalFileTransferEndpoint: FileTransferEndpoint {
     }
 
     func createTemporaryFile(at path: String) async throws {
-        guard fileManager.createFile(atPath: path, contents: nil) else {
-            throw FileBrowserError.notWritable(path)
-        }
+        try Data().write(to: URL(fileURLWithPath: path), options: .withoutOverwriting)
     }
 
     func writeChunk(_ data: Data, to path: String, offset: Int64) async throws {

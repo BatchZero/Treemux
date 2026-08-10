@@ -129,9 +129,11 @@ struct FileTreePanelView: View {
         }
         .safeAreaInset(edge: .bottom) {
             if controller.isTransferActive, let coordinator = controller.transferCoordinator {
-                FileTransferProgressView(coordinator: coordinator) {
-                    controller.cancelTransfer()
-                }
+                FileTransferProgressView(
+                    coordinator: coordinator,
+                    retry: { controller.retryTransfer() },
+                    cancel: { controller.cancelTransfer() }
+                )
             }
         }
         .alert(
@@ -579,19 +581,32 @@ private struct FileTreeRow: View, Equatable {
 
 private struct FileTransferProgressView: View {
     let coordinator: FileTransferCoordinator
+    let retry: () -> Void
     let cancel: () -> Void
     @Environment(ThemeManager.self) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(LocalizedStringKey("Transferring files…"))
+                Text(LocalizedStringKey(
+                    coordinator.state == .paused ? "Transfer paused" : "Transferring files…"
+                ))
                     .font(DesignFonts.dataLayer(size: 11))
                     .foregroundStyle(theme.textPrimary)
                 Spacer()
+                if coordinator.state == .paused {
+                    Button(LocalizedStringKey("Retry"), action: retry)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(theme.accentColor)
+                }
                 Button(LocalizedStringKey("Cancel"), action: cancel)
                     .buttonStyle(.plain)
                     .foregroundStyle(theme.dangerColor)
+            }
+            if coordinator.pendingRetryableError != nil {
+                Text(LocalizedStringKey("The connection was interrupted. Retry when it is available."))
+                    .font(DesignFonts.dataLayer(size: 10))
+                    .foregroundStyle(theme.textSecondary)
             }
             ProgressView(
                 value: Double(coordinator.summary.completedBytes),
