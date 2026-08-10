@@ -41,6 +41,7 @@ struct RenderedMarkdownView: View {
                 .markdownTextStyle {
                     ForegroundColor(theme.textPrimary)
                 }
+                .textSelection(.enabled)
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
