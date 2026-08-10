@@ -762,9 +762,11 @@ final class FileBrowserTabController {
         return pendingUpload
     }
 
-    func confirmPendingUpload() async {
+    func confirmPendingUpload() {
         guard let request = consumePendingUpload() else { return }
-        await beginUpload(urls: request.urls, destination: request.destination)
+        Task {
+            await beginUpload(urls: request.urls, destination: request.destination)
+        }
     }
 
     func beginUpload(urls: [URL], destination: String) async {

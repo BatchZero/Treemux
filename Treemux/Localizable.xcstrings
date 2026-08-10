@@ -341,6 +341,16 @@
         }
       }
     },
+    "Confirm Upload": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认上传"
+          }
+        }
+      }
+    },
     "Cannot connect to %@": {
       "localizations": {
         "zh-Hans": {
@@ -2877,6 +2887,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在传输文件…"
+          }
+        }
+      }
+    },
+    "Upload": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上传"
+          }
+        }
+      }
+    },
+    "Upload to: %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上传到：%@"
           }
         }
       }

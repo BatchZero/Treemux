@@ -25,6 +25,7 @@ struct FileTreePanelView: View {
     /// accepted until content is settled — otherwise we'd finish early and the
     /// later reflow would be mistaken for the user's position.
     @State private var contentSettled = false
+    @State private var isRootUploadTargeted = false
     /// Owned here (not inside `FileTreeToolbar`) so Cmd+F, handled at the
     /// panel level via `.onKeyPress`, can drive focus down into the
     /// toolbar's search field via `FocusState<Bool>.Binding`.
@@ -109,12 +110,23 @@ struct FileTreePanelView: View {
             // Persist where the user actually ended up, captured on leave.
             .onDisappear {
                 controller.treeScrollOffset = liveOffset
+                controller.cancelPendingUpload()
             }
             .dropDestination(for: URL.self) { urls, _ in
-                let fileURLs = urls.filter(\.isFileURL)
-                guard controller.isRemote, !fileURLs.isEmpty else { return false }
-                Task { await controller.beginUpload(urls: fileURLs, destination: controller.rootPath) }
-                return true
+                controller.stageUpload(urls: urls, destination: controller.rootPath)
+            } isTargeted: { targeted in
+                isRootUploadTargeted = targeted && controller.canAcceptUploadDrop
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isRootUploadTargeted ? theme.accentColor.opacity(0.10) : Color.clear)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(
+                        isRootUploadTargeted ? theme.accentColor : Color.clear,
+                        lineWidth: 1.5
+                    )
             }
         }
         .background(theme.paneBackground)
@@ -134,6 +146,29 @@ struct FileTreePanelView: View {
                     retry: { controller.retryTransfer() },
                     cancel: { controller.cancelTransfer() }
                 )
+            }
+        }
+        .alert(
+            LocalizedStringKey("Confirm Upload"),
+            isPresented: Binding(
+                get: { controller.pendingUpload != nil },
+                set: { presented in
+                    if !presented { controller.cancelPendingUpload() }
+                }
+            )
+        ) {
+            Button(LocalizedStringKey("Upload")) {
+                controller.confirmPendingUpload()
+            }
+            Button(LocalizedStringKey("Cancel"), role: .cancel) {
+                controller.cancelPendingUpload()
+            }
+        } message: {
+            if let request = controller.pendingUpload {
+                Text(String.localizedStringWithFormat(
+                    String(localized: "Upload to: %@"),
+                    request.destination
+                ))
             }
         }
         .alert(
@@ -391,6 +426,7 @@ private struct FileTreeRow: View, Equatable {
     let showingRecursiveResults: Bool
     @Environment(ThemeManager.self) private var theme
     @State private var isHovered = false
+    @State private var isUploadTargeted = false
 
     // Equality intentionally ignores `controller` (same instance for the
     // whole tree). `theme` itself is environment-driven and excluded from
@@ -458,10 +494,18 @@ private struct FileTreeRow: View, Equatable {
         .padding(.horizontal, 8)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(row.isSelected ? theme.sidebarSelection
+                .fill(isUploadTargeted ? theme.accentColor.opacity(0.10)
+                      : row.isSelected ? theme.sidebarSelection
                       : isHovered ? theme.textPrimary.opacity(0.06)
                       : Color.clear)
         )
+        .overlay {
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(
+                    isUploadTargeted ? theme.accentColor : Color.clear,
+                    lineWidth: 1.5
+                )
+        }
         .overlay(alignment: .leading) {
             if row.isSelected {
                 RoundedRectangle(cornerRadius: 1.5)
@@ -523,15 +567,18 @@ private struct FileTreeRow: View, Equatable {
             .disabled(node.path == controller.rootPath)
         }
         .dropDestination(for: URL.self) { urls, _ in
-            guard controller.isRemote,
-                  let destination = FileTransferPresentation.dropDestination(
+            guard let destination = FileTransferPresentation.dropDestination(
                     for: node,
                     rootPath: controller.rootPath
                   ) else { return false }
-            let fileURLs = urls.filter(\.isFileURL)
-            guard !fileURLs.isEmpty else { return false }
-            Task { await controller.beginUpload(urls: fileURLs, destination: destination) }
-            return true
+            return controller.stageUpload(urls: urls, destination: destination)
+        } isTargeted: { targeted in
+            isUploadTargeted = targeted
+                && controller.canAcceptUploadDrop
+                && FileTransferPresentation.dropDestination(
+                    for: node,
+                    rootPath: controller.rootPath
+                ) != nil
         }
     }
 
