@@ -816,9 +816,17 @@ actor SFTPService {
             if [ ! -r "$l/" ] || [ ! -x "$l/" ]; then
               printf 'HI\t%s\n' "$lh"
             else
-              c=$(realpath -- "$l" 2>/dev/null || (cd -P "$l" 2>/dev/null && pwd -P))
-              if [ -n "$c" ]; then
-                printf 'HD\t%s\t%s\n' "$lh" "$(hex "$c")"
+              if c=$(
+                (realpath -- "$l" 2>/dev/null || (cd -P "$l" 2>/dev/null && pwd -P)) && printf '\\001'
+              ); then
+                c=${c%?}
+                c=${c%
+        }
+                if [ -n "$c" ]; then
+                  printf 'HD\t%s\t%s\n' "$lh" "$(hex "$c")"
+                else
+                  printf 'HU\t%s\n' "$lh"
+                fi
               else
                 printf 'HU\t%s\n' "$lh"
               fi

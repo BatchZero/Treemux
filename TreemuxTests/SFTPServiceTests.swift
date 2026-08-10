@@ -168,6 +168,38 @@ final class SFTPServiceTests: XCTestCase {
         }
     }
 
+    func testSymlinkProbePreservesCanonicalIdentityTrailingNewlines() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("treemux-probe-canonical-\(UUID().uuidString)")
+        let target = root.appendingPathComponent("target\n\n")
+        let link = root.appendingPathComponent("link")
+        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: target.path)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", SFTPService.symlinkDirProbeFragment(maxDepth: 1)]
+        process.currentDirectoryURL = root
+        let result = try await SFTPService.runProcessAndCaptureOutput(process)
+        let expectedProcess = Process()
+        expectedProcess.executableURL = URL(fileURLWithPath: "/bin/realpath")
+        expectedProcess.arguments = ["--", target.path]
+        let expectedResult = try await SFTPService.runProcessAndCaptureOutput(expectedProcess)
+
+        XCTAssertEqual(result.exitCode, 0)
+        XCTAssertEqual(expectedResult.exitCode, 0)
+        XCTAssertEqual(expectedResult.output.last, "\n")
+        guard case .directory(let identity) = SFTPService.parseSymlinkProbe(
+            SFTPService.splitSymlinkProbeOutput(result.output).probe,
+            parentPath: root.path
+        )[link.path] else {
+            return XCTFail("expected directory resolution")
+        }
+        XCTAssertEqual(identity, String(expectedResult.output.dropLast()))
+        XCTAssertTrue(identity.hasSuffix("\n\n"))
+    }
+
     func testCanonicalIdentityCommandPreservesWhitespaceAndNewlines() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("treemux-canonical-\(UUID().uuidString)")
