@@ -134,6 +134,69 @@ final class SFTPServiceTests: XCTestCase {
         XCTAssertEqual(resolutions["/home/u/unknown-link"], .unresolved(reason: "realpath unsupported"))
     }
 
+    func testHexProbeRoundTripsTabsNewlinesAndLegacyMarkerText() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("treemux-probe-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let target = root.appendingPathComponent("target directory")
+        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+        let names = ["tab\tlink", "line\nlink", SFTPService.symlinkProbeMarker]
+        for name in names {
+            try FileManager.default.createSymbolicLink(
+                atPath: root.appendingPathComponent(name).path,
+                withDestinationPath: target.path
+            )
+        }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", SFTPService.symlinkDirProbeFragment(maxDepth: 1)]
+        process.currentDirectoryURL = root
+
+        let result = try await SFTPService.runProcessAndCaptureOutput(process)
+        XCTAssertEqual(result.exitCode, 0)
+        let sections = SFTPService.splitSymlinkProbeOutput(result.output)
+        XCTAssertTrue(sections.listing.isEmpty)
+        let resolutions = SFTPService.parseSymlinkProbe(sections.probe, parentPath: root.path)
+
+        for name in names {
+            guard case .directory(let identity) = resolutions[root.appendingPathComponent(name).path] else {
+                return XCTFail("expected directory resolution for \(name.debugDescription)")
+            }
+            XCTAssertTrue(identity.hasSuffix("/target directory"))
+        }
+    }
+
+    func testProbeClassifiesPermissionDeniedTargetAsInaccessible() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("treemux-probe-permission-\(UUID().uuidString)")
+        let locked = root.appendingPathComponent("locked")
+        let target = locked.appendingPathComponent("target")
+        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+        let link = root.appendingPathComponent("private-link")
+        try FileManager.default.createSymbolicLink(
+            atPath: link.path,
+            withDestinationPath: target.path
+        )
+        defer {
+            try? FileManager.default.setAttributes(
+                [.posixPermissions: 0o700], ofItemAtPath: locked.path)
+            try? FileManager.default.removeItem(at: root)
+        }
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o000], ofItemAtPath: locked.path)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", SFTPService.symlinkDirProbeFragment(maxDepth: 1)]
+        process.currentDirectoryURL = root
+
+        let result = try await SFTPService.runProcessAndCaptureOutput(process)
+        let sections = SFTPService.splitSymlinkProbeOutput(result.output)
+        let resolutions = SFTPService.parseSymlinkProbe(sections.probe, parentPath: root.path)
+
+        XCTAssertEqual(resolutions[link.path], .inaccessible)
+    }
+
     func testParseListingUsesStructuredSymlinkResolution() throws {
         let output = "lrwxrwxrwx 1 0 0 5 1700000000 dlink -> realdir"
         let entries = SFTPService.parseListing(
@@ -165,6 +228,47 @@ final class SFTPServiceTests: XCTestCase {
         XCTAssertEqual(results.count, paths.count)
         let maximum = await tracker.maximum()
         XCTAssertLessThanOrEqual(maximum, 3)
+    }
+
+    func testBoundedSymlinkResolutionPreservesPerPathOutcomes() async {
+        let expected: [String: SymlinkTargetResolution] = [
+            "/dir": .directory(canonicalIdentity: "/canonical/dir"),
+            "/file": .file,
+            "/broken": .broken,
+            "/private": .inaccessible,
+            "/unknown": .unresolved(reason: nil),
+        ]
+
+        let results = await SFTPService.resolveSymlinkMetadata(
+            paths: Array(expected.keys),
+            maxConcurrent: 2
+        ) { path in
+            expected[path]!
+        }
+
+        XCTAssertEqual(results, expected)
+    }
+
+    func testBoundedSymlinkResolutionCancelsCooperativeRequestsPromptly() async throws {
+        let task = Task {
+            await SFTPService.resolveSymlinkMetadata(
+                paths: (0..<20).map { "/link-\($0)" },
+                maxConcurrent: 4
+            ) { _ in
+                do {
+                    try await Task.sleep(for: .seconds(5))
+                    return .file
+                } catch {
+                    return .unresolved(reason: nil)
+                }
+            }
+        }
+        try await Task.sleep(for: .milliseconds(50))
+        let start = ContinuousClock.now
+        task.cancel()
+        _ = await task.value
+
+        XCTAssertLessThan(start.duration(to: .now), .seconds(1))
     }
 
     func testParseSymlinkDirProbeAbsolute() {

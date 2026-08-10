@@ -221,6 +221,17 @@ final class LocalFileBrowserDataSourceTests: XCTestCase {
         XCTAssertFalse(node.isExpandableDirectory)
     }
 
+    func testInaccessibleSymlinkTargetClassificationIsDeterministic() {
+        let resolution = LocalFileBrowserDataSource.classifyResolvedSymlinkTarget(
+            canonicalIdentity: "/private/target",
+            isDirectory: true,
+            isRegularFile: false,
+            isAccessible: false
+        )
+
+        XCTAssertEqual(resolution, .inaccessible)
+    }
+
     // MARK: - createDirectory / createFile
 
     func testCreateDirectoryAndFile() async throws {

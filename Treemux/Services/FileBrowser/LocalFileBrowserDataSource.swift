@@ -2,6 +2,7 @@
 //  LocalFileBrowserDataSource.swift
 //  Treemux
 
+import Darwin
 import Foundation
 
 final class LocalFileBrowserDataSource: FileBrowserDataSource {
@@ -252,10 +253,14 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
 
         do {
             let values = try canonicalURL.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey])
-            if values.isDirectory == true {
-                return .directory(canonicalIdentity: canonicalURL.standardizedFileURL.path)
-            }
-            return .file
+            let accessMode = values.isDirectory == true ? (R_OK | X_OK) : R_OK
+            let isAccessible = Darwin.access(canonicalURL.path, accessMode) == 0
+            return classifyResolvedSymlinkTarget(
+                canonicalIdentity: canonicalURL.standardizedFileURL.path,
+                isDirectory: values.isDirectory == true,
+                isRegularFile: values.isRegularFile == true,
+                isAccessible: isAccessible
+            )
         } catch let error as NSError {
             if error.domain == NSCocoaErrorDomain {
                 switch error.code {
@@ -269,6 +274,18 @@ final class LocalFileBrowserDataSource: FileBrowserDataSource {
             }
             return .unresolved(reason: error.localizedDescription)
         }
+    }
+
+    static func classifyResolvedSymlinkTarget(
+        canonicalIdentity: String,
+        isDirectory: Bool,
+        isRegularFile: Bool,
+        isAccessible: Bool
+    ) -> SymlinkTargetResolution {
+        guard isAccessible else { return .inaccessible }
+        if isDirectory { return .directory(canonicalIdentity: canonicalIdentity) }
+        if isRegularFile { return .file }
+        return .unresolved(reason: nil)
     }
 
     /// Natural ordering: directories first, then case-insensitive alpha.

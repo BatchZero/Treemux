@@ -231,6 +231,70 @@ final class FileBrowserTabControllerTests: XCTestCase {
         XCTAssertEqual(controller.childrenByPath["/root/slow"], [])
     }
 
+    func testRefreshDuringCanonicalLookupDoesNotCacheStaleIdentityOrError() async {
+        let mock = MockFileBrowserDataSource()
+        let link = FileNode(
+            id: "/root/link", name: "link", path: "/root/link",
+            kind: .symlink(target: "/target"), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .directory(canonicalIdentity: "/canonical/target")
+        )
+        mock.directoryListings["/root"] = [link]
+        mock.directoryListings["/root/link"] = []
+        mock.canonicalIdentities["/root"] = "/canonical/target"
+        let controller = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/root", rootKind: .project),
+            dataSource: mock
+        )
+        await controller.refreshTree()
+        let entered = mock.armCanonicalIdentityGate(path: "/root")
+        let staleExpansion = Task { @MainActor in
+            await controller.toggleExpand("/root/link")
+        }
+        for await _ in entered { break }
+
+        mock.canonicalIdentities["/root"] = "/canonical/root"
+        await controller.refreshTree()
+        mock.releaseCanonicalIdentityGate()
+        await staleExpansion.value
+        await controller.toggleExpand("/root/link")
+
+        XCTAssertTrue(controller.expandedDirs.contains("/root/link"))
+        let row = controller.visibleRows().first { $0.id == "/root/link" }
+        XCTAssertNil(row?.symlinkError)
+    }
+
+    func testCollapseDuringCanonicalLookupDoesNotCacheStaleIdentityOrError() async {
+        let mock = MockFileBrowserDataSource()
+        let link = FileNode(
+            id: "/root/link", name: "link", path: "/root/link",
+            kind: .symlink(target: "/target"), sizeBytes: nil, modifiedAt: nil,
+            symlinkTargetResolution: .directory(canonicalIdentity: "/canonical/target")
+        )
+        mock.directoryListings["/root"] = [link]
+        mock.directoryListings["/root/link"] = []
+        mock.canonicalIdentities["/root"] = "/canonical/target"
+        let controller = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/root", rootKind: .project),
+            dataSource: mock
+        )
+        await controller.refreshTree()
+        let entered = mock.armCanonicalIdentityGate(path: "/root")
+        let staleExpansion = Task { @MainActor in
+            await controller.toggleExpand("/root/link")
+        }
+        for await _ in entered { break }
+
+        await controller.toggleExpand("/root/link")
+        mock.canonicalIdentities["/root"] = "/canonical/root"
+        mock.releaseCanonicalIdentityGate()
+        await staleExpansion.value
+        await controller.toggleExpand("/root/link")
+
+        XCTAssertTrue(controller.expandedDirs.contains("/root/link"))
+        let row = controller.visibleRows().first { $0.id == "/root/link" }
+        XCTAssertNil(row?.symlinkError)
+    }
+
     func testBrokenSymlinkActivationReportsRowErrorInsteadOfOpeningFile() async throws {
         let mock = MockFileBrowserDataSource()
         let link = FileNode(
@@ -516,6 +580,9 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
     private var gatedListDirectoryPath: String?
     private var listDirectoryGate: CheckedContinuation<Void, Never>?
     private var listDirectoryEnteredContinuation: AsyncStream<Void>.Continuation?
+    private var gatedCanonicalIdentityPath: String?
+    private var canonicalIdentityGate: CheckedContinuation<Void, Never>?
+    private var canonicalIdentityEnteredContinuation: AsyncStream<Void>.Continuation?
 
     func armListDirectoryGate(path: String) -> AsyncStream<Void> {
         let (stream, continuation) = AsyncStream<Void>.makeStream()
@@ -528,6 +595,19 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
         listDirectoryGate?.resume()
         listDirectoryGate = nil
         gatedListDirectoryPath = nil
+    }
+
+    func armCanonicalIdentityGate(path: String) -> AsyncStream<Void> {
+        let (stream, continuation) = AsyncStream<Void>.makeStream()
+        gatedCanonicalIdentityPath = path
+        canonicalIdentityEnteredContinuation = continuation
+        return stream
+    }
+
+    func releaseCanonicalIdentityGate() {
+        canonicalIdentityGate?.resume()
+        canonicalIdentityGate = nil
+        gatedCanonicalIdentityPath = nil
     }
 
     func listDirectory(_ path: String) async throws -> [FileNode] {
@@ -544,7 +624,16 @@ final class MockFileBrowserDataSource: FileBrowserDataSource {
         return directoryListings[path] ?? []
     }
     func canonicalDirectoryIdentity(_ path: String) async throws -> String {
-        canonicalIdentities[path] ?? path
+        let identity = canonicalIdentities[path] ?? path
+        if gatedCanonicalIdentityPath == path {
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                canonicalIdentityGate = continuation
+                canonicalIdentityEnteredContinuation?.yield(())
+                canonicalIdentityEnteredContinuation?.finish()
+                canonicalIdentityEnteredContinuation = nil
+            }
+        }
+        return identity
     }
     var fileMetadataCallCount = 0
     func fileMetadata(_ path: String) async throws -> FileMetadata {

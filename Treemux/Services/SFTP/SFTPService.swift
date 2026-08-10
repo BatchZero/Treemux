@@ -330,9 +330,7 @@ actor SFTPService {
         async throws -> (childrenByPath: [String: [SFTPRichEntry]], truncated: Set<String>) {
         let output = try await runCommand(
             Self.bulkListCommand(maxDepth: maxDepth), in: root, timeout: Self.listingCommandTimeout)
-        let sections = output.components(separatedBy: Self.symlinkProbeMarker)
-        let listingOut = sections.first ?? output
-        let probeOut = sections.count > 1 ? sections[1] : ""
+        let (listingOut, probeOut) = Self.splitSymlinkProbeOutput(output)
         // `runCommand(_:in:)` supplies the leading `cd <root>`, so the probe's
         // `find .` names are ./-relative to `root`.
         let resolutions = Self.parseSymlinkProbe(probeOut, parentPath: root)
@@ -674,9 +672,7 @@ actor SFTPService {
             throw SFTPServiceError.commandFailed("ls failed at \(path)")
         }
 
-        let sections = result.output.components(separatedBy: Self.symlinkProbeMarker)
-        let listingOut = sections.first ?? result.output
-        let probeOut = sections.count > 1 ? sections[1] : ""
+        let (listingOut, probeOut) = Self.splitSymlinkProbeOutput(result.output)
         let resolutions = Self.parseSymlinkProbe(probeOut, parentPath: path)
         return Self.parseListing(
             output: listingOut,
@@ -685,9 +681,21 @@ actor SFTPService {
         )
     }
 
-    /// Marker separating the listing section from the symlink-dir probe section
-    /// in the combined command output. Chosen to never collide with a filename.
+    /// Legacy text marker retained only for parsing cached/test output produced
+    /// before the NUL-framed probe protocol was introduced.
     static let symlinkProbeMarker = "@@TMX_SYMDIRS@@"
+    static let symlinkProbeFrame = "\0TMX_SYMLINK_PROBE\0"
+
+    static func splitSymlinkProbeOutput(_ output: String) -> (listing: String, probe: String) {
+        if let range = output.range(of: symlinkProbeFrame) {
+            return (
+                String(output[..<range.lowerBound]),
+                String(output[range.upperBound...])
+            )
+        }
+        let sections = output.components(separatedBy: symlinkProbeMarker)
+        return (sections.first ?? output, sections.count > 1 ? sections[1] : "")
+    }
 
     /// Parses the probe section: one path per line, each a symlink whose target is
     /// a directory. When `parentPath` is non-nil, entries are `./`-relative and are
@@ -722,16 +730,20 @@ actor SFTPService {
         for line in output.components(separatedBy: "\n") where !line.isEmpty {
             let fields = line.components(separatedBy: "\t")
             guard fields.count >= 2 else { continue }
-            var path = fields[1]
+            let isHexEncoded = fields[0].hasPrefix("H")
+            let outcome = isHexEncoded ? String(fields[0].dropFirst()) : fields[0]
+            guard var path = isHexEncoded ? decodeHexString(fields[1]) : fields[1] else { continue }
             if let base {
                 if path.hasPrefix("./") { path.removeFirst(2) }
                 guard !path.isEmpty else { continue }
                 path = base + "/" + path
             }
 
-            switch fields[0] {
+            switch outcome {
             case "D" where fields.count >= 3 && !fields[2].isEmpty:
-                results[path] = .directory(canonicalIdentity: fields[2])
+                let identity = isHexEncoded ? decodeHexString(fields[2]) : fields[2]
+                guard let identity, !identity.isEmpty else { continue }
+                results[path] = .directory(canonicalIdentity: identity)
             case "F":
                 results[path] = .file
             case "B":
@@ -747,20 +759,53 @@ actor SFTPService {
         return results
     }
 
-    /// Shell fragment that, after the main listing, emits the marker followed by
-    /// one line per symlink (to `maxDepth`) whose target is a directory. Portable:
-    /// `[ -d "$l/" ]` dereferences the link on both GNU and BSD userlands.
+    private static func decodeHexString(_ encoded: String) -> String? {
+        guard encoded.count.isMultiple(of: 2) else { return nil }
+        var bytes: [UInt8] = []
+        bytes.reserveCapacity(encoded.count / 2)
+        var index = encoded.startIndex
+        while index < encoded.endIndex {
+            let next = encoded.index(index, offsetBy: 2)
+            guard let byte = UInt8(encoded[index..<next], radix: 16) else { return nil }
+            bytes.append(byte)
+            index = next
+        }
+        return String(data: Data(bytes), encoding: .utf8)
+    }
+
+    /// Shell fragment that emits a NUL-delimited frame followed by hex-encoded
+    /// symlink records. `find -exec` passes names as arguments, so tabs and
+    /// newlines cannot split records before encoding.
     static func symlinkDirProbeFragment(maxDepth: Int) -> String {
-        "echo \(symlinkProbeMarker); "
-        + "find . -mindepth 1 -maxdepth \(maxDepth) -type l 2>/dev/null "
-        + "| while IFS= read -r l; do "
-        + "if [ -d \"$l/\" ]; then "
-        + "if [ ! -r \"$l/\" ] || [ ! -x \"$l/\" ]; then printf 'I\\t%s\\n' \"$l\"; "
-        + "else c=$(realpath -- \"$l\" 2>/dev/null || (cd -P \"$l\" 2>/dev/null && pwd -P)); "
-        + "if [ -n \"$c\" ]; then printf 'D\\t%s\\t%s\\n' \"$l\" \"$c\"; "
-        + "else printf 'U\\t%s\\t%s\\n' \"$l\" 'canonical path unavailable'; fi; fi; "
-        + "elif [ -e \"$l\" ]; then printf 'F\\t%s\\n' \"$l\"; "
-        + "else printf 'B\\t%s\\n' \"$l\"; fi; done"
+        let script = """
+        hex() { printf '%s' "$1" | od -An -v -tx1 | tr -d ' \n'; }
+        for l do
+          lh=$(hex "$l")
+          if [ -d "$l/" ]; then
+            if [ ! -r "$l/" ] || [ ! -x "$l/" ]; then
+              printf 'HI\t%s\n' "$lh"
+            else
+              c=$(realpath -- "$l" 2>/dev/null || (cd -P "$l" 2>/dev/null && pwd -P))
+              if [ -n "$c" ]; then
+                printf 'HD\t%s\t%s\n' "$lh" "$(hex "$c")"
+              else
+                printf 'HU\t%s\n' "$lh"
+              fi
+            fi
+          elif [ -e "$l" ]; then
+            printf 'HF\t%s\n' "$lh"
+          else
+            error=$(LC_ALL=C ls -Ld "$l/" 2>&1 >/dev/null)
+            case "$error" in
+              *'Permission denied'*|*'Operation not permitted'*) printf 'HI\t%s\n' "$lh" ;;
+              *) printf 'HB\t%s\n' "$lh" ;;
+            esac
+          fi
+        done
+        """
+        return "printf '\\000TMX_SYMLINK_PROBE\\000'; "
+            + "find . -mindepth 1 -maxdepth \(maxDepth) -type l "
+            + "-exec sh -c \(shellQuote(script)) sh {} + 2>/dev/null"
     }
 
     /// Parse `ls -lA` style output. Auto-detects whether the timestamp is a single epoch field

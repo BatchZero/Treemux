@@ -2621,12 +2621,12 @@
         }
       }
     },
-    "The server could not resolve this symbolic link target.": {
+    "The symbolic link target could not be resolved.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "服务器无法解析此符号链接的目标。"
+            "value": "无法解析此符号链接的目标。"
           }
         }
       }

@@ -327,7 +327,8 @@ final class FileBrowserTabController {
             guard treeLoadGeneration == generation else { return }
             applyFetch(fetch)
             for path in expandedDirs where path != rootPath && fetch.childrenByPath[path] == nil {
-                guard await validateExpansion(path) else { continue }
+                guard await validateExpansion(
+                    path, generation: generation, expansionToken: nil) else { continue }
                 if let kids = try? await dataSource.listDirectory(path) {
                     guard treeLoadGeneration == generation else { return }
                     rawChildrenByPath[path] = kids
@@ -418,7 +419,8 @@ final class FileBrowserTabController {
                 }
             }
             do {
-                guard await validateExpansion(path),
+                guard await validateExpansion(
+                    path, generation: generation, expansionToken: token),
                       expansionTokens[path] == token,
                       treeLoadGeneration == generation else { return }
                 let kids = try await dataSource.listDirectory(path)
@@ -468,37 +470,85 @@ final class FileBrowserTabController {
         truncatedDirs.formUnion(fetch.truncatedDirs)
     }
 
-    private func validateExpansion(_ path: String) async -> Bool {
+    private func validateExpansion(
+        _ path: String,
+        generation: Int,
+        expansionToken: UUID?
+    ) async -> Bool {
+        guard isExpansionRequestCurrent(
+            path: path, generation: generation, expansionToken: expansionToken) else { return false }
         guard let node = node(at: path), node.isSymlink else { return true }
         guard case .directory(let targetIdentity) = node.symlinkTargetResolution else {
-            symlinkErrorsByPath[path] = symlinkErrorMessage(for: node.symlinkTargetResolution)
+            if isExpansionRequestCurrent(
+                path: path, generation: generation, expansionToken: expansionToken) {
+                symlinkErrorsByPath[path] = symlinkErrorMessage(for: node.symlinkTargetResolution)
+            }
             return false
         }
 
         do {
             for ancestor in ancestorPaths(of: path) {
-                let identity = try await canonicalIdentity(for: ancestor)
+                let identity = try await canonicalIdentity(
+                    for: ancestor,
+                    requestPath: path,
+                    generation: generation,
+                    expansionToken: expansionToken
+                )
+                guard isExpansionRequestCurrent(
+                    path: path, generation: generation, expansionToken: expansionToken) else {
+                    return false
+                }
                 if identity == targetIdentity {
                     symlinkErrorsByPath[path] = String(localized: "This symbolic link points to an ancestor, so expansion was stopped.")
                     return false
                 }
             }
             return true
+        } catch is CancellationError {
+            return false
         } catch {
-            symlinkErrorsByPath[path] = error.localizedDescription
+            if isExpansionRequestCurrent(
+                path: path, generation: generation, expansionToken: expansionToken) {
+                symlinkErrorsByPath[path] = String(localized: "The symbolic link could not be expanded.")
+            }
             return false
         }
     }
 
-    private func canonicalIdentity(for path: String) async throws -> String {
+    private func canonicalIdentity(
+        for path: String,
+        requestPath: String,
+        generation: Int,
+        expansionToken: UUID?
+    ) async throws -> String {
         if let cached = canonicalIdentityByPath[path] { return cached }
         if let embedded = node(at: path)?.canonicalDirectoryIdentity {
+            guard isExpansionRequestCurrent(
+                path: requestPath,
+                generation: generation,
+                expansionToken: expansionToken) else { throw CancellationError() }
             canonicalIdentityByPath[path] = embedded
             return embedded
         }
         let identity = try await dataSource.canonicalDirectoryIdentity(path)
+        guard isExpansionRequestCurrent(
+            path: requestPath,
+            generation: generation,
+            expansionToken: expansionToken) else { throw CancellationError() }
         canonicalIdentityByPath[path] = identity
         return identity
+    }
+
+    private func isExpansionRequestCurrent(
+        path: String,
+        generation: Int,
+        expansionToken: UUID?
+    ) -> Bool {
+        guard treeLoadGeneration == generation else { return false }
+        if let expansionToken {
+            return expansionTokens[path] == expansionToken
+        }
+        return true
     }
 
     private func ancestorPaths(of path: String) -> [String] {
@@ -528,8 +578,8 @@ final class FileBrowserTabController {
             return String(localized: "The symbolic link target no longer exists.")
         case .inaccessible:
             return String(localized: "The symbolic link target cannot be read.")
-        case .unresolved(let reason):
-            return reason ?? String(localized: "The server could not resolve this symbolic link target.")
+        case .unresolved:
+            return String(localized: "The symbolic link target could not be resolved.")
         }
     }
 
