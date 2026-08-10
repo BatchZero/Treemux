@@ -165,6 +165,7 @@ final class FileTransferCoordinatorTests: XCTestCase {
         let summary = await task.value
 
         XCTAssertTrue(summary.cancelled)
+        XCTAssertEqual(summary.cancelledItems, 2)
         let completedData = await destination.fileData(at: "/target/done.txt")
         let queuedData = await destination.fileData(at: "/target/queued.txt")
         let hasTemporaryItems = await destination.containsTemporaryItems

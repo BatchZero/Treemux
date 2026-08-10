@@ -55,8 +55,11 @@ final class FileTransferCoordinator {
         pendingFiles = []
         state = .running
 
-        for sourcePath in sources {
-            if cancellationRequested { break }
+        for (index, sourcePath) in sources.enumerated() {
+            if cancellationRequested {
+                summary.cancelledItems += sources.count - index
+                break
+            }
             let destinationPath = Self.join(destinationRoot, Self.name(of: sourcePath))
             await prepareTransferItem(
                 sourcePath: sourcePath,
@@ -69,6 +72,15 @@ final class FileTransferCoordinator {
         currentItem = nil
         pendingConflict = nil
         summary.cancelled = cancellationRequested
+        if cancellationRequested {
+            summary.cancelledItems += max(
+                0,
+                summary.discoveredItems
+                    - summary.completedItems
+                    - summary.skippedItems
+                    - summary.failedItems
+            )
+        }
         state = .completed
         return summary
     }
@@ -166,8 +178,11 @@ final class FileTransferCoordinator {
                     nextAncestry.insert(identity)
                 }
                 let children = try await source.children(at: sourcePath)
-                for child in children {
-                    if cancellationRequested { break }
+                for (index, child) in children.enumerated() {
+                    if cancellationRequested {
+                        summary.cancelledItems += children.count - index
+                        break
+                    }
                     await prepareTransferItem(
                         sourcePath: child,
                         destinationPath: Self.join(destinationPath, Self.name(of: child)),

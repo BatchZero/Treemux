@@ -623,10 +623,11 @@ private struct FileTransferSummaryView: View {
                 .font(.headline)
                 .foregroundStyle(theme.textPrimary)
             Text(String.localizedStringWithFormat(
-                String(localized: "%lld completed, %lld skipped, %lld failed"),
+                String(localized: "%lld completed, %lld skipped, %lld failed, %lld cancelled"),
                 Int64(summary.completedItems),
                 Int64(summary.skippedItems),
-                Int64(summary.failedItems)
+                Int64(summary.failedItems),
+                Int64(summary.cancelledItems)
             ))
                 .foregroundStyle(theme.textSecondary)
             if summary.cancelled {

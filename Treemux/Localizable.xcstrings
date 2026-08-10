@@ -11,6 +11,16 @@
         }
       }
     },
+    "%lld completed, %lld skipped, %lld failed, %lld cancelled": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已完成 %1$lld 项，跳过 %2$lld 项，失败 %3$lld 项，取消 %4$lld 项"
+          }
+        }
+      }
+    },
     "%lld completed, %lld skipped, %lld failed": {
       "localizations": {
         "zh-Hans": {

@@ -58,6 +58,7 @@ struct FileTransferSummary: Sendable, Equatable {
     var completedItems = 0
     var skippedItems = 0
     var failedItems = 0
+    var cancelledItems = 0
     var totalBytes: Int64 = 0
     var completedBytes: Int64 = 0
     var cancelled = false
