@@ -58,6 +58,33 @@ final class FileTransferCoordinatorTests: XCTestCase {
         XCTAssertEqual(copiedData, payload)
     }
 
+    func testTransfersFilesConcurrentlyWithoutExceedingConfiguredLimit() async {
+        let source = MemoryTransferEndpoint(nodes: [
+            "/source/folder": .directory(identity: "/source/folder"),
+            "/source/folder/first.txt": .file(Data("first".utf8)),
+            "/source/folder/second.txt": .file(Data("second".utf8)),
+            "/source/folder/third.txt": .file(Data("third".utf8))
+        ])
+        await source.delayEachRead(by: .milliseconds(50))
+        let destination = MemoryTransferEndpoint(nodes: ["/target": .directory(identity: "/target")])
+        let coordinator = FileTransferCoordinator(
+            source: source,
+            destination: destination,
+            chunkSize: 64,
+            concurrencyLimit: 2
+        )
+
+        let summary = await coordinator.start(
+            direction: .upload,
+            sources: ["/source/folder"],
+            destinationRoot: "/target"
+        )
+
+        let maximumConcurrentReads = await source.maximumConcurrentReads
+        XCTAssertEqual(summary.completedItems, 4)
+        XCTAssertEqual(maximumConcurrentReads, 2)
+    }
+
     func testConflictWaitsForOverwriteDecision() async {
         let source = MemoryTransferEndpoint(nodes: ["/source/a.txt": .file(Data("new".utf8))])
         let destination = MemoryTransferEndpoint(nodes: [
@@ -146,6 +173,40 @@ final class FileTransferCoordinatorTests: XCTestCase {
         XCTAssertFalse(hasTemporaryItems)
     }
 
+    func testCancellationAfterFinalChunkRemovesTemporaryFileInsteadOfReplacingDestination() async {
+        let source = MemoryTransferEndpoint(nodes: [
+            "/source/item.txt": .file(Data("contents".utf8))
+        ])
+        let destination = MemoryTransferEndpoint(nodes: [
+            "/target": .directory(identity: "/target")
+        ])
+        await destination.suspendNextWrite()
+        let coordinator = FileTransferCoordinator(
+            source: source,
+            destination: destination,
+            chunkSize: 64
+        )
+
+        let task = Task {
+            await coordinator.start(
+                direction: .download,
+                sources: ["/source/item.txt"],
+                destinationRoot: "/target"
+            )
+        }
+        await destination.waitForSuspendedWrite()
+        coordinator.cancel()
+        await destination.resumeSuspendedWrite()
+        let summary = await task.value
+        let destinationData = await destination.fileData(at: "/target/item.txt")
+        let hasTemporaryItems = await destination.containsTemporaryItems
+
+        XCTAssertTrue(summary.cancelled)
+        XCTAssertEqual(summary.completedItems, 0)
+        XCTAssertNil(destinationData)
+        XCTAssertFalse(hasTemporaryItems)
+    }
+
     func testSiblingFailureDoesNotAbortBatch() async {
         let source = MemoryTransferEndpoint(nodes: [
             "/source/bad.txt": .file(Data("bad".utf8)),
@@ -215,6 +276,11 @@ private actor MemoryTransferEndpoint: FileTransferEndpoint {
     private var nodes: [String: Node]
     private var failedReadPaths: Set<String> = []
     private(set) var readCount = 0
+    private var readDelay: Duration?
+    private var concurrentReads = 0
+    private(set) var maximumConcurrentReads = 0
+    private var suspendWrite = false
+    private var writeSuspension: CheckedContinuation<Void, Never>?
 
     init(nodes: [String: Node]) {
         self.nodes = nodes
@@ -241,6 +307,12 @@ private actor MemoryTransferEndpoint: FileTransferEndpoint {
     func readChunk(at path: String, offset: Int64, length: Int) async throws -> Data {
         readCount += 1
         if failedReadPaths.contains(path) { throw TestError.readFailed }
+        concurrentReads += 1
+        maximumConcurrentReads = max(maximumConcurrentReads, concurrentReads)
+        defer { concurrentReads -= 1 }
+        if let readDelay {
+            try await Task.sleep(for: readDelay)
+        }
         guard case .file(let data)? = nodes[path] else { return Data() }
         let start = min(Int(offset), data.count)
         let end = min(start + length, data.count)
@@ -263,6 +335,12 @@ private actor MemoryTransferEndpoint: FileTransferEndpoint {
         }
         contents.replaceSubrange(Int(offset)..<contents.count, with: data)
         nodes[path] = .file(contents)
+        if suspendWrite {
+            suspendWrite = false
+            await withCheckedContinuation { continuation in
+                writeSuspension = continuation
+            }
+        }
     }
 
     func replaceItem(at path: String, withTemporaryItemAt temporaryPath: String) async throws {
@@ -276,6 +354,25 @@ private actor MemoryTransferEndpoint: FileTransferEndpoint {
 
     func failReads(at path: String) {
         failedReadPaths.insert(path)
+    }
+
+    func delayEachRead(by duration: Duration) {
+        readDelay = duration
+    }
+
+    func suspendNextWrite() {
+        suspendWrite = true
+    }
+
+    func waitForSuspendedWrite() async {
+        while writeSuspension == nil {
+            await Task.yield()
+        }
+    }
+
+    func resumeSuspendedWrite() {
+        writeSuspension?.resume()
+        writeSuspension = nil
     }
 
     func fileData(at path: String) -> Data? {

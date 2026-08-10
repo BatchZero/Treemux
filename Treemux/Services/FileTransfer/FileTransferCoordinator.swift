@@ -6,6 +6,12 @@ import Observation
 final class FileTransferCoordinator {
     nonisolated static let temporarySuffix = ".treemux-transfer-part"
 
+    private struct PendingFile: Sendable {
+        let sourcePath: String
+        let destinationPath: String
+        let sizeBytes: Int64
+    }
+
     private enum TransferControl: Error {
         case cancelled
     }
@@ -16,6 +22,7 @@ final class FileTransferCoordinator {
     private let concurrencyLimit: Int
     private var conflictContinuation: CheckedContinuation<FileTransferConflictDecision, Never>?
     private var cancellationRequested = false
+    private var pendingFiles: [PendingFile] = []
 
     private(set) var state: FileTransferState = .idle
     private(set) var direction: FileTransferDirection?
@@ -41,21 +48,22 @@ final class FileTransferCoordinator {
         destinationRoot: String
     ) async -> FileTransferSummary {
         guard state != .running, state != .waitingForConflict else { return summary }
-        _ = concurrencyLimit
         self.direction = direction
         summary = FileTransferSummary()
         cancellationRequested = false
         pendingConflict = nil
+        pendingFiles = []
         state = .running
 
         for sourcePath in sources {
             if cancellationRequested { break }
             let destinationPath = Self.join(destinationRoot, Self.name(of: sourcePath))
-            await transferItem(
+            await prepareTransferItem(
                 sourcePath: sourcePath,
                 destinationPath: destinationPath,
                 ancestry: []
             )
+            await transferPendingFiles()
         }
 
         currentItem = nil
@@ -87,7 +95,7 @@ final class FileTransferCoordinator {
         }
     }
 
-    private func transferItem(
+    private func prepareTransferItem(
         sourcePath: String,
         destinationPath: String,
         ancestry: Set<String>
@@ -143,12 +151,11 @@ final class FileTransferCoordinator {
             guard !cancellationRequested else { return }
             switch sourceMetadata.kind {
             case .file:
-                try await transferFile(
+                pendingFiles.append(PendingFile(
                     sourcePath: sourcePath,
                     destinationPath: destinationPath,
                     sizeBytes: sourceMetadata.sizeBytes
-                )
-                summary.completedItems += 1
+                ))
             case .directory:
                 if try await destination.metadata(at: destinationPath) == nil {
                     try await destination.createDirectory(at: destinationPath)
@@ -161,7 +168,7 @@ final class FileTransferCoordinator {
                 let children = try await source.children(at: sourcePath)
                 for child in children {
                     if cancellationRequested { break }
-                    await transferItem(
+                    await prepareTransferItem(
                         sourcePath: child,
                         destinationPath: Self.join(destinationPath, Self.name(of: child)),
                         ancestry: nextAncestry
@@ -174,6 +181,56 @@ final class FileTransferCoordinator {
             recordFailure(
                 sourcePath: sourcePath,
                 destinationPath: destinationPath,
+                kind: .operation,
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func transferPendingFiles() async {
+        let files = pendingFiles
+        pendingFiles = []
+        guard !files.isEmpty else { return }
+
+        await withTaskGroup(of: Void.self) { group in
+            var nextIndex = 0
+            let initialCount = min(concurrencyLimit, files.count)
+            for _ in 0..<initialCount {
+                let file = files[nextIndex]
+                nextIndex += 1
+                group.addTask { [weak self] in
+                    await self?.transferPendingFile(file)
+                }
+            }
+
+            while await group.next() != nil {
+                guard !cancellationRequested, nextIndex < files.count else { continue }
+                let file = files[nextIndex]
+                nextIndex += 1
+                group.addTask { [weak self] in
+                    await self?.transferPendingFile(file)
+                }
+            }
+        }
+    }
+
+    private func transferPendingFile(_ file: PendingFile) async {
+        guard !cancellationRequested else { return }
+        currentItem = file.sourcePath
+
+        do {
+            try await transferFile(
+                sourcePath: file.sourcePath,
+                destinationPath: file.destinationPath,
+                sizeBytes: file.sizeBytes
+            )
+            summary.completedItems += 1
+        } catch TransferControl.cancelled {
+            cancellationRequested = true
+        } catch {
+            recordFailure(
+                sourcePath: file.sourcePath,
+                destinationPath: file.destinationPath,
                 kind: .operation,
                 message: error.localizedDescription
             )
@@ -208,6 +265,7 @@ final class FileTransferCoordinator {
                 offset += Int64(data.count)
                 summary.completedBytes += Int64(data.count)
             }
+            guard !cancellationRequested else { throw TransferControl.cancelled }
             try await destination.replaceItem(
                 at: destinationPath,
                 withTemporaryItemAt: temporaryPath
