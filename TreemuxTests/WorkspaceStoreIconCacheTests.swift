@@ -272,6 +272,51 @@ final class WorkspaceStoreIconCacheTests: XCTestCase {
         )
     }
 
+    func testLegacyOrderBecomesStableAfterSaveBeforeAddingGroupInSameProcess() throws {
+        try writeState(PersistedWorkspaceState(
+            version: 1,
+            selectedWorkspaceID: nil,
+            workspaces: remoteRecords(hosts: ["zulu", "alpha"])
+        ))
+        let store = WorkspaceStore()
+
+        store.saveWorkspaceState()
+        store.flushPendingPersistence()
+        store.workspaces.append(
+            WorkspaceModel(
+                name: "bravo-project",
+                kind: .repository,
+                sshTarget: makeSSHTarget(host: "bravo", remotePath: "/srv/bravo")
+            )
+        )
+        store.saveWorkspaceState()
+
+        XCTAssertEqual(store.remoteWorkspaceGroups.map(\.key), ["alpha|root", "zulu|root", "bravo|root"])
+    }
+
+    func testPrunedGroupKeyAppendsWhenItReappearsInSameProcess() throws {
+        try writeState(PersistedWorkspaceState(
+            version: 1,
+            selectedWorkspaceID: nil,
+            workspaces: remoteRecords(hosts: ["alpha", "zulu"]),
+            remoteGroupOrder: ["alpha|root", "stale|root", "zulu|root"]
+        ))
+        let store = WorkspaceStore()
+
+        store.saveWorkspaceState()
+        store.flushPendingPersistence()
+        store.workspaces.append(
+            WorkspaceModel(
+                name: "stale-project",
+                kind: .repository,
+                sshTarget: makeSSHTarget(host: "stale", remotePath: "/srv/stale")
+            )
+        )
+        store.saveWorkspaceState()
+
+        XCTAssertEqual(store.remoteWorkspaceGroups.map(\.key), ["alpha|root", "zulu|root", "stale|root"])
+    }
+
     func testMoveRemoteGroupForwardAndBackward() throws {
         try writeState(PersistedWorkspaceState(
             version: 1,

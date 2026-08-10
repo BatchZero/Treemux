@@ -669,6 +669,12 @@ final class WorkspaceStore {
     /// (P1a Task 9). Only snapshot building + encoding + disk IO moved to the
     /// debounced path.
     func saveWorkspaceState() {
+        let resolvedRemoteOrder = resolvedRemoteGroupOrderForCurrentWorkspaces()
+        let normalizedRemoteOrder = resolvedRemoteOrder.isEmpty ? nil : resolvedRemoteOrder
+        if remoteGroupOrder != normalizedRemoteOrder {
+            remoteGroupOrder = normalizedRemoteOrder
+        }
+
         // Invalidate derived caches: this is the aggregation point for every
         // structural mutation to `workspaces` (add/remove/rename/icon change/
         // reorder), so clearing here covers all of them without needing a
@@ -677,6 +683,19 @@ final class WorkspaceStore {
         remoteGroupsCache = nil
 
         stateSaver.schedule()
+    }
+
+    private func resolvedRemoteGroupOrderForCurrentWorkspaces() -> [String] {
+        let discoveredRemoteKeys = workspaces.compactMap { workspace -> String? in
+            guard !workspace.isArchived,
+                  workspace.kind == .repository,
+                  let target = workspace.sshTarget else { return nil }
+            return Self.remoteGroupKey(for: target)
+        }
+        return Self.resolveRemoteGroupOrder(
+            savedOrder: remoteGroupOrder,
+            discoveredKeys: discoveredRemoteKeys
+        )
     }
 
     private func buildPersistedWorkspaceState() -> PersistedWorkspaceState {
@@ -690,16 +709,7 @@ final class WorkspaceStore {
             return nil
         }()
         let persistedSelectedID = resolvedID
-        let discoveredRemoteKeys = workspaces.compactMap { workspace -> String? in
-            guard !workspace.isArchived,
-                  workspace.kind == .repository,
-                  let target = workspace.sshTarget else { return nil }
-            return Self.remoteGroupKey(for: target)
-        }
-        let persistedRemoteOrder = Self.resolveRemoteGroupOrder(
-            savedOrder: remoteGroupOrder,
-            discoveredKeys: discoveredRemoteKeys
-        )
+        let persistedRemoteOrder = resolvedRemoteGroupOrderForCurrentWorkspaces()
         return PersistedWorkspaceState(
             version: 1,
             selectedWorkspaceID: persistedSelectedID,
