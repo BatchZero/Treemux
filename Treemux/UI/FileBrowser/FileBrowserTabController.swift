@@ -23,6 +23,11 @@ struct SubTabRuntime: Identifiable, Equatable {
     var viewMode: FileViewMode?
 }
 
+struct PendingUploadRequest: Equatable {
+    let urls: [URL]
+    let destination: String
+}
+
 @MainActor
 @Observable
 final class FileBrowserTabController {
@@ -134,6 +139,7 @@ final class FileBrowserTabController {
 
     private(set) var transferCoordinator: FileTransferCoordinator?
     private(set) var transferSummary: FileTransferSummary?
+    private(set) var pendingUpload: PendingUploadRequest?
 
     /// True when this tab browses a remote host (system-SSH or Citadel). Drives
     /// the local-vs-remote escalation-hint copy. `rootKind` (.project/.worktree)
@@ -144,6 +150,14 @@ final class FileBrowserTabController {
         guard let state = transferCoordinator?.state else { return false }
         return state == .running || state == .waitingForConflict
             || state == .paused || state == .cancelling
+    }
+
+    var canAcceptUploadDrop: Bool {
+        FileTransferPresentation.canAcceptUploadDrop(
+            isRemote: isRemote,
+            isTransferActive: isTransferActive,
+            hasPendingUpload: pendingUpload != nil
+        )
     }
 
     /// Inline "new folder / new file" editor state. Non-nil while the user is
@@ -729,6 +743,29 @@ final class FileBrowserTabController {
     }
 
     // MARK: - File transfer
+
+    @discardableResult
+    func stageUpload(urls: [URL], destination: String) -> Bool {
+        guard canAcceptUploadDrop else { return false }
+        let fileURLs = urls.filter(\.isFileURL)
+        guard !fileURLs.isEmpty else { return false }
+        pendingUpload = PendingUploadRequest(urls: fileURLs, destination: destination)
+        return true
+    }
+
+    func cancelPendingUpload() {
+        pendingUpload = nil
+    }
+
+    func consumePendingUpload() -> PendingUploadRequest? {
+        defer { pendingUpload = nil }
+        return pendingUpload
+    }
+
+    func confirmPendingUpload() async {
+        guard let request = consumePendingUpload() else { return }
+        await beginUpload(urls: request.urls, destination: request.destination)
+    }
 
     func beginUpload(urls: [URL], destination: String) async {
         guard isRemote, !urls.isEmpty, !isTransferActive else { return }
