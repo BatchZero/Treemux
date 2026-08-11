@@ -3,6 +3,16 @@
     <channel>
         <title>Treemux</title>
         <item>
+            <title>0.0.20</title>
+            <pubDate>Tue, 11 Aug 2026 10:04:38 +0800</pubDate>
+            <link>https://github.com/BatchZero/Treemux</link>
+            <sparkle:fullReleaseNotesLink>https://github.com/BatchZero/Treemux/releases/tag/v0.0.20</sparkle:fullReleaseNotesLink>
+            <sparkle:version>20</sparkle:version>
+            <sparkle:shortVersionString>0.0.20</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/BatchZero/Treemux/releases/download/v0.0.20/Treemux-0.0.20.app.zip" length="40175506" type="application/octet-stream" sparkle:edSignature="zVO7H5fwL/EOJjDca9VZkMyc00XbJqpXGiL0Loj7PEngKewjK/h9t3Xbj69FZLO3Lz9XZlWzLa48M47l4WugDw=="/>
+        </item>
+        <item>
             <title>0.0.19</title>
             <pubDate>Sun, 28 Jun 2026 00:31:26 +0800</pubDate>
             <link>https://github.com/BatchZero/Treemux</link>
@@ -91,16 +101,6 @@
             <sparkle:shortVersionString>0.0.11</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/BatchZero/Treemux/releases/download/v0.0.11/Treemux-0.0.11.app.zip" length="37499081" type="application/octet-stream" sparkle:edSignature="p46mWkZfx3XIDYPVuOOJHMVW9feeZChpGf+UoMN4SlPhv01SaNiAiwXmKsahY7UmNFd9xfJN+8fBc9Guw0fUCw=="/>
-        </item>
-        <item>
-            <title>0.0.10</title>
-            <pubDate>Sat, 09 May 2026 10:42:24 +0800</pubDate>
-            <link>https://github.com/BatchZero/Treemux</link>
-            <sparkle:fullReleaseNotesLink>https://github.com/BatchZero/Treemux/releases/tag/v0.0.10</sparkle:fullReleaseNotesLink>
-            <sparkle:version>10</sparkle:version>
-            <sparkle:shortVersionString>0.0.10</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/BatchZero/Treemux/releases/download/v0.0.10/Treemux-0.0.10.app.zip" length="37496964" type="application/octet-stream" sparkle:edSignature="GA1Rc8ADfDhL37oQkwu/TcTZz12pOhSpjq25i2Cv596BGSmIsjranPSgK6QJwd/BgSUYNh1dGIwBQkVW7qdKBg=="/>
         </item>
     </channel>
 </rss>
