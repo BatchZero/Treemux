@@ -8,6 +8,108 @@ import XCTest
 
 @MainActor
 final class FileBrowserTabControllerTests: XCTestCase {
+    private func makeRemoteController(rootPath: String = "/remote") -> FileBrowserTabController {
+        let target = SSHTarget(
+            host: "127.0.0.1",
+            port: 1,
+            user: "test",
+            identityFile: nil,
+            displayName: "test",
+            remotePath: rootPath
+        )
+        return FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: rootPath, rootKind: .project),
+            dataSource: RemoteFileBrowserDataSource(sshTarget: target)
+        )
+    }
+
+    func testStageUploadStoresOnePendingRequestWithoutStartingTransfer() throws {
+        let controller = makeRemoteController()
+        let urls = [URL(fileURLWithPath: "/tmp/local-folder")]
+
+        XCTAssertTrue(controller.stageUpload(urls: urls, destination: "/remote/target"))
+
+        let request = try XCTUnwrap(controller.pendingUpload)
+        XCTAssertEqual(request.urls, urls)
+        XCTAssertEqual(request.destination, "/remote/target")
+        XCTAssertNil(controller.transferCoordinator)
+        XCTAssertFalse(controller.canAcceptUploadDrop)
+    }
+
+    func testCancelPendingUploadClearsRequestWithoutStartingTransfer() {
+        let controller = makeRemoteController()
+        XCTAssertTrue(controller.stageUpload(
+            urls: [URL(fileURLWithPath: "/tmp/local-folder")],
+            destination: "/remote/target"
+        ))
+
+        controller.cancelPendingUpload()
+
+        XCTAssertNil(controller.pendingUpload)
+        XCTAssertNil(controller.transferCoordinator)
+        XCTAssertTrue(controller.canAcceptUploadDrop)
+    }
+
+    func testConsumePendingUploadReturnsRequestOnlyOnce() throws {
+        let controller = makeRemoteController()
+        XCTAssertTrue(controller.stageUpload(
+            urls: [URL(fileURLWithPath: "/tmp/local-folder")],
+            destination: "/remote/target"
+        ))
+
+        let request = try XCTUnwrap(controller.consumePendingUpload())
+
+        XCTAssertEqual(request.destination, "/remote/target")
+        XCTAssertNil(controller.consumePendingUpload())
+        XCTAssertNil(controller.pendingUpload)
+    }
+
+    func testConfirmPendingUploadRejectsImmediateSecondDrop() async throws {
+        let controller = makeRemoteController()
+        XCTAssertTrue(controller.stageUpload(
+            urls: [URL(fileURLWithPath: "/tmp/first")],
+            destination: "/remote/target"
+        ))
+
+        let confirmationTask = try XCTUnwrap(controller.confirmPendingUpload())
+
+        XCTAssertNil(controller.pendingUpload)
+        XCTAssertFalse(controller.stageUpload(
+            urls: [URL(fileURLWithPath: "/tmp/second")],
+            destination: "/remote/target"
+        ))
+
+        confirmationTask.cancel()
+        await confirmationTask.value
+        XCTAssertTrue(controller.canAcceptUploadDrop)
+    }
+
+    func testStageUploadRejectsNonFileEmptyLocalAndDuplicateRequests() {
+        let remote = makeRemoteController()
+        XCTAssertFalse(remote.stageUpload(urls: [], destination: "/remote"))
+        XCTAssertFalse(remote.stageUpload(
+            urls: [URL(string: "https://example.com/file")!],
+            destination: "/remote"
+        ))
+        XCTAssertTrue(remote.stageUpload(
+            urls: [URL(fileURLWithPath: "/tmp/first")],
+            destination: "/remote"
+        ))
+        XCTAssertFalse(remote.stageUpload(
+            urls: [URL(fileURLWithPath: "/tmp/second")],
+            destination: "/remote"
+        ))
+
+        let local = FileBrowserTabController(
+            initial: FileBrowserTabState(rootPath: "/tmp", rootKind: .project),
+            dataSource: MockFileBrowserDataSource()
+        )
+        XCTAssertFalse(local.stageUpload(
+            urls: [URL(fileURLWithPath: "/tmp/first")],
+            destination: "/tmp"
+        ))
+    }
+
     func test_setShowsHiddenFiles_recoversHiddenAfterToggleOff() async {
         let mock = MockFileBrowserDataSource()
         let visible = FileNode(id: "/r/a", name: "a", path: "/r/a", kind: .file, sizeBytes: 0, modifiedAt: nil)

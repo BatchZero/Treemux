@@ -92,6 +92,14 @@ enum FileTransferState: Sendable, Equatable {
 }
 
 enum FileTransferPresentation {
+    static func canAcceptUploadDrop(
+        isRemote: Bool,
+        isTransferActive: Bool,
+        hasPendingUpload: Bool
+    ) -> Bool {
+        isRemote && !isTransferActive && !hasPendingUpload
+    }
+
     static func dropDestination(for node: FileNode?, rootPath: String) -> String? {
         guard let node else { return rootPath }
         return node.isExpandableDirectory ? node.path : nil
