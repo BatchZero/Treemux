@@ -10,6 +10,7 @@ struct WorkspaceSidebarView: View {
     @Environment(WorkspaceStore.self) private var store
     @Environment(ThemeManager.self) private var theme
     @Environment(LanguageManager.self) private var languageManager
+    @Environment(WindowManager.self) private var windowManager
 
     // Rename dialog state
     @State private var renamingWorkspaceID: UUID?
@@ -33,6 +34,13 @@ struct WorkspaceSidebarView: View {
                 },
                 onRequestDelete: { id in
                     deletingWorkspaceID = id
+                },
+                onDetachNode: { [weak windowManager] ref in
+                    // Tear off: hand the ref to the WindowManager, which creates
+                    // the detached child window and records the node as detached
+                    // so the sidebar filters it out. Weak capture keeps the
+                    // coordinator closure from retaining the manager.
+                    windowManager?.detach(ref)
                 }
             )
 

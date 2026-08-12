@@ -33,6 +33,12 @@ final class WindowContext {
     private var themeCancellable: AnyCancellable?
     private var localeCancellable: AnyCancellable?
 
+    /// Weak back-reference to the owning `WindowManager`, set by the manager
+    /// right after creating the context. Injected into the SwiftUI environment
+    /// so views (e.g. the sidebar) can call `windowManager.detach(_:)`. Weak to
+    /// break the retain cycle WindowManager → WindowContext → WindowManager.
+    weak var windowManager: WindowManager?
+
     /// Interval token spanning ThemeManager construction (init) through
     /// makeKeyAndOrderFront (show); nil once the interval has been closed.
     private var windowConstructSignpost: OSSignpostIntervalState?
@@ -97,13 +103,8 @@ final class WindowContext {
 
     /// Creates and shows the window, dispatching the root view by `kind`.
     func show() {
-        let rootView = makeRootView()
         let host = NSHostingController(
-            rootView: rootView
-                .environment(store)
-                .environment(themeManager)
-                .environment(languageManager)
-                .environment(\.locale, languageManager.locale)
+            rootView: makeRootViewWithEnvironment(locale: languageManager.locale)
         )
 
         let window = NSWindow(contentViewController: host)
@@ -146,16 +147,13 @@ final class WindowContext {
             }
 
         // Observe language changes to update the root view's locale environment.
-        // Re-build via makeRootView() so detached windows update their root too.
+        // Re-build via makeRootViewWithEnvironment() so detached windows update
+        // their root too, and so the WindowManager environment stays injected.
         localeCancellable = languageManager.localePublisher
             .receive(on: RunLoop.main)
             .sink { [weak host, weak self] newLocale in
                 guard let self, let host else { return }
-                host.rootView = self.makeRootView()
-                    .environment(self.store)
-                    .environment(self.themeManager)
-                    .environment(self.languageManager)
-                    .environment(\.locale, newLocale)
+                host.rootView = self.makeRootViewWithEnvironment(locale: newLocale)
             }
     }
 
@@ -175,6 +173,27 @@ final class WindowContext {
         case .detached(let ref):
             return AnyView(DetachedRootView(ref: ref))
         }
+    }
+
+    /// Builds the root view and applies the full environment chain (store,
+    /// theme, language, locale, and the owning `WindowManager` when present).
+    /// Factored out so both the initial host and the locale-change rebuild
+    /// inject the same environment set, keeping the WindowManager reachable
+    /// from any view (e.g. the sidebar's `onDetachNode` wiring). Erased to
+    /// `AnyView` so the conditional `WindowManager` injection yields a single
+    /// opaque return type.
+    private func makeRootViewWithEnvironment(locale: Locale) -> AnyView {
+        var view = AnyView(
+            makeRootView()
+                .environment(store)
+                .environment(themeManager)
+                .environment(languageManager)
+                .environment(\.locale, locale)
+        )
+        if let windowManager {
+            view = AnyView(view.environment(windowManager))
+        }
+        return view
     }
 
     /// Applies the active theme's appearance to the given window.

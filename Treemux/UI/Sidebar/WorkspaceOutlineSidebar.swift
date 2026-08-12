@@ -14,6 +14,9 @@ struct WorkspaceOutlineSidebar: NSViewRepresentable {
     var onRequestRename: (UUID, String) -> Void
     /// Called when a context menu "Delete" is chosen. Param: workspaceID.
     var onRequestDelete: (UUID) -> Void
+    /// Called when a node is dragged outside the outline view to tear it off
+    /// into its own window. Param: the detached-node ref.
+    var onDetachNode: (DetachedNodeRef) -> Void
 
     func makeCoordinator() -> SidebarCoordinator {
         SidebarCoordinator()
@@ -26,6 +29,7 @@ struct WorkspaceOutlineSidebar: NSViewRepresentable {
         coordinator.theme = theme
         coordinator.requestRename = onRequestRename
         coordinator.requestDelete = onRequestDelete
+        coordinator.onDetachNode = onDetachNode
         coordinator.attach(container)
         return container
     }
@@ -53,6 +57,7 @@ struct WorkspaceOutlineSidebar: NSViewRepresentable {
         coordinator.store = store
         coordinator.requestRename = onRequestRename
         coordinator.requestDelete = onRequestDelete
+        coordinator.onDetachNode = onDetachNode
 
         coordinator.apply(
             store: store,

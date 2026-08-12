@@ -21,6 +21,10 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
     var requestRename: ((UUID, String) -> Void)?
     var requestDelete: ((UUID) -> Void)?
 
+    /// Called when a node is dragged outside the outline view to tear it off
+    /// into its own window. Wired to `WindowManager.detach(_:)`.
+    var onDetachNode: ((DetachedNodeRef) -> Void)?
+
     private var rootNodes: [SidebarNodeItem] = []
     private var isApplyingSelection = false
     private var lastDataFingerprint: String = ""
@@ -824,5 +828,44 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         case .worktree(_, let wt):
             store?.selectWorkspace(wt.id)
         }
+    }
+}
+
+// MARK: - NSDraggingSource
+
+extension SidebarCoordinator: NSDraggingSource {
+    func draggingSession(_ session: NSDraggingSession,
+                         sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
+        // Allow move within the app (covers both in-list reorder and tear-off).
+        return .move
+    }
+
+    func draggingSession(_ session: NSDraggingSession,
+                         endedAt screenPoint: NSPoint,
+                         operation: NSDragOperation) {
+        // Only tear off when NO in-list operation occurred (operation == [])
+        // AND the release point is outside the outline view's frame. A valid
+        // reorder yields a non-empty `operation`; a release inside the outline
+        // view with no valid target also yields [] but must NOT tear off.
+        guard operation == [] else { return }
+
+        guard let outlineView = container?.outlineView,
+              let window = outlineView.window else { return }
+
+        let viewRectInScreen = window.convertToScreen(
+            outlineView.convert(outlineView.bounds, to: nil)
+        )
+        guard !viewRectInScreen.contains(screenPoint) else { return }
+
+        // Decode the detached ref from the pasteboard. The drag session's
+        // pasteboard carries the `com.treemux.detach.ref` type written by
+        // `DetachPasteboardItem`; it round-trips as the ref's JSON encoding.
+        guard let payload = session.draggingPasteboard.string(forType: DetachPasteboardItem.detachType),
+              let data = payload.data(using: .utf8),
+              let ref = try? JSONDecoder().decode(DetachedNodeRef.self, from: data) else {
+            return
+        }
+
+        onDetachNode?(ref)
     }
 }

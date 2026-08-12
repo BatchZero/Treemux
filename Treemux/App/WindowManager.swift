@@ -44,6 +44,7 @@ final class WindowManager {
     func launchMain() {
         guard mainWindowContext == nil else { return }
         let ctx = WindowContext(store: store, kind: .main)
+        ctx.windowManager = self
         ctx.show()
         mainWindowContext = ctx
     }
@@ -58,6 +59,7 @@ final class WindowManager {
         guard !store.isDetached(ref) else { return }
         store.detachedNodes.insert(ref)
         let ctx = WindowContext(store: store, kind: .detached(ref))
+        ctx.windowManager = self
         childContexts.append(ctx)
         ctx.show()
     }
@@ -100,6 +102,7 @@ final class WindowManager {
                 continue
             }
             let ctx = WindowContext(store: store, kind: .detached(ref))
+            ctx.windowManager = self
             childContexts.append(ctx)
             ctx.show()
         }
