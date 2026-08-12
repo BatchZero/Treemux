@@ -42,9 +42,12 @@ struct WorkspaceOutlineSidebar: NSViewRepresentable {
         // collapsedSections within this call stack (auto-tracked); the
         // generation counter is the designated invalidation signal for
         // metadata refreshes, and selection drives the highlight sync.
+        // detachedNodes is read so tearing off / reattaching a node re-fires
+        // updateNSView and the coordinator rebuilds the filtered sidebar tree.
         _ = store.workspaceMetadataGeneration
         _ = store.selectedWorkspaceID
         _ = store.remoteGroupOrder
+        _ = store.detachedNodes
 
         let coordinator = context.coordinator
         coordinator.store = store

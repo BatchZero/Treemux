@@ -90,16 +90,26 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         let localWorkspaces = store.localWorkspaces
         let remoteGroups = store.remoteWorkspaceGroups
         let allWorkspaces = localWorkspaces + remoteGroups.flatMap(\.targets)
-        let fingerprint = dataFingerprint(workspaces: allWorkspaces, remoteGroups: remoteGroups)
+        let detached = store.detachedNodes
+        let fingerprint = dataFingerprint(
+            workspaces: allWorkspaces,
+            remoteGroups: remoteGroups,
+            detached: detached
+        )
         let dataChanged = fingerprint != lastDataFingerprint
 
         if dataChanged {
             let collapsedBeforeReload = collapsedSectionKeys(on: container?.outlineView)
             lastDataFingerprint = fingerprint
-            rootNodes = buildNodes(
+            // Build the tree from the store, then hide any nodes that have been
+            // torn off into their own window (they live in detached child windows,
+            // not the main sidebar). Applied here so buildNodes stays a pure
+            // store-shape function while detach visibility is layered on top.
+            let builtNodes = buildNodes(
                 localWorkspaces: localWorkspaces,
                 remoteGroups: remoteGroups
             )
+            rootNodes = Self.filterRootNodes(builtNodes, detached: store.detachedNodes)
             container?.reloadOutlineData()
 
             guard let outlineView = container?.outlineView else { return }
@@ -133,10 +143,16 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
 
     private func dataFingerprint(
         workspaces: [WorkspaceModel],
-        remoteGroups: [(key: String, targets: [WorkspaceModel])]
+        remoteGroups: [(key: String, targets: [WorkspaceModel])],
+        detached: Set<DetachedNodeRef>
     ) -> String {
         var parts: [String] = []
         parts.append(contentsOf: remoteGroups.map { "section:\($0.key)" })
+        // Include the detached set so tearing off / reattaching a node forces a
+        // sidebar rebuild even when the underlying workspace data is unchanged.
+        // Sorted by the stable autosave suffix for a set-order-independent hash.
+        parts.append(contentsOf: detached.map { "detached:\($0.autosaveKeySuffix)" }
+            .sorted())
         for ws in workspaces {
             let iconKey = ws.workspaceIcon.map { "\($0)" } ?? "-"
             parts.append("\(ws.id)|\(ws.name)|\(ws.currentBranch ?? "-")|\(ws.activeWorktreePath)|\(ws.worktrees.count)|\(iconKey)")
@@ -199,6 +215,62 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         }
 
         return sections
+    }
+
+    /// Pure filter: removes detached nodes from the sidebar tree so they only
+    /// appear in their torn-off window, never in the main sidebar.
+    ///
+    /// Rules (mirror `DetachedNodeRef`'s cases):
+    /// - `.section(.remote(key, _))`: dropped entirely when
+    ///   `.remoteGroup(key)` is in `detached` (whole server section torn off).
+    /// - `.section(.local)`: always kept — the local section cannot be detached.
+    /// - `.workspace(ws)`: dropped when `.workspace(ws.id)` is in `detached`.
+    ///   Otherwise its worktree children are filtered: any
+    ///   `.worktree(parentWS, wt)` whose `.worktree(workspaceID:, worktreeID:)`
+    ///   is in `detached` is removed, but the parent workspace remains. Because
+    ///   `SidebarNodeItem.children` is immutable (`let`), a new node is built
+    ///   with the surviving children when any child is dropped.
+    /// - `.worktree` at root level (no parent — unusual): kept as-is.
+    ///
+    /// Fast path: when `detached` is empty the input is returned unchanged so
+    /// the common (non-detached) rebuild is allocation-free.
+    static func filterRootNodes(
+        _ nodes: [SidebarNodeItem],
+        detached: Set<DetachedNodeRef>
+    ) -> [SidebarNodeItem] {
+        guard !detached.isEmpty else { return nodes }
+        return nodes.compactMap { node in
+            switch node.kind {
+            case .section(.remote(let key, _)):
+                // Whole remote section torn off → drop it.
+                return detached.contains(.remoteGroup(key)) ? nil : node
+            case .section(.local):
+                // Local section is never detachable.
+                return node
+            case .workspace(let ws):
+                // Whole workspace torn off → drop it.
+                if detached.contains(.workspace(ws.id)) { return nil }
+                // Filter worktree children; keep the parent. SidebarNodeItem is
+                // an immutable class, so rebuild a new node when a child is
+                // removed rather than mutating in place.
+                let filteredChildren = node.children.filter { child in
+                    if case .worktree(let parentWS, let wt) = child.kind,
+                       detached.contains(.worktree(workspaceID: parentWS.id, worktreeID: wt.id)) {
+                        return false
+                    }
+                    return true
+                }
+                if filteredChildren.count == node.children.count {
+                    // No child dropped — return the original node to preserve
+                    // identity (drag-and-drop relies on `===`).
+                    return node
+                }
+                return SidebarNodeItem(kind: node.kind, children: filteredChildren)
+            case .worktree:
+                // Root-level worktree (no parent) is unusual; keep as-is.
+                return node
+            }
+        }
     }
 
     private func makeWorkspaceNode(_ workspace: WorkspaceModel) -> SidebarNodeItem {
