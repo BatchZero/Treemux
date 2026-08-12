@@ -58,15 +58,40 @@ final class WindowContext {
         }
     }
 
-    /// Window title shown in the title bar; detached windows refine this with
-    /// the node name in a later task.
+    /// Window title shown in the title bar. Detached windows show the node's
+    /// name (workspace name, or the remote-group display title) so the title
+    /// bar identifies what was torn off.
     private var windowTitle: String {
         switch kind {
         case .main:
             return "Treemux"
-        case .detached:
-            // Refined in a later task with the detached node's name.
-            return "Treemux"
+        case .detached(let ref):
+            return detachedTitle(for: ref)
+        }
+    }
+
+    /// Derives the window title for a detached window from its ref.
+    /// Falls back to "Treemux" if the referenced node is missing.
+    private func detachedTitle(for ref: DetachedNodeRef) -> String {
+        switch ref {
+        case .workspace(let id):
+            return store.workspaces.first(where: { $0.id == id })?.name ?? "Treemux"
+        case .worktree(let wsID, let wtID):
+            guard let ws = store.workspaces.first(where: { $0.id == wsID }),
+                  let wt = ws.worktrees.first(where: { $0.id == wtID }) else {
+                return store.workspaces.first(where: { $0.id == wsID })?.name ?? "Treemux"
+            }
+            // "<workspace> — <branch/path>" so a torn-off worktree is identifiable.
+            let branch = wt.branch ?? wt.path.lastPathComponent
+            return "\(ws.name) — \(branch)"
+        case .remoteGroup(let key):
+            // remoteGroupDisplayTitle takes an SSHTarget; derive it from the
+            // group's first workspace. Fall back to the raw group key.
+            if let ws = store.workspacesInRemoteGroup(key).first,
+               let target = ws.sshTarget {
+                return WorkspaceStore.remoteGroupDisplayTitle(for: target)
+            }
+            return key
         }
     }
 
@@ -142,16 +167,13 @@ final class WindowContext {
         window = nil
     }
 
-    /// Builds the SwiftUI root view for this window based on `kind`. The
-    /// detached case is a placeholder until a later task swaps in the real
-    /// `DetachedRootView`.
+    /// Builds the SwiftUI root view for this window based on `kind`.
     private func makeRootView() -> some View {
         switch kind {
         case .main:
             return AnyView(MainWindowView())
         case .detached(let ref):
-            // Placeholder until DetachedRootView lands in a later task.
-            return AnyView(Text("Detached: \(String(describing: ref))"))
+            return AnyView(DetachedRootView(ref: ref))
         }
     }
 

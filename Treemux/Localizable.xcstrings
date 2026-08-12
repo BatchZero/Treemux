@@ -1281,6 +1281,16 @@
         }
       }
     },
+    "No Terminal Session": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无终端会话"
+          }
+        }
+      }
+    },
     "No folder selected": {
       "localizations": {
         "zh-Hans": {
@@ -2427,6 +2437,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "主题"
+          }
+        }
+      }
+    },
+    "This project is no longer available.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该项目已不再可用。"
+          }
+        }
+      }
+    },
+    "This server has no projects.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该服务器没有项目。"
+          }
+        }
+      }
+    },
+    "This worktree has no active terminal session.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该工作树没有活动的终端会话。"
           }
         }
       }

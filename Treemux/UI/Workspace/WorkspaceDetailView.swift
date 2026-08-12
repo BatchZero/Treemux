@@ -18,7 +18,12 @@ struct WorkspaceDetailView: View {
 }
 
 /// Container that manages tab bar visibility and routes to the active tab's content.
-private struct WorkspaceTabContainerView: View {
+///
+/// `internal` (not `private`) so the detached single-workspace child window
+/// (`SingleWorkspaceWindowView`) can render the full tab container for a given
+/// workspace without going through the store-selection path that
+/// `WorkspaceDetailView` uses in the main window.
+struct WorkspaceTabContainerView: View {
     @Environment(WorkspaceStore.self) private var store
     @Bindable var workspace: WorkspaceModel
 
@@ -67,7 +72,11 @@ private struct WorkspaceTabContainerView: View {
 
 /// Observes the session controller directly so that layout mutations
 /// (e.g. splitPane) propagate to SplitNodeView.
-private struct WorkspaceSessionDetailView: View {
+///
+/// `internal` (not `private`) so the detached single-worktree child window
+/// (`SingleWorktreeWindowView`) can render just a session (no tab bar) by
+/// handing this view the worktree's session controller directly.
+struct WorkspaceSessionDetailView: View {
     let controller: WorkspaceSessionController
     var onCloseTab: () -> Void
 
