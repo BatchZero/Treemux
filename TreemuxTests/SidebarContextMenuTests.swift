@@ -88,17 +88,27 @@ final class SidebarContextMenuTests: XCTestCase {
         let localSection = SidebarNodeItem(kind: .section(.local))
         let workspaceNode = SidebarNodeItem(kind: .workspace(workspace))
 
+        // `pasteboardWriterForItem` now returns a `DetachPasteboardItem`
+        // (NSPasteboardWriting) that carries both the legacy reorder payload
+        // and the new detach ref. Probe the legacy types via the
+        // `pasteboardPropertyList(forType:)` API the pasteboard would call.
         let remoteWriter = coordinator.outlineView(outlineView, pasteboardWriterForItem: remoteSection)
-            as? NSPasteboardItem
-        XCTAssertEqual(remoteWriter?.string(forType: NSPasteboard.PasteboardType("com.treemux.remote-group.key")), "example|root")
-        XCTAssertNil(remoteWriter?.string(forType: NSPasteboard.PasteboardType("com.treemux.workspace.ids")))
+            as? DetachPasteboardItem
+        let remoteGroupType = NSPasteboard.PasteboardType("com.treemux.remote-group.key")
+        let workspaceType = NSPasteboard.PasteboardType("com.treemux.workspace.ids")
+        XCTAssertEqual(remoteWriter?.pasteboardPropertyList(forType: remoteGroupType) as? String, "example|root")
+        XCTAssertNil(remoteWriter?.pasteboardPropertyList(forType: workspaceType))
+        // The detach ref for a remote section is a `.remoteGroup`.
+        XCTAssertEqual(remoteWriter?.ref, .remoteGroup("example|root"))
 
         XCTAssertNil(coordinator.outlineView(outlineView, pasteboardWriterForItem: localSection))
 
         let workspaceWriter = coordinator.outlineView(outlineView, pasteboardWriterForItem: workspaceNode)
-            as? NSPasteboardItem
-        XCTAssertEqual(workspaceWriter?.string(forType: NSPasteboard.PasteboardType("com.treemux.workspace.ids")), workspace.id.uuidString)
-        XCTAssertNil(workspaceWriter?.string(forType: NSPasteboard.PasteboardType("com.treemux.remote-group.key")))
+            as? DetachPasteboardItem
+        XCTAssertEqual(workspaceWriter?.pasteboardPropertyList(forType: workspaceType) as? String, workspace.id.uuidString)
+        XCTAssertNil(workspaceWriter?.pasteboardPropertyList(forType: remoteGroupType))
+        // The detach ref for a workspace node is a `.workspace`.
+        XCTAssertEqual(workspaceWriter?.ref, .workspace(workspace.id))
     }
 
     func testRemoteGroupRootDropKeepsLocalSectionPinned() {

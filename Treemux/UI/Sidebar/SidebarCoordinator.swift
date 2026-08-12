@@ -600,16 +600,37 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
     func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> NSPasteboardWriting? {
         guard let node = item as? SidebarNodeItem else { return nil }
 
-        let pasteboardItem = NSPasteboardItem()
+        // Every draggable node now returns a `DetachPasteboardItem` that writes
+        // BOTH the detach ref (for tear-off, read in Task 9's
+        // `draggingSession(endedAt:)`) AND the legacy reorder payload (read by
+        // `validateDrop`/`acceptDrop` below) so in-list reordering keeps working.
         switch node.kind {
         case .section(.remote(let groupKey, _)):
-            pasteboardItem.setString(groupKey, forType: Self.remoteGroupDragType)
-        case .section(.local), .worktree:
+            // Reorder payload (remote-group key) + detach ref.
+            return DetachPasteboardItem(
+                ref: .remoteGroup(groupKey),
+                legacyReorderPayload: [(Self.remoteGroupDragType, groupKey)]
+            )
+
+        case .section(.local):
+            // The local section is not draggable today.
             return nil
+
         case .workspace(let ws):
-            pasteboardItem.setString(ws.id.uuidString, forType: Self.workspaceDragType)
+            // Reorder payload (workspace UUID) + detach ref.
+            return DetachPasteboardItem(
+                ref: .workspace(ws.id),
+                legacyReorderPayload: [(Self.workspaceDragType, ws.id.uuidString)]
+            )
+
+        case .worktree(let ws, let wt):
+            // NEW: worktree is now draggable, but ONLY for tear-off. It carries
+            // no legacy reorder payload (worktrees are not reorder targets —
+            // `validateDrop` below returns `[]` for them — so dragging one out
+            // reaches `operation == []` in Task 9, which spawns a detached
+            // window). In-list reorder behavior is unchanged.
+            return DetachPasteboardItem(ref: .worktree(workspaceID: ws.id, worktreeID: wt.id))
         }
-        return pasteboardItem
     }
 
     func outlineView(
