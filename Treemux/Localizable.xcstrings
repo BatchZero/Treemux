@@ -141,6 +141,16 @@
         }
       }
     },
+    "Already in New Window": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已在独立窗口中打开"
+          }
+        }
+      }
+    },
     "Active Theme": {
       "localizations": {
         "zh-Hans": {
@@ -1457,6 +1467,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开项目…"
+          }
+        }
+      }
+    },
+    "Open in New Window": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在新窗口中打开"
           }
         }
       }

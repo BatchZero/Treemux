@@ -419,7 +419,25 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         let menu = NSMenu()
 
         switch node.kind {
-        case .section:
+        case .section(.remote(let groupKey, _)):
+            // Remote server section: a single "Open in New Window" item to tear
+            // the whole section off into its own window.
+            let isRemoteDetached = store?.isDetached(.remoteGroup(groupKey)) ?? false
+            let remoteItem = NSMenuItem(
+                title: isRemoteDetached
+                    ? String(localized: "Already in New Window")
+                    : String(localized: "Open in New Window"),
+                action: #selector(openRemoteGroupInNewWindow(_:)),
+                keyEquivalent: ""
+            )
+            remoteItem.target = self
+            remoteItem.representedObject = groupKey
+            remoteItem.isEnabled = !isRemoteDetached
+            menu.addItem(remoteItem)
+            return menu
+
+        case .section(.local):
+            // The local section is not detachable.
             return nil
 
         case .workspace(let ws):
@@ -437,6 +455,23 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
             iconItem.target = self
             iconItem.representedObject = ["workspaceID": ws.id, "worktreePath": wt.path.path] as [String: Any]
             menu.addItem(iconItem)
+
+            // Open in New Window — disabled + retitled when this worktree has
+            // already been torn off into its own window.
+            let isWorktreeDetached = store?.isDetached(
+                .worktree(workspaceID: ws.id, worktreeID: wt.id)
+            ) ?? false
+            let wtNewItem = NSMenuItem(
+                title: isWorktreeDetached
+                    ? String(localized: "Already in New Window")
+                    : String(localized: "Open in New Window"),
+                action: #selector(openWorktreeInNewWindow(_:)),
+                keyEquivalent: ""
+            )
+            wtNewItem.target = self
+            wtNewItem.representedObject = ["workspaceID": ws.id, "worktreeID": wt.id] as [String: Any]
+            wtNewItem.isEnabled = !isWorktreeDetached
+            menu.addItem(wtNewItem)
         }
 
         return menu
@@ -457,6 +492,21 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         iconItem.target = self
         iconItem.representedObject = ws.id
         items.append(iconItem)
+
+        // Open in New Window — disabled + retitled when this workspace has
+        // already been torn off into its own window.
+        let isWorkspaceDetached = store?.isDetached(.workspace(ws.id)) ?? false
+        let newWindowItem = NSMenuItem(
+            title: isWorkspaceDetached
+                ? String(localized: "Already in New Window")
+                : String(localized: "Open in New Window"),
+            action: #selector(openWorkspaceInNewWindow(_:)),
+            keyEquivalent: ""
+        )
+        newWindowItem.target = self
+        newWindowItem.representedObject = ws.id
+        newWindowItem.isEnabled = !isWorkspaceDetached
+        items.append(newWindowItem)
 
         // Rename (only for repositories)
         if ws.kind == .repository {
@@ -515,6 +565,26 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         store?.sidebarIconCustomizationRequest = SidebarIconCustomizationRequest(
             target: .worktree(workspaceID: workspaceID, worktreePath: worktreePath)
         )
+    }
+
+    /// Tear off a whole workspace into its own window.
+    @objc private func openWorkspaceInNewWindow(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID else { return }
+        onDetachNode?(.workspace(id))
+    }
+
+    /// Tear off a single worktree into its own window (parent workspace stays).
+    @objc private func openWorktreeInNewWindow(_ sender: NSMenuItem) {
+        guard let dict = sender.representedObject as? [String: Any],
+              let workspaceID = dict["workspaceID"] as? UUID,
+              let worktreeID = dict["worktreeID"] as? UUID else { return }
+        onDetachNode?(.worktree(workspaceID: workspaceID, worktreeID: worktreeID))
+    }
+
+    /// Tear off an entire remote server section into its own window.
+    @objc private func openRemoteGroupInNewWindow(_ sender: NSMenuItem) {
+        guard let key = sender.representedObject as? String else { return }
+        onDetachNode?(.remoteGroup(key))
     }
 
     // MARK: - NSOutlineViewDataSource
