@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		01CDE66498B869D0064757AC /* SidebarContextMenuTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C4F64E16954A106E36D7073 /* SidebarContextMenuTests.swift */; };
 		02245B1A70FB0EFD341B4406 /* BufferWordIndexTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE469F5267854D1A9BC1F4B9 /* BufferWordIndexTests.swift */; };
+		03313C20493D3B9CA1654859 /* WindowContextKindTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB1713516E69FD969B50EE3 /* WindowContextKindTests.swift */; };
 		04885DA006A7F9D402450132 /* WindowContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8662706F495A0DA4CCB1F0 /* WindowContext.swift */; };
 		06E22E43AD282436F95AD810 /* ThemeManagerDerivedColorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C737F9B167BD4376CBDA66A4 /* ThemeManagerDerivedColorTests.swift */; };
 		075D3FA510B8DE84C58CFB5E /* WorkspaceTabKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2054644AE5A8CE04F07FCF2 /* WorkspaceTabKind.swift */; };
@@ -392,6 +393,7 @@
 		8629D2D5813F897F85840289 /* SSHTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHTarget.swift; sourceTree = "<group>"; };
 		88B420B3E15F447FDA5E8053 /* ImagePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePreviewView.swift; sourceTree = "<group>"; };
 		8B7D707F4CF11D6790D042C0 /* FileIconCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileIconCatalog.swift; sourceTree = "<group>"; };
+		8CB1713516E69FD969B50EE3 /* WindowContextKindTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowContextKindTests.swift; sourceTree = "<group>"; };
 		8E7A46FDBEAFFC0EFDFE9960 /* FileBrowserSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserSearchTests.swift; sourceTree = "<group>"; };
 		8EC2AC842CE6D2FE0EF2575A /* GhosttyTerminalConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhosttyTerminalConfig.swift; sourceTree = "<group>"; };
 		9250C83EF14A84383E73002A /* RemoteDirectoryBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDirectoryBrowser.swift; sourceTree = "<group>"; };
@@ -628,6 +630,7 @@
 				A3863AB5298AAC0C830363DD /* WorkspaceTabRecordMigrationTests.swift */,
 				62775848E4FED7C34C22BCEF /* DetachedNodeRefTests.swift */,
 				0EE94C34D20E9F8BB7752157 /* WorkspaceStoreDetachTests.swift */,
+				8CB1713516E69FD969B50EE3 /* WindowContextKindTests.swift */,
 			);
 			path = TreemuxTests;
 			sourceTree = "<group>";
@@ -1356,6 +1359,7 @@
 				29042CD4DE15469FE716957A /* WorkspaceTabRecordMigrationTests.swift in Sources */,
 				2E66164F851112B99174C560 /* DetachedNodeRefTests.swift in Sources */,
 				2F529478ABFE434B09754FA3 /* WorkspaceStoreDetachTests.swift in Sources */,
+				03313C20493D3B9CA1654859 /* WindowContextKindTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
