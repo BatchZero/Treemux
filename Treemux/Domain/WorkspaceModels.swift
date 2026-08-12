@@ -214,6 +214,12 @@ struct PersistedWorkspaceState: Codable {
     let workspaces: [WorkspaceRecord]
     var collapsedSections: [String]?
     var remoteGroupOrder: [String]?
+    /// Sidebar nodes torn off into their own windows. Optional so legacy
+    /// `workspace-state.json` files written before this feature shipped
+    /// (which lack the key) decode cleanly to `nil` — mirrored on the
+    /// existing `collapsedSections`/`remoteGroupOrder` optional pattern,
+    /// rather than adding a custom `init(from:)`.
+    var detachedNodes: Set<DetachedNodeRef>?
 }
 
 // MARK: - Runtime Models

@@ -38,6 +38,11 @@ final class WorkspaceStore {
     var collapsedSections: Set<String> = []
     var remoteGroupOrder: [String]?
 
+    /// Sidebar nodes currently torn off into their own windows. Persisted
+    /// across launches so child windows can be rebuilt. Drives the main
+    /// sidebar's filter (detached nodes are hidden from the main window).
+    var detachedNodes: Set<DetachedNodeRef> = []
+
     var showSettings = false
     var showCommandPalette = false
     var sidebarIconCustomizationRequest: SidebarIconCustomizationRequest?
@@ -380,6 +385,40 @@ final class WorkspaceStore {
         return "\(target.displayName)|\(user)"
     }
 
+    /// Computes the remote-group key for a workspace, or `nil` if the
+    /// workspace is not SSH-backed (has no `sshTarget`).
+    private func remoteGroupKey(for workspace: WorkspaceModel) -> String? {
+        guard let target = workspace.sshTarget else { return nil }
+        return Self.remoteGroupKey(for: target)
+    }
+
+    /// Returns true if the given node ref is currently recorded as detached
+    /// (torn off into its own window). Drives the main sidebar's filter.
+    func isDetached(_ ref: DetachedNodeRef) -> Bool {
+        detachedNodes.contains(ref)
+    }
+
+    /// Workspaces belonging to a remote group key (used by the detached
+    /// remote-group window view to list the workspaces it owns).
+    func workspacesInRemoteGroup(_ key: String) -> [WorkspaceModel] {
+        workspaces.filter { remoteGroupKey(for: $0) == key }
+    }
+
+    /// Returns true if the referenced node still exists in the store.
+    /// Stale refs (e.g. a workspace/worktree deleted on disk, or a remote
+    /// group that no longer has any member) are dropped during window restore.
+    func isValid(_ ref: DetachedNodeRef) -> Bool {
+        switch ref {
+        case .workspace(let id):
+            return workspaces.contains { $0.id == id }
+        case .worktree(let wsID, let wtID):
+            guard let ws = workspaces.first(where: { $0.id == wsID }) else { return false }
+            return ws.worktrees.contains { $0.id == wtID }
+        case .remoteGroup(let key):
+            return workspaces.contains { remoteGroupKey(for: $0) == key }
+        }
+    }
+
     /// Display title for a remote workspace group, e.g. "my-server (root@192.168.1.100)".
     static func remoteGroupDisplayTitle(for target: SSHTarget) -> String {
         if let user = target.user, !user.isEmpty {
@@ -647,6 +686,7 @@ final class WorkspaceStore {
         selectedWorkspaceID = state.selectedWorkspaceID
         collapsedSections = Set(state.collapsedSections ?? [])
         remoteGroupOrder = state.remoteGroupOrder
+        detachedNodes = Set(state.detachedNodes ?? [])
         workspaces = state.workspaces.map { WorkspaceModel(from: $0) }
         startWatchingAll()
 
@@ -715,7 +755,10 @@ final class WorkspaceStore {
             selectedWorkspaceID: persistedSelectedID,
             workspaces: workspaces.map { $0.toRecord() },
             collapsedSections: collapsedSections.isEmpty ? nil : Array(collapsedSections),
-            remoteGroupOrder: persistedRemoteOrder.isEmpty ? nil : persistedRemoteOrder
+            remoteGroupOrder: persistedRemoteOrder.isEmpty ? nil : persistedRemoteOrder,
+            // Omit the key entirely when empty so the persisted file stays
+            // close to the legacy shape for users with no detached windows.
+            detachedNodes: detachedNodes.isEmpty ? nil : detachedNodes
         )
     }
 
