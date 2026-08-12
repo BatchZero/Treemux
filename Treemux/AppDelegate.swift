@@ -44,6 +44,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         treemuxApp?.shutdown()
     }
 
+    /// Recovery hook for the cancel case in C2: if the main window was torn
+    /// down by the cascade (`handleMainWindowWillClose`) but the user then
+    /// cancelled the unsaved-changes prompt in `applicationShouldTerminate`,
+    /// the app stays alive with no visible window. On the next activation we
+    /// rebuild the main window so the user is never stranded.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        treemuxApp?.ensureMainWindowAfterCascadeIfNeeded()
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let store,
               let prompt = UnsavedQuitPrompt.build(paths: store.unsavedFilePaths) else {
@@ -72,6 +81,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let window = notification.object as? NSWindow else { return }
         // Identify the main window by its autosave name ("treemux.main"), set
         // in WindowContext. Closing it cascades to all children and quits.
+        // Detached child windows (autosave name "treemux.detach.*") are handled
+        // by WindowManager's OWN willCloseNotification observer, which routes
+        // the close through `closeChild(_:)` so the node is restored in the
+        // main sidebar — this AppDelegate observer only drives the main-window
+        // cascade path.
         guard window.frameAutosaveName == "treemux.main" else { return }
         treemuxApp?.handleMainWindowWillClose()
     }

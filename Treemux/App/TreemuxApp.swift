@@ -35,4 +35,14 @@ final class TreemuxApp {
     func handleMainWindowWillClose() {
         windowManager?.handleMainWindowWillClose()
     }
+
+    /// Recovery for the cancel case (C2): if the cascade tore down the main
+    /// window but `applicationShouldTerminate` was cancelled (user clicked
+    /// Cancel on the unsaved-changes prompt), the app is left alive with no
+    /// visible window. This rebuilds the main window in that situation so the
+    /// user is never stranded. No-op when the main window is already present
+    /// (the normal multi-window case where children open/close independently).
+    func ensureMainWindowAfterCascadeIfNeeded() {
+        windowManager?.recoverMainWindowIfCancelled()
+    }
 }

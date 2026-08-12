@@ -499,6 +499,22 @@ final class WorkspaceStore {
         if selectedWorkspaceID == id || selectedWorkspaceID == nil {
             selectedWorkspaceID = workspaces.first?.id
         }
+        // Drop any detached-window refs that pointed at this workspace or one
+        // of its worktrees. Without this, stale refs would persist in
+        // workspace-state.json until the next launch (isValid is only checked
+        // at restore time), and the torn-off child window would point at a
+        // node that no longer exists.
+        detachedNodes = detachedNodes.filter { ref in
+            switch ref {
+            case .workspace(let wsID):
+                return wsID != id
+            case .worktree(let wsID, _):
+                return wsID != id
+            case .remoteGroup:
+                // The remote group may still have other members; leave it.
+                return true
+            }
+        }
         saveWorkspaceState()
     }
 

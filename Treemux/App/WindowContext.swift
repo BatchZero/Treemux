@@ -165,6 +165,20 @@ final class WindowContext {
         window = nil
     }
 
+    /// Returns `true` if this context currently owns `candidate` (identity
+    /// comparison). Used by `WindowManager` to locate the `WindowContext` whose
+    /// window just posted `willCloseNotification` so it can route the close
+    /// through `closeChild(_:)` and run the detached-ref restore side-effect.
+    func ownsWindow(_ candidate: NSWindow) -> Bool {
+        guard let window else { return false }
+        return window === candidate
+    }
+
+    /// Test-only accessor for the underlying `NSWindow`. Production code goes
+    /// through `ownsWindow(_:)`; tests need the window itself to drive
+    /// `handleChildWindowClose(_:)` against a real identity.
+    internal func testWindow() -> NSWindow? { window }
+
     /// Builds the SwiftUI root view for this window based on `kind`.
     private func makeRootView() -> some View {
         switch kind {

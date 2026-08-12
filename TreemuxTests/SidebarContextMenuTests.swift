@@ -40,7 +40,7 @@ final class SidebarContextMenuTests: XCTestCase {
         return (coordinator, store)
     }
 
-    func testBuiltInTerminalShowsOnlyChangeIcon() {
+    func testBuiltInTerminalShowsChangeIconAndOpenInNewWindow() {
         let coordinator = makeCoordinator()
         let builtin = WorkspaceModel(
             id: WorkspaceModel.builtInDefaultTerminalID,

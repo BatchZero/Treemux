@@ -355,6 +355,43 @@ final class WorkspaceModel: Identifiable {
         return sessionController
     }
 
+    /// Returns a session controller for the given worktree path WITHOUT
+    /// mutating `activeWorktreePath` or the active tab state. Used by the
+    /// detached single-worktree window (which renders one worktree's terminal
+    /// in isolation) so it does not switch the SHARED model's active worktree
+    /// out from under the main window's `WorkspaceDetailView`.
+    ///
+    /// Resolves the active terminal tab's controller directly against the
+    /// target worktree path (creating the controller lazily via the private
+    /// `controller(forTabID:worktreePath:)` factory). The controller is shared
+    /// with the main window for that (worktree path, tab) pair — editing it
+    /// updates the same session — but resolving it does not flip which
+    /// worktree/tabs the main window shows.
+    func sessionController(forWorktreePathReadOnly path: String) -> WorkspaceSessionController? {
+        // Load the tab state for the requested worktree path without touching
+        // activeWorktreePath. If it matches the active worktree, use the live
+        // tabs/activeTabID; otherwise use the saved (inactive) tab state, or a
+        // default single-pane terminal tab for the path.
+        let tabsForPath: [WorkspaceTabStateRecord]
+        let activeTabIDForPath: UUID?
+        if path == activeWorktreePath {
+            tabsForPath = tabs
+            activeTabIDForPath = activeTabID
+        } else if let saved = worktreeTabStates[path] {
+            tabsForPath = saved.tabs
+            activeTabIDForPath = saved.activeTabID
+        } else {
+            let defaultTab = WorkspaceTabStateRecord.makeDefault(
+                workingDirectory: path, sshTarget: sshTarget)
+            tabsForPath = [defaultTab]
+            activeTabIDForPath = defaultTab.id
+        }
+        guard let tabID = activeTabIDForPath,
+              let tab = tabsForPath.first(where: { $0.id == tabID }),
+              tab.kind == .terminal else { return nil }
+        return controller(forTabID: tabID, worktreePath: path)
+    }
+
     /// Returns true if the given worktree path has any active tab controllers (running sessions).
     func hasRunningSessions(forWorktreePath path: String) -> Bool {
         guard let controllers = tabControllers[path] else { return false }

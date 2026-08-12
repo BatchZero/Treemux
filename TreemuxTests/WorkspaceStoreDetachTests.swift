@@ -184,6 +184,85 @@ final class WorkspaceStoreDetachTests: XCTestCase {
         XCTAssertTrue(store.detachedNodes.isEmpty)
     }
 
+    // MARK: - removeWorkspace cleans stale detachedNodes refs (I2)
+
+    /// Removing a workspace must also drop its `.workspace(id)` ref from
+    /// `detachedNodes`. Without this, the stale ref would persist in
+    /// workspace-state.json until the next launch (isValid is only checked at
+    /// restore time) and the torn-off child window would point at a node that
+    /// no longer exists.
+    func testRemoveWorkspaceDropsWorkspaceDetachedRef() {
+        let store = makeStore()
+        let ws = WorkspaceModel(
+            name: "repo",
+            kind: .repository,
+            repositoryRoot: URL(fileURLWithPath: "/tmp/repo")
+        )
+        store.workspaces.append(ws)
+        let ref = DetachedNodeRef.workspace(ws.id)
+        store.detachedNodes.insert(ref)
+        XCTAssertTrue(store.isDetached(ref))
+
+        store.removeWorkspace(ws.id)
+
+        XCTAssertFalse(store.isDetached(ref), "removing the workspace must drop its detached ref")
+        XCTAssertNil(store.workspaces.first(where: { $0.id == ws.id }))
+    }
+
+    /// Removing a workspace must also drop any `.worktree(workspaceID: ws.id, _)`
+    /// refs that pointed at one of its worktrees — the worktree no longer exists.
+    func testRemoveWorkspaceDropsWorktreeDetachedRefs() {
+        let store = makeStore()
+        let ws = WorkspaceModel(
+            name: "repo",
+            kind: .repository,
+            repositoryRoot: URL(fileURLWithPath: "/tmp/repo")
+        )
+        let wt = WorktreeModel(
+            id: UUID(),
+            path: URL(fileURLWithPath: "/tmp/repo/.git/worktrees/foo"),
+            branch: "foo",
+            headCommit: "abc",
+            isMainWorktree: false
+        )
+        ws.worktrees.append(wt)
+        store.workspaces.append(ws)
+        let wtRef = DetachedNodeRef.worktree(workspaceID: ws.id, worktreeID: wt.id)
+        store.detachedNodes.insert(wtRef)
+        XCTAssertTrue(store.isDetached(wtRef))
+
+        store.removeWorkspace(ws.id)
+
+        XCTAssertFalse(store.isDetached(wtRef), "removing the workspace must drop its worktree refs")
+    }
+
+    /// Removing one workspace must NOT drop detached refs for OTHER workspaces
+    /// or for remote groups (which may still have members). Only the removed
+    /// workspace's own refs and its worktree refs are cleaned up.
+    func testRemoveWorkspaceLeavesUnrelatedDetachedRefs() {
+        let store = makeStore()
+        let wsA = WorkspaceModel(
+            name: "repo-a",
+            kind: .repository,
+            repositoryRoot: URL(fileURLWithPath: "/tmp/repo-a")
+        )
+        let wsB = WorkspaceModel(
+            name: "repo-b",
+            kind: .repository,
+            repositoryRoot: URL(fileURLWithPath: "/tmp/repo-b")
+        )
+        store.workspaces.append(contentsOf: [wsA, wsB])
+        let keepRef = DetachedNodeRef.workspace(wsB.id)
+        let groupRef = DetachedNodeRef.remoteGroup("host|root")
+        store.detachedNodes = [DetachedNodeRef.workspace(wsA.id), keepRef, groupRef]
+
+        store.removeWorkspace(wsA.id)
+
+        XCTAssertFalse(store.isDetached(.workspace(wsA.id)), "removed workspace's ref should be gone")
+        XCTAssertTrue(store.isDetached(keepRef), "unrelated workspace ref must survive")
+        XCTAssertTrue(store.isDetached(groupRef), "remote-group ref must survive (group may have other members)")
+    }
+
     // MARK: - Helpers
 
     /// Constructs a `WorkspaceStore` with no on-disk state so tests start clean.
