@@ -8,11 +8,34 @@
 //  shutdown/restore semantics.
 //
 
+import AppKit
+import SwiftUI
 import XCTest
 @testable import Treemux
 
 @MainActor
 final class WindowManagerTests: XCTestCase {
+
+    func testDetachedWorkspaceRendersNavigationSplitLayout() {
+        let store = makeStore()
+        let workspace = makeWorkspace()
+        workspace.tabs = []
+        workspace.activeTabID = nil
+        store.workspaces = [workspace]
+        let theme = ThemeManager(activeThemeID: store.settings.activeThemeID)
+        let root = SingleWorkspaceWindowView(workspace: workspace)
+            .environment(store)
+            .environment(theme)
+        let hostingView = NSHostingView(rootView: root)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 900, height: 600)
+        hostingView.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertTrue(
+            containsSplitView(in: hostingView),
+            "a detached workspace must retain a sidebar/detail split layout"
+        )
+    }
 
     // MARK: - detach
 
@@ -114,6 +137,88 @@ final class WindowManagerTests: XCTestCase {
 
     // MARK: - handleMainWindowWillClose
 
+    func testMainWindowCloseWithoutChildrenDoesNotPrompt() {
+        var promptCount = 0
+        let mgr = WindowManager(
+            store: makeStore(),
+            mainWindowCloseConfirmation: { _ in
+                promptCount += 1
+                return false
+            }
+        )
+
+        XCTAssertTrue(mgr.shouldCloseMainWindow())
+        XCTAssertEqual(promptCount, 0, "confirmation must not run without child windows")
+    }
+
+    func testMainWindowCloseWithChildCanBeCancelledWithoutChangingState() {
+        let store = makeStore()
+        let workspace = makeWorkspace()
+        store.workspaces.append(workspace)
+        let mgr = WindowManager(
+            store: store,
+            mainWindowCloseConfirmation: { count in
+                XCTAssertEqual(count, 1)
+                return false
+            }
+        )
+        let ref = DetachedNodeRef.workspace(workspace.id)
+        mgr.detach(ref)
+
+        XCTAssertFalse(mgr.shouldCloseMainWindow())
+        XCTAssertEqual(mgr.childContexts.count, 1)
+        XCTAssertTrue(store.isDetached(ref))
+    }
+
+    func testMainWindowCloseWithChildCanBeConfirmed() {
+        let store = makeStore()
+        let workspace = makeWorkspace()
+        store.workspaces.append(workspace)
+        let mgr = WindowManager(
+            store: store,
+            mainWindowCloseConfirmation: { _ in true }
+        )
+        mgr.detach(.workspace(workspace.id))
+
+        XCTAssertTrue(mgr.shouldCloseMainWindow())
+    }
+
+    func testMainWindowUsesItsContextAsCloseDelegate() throws {
+        let mgr = WindowManager(store: makeStore())
+        mgr.launchMain()
+
+        let context = try XCTUnwrap(mgr.mainWindowContext)
+        let window = try XCTUnwrap(context.testWindow())
+        XCTAssertTrue(window.delegate === context)
+    }
+
+    func testMainWindowCloseAlertHasSimplifiedChineseTranslations() throws {
+        let catalogURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Treemux/Localizable.xcstrings")
+        let data = try Data(contentsOf: catalogURL)
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let strings = try XCTUnwrap(root["strings"] as? [String: Any])
+
+        func chineseValue(_ key: String) throws -> String {
+            let entry = try XCTUnwrap(strings[key] as? [String: Any])
+            let localizations = try XCTUnwrap(entry["localizations"] as? [String: Any])
+            let chinese = try XCTUnwrap(localizations["zh-Hans"] as? [String: Any])
+            let unit = try XCTUnwrap(chinese["stringUnit"] as? [String: Any])
+            return try XCTUnwrap(unit["value"] as? String)
+        }
+
+        XCTAssertEqual(try chineseValue("Close All Windows?"), "关闭所有窗口？")
+        XCTAssertEqual(try chineseValue("Close All Windows"), "关闭所有窗口")
+        XCTAssertEqual(
+            try chineseValue(
+                "%lld detached windows are still open. Closing the main window will close all windows and quit Treemux."
+            ),
+            "仍有 %lld 个已分离窗口处于打开状态。关闭主窗口将关闭所有窗口并退出 Treemux。"
+        )
+    }
+
     func testHandleMainWindowWillCloseSetsShuttingDownAndClearsChildren() {
         let store = makeStore()
         let ws = makeWorkspace()
@@ -192,6 +297,21 @@ final class WindowManagerTests: XCTestCase {
         }
         mgr.closeChild(ctx)
         XCTAssertFalse(store.isDetached(refB), "post-cascade closeChild must restore the new ref")
+    }
+
+    func testRecoverAfterCancelledTerminationRestoresMainAndDetachedWindows() {
+        let store = makeStore()
+        let workspace = makeWorkspace()
+        store.workspaces.append(workspace)
+        let ref = DetachedNodeRef.workspace(workspace.id)
+        store.detachedNodes.insert(ref)
+        let mgr = WindowManager(store: store)
+
+        mgr.recoverMainWindowIfCancelled()
+
+        XCTAssertNotNil(mgr.mainWindowContext)
+        XCTAssertEqual(mgr.childContexts.count, 1)
+        XCTAssertTrue(store.isDetached(ref))
     }
 
     // MARK: - C1: child-window willClose routes to closeChild
@@ -311,13 +431,17 @@ final class WindowManagerTests: XCTestCase {
         )
     }
 
-    /// Removes the persisted workspace-state directory so each test starts clean.
+    /// Removes only workspace state; shared theme fixtures must survive the suite.
     private func clearStateDirectory() {
-        let home = NSHomeDirectory()
-        let dir = URL(fileURLWithPath: home)
-            .appendingPathComponent(".treemux-debug", isDirectory: true)
-        if FileManager.default.fileExists(atPath: dir.path) {
-            try? FileManager.default.removeItem(at: dir)
+        let stateFile = treemuxStateDirectoryURL()
+            .appendingPathComponent("workspace-state.json")
+        if FileManager.default.fileExists(atPath: stateFile.path) {
+            try? FileManager.default.removeItem(at: stateFile)
         }
+    }
+
+    private func containsSplitView(in view: NSView) -> Bool {
+        if view is NSSplitView { return true }
+        return view.subviews.contains(where: containsSplitView(in:))
     }
 }

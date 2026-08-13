@@ -43,8 +43,17 @@ final class WindowManager {
     /// to `closeChild(_:)`).
     @ObservationIgnored private var childWillCloseObserver: NSObjectProtocol?
 
-    init(store: WorkspaceStore) {
+    /// Confirmation boundary for closing the main window while detached child
+    /// windows are still open. Injected in tests so policy can be verified
+    /// without entering an AppKit modal loop.
+    @ObservationIgnored private let mainWindowCloseConfirmation: @MainActor (Int) -> Bool
+
+    init(
+        store: WorkspaceStore,
+        mainWindowCloseConfirmation: @escaping @MainActor (Int) -> Bool = WindowManager.presentMainWindowCloseConfirmation
+    ) {
         self.store = store
+        self.mainWindowCloseConfirmation = mainWindowCloseConfirmation
     }
 
     deinit {
@@ -131,6 +140,29 @@ final class WindowManager {
         childContexts.removeAll { $0 === ctx }
     }
 
+    /// Called by the main window's delegate before AppKit commits the close.
+    /// A main window with no detached children keeps the normal close path;
+    /// otherwise the user must explicitly accept the cascade.
+    func shouldCloseMainWindow() -> Bool {
+        guard !childContexts.isEmpty else { return true }
+        return mainWindowCloseConfirmation(childContexts.count)
+    }
+
+    private static func presentMainWindowCloseConfirmation(childCount: Int) -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(localized: "Close All Windows?")
+        let format = String(localized: "%lld detached windows are still open. Closing the main window will close all windows and quit Treemux.")
+        alert.informativeText = String(format: format, Int64(childCount))
+
+        let closeAll = alert.addButton(withTitle: String(localized: "Close All Windows"))
+        closeAll.hasDestructiveAction = true
+        let cancel = alert.addButton(withTitle: String(localized: "Cancel"))
+        cancel.keyEquivalent = "\r"
+
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
     /// Main window is closing: cascade-close every child without triggering
     /// per-node restore, then terminate the app.
     ///
@@ -183,6 +215,7 @@ final class WindowManager {
     func recoverMainWindowIfCancelled() {
         guard mainWindowContext == nil, childContexts.isEmpty else { return }
         launchMain()
+        restoreChildWindows()
     }
 
     /// Rebuilds child windows from persisted `detachedNodes`. Called on launch

@@ -133,6 +133,12 @@ final class WorkspaceStore {
     /// triggers (e.g. timer firing while a window-focus refresh is in flight).
     @ObservationIgnored private var isRefreshingRemotes = false
 
+    /// Local repository discovery started while loading persisted state.
+    /// Detached worktree refs cannot be validated until this task completes,
+    /// because `WorkspaceRecord` persists session state but not the runtime
+    /// `worktrees` array.
+    @ObservationIgnored private var initialWorkspaceRefreshTask: Task<Void, Never>?
+
     /// Caches generated repository icons; invalidated whenever the workspace
     /// list mutates (add/remove/rename/icon change all call saveWorkspaceState).
     @ObservationIgnored private var sidebarIconCache: [UUID: SidebarItemIcon] = [:]
@@ -231,6 +237,29 @@ final class WorkspaceStore {
         loadWorkspaceState()
         ensureBuiltInDefaultTerminal()
         startRemoteWorkspaceRefreshScheduler()
+    }
+
+    /// Suspends until the launch-time local git inspection has populated each
+    /// workspace's runtime worktree models.
+    func waitForInitialWorkspaceRefresh() async {
+        await initialWorkspaceRefreshTask?.value
+    }
+
+    /// Launch-time git refresh targets. Kept as a pure helper so the restore
+    /// ordering policy can be verified without opening SSH connections.
+    static func initialWorkspaceIDsToRefresh(
+        workspaces: [WorkspaceModel],
+        detachedNodes: Set<DetachedNodeRef>
+    ) -> [UUID] {
+        let detachedWorktreeWorkspaceIDs = Set(detachedNodes.compactMap { ref -> UUID? in
+            guard case .worktree(let workspaceID, _) = ref else { return nil }
+            return workspaceID
+        })
+        return workspaces
+            .filter {
+                $0.sshTarget == nil || detachedWorktreeWorkspaceIDs.contains($0.id)
+            }
+            .map(\.id)
     }
 
     /// Ensures exactly one built-in `~` workspace exists in `workspaces`. Inserts one if absent,
@@ -706,13 +735,18 @@ final class WorkspaceStore {
         workspaces = state.workspaces.map { WorkspaceModel(from: $0) }
         startWatchingAll()
 
-        // Populate worktrees and branch info from git on launch.
-        // Skip SSH-backed workspaces — those are owned by the periodic remote
-        // refresh scheduler (timer + window focus), which fires immediately on
-        // app launch via `NSWindow.didBecomeKeyNotification`. This avoids a
-        // redundant SSH round-trip on every launch.
-        Task {
-            for workspace in workspaces where workspace.sshTarget == nil {
+        // Populate local worktrees and branch info from git on launch. Remote
+        // workspaces normally stay with the periodic refresh scheduler, but a
+        // remote workspace owning a persisted detached worktree must refresh
+        // here too so restoration can validate that ref.
+        initialWorkspaceRefreshTask = Task { [weak self] in
+            guard let self else { return }
+            let workspaceIDs = Self.initialWorkspaceIDsToRefresh(
+                workspaces: workspaces,
+                detachedNodes: detachedNodes
+            )
+            for id in workspaceIDs {
+                guard let workspace = workspaces.first(where: { $0.id == id }) else { continue }
                 await refreshWorkspace(workspace)
             }
             // Restart watchers with full worktree paths now available

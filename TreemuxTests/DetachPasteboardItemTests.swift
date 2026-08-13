@@ -15,6 +15,44 @@ import XCTest
 
 final class DetachPasteboardItemTests: XCTestCase {
 
+    // MARK: - Outline drag lifecycle wiring
+
+    @MainActor
+    func testSidebarCoordinatorImplementsOutlineViewDragEndedDelegateCallback() {
+        let coordinator = SidebarCoordinator()
+        let selector = NSSelectorFromString(
+            "outlineView:draggingSession:endedAtPoint:operation:"
+        )
+
+        XCTAssertTrue(
+            coordinator.responds(to: selector),
+            "NSOutlineView sends drag completion through the outlineView delegate selector"
+        )
+    }
+
+    func testDragOutsideOutlineWithNoCompletedOperationDetaches() {
+        XCTAssertTrue(SidebarCoordinator.shouldDetachDrag(
+            operation: [],
+            releasePoint: NSPoint(x: 500, y: 200),
+            outlineRectInScreen: NSRect(x: 0, y: 0, width: 250, height: 600)
+        ))
+    }
+
+    func testCompletedReorderOrReleaseInsideOutlineDoesNotDetach() {
+        let rect = NSRect(x: 0, y: 0, width: 250, height: 600)
+
+        XCTAssertFalse(SidebarCoordinator.shouldDetachDrag(
+            operation: .move,
+            releasePoint: NSPoint(x: 500, y: 200),
+            outlineRectInScreen: rect
+        ))
+        XCTAssertFalse(SidebarCoordinator.shouldDetachDrag(
+            operation: [],
+            releasePoint: NSPoint(x: 100, y: 200),
+            outlineRectInScreen: rect
+        ))
+    }
+
     // MARK: - writableTypes
 
     func testWritableTypesIncludesDetachAndLegacyTypes() {

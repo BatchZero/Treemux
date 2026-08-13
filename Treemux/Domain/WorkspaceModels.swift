@@ -5,6 +5,7 @@
 
 import Foundation
 import AppKit
+import CommonCrypto
 import Observation
 
 // MARK: - Persistent Records (Codable)
@@ -231,6 +232,29 @@ struct WorktreeModel: Identifiable {
     let branch: String?
     let headCommit: String?
     let isMainWorktree: Bool
+
+    /// A path-derived UUID that survives repository re-inspection and app
+    /// relaunch. Detached worktree refs persist this ID, so generating a fresh
+    /// random UUID on every `git worktree list` made them impossible to restore.
+    static func stableID(for path: URL) -> UUID {
+        let normalizedPath = path.standardizedFileURL.path
+        let data = Data(normalizedPath.utf8)
+        var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+        data.withUnsafeBytes { bytes in
+            _ = CC_SHA256(bytes.baseAddress, CC_LONG(data.count), &digest)
+        }
+        // Mark the name-derived value as UUID version 5 and set the RFC 4122
+        // variant bits. SHA-256 supplies the bytes; only UUID shape matters.
+        digest[6] = (digest[6] & 0x0F) | 0x50
+        digest[8] = (digest[8] & 0x3F) | 0x80
+        let value: uuid_t = (
+            digest[0], digest[1], digest[2], digest[3],
+            digest[4], digest[5], digest[6], digest[7],
+            digest[8], digest[9], digest[10], digest[11],
+            digest[12], digest[13], digest[14], digest[15]
+        )
+        return UUID(uuid: value)
+    }
 }
 
 /// A snapshot of repository state at a point in time.

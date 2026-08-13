@@ -12,6 +12,35 @@ import XCTest
 @MainActor
 final class WorkspaceStoreDetachTests: XCTestCase {
 
+    func testInitialRefreshIncludesRemoteWorkspaceWithDetachedWorktree() {
+        let local = WorkspaceModel(
+            name: "local",
+            kind: .repository,
+            repositoryRoot: URL(fileURLWithPath: "/tmp/local")
+        )
+        let detachedRemote = WorkspaceModel(
+            name: "detached-remote",
+            kind: .repository,
+            sshTarget: makeSSHTarget(user: "detached")
+        )
+        let unrelatedRemote = WorkspaceModel(
+            name: "unrelated-remote",
+            kind: .repository,
+            sshTarget: makeSSHTarget(user: "unrelated")
+        )
+        let ref = DetachedNodeRef.worktree(
+            workspaceID: detachedRemote.id,
+            worktreeID: UUID()
+        )
+
+        let ids = WorkspaceStore.initialWorkspaceIDsToRefresh(
+            workspaces: [local, detachedRemote, unrelatedRemote],
+            detachedNodes: [ref]
+        )
+
+        XCTAssertEqual(ids, [local.id, detachedRemote.id])
+    }
+
     // MARK: - isDetached
 
     func testIsDetachedReturnsFalseByDefault() {
@@ -283,9 +312,10 @@ final class WorkspaceStoreDetachTests: XCTestCase {
     }
 
     private func clearState() throws {
-        let dir = treemuxStateDirectoryURL()
-        if FileManager.default.fileExists(atPath: dir.path) {
-            try FileManager.default.removeItem(at: dir)
+        let stateFile = treemuxStateDirectoryURL()
+            .appendingPathComponent("workspace-state.json")
+        if FileManager.default.fileExists(atPath: stateFile.path) {
+            try FileManager.default.removeItem(at: stateFile)
         }
     }
 

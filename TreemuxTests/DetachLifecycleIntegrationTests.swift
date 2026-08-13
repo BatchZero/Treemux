@@ -195,6 +195,54 @@ final class DetachLifecycleIntegrationTests: XCTestCase {
         XCTAssertTrue(reloadedMgr.childContexts.isEmpty)
     }
 
+    func testAppLaunchRestoresPersistedDetachedWorktreeAfterInitialGitRefresh() async throws {
+        try clearState()
+        let repoURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("treemux-detach-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: repoURL, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: repoURL)
+            try? clearState()
+        }
+        _ = try await ShellCommandRunner.shell(
+            "git init && git commit --allow-empty -m 'init'",
+            workingDirectory: repoURL
+        )
+
+        let discoveredWorktrees = try await GitRepositoryService().listWorktrees(at: repoURL)
+        let worktree = try XCTUnwrap(discoveredWorktrees.first)
+        let workspace = WorkspaceModel(
+            name: "restart-repo",
+            kind: .repository,
+            repositoryRoot: repoURL
+        )
+        workspace.worktrees = [worktree]
+        let store = WorkspaceStore()
+        store.workspaces = [workspace]
+        let ref = DetachedNodeRef.worktree(
+            workspaceID: workspace.id,
+            worktreeID: worktree.id
+        )
+        store.detachedNodes = [ref]
+        store.saveWorkspaceState()
+        store.flushPendingPersistence()
+
+        let app = TreemuxApp()
+        app.launch()
+        let deadline = ContinuousClock.now + .seconds(3)
+        while app.windowManager?.childContexts.count != 1,
+              ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+
+        XCTAssertEqual(
+            app.windowManager?.childContexts.count,
+            1,
+            "launch must wait for worktree discovery before validating and restoring its child window"
+        )
+        XCTAssertTrue(app.store?.isDetached(ref) == true)
+    }
+
     // MARK: - Helpers
 
     /// Constructs a `WorkspaceStore` with no on-disk state so each test starts
@@ -226,20 +274,21 @@ final class DetachLifecycleIntegrationTests: XCTestCase {
         )
     }
 
-    /// Removes the persisted workspace-state directory so each test starts
-    /// clean. Mirrors the helper in `WindowManagerTests`.
+    /// Removes only workspace state; shared theme fixtures must survive the suite.
     private func clearStateDirectory() {
-        let dir = treemuxStateDirectoryURL()
-        if FileManager.default.fileExists(atPath: dir.path) {
-            try? FileManager.default.removeItem(at: dir)
+        let stateFile = treemuxStateDirectoryURL()
+            .appendingPathComponent("workspace-state.json")
+        if FileManager.default.fileExists(atPath: stateFile.path) {
+            try? FileManager.default.removeItem(at: stateFile)
         }
     }
 
     /// Throws on failure (used by the JSON-inspection tests).
     private func clearState() throws {
-        let dir = treemuxStateDirectoryURL()
-        if FileManager.default.fileExists(atPath: dir.path) {
-            try FileManager.default.removeItem(at: dir)
+        let stateFile = treemuxStateDirectoryURL()
+            .appendingPathComponent("workspace-state.json")
+        if FileManager.default.fileExists(atPath: stateFile.path) {
+            try FileManager.default.removeItem(at: stateFile)
         }
     }
 }

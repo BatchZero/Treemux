@@ -227,7 +227,8 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
     /// Rules (mirror `DetachedNodeRef`'s cases):
     /// - `.section(.remote(key, _))`: dropped entirely when
     ///   `.remoteGroup(key)` is in `detached` (whole server section torn off).
-    /// - `.section(.local)`: always kept — the local section cannot be detached.
+    /// - `.section(.local)`: the section itself cannot be detached, but its
+    ///   workspace/worktree descendants are filtered recursively.
     /// - `.workspace(ws)`: dropped when `.workspace(ws.id)` is in `detached`.
     ///   Otherwise its worktree children are filtered: any
     ///   `.worktree(parentWS, wt)` whose `.worktree(workspaceID:, worktreeID:)`
@@ -243,38 +244,48 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         detached: Set<DetachedNodeRef>
     ) -> [SidebarNodeItem] {
         guard !detached.isEmpty else { return nodes }
-        return nodes.compactMap { node in
-            switch node.kind {
-            case .section(.remote(let key, _)):
-                // Whole remote section torn off → drop it.
-                return detached.contains(.remoteGroup(key)) ? nil : node
-            case .section(.local):
-                // Local section is never detachable.
-                return node
-            case .workspace(let ws):
-                // Whole workspace torn off → drop it.
-                if detached.contains(.workspace(ws.id)) { return nil }
-                // Filter worktree children; keep the parent. SidebarNodeItem is
-                // an immutable class, so rebuild a new node when a child is
-                // removed rather than mutating in place.
-                let filteredChildren = node.children.filter { child in
-                    if case .worktree(let parentWS, let wt) = child.kind,
-                       detached.contains(.worktree(workspaceID: parentWS.id, worktreeID: wt.id)) {
-                        return false
-                    }
-                    return true
-                }
-                if filteredChildren.count == node.children.count {
-                    // No child dropped — return the original node to preserve
-                    // identity (drag-and-drop relies on `===`).
-                    return node
-                }
-                return SidebarNodeItem(kind: node.kind, children: filteredChildren)
-            case .worktree:
-                // Root-level worktree (no parent) is unusual; keep as-is.
-                return node
-            }
+        return nodes.compactMap { filterNode($0, detached: detached) }
+    }
+
+    /// Recurses through sections because mixed local/remote data wraps every
+    /// workspace in a section node. Filtering root workspaces alone only works
+    /// for the all-local, flat-list shape.
+    private static func filterNode(
+        _ node: SidebarNodeItem,
+        detached: Set<DetachedNodeRef>
+    ) -> SidebarNodeItem? {
+        switch node.kind {
+        case .section(.remote(let key, _)):
+            guard !detached.contains(.remoteGroup(key)) else { return nil }
+            return rebuiltNode(node, detached: detached)
+        case .section(.local):
+            return rebuiltNode(node, detached: detached)
+        case .workspace(let workspace):
+            guard !detached.contains(.workspace(workspace.id)) else { return nil }
+            return rebuiltNode(node, detached: detached, keepWhenEmpty: true)
+        case .worktree(let workspace, let worktree):
+            let ref = DetachedNodeRef.worktree(
+                workspaceID: workspace.id,
+                worktreeID: worktree.id
+            )
+            return detached.contains(ref) ? nil : node
         }
+    }
+
+    private static func rebuiltNode(
+        _ node: SidebarNodeItem,
+        detached: Set<DetachedNodeRef>,
+        keepWhenEmpty: Bool = false
+    ) -> SidebarNodeItem? {
+        let filteredChildren = node.children.compactMap {
+            filterNode($0, detached: detached)
+        }
+        guard keepWhenEmpty || !filteredChildren.isEmpty else { return nil }
+        let unchanged = filteredChildren.count == node.children.count
+            && zip(filteredChildren, node.children).allSatisfy { $0 === $1 }
+        return unchanged
+            ? node
+            : SidebarNodeItem(kind: node.kind, children: filteredChildren)
     }
 
     private func makeWorkspaceNode(_ workspace: WorkspaceModel) -> SidebarNodeItem {
@@ -901,31 +912,40 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
     }
 }
 
-// MARK: - NSDraggingSource
+// MARK: - Drag completion
 
-extension SidebarCoordinator: NSDraggingSource {
-    func draggingSession(_ session: NSDraggingSession,
-                         sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
-        // Allow move within the app (covers both in-list reorder and tear-off).
-        return .move
+extension SidebarCoordinator {
+    nonisolated static func shouldDetachDrag(
+        operation: NSDragOperation,
+        releasePoint: NSPoint,
+        outlineRectInScreen: NSRect
+    ) -> Bool {
+        operation == [] && !outlineRectInScreen.contains(releasePoint)
     }
 
-    func draggingSession(_ session: NSDraggingSession,
-                         endedAt screenPoint: NSPoint,
-                         operation: NSDragOperation) {
+    /// `NSOutlineView` owns the dragging session, so completion is delivered
+    /// through its outline-view delegate callback rather than the table-view
+    /// or generic `NSDraggingSource` callback.
+    @objc(outlineView:draggingSession:endedAtPoint:operation:)
+    func outlineView(_ outlineView: NSOutlineView,
+                     draggingSession session: NSDraggingSession,
+                     endedAt screenPoint: NSPoint,
+                     operation: NSDragOperation) {
         // Only tear off when NO in-list operation occurred (operation == [])
         // AND the release point is outside the outline view's frame. A valid
         // reorder yields a non-empty `operation`; a release inside the outline
         // view with no valid target also yields [] but must NOT tear off.
-        guard operation == [] else { return }
-
-        guard let outlineView = container?.outlineView,
+        guard outlineView === container?.outlineView,
               let window = outlineView.window else { return }
 
         let viewRectInScreen = window.convertToScreen(
             outlineView.convert(outlineView.bounds, to: nil)
         )
-        guard !viewRectInScreen.contains(screenPoint) else { return }
+        guard Self.shouldDetachDrag(
+            operation: operation,
+            releasePoint: screenPoint,
+            outlineRectInScreen: viewRectInScreen
+        ) else { return }
 
         // Decode the detached ref from the pasteboard. The drag session's
         // pasteboard carries the `com.treemux.detach.ref` type written by

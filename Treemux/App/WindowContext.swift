@@ -13,7 +13,7 @@ import SwiftUI
 /// `Kind` distinguishes the main workspace window from a torn-off detached
 /// window so each can resolve its own root view and frame-autosave key.
 @MainActor
-final class WindowContext {
+final class WindowContext: NSObject, NSWindowDelegate {
     /// The kind of window this context owns. Drives root-view dispatch and the
     /// frame-autosave key so each torn-off window persists to its own slot.
     enum Kind {
@@ -50,6 +50,7 @@ final class WindowContext {
         self.themeManager = ThemeManager(activeThemeID: store.settings.activeThemeID)
         self.languageManager = LanguageManager(languageCode: store.settings.language)
         self.windowConstructSignpost = sp
+        super.init()
     }
 
     /// Stable per-window autosave key for system-managed frame persistence.
@@ -108,6 +109,7 @@ final class WindowContext {
         )
 
         let window = NSWindow(contentViewController: host)
+        window.delegate = self
         window.title = windowTitle
         window.setContentSize(NSSize(width: 1200, height: 800))
 
@@ -172,6 +174,11 @@ final class WindowContext {
     func ownsWindow(_ candidate: NSWindow) -> Bool {
         guard let window else { return false }
         return window === candidate
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        guard case .main = kind else { return true }
+        return windowManager?.shouldCloseMainWindow() ?? true
     }
 
     /// Test-only accessor for the underlying `NSWindow`. Production code goes

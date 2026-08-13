@@ -19,9 +19,16 @@ final class TreemuxApp {
     func launch() {
         let store = WorkspaceStore()
         let mgr = WindowManager(store: store)
-        mgr.launchMain()
-        mgr.restoreChildWindows() // rebuild detached child windows
         self.windowManager = mgr
+        mgr.launchMain()
+        // Workspace records load synchronously, but local git worktrees are
+        // discovered asynchronously. Restore only after that discovery so a
+        // valid persisted worktree ref is not mistaken for stale state.
+        Task { [weak store, weak mgr] in
+            guard let store, let mgr else { return }
+            await store.waitForInitialWorkspaceRefresh()
+            mgr.restoreChildWindows()
+        }
     }
 
     /// Persists workspace state before the application terminates.

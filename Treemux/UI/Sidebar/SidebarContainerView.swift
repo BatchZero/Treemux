@@ -32,7 +32,10 @@ final class SidebarContainerView: NSView {
         outlineView.allowsEmptySelection = true
         outlineView.intercellSpacing = NSSize(width: 0, height: 4)
         outlineView.setDraggingSourceOperationMask(.move, forLocal: true)
-        outlineView.setDraggingSourceOperationMask([], forLocal: false)
+        // Keep the drag session alive after the pointer leaves Treemux so the
+        // table-view delegate receives the drag-ended callback for a desktop
+        // drop and can turn it into a detached window.
+        outlineView.setDraggingSourceOperationMask(.move, forLocal: false)
         outlineView.draggingDestinationFeedbackStyle = .gap
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("main"))
