@@ -409,6 +409,10 @@ final class WorkspaceModel: Identifiable {
                 workingDirectory: path, sshTarget: sshTarget)
             tabsForPath = [defaultTab]
             activeTabIDForPath = defaultTab.id
+            // Keep the lazily-created tab identity stable across SwiftUI body
+            // evaluations. Without this cache, every render creates a new tab
+            // UUID and therefore a new terminal controller and Ghostty surface.
+            worktreeTabStates[path] = (tabs: tabsForPath, activeTabID: activeTabIDForPath)
         }
         guard let tabID = activeTabIDForPath,
               let tab = tabsForPath.first(where: { $0.id == tabID }),

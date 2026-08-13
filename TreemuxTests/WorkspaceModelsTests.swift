@@ -402,6 +402,30 @@ final class WorkspaceModelsTests: XCTestCase {
     }
 
     @MainActor
+    func testReadOnlySessionResolutionReusesControllerForUnloadedRemoteWorktree() throws {
+        let target = SSHTarget(
+            host: "example.test",
+            port: 22,
+            user: "developer",
+            identityFile: nil,
+            displayName: "example.test",
+            remotePath: "/srv/project"
+        )
+        let ws = WorkspaceModel(
+            name: "test",
+            kind: .repository,
+            sshTarget: target
+        )
+        let featurePath = "/srv/project-feature-dashboard"
+
+        let first = try XCTUnwrap(ws.sessionController(forWorktreePathReadOnly: featurePath))
+        let second = try XCTUnwrap(ws.sessionController(forWorktreePathReadOnly: featurePath))
+
+        XCTAssertTrue(first === second)
+        XCTAssertEqual(ws.activeWorktreePath, "/srv/project")
+    }
+
+    @MainActor
     func testToRecordSerializesTabs() {
         let ws = WorkspaceModel(name: "test", kind: .localTerminal)
         ws.createTab()
