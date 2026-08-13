@@ -223,9 +223,39 @@ final class WindowContext: NSObject, NSWindowDelegate {
         window.backgroundColor = themeManager.nsWindowBackgroundColor
     }
 
-    /// Re-applies appearance to the current window (call when theme changes).
-    func updateAppearance() {
+    /// Restores the themed titlebar layer after AppKit rebuilds it for full screen.
+    func refreshFullScreenTitlebar() {
         guard let window else { return }
         applyThemeAppearance(to: window)
+        var titlebarView = window.standardWindowButton(.closeButton)?.superview
+        for _ in 0..<2 {
+            guard let view = titlebarView else { break }
+            view.wantsLayer = true
+            view.layer?.backgroundColor = themeManager.nsWindowBackgroundColor.cgColor
+            titlebarView = view.superview
+        }
+    }
+
+    func windowWillEnterFullScreen(_ notification: Notification) {
+        refreshFullScreenTitlebar()
+    }
+
+    func windowDidEnterFullScreen(_ notification: Notification) {
+        refreshFullScreenTitlebar()
+        DispatchQueue.main.async { [weak self] in
+            self?.refreshFullScreenTitlebar()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            self?.refreshFullScreenTitlebar()
+        }
+    }
+
+    func windowDidExitFullScreen(_ notification: Notification) {
+        refreshFullScreenTitlebar()
+    }
+
+    /// Re-applies appearance to the current window (call when theme changes).
+    func updateAppearance() {
+        refreshFullScreenTitlebar()
     }
 }

@@ -192,6 +192,67 @@ final class WindowManagerTests: XCTestCase {
         XCTAssertTrue(window.delegate === context)
     }
 
+    func testMainWindowKeepsNativeToolbarLayout() throws {
+        let mgr = WindowManager(store: makeStore())
+        mgr.launchMain()
+
+        let context = try XCTUnwrap(mgr.mainWindowContext)
+        let window = try XCTUnwrap(context.testWindow())
+
+        XCTAssertTrue(window.titlebarAppearsTransparent)
+        XCTAssertFalse(
+            window.styleMask.contains(.fullSizeContentView),
+            "the content view must not displace the leading toolbar button and window title"
+        )
+        XCTAssertEqual(window.titleVisibility, .visible)
+        XCTAssertEqual(window.title, "Treemux")
+        XCTAssertEqual(window.backgroundColor, context.themeManager.nsWindowBackgroundColor)
+    }
+
+    func testFullScreenAppliesThemeColorToTitlebarContainer() throws {
+        let mgr = WindowManager(store: makeStore())
+        mgr.launchMain()
+
+        let context = try XCTUnwrap(mgr.mainWindowContext)
+        let window = try XCTUnwrap(context.testWindow())
+        let titlebarView = try XCTUnwrap(window.standardWindowButton(.closeButton)?.superview)
+        titlebarView.wantsLayer = true
+        titlebarView.layer?.backgroundColor = NSColor.white.cgColor
+
+        context.refreshFullScreenTitlebar()
+
+        XCTAssertEqual(
+            titlebarView.layer?.backgroundColor,
+            context.themeManager.nsWindowBackgroundColor.cgColor
+        )
+    }
+
+    func testWillEnterFullScreenAppliesThemeBeforeAnimation() throws {
+        let mgr = WindowManager(store: makeStore())
+        mgr.launchMain()
+
+        let context = try XCTUnwrap(mgr.mainWindowContext)
+        let window = try XCTUnwrap(context.testWindow())
+        let titlebarView = try XCTUnwrap(window.standardWindowButton(.closeButton)?.superview)
+        titlebarView.wantsLayer = true
+        titlebarView.layer?.backgroundColor = NSColor.white.cgColor
+        let selector = #selector(NSWindowDelegate.windowWillEnterFullScreen(_:))
+
+        guard context.responds(to: selector) else {
+            XCTFail("the window context must apply its theme before the full-screen animation starts")
+            return
+        }
+        _ = context.perform(
+            selector,
+            with: Notification(name: NSWindow.willEnterFullScreenNotification, object: window)
+        )
+
+        XCTAssertEqual(
+            titlebarView.layer?.backgroundColor,
+            context.themeManager.nsWindowBackgroundColor.cgColor
+        )
+    }
+
     func testMainWindowCloseAlertHasSimplifiedChineseTranslations() throws {
         let catalogURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

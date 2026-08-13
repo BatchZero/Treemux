@@ -64,7 +64,8 @@ final class ObservableBridgeTests: XCTestCase {
     }
 
     func testLocalePublisherDeliversNewLocaleWithoutReplay() {
-        let saved = UserDefaults.standard.object(forKey: "AppleLanguages")
+        let domainName = Bundle.main.bundleIdentifier!
+        let saved = UserDefaults.standard.persistentDomain(forName: domainName)?["AppleLanguages"]
         defer {
             if let saved { UserDefaults.standard.set(saved, forKey: "AppleLanguages") }
             else { UserDefaults.standard.removeObject(forKey: "AppleLanguages") }
@@ -78,6 +79,28 @@ final class ObservableBridgeTests: XCTestCase {
         manager.apply(languageCode: "zh-Hans")
         XCTAssertEqual(received.last?.identifier, "zh-Hans",
                        "bridge must deliver the NEW locale as payload")
+    }
+
+    func testSystemLanguageUsesGlobalPreferenceInsteadOfStaleAppOverride() throws {
+        let domainName = try XCTUnwrap(Bundle.main.bundleIdentifier)
+        let saved = UserDefaults.standard.persistentDomain(forName: domainName)?["AppleLanguages"]
+        defer {
+            if let saved { UserDefaults.standard.set(saved, forKey: "AppleLanguages") }
+            else { UserDefaults.standard.removeObject(forKey: "AppleLanguages") }
+        }
+
+        // Simulate the stale per-app override left by explicitly choosing English.
+        UserDefaults.standard.set(["en"], forKey: "AppleLanguages")
+        let manager = LanguageManager(
+            languageCode: "system",
+            systemLanguages: { ["zh-Hans-US", "en-US"] }
+        )
+        let expected = Locale(identifier: "zh-Hans-US")
+
+        XCTAssertEqual(manager.locale.language.languageCode, expected.language.languageCode)
+        XCTAssertEqual(manager.locale.language.script, expected.language.script)
+        let appOverride = UserDefaults.standard.persistentDomain(forName: domainName)?["AppleLanguages"]
+        XCTAssertNil(appOverride)
     }
 
     func testSettingsPublisherFiresOnMutationWithoutReplay() {
