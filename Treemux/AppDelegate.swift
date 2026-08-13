@@ -15,6 +15,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         buildMainMenu()
         configureUpdater(checkInBackground: true)
 
+        // Observe window close events to detect main-window closure and trigger
+        // the cascade shutdown (close all children + quit). Identification by
+        // frameAutosaveName avoids extra state — "treemux.main" is assigned in
+        // WindowContext for the main window only.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowWillClose(_:)),
+            name: NSWindow.willCloseNotification,
+            object: nil
+        )
+
         if let store = treemuxApp?.store {
             // Debounce so key-repeat hotkeys (e.g. holding ⌘= to crank the
             // terminal font) don't rebuild the entire main menu and reconfigure
@@ -31,6 +42,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         treemuxApp?.shutdown()
+    }
+
+    /// Recovery hook for the cancel case in C2: if the main window was torn
+    /// down by the cascade (`handleMainWindowWillClose`) but the user then
+    /// cancelled the unsaved-changes prompt in `applicationShouldTerminate`,
+    /// the app stays alive with no visible window. On the next activation we
+    /// rebuild the main window so the user is never stranded.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        treemuxApp?.ensureMainWindowAfterCascadeIfNeeded()
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -50,7 +70,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+        // With multi-window support, "last window closed" fires when the final
+        // child window closes — we do NOT want that to quit the app. The main
+        // window close cascade (which does quit) is driven by
+        // `handleMainWindowWillClose` via the willCloseNotification observer.
+        false
+    }
+
+    @objc private func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        // Identify the main window by its autosave name ("treemux.main"), set
+        // in WindowContext. Closing it cascades to all children and quits.
+        // Detached child windows (autosave name "treemux.detach.*") are handled
+        // by WindowManager's OWN willCloseNotification observer, which routes
+        // the close through `closeChild(_:)` so the node is restored in the
+        // main sidebar — this AppDelegate observer only drives the main-window
+        // cascade path.
+        guard window.frameAutosaveName == "treemux.main" else { return }
+        treemuxApp?.handleMainWindowWillClose()
     }
 
     // MARK: - Menu Bar

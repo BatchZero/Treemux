@@ -35,6 +35,14 @@ final class GitRepositoryServiceTests: XCTestCase {
         XCTAssertTrue(worktrees.first?.isMainWorktree ?? false)
     }
 
+    func testWorktreeIDsRemainStableAcrossRepositoryInspections() async throws {
+        let first = try await service.listWorktrees(at: testRepoURL)
+        let second = try await service.listWorktrees(at: testRepoURL)
+
+        XCTAssertEqual(first.map(\.id), second.map(\.id),
+                       "persisted detached refs must resolve to the same worktree after relaunch")
+    }
+
     func testRepositoryStatus() async throws {
         // Create a file to make the repo dirty
         let filePath = testRepoURL.appendingPathComponent("test.txt")

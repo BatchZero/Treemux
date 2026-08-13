@@ -21,6 +21,10 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
     var requestRename: ((UUID, String) -> Void)?
     var requestDelete: ((UUID) -> Void)?
 
+    /// Called when a node is dragged outside the outline view to tear it off
+    /// into its own window. Wired to `WindowManager.detach(_:)`.
+    var onDetachNode: ((DetachedNodeRef) -> Void)?
+
     private var rootNodes: [SidebarNodeItem] = []
     private var isApplyingSelection = false
     private var lastDataFingerprint: String = ""
@@ -90,16 +94,26 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         let localWorkspaces = store.localWorkspaces
         let remoteGroups = store.remoteWorkspaceGroups
         let allWorkspaces = localWorkspaces + remoteGroups.flatMap(\.targets)
-        let fingerprint = dataFingerprint(workspaces: allWorkspaces, remoteGroups: remoteGroups)
+        let detached = store.detachedNodes
+        let fingerprint = dataFingerprint(
+            workspaces: allWorkspaces,
+            remoteGroups: remoteGroups,
+            detached: detached
+        )
         let dataChanged = fingerprint != lastDataFingerprint
 
         if dataChanged {
             let collapsedBeforeReload = collapsedSectionKeys(on: container?.outlineView)
             lastDataFingerprint = fingerprint
-            rootNodes = buildNodes(
+            // Build the tree from the store, then hide any nodes that have been
+            // torn off into their own window (they live in detached child windows,
+            // not the main sidebar). Applied here so buildNodes stays a pure
+            // store-shape function while detach visibility is layered on top.
+            let builtNodes = buildNodes(
                 localWorkspaces: localWorkspaces,
                 remoteGroups: remoteGroups
             )
+            rootNodes = Self.filterRootNodes(builtNodes, detached: store.detachedNodes)
             container?.reloadOutlineData()
 
             guard let outlineView = container?.outlineView else { return }
@@ -133,10 +147,16 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
 
     private func dataFingerprint(
         workspaces: [WorkspaceModel],
-        remoteGroups: [(key: String, targets: [WorkspaceModel])]
+        remoteGroups: [(key: String, targets: [WorkspaceModel])],
+        detached: Set<DetachedNodeRef>
     ) -> String {
         var parts: [String] = []
         parts.append(contentsOf: remoteGroups.map { "section:\($0.key)" })
+        // Include the detached set so tearing off / reattaching a node forces a
+        // sidebar rebuild even when the underlying workspace data is unchanged.
+        // Sorted by the stable autosave suffix for a set-order-independent hash.
+        parts.append(contentsOf: detached.map { "detached:\($0.autosaveKeySuffix)" }
+            .sorted())
         for ws in workspaces {
             let iconKey = ws.workspaceIcon.map { "\($0)" } ?? "-"
             parts.append("\(ws.id)|\(ws.name)|\(ws.currentBranch ?? "-")|\(ws.activeWorktreePath)|\(ws.worktrees.count)|\(iconKey)")
@@ -199,6 +219,73 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         }
 
         return sections
+    }
+
+    /// Pure filter: removes detached nodes from the sidebar tree so they only
+    /// appear in their torn-off window, never in the main sidebar.
+    ///
+    /// Rules (mirror `DetachedNodeRef`'s cases):
+    /// - `.section(.remote(key, _))`: dropped entirely when
+    ///   `.remoteGroup(key)` is in `detached` (whole server section torn off).
+    /// - `.section(.local)`: the section itself cannot be detached, but its
+    ///   workspace/worktree descendants are filtered recursively.
+    /// - `.workspace(ws)`: dropped when `.workspace(ws.id)` is in `detached`.
+    ///   Otherwise its worktree children are filtered: any
+    ///   `.worktree(parentWS, wt)` whose `.worktree(workspaceID:, worktreeID:)`
+    ///   is in `detached` is removed, but the parent workspace remains. Because
+    ///   `SidebarNodeItem.children` is immutable (`let`), a new node is built
+    ///   with the surviving children when any child is dropped.
+    /// - `.worktree` at root level (no parent — unusual): kept as-is.
+    ///
+    /// Fast path: when `detached` is empty the input is returned unchanged so
+    /// the common (non-detached) rebuild is allocation-free.
+    static func filterRootNodes(
+        _ nodes: [SidebarNodeItem],
+        detached: Set<DetachedNodeRef>
+    ) -> [SidebarNodeItem] {
+        guard !detached.isEmpty else { return nodes }
+        return nodes.compactMap { filterNode($0, detached: detached) }
+    }
+
+    /// Recurses through sections because mixed local/remote data wraps every
+    /// workspace in a section node. Filtering root workspaces alone only works
+    /// for the all-local, flat-list shape.
+    private static func filterNode(
+        _ node: SidebarNodeItem,
+        detached: Set<DetachedNodeRef>
+    ) -> SidebarNodeItem? {
+        switch node.kind {
+        case .section(.remote(let key, _)):
+            guard !detached.contains(.remoteGroup(key)) else { return nil }
+            return rebuiltNode(node, detached: detached)
+        case .section(.local):
+            return rebuiltNode(node, detached: detached)
+        case .workspace(let workspace):
+            guard !detached.contains(.workspace(workspace.id)) else { return nil }
+            return rebuiltNode(node, detached: detached, keepWhenEmpty: true)
+        case .worktree(let workspace, let worktree):
+            let ref = DetachedNodeRef.worktree(
+                workspaceID: workspace.id,
+                worktreeID: worktree.id
+            )
+            return detached.contains(ref) ? nil : node
+        }
+    }
+
+    private static func rebuiltNode(
+        _ node: SidebarNodeItem,
+        detached: Set<DetachedNodeRef>,
+        keepWhenEmpty: Bool = false
+    ) -> SidebarNodeItem? {
+        let filteredChildren = node.children.compactMap {
+            filterNode($0, detached: detached)
+        }
+        guard keepWhenEmpty || !filteredChildren.isEmpty else { return nil }
+        let unchanged = filteredChildren.count == node.children.count
+            && zip(filteredChildren, node.children).allSatisfy { $0 === $1 }
+        return unchanged
+            ? node
+            : SidebarNodeItem(kind: node.kind, children: filteredChildren)
     }
 
     private func makeWorkspaceNode(_ workspace: WorkspaceModel) -> SidebarNodeItem {
@@ -343,7 +430,25 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         let menu = NSMenu()
 
         switch node.kind {
-        case .section:
+        case .section(.remote(let groupKey, _)):
+            // Remote server section: a single "Open in New Window" item to tear
+            // the whole section off into its own window.
+            let isRemoteDetached = store?.isDetached(.remoteGroup(groupKey)) ?? false
+            let remoteItem = NSMenuItem(
+                title: isRemoteDetached
+                    ? String(localized: "Already in New Window")
+                    : String(localized: "Open in New Window"),
+                action: #selector(openRemoteGroupInNewWindow(_:)),
+                keyEquivalent: ""
+            )
+            remoteItem.target = self
+            remoteItem.representedObject = groupKey
+            remoteItem.isEnabled = !isRemoteDetached
+            menu.addItem(remoteItem)
+            return menu
+
+        case .section(.local):
+            // The local section is not detachable.
             return nil
 
         case .workspace(let ws):
@@ -361,6 +466,23 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
             iconItem.target = self
             iconItem.representedObject = ["workspaceID": ws.id, "worktreePath": wt.path.path] as [String: Any]
             menu.addItem(iconItem)
+
+            // Open in New Window — disabled + retitled when this worktree has
+            // already been torn off into its own window.
+            let isWorktreeDetached = store?.isDetached(
+                .worktree(workspaceID: ws.id, worktreeID: wt.id)
+            ) ?? false
+            let wtNewItem = NSMenuItem(
+                title: isWorktreeDetached
+                    ? String(localized: "Already in New Window")
+                    : String(localized: "Open in New Window"),
+                action: #selector(openWorktreeInNewWindow(_:)),
+                keyEquivalent: ""
+            )
+            wtNewItem.target = self
+            wtNewItem.representedObject = ["workspaceID": ws.id, "worktreeID": wt.id] as [String: Any]
+            wtNewItem.isEnabled = !isWorktreeDetached
+            menu.addItem(wtNewItem)
         }
 
         return menu
@@ -381,6 +503,21 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         iconItem.target = self
         iconItem.representedObject = ws.id
         items.append(iconItem)
+
+        // Open in New Window — disabled + retitled when this workspace has
+        // already been torn off into its own window.
+        let isWorkspaceDetached = store?.isDetached(.workspace(ws.id)) ?? false
+        let newWindowItem = NSMenuItem(
+            title: isWorkspaceDetached
+                ? String(localized: "Already in New Window")
+                : String(localized: "Open in New Window"),
+            action: #selector(openWorkspaceInNewWindow(_:)),
+            keyEquivalent: ""
+        )
+        newWindowItem.target = self
+        newWindowItem.representedObject = ws.id
+        newWindowItem.isEnabled = !isWorkspaceDetached
+        items.append(newWindowItem)
 
         // Rename (only for repositories)
         if ws.kind == .repository {
@@ -439,6 +576,26 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         store?.sidebarIconCustomizationRequest = SidebarIconCustomizationRequest(
             target: .worktree(workspaceID: workspaceID, worktreePath: worktreePath)
         )
+    }
+
+    /// Tear off a whole workspace into its own window.
+    @objc private func openWorkspaceInNewWindow(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID else { return }
+        onDetachNode?(.workspace(id))
+    }
+
+    /// Tear off a single worktree into its own window (parent workspace stays).
+    @objc private func openWorktreeInNewWindow(_ sender: NSMenuItem) {
+        guard let dict = sender.representedObject as? [String: Any],
+              let workspaceID = dict["workspaceID"] as? UUID,
+              let worktreeID = dict["worktreeID"] as? UUID else { return }
+        onDetachNode?(.worktree(workspaceID: workspaceID, worktreeID: worktreeID))
+    }
+
+    /// Tear off an entire remote server section into its own window.
+    @objc private func openRemoteGroupInNewWindow(_ sender: NSMenuItem) {
+        guard let key = sender.representedObject as? String else { return }
+        onDetachNode?(.remoteGroup(key))
     }
 
     // MARK: - NSOutlineViewDataSource
@@ -528,16 +685,37 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
     func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> NSPasteboardWriting? {
         guard let node = item as? SidebarNodeItem else { return nil }
 
-        let pasteboardItem = NSPasteboardItem()
+        // Every draggable node now returns a `DetachPasteboardItem` that writes
+        // BOTH the detach ref (for tear-off, read in Task 9's
+        // `draggingSession(endedAt:)`) AND the legacy reorder payload (read by
+        // `validateDrop`/`acceptDrop` below) so in-list reordering keeps working.
         switch node.kind {
         case .section(.remote(let groupKey, _)):
-            pasteboardItem.setString(groupKey, forType: Self.remoteGroupDragType)
-        case .section(.local), .worktree:
+            // Reorder payload (remote-group key) + detach ref.
+            return DetachPasteboardItem(
+                ref: .remoteGroup(groupKey),
+                legacyReorderPayload: [(Self.remoteGroupDragType, groupKey)]
+            )
+
+        case .section(.local):
+            // The local section is not draggable today.
             return nil
+
         case .workspace(let ws):
-            pasteboardItem.setString(ws.id.uuidString, forType: Self.workspaceDragType)
+            // Reorder payload (workspace UUID) + detach ref.
+            return DetachPasteboardItem(
+                ref: .workspace(ws.id),
+                legacyReorderPayload: [(Self.workspaceDragType, ws.id.uuidString)]
+            )
+
+        case .worktree(let ws, let wt):
+            // NEW: worktree is now draggable, but ONLY for tear-off. It carries
+            // no legacy reorder payload (worktrees are not reorder targets —
+            // `validateDrop` below returns `[]` for them — so dragging one out
+            // reaches `operation == []` in Task 9, which spawns a detached
+            // window). In-list reorder behavior is unchanged.
+            return DetachPasteboardItem(ref: .worktree(workspaceID: ws.id, worktreeID: wt.id))
         }
-        return pasteboardItem
     }
 
     func outlineView(
@@ -731,5 +909,53 @@ final class SidebarCoordinator: NSObject, NSOutlineViewDataSource, NSOutlineView
         case .worktree(_, let wt):
             store?.selectWorkspace(wt.id)
         }
+    }
+}
+
+// MARK: - Drag completion
+
+extension SidebarCoordinator {
+    nonisolated static func shouldDetachDrag(
+        operation: NSDragOperation,
+        releasePoint: NSPoint,
+        outlineRectInScreen: NSRect
+    ) -> Bool {
+        operation == [] && !outlineRectInScreen.contains(releasePoint)
+    }
+
+    /// `NSOutlineView` owns the dragging session, so completion is delivered
+    /// through its outline-view delegate callback rather than the table-view
+    /// or generic `NSDraggingSource` callback.
+    @objc(outlineView:draggingSession:endedAtPoint:operation:)
+    func outlineView(_ outlineView: NSOutlineView,
+                     draggingSession session: NSDraggingSession,
+                     endedAt screenPoint: NSPoint,
+                     operation: NSDragOperation) {
+        // Only tear off when NO in-list operation occurred (operation == [])
+        // AND the release point is outside the outline view's frame. A valid
+        // reorder yields a non-empty `operation`; a release inside the outline
+        // view with no valid target also yields [] but must NOT tear off.
+        guard outlineView === container?.outlineView,
+              let window = outlineView.window else { return }
+
+        let viewRectInScreen = window.convertToScreen(
+            outlineView.convert(outlineView.bounds, to: nil)
+        )
+        guard Self.shouldDetachDrag(
+            operation: operation,
+            releasePoint: screenPoint,
+            outlineRectInScreen: viewRectInScreen
+        ) else { return }
+
+        // Decode the detached ref from the pasteboard. The drag session's
+        // pasteboard carries the `com.treemux.detach.ref` type written by
+        // `DetachPasteboardItem`; it round-trips as the ref's JSON encoding.
+        guard let payload = session.draggingPasteboard.string(forType: DetachPasteboardItem.detachType),
+              let data = payload.data(using: .utf8),
+              let ref = try? JSONDecoder().decode(DetachedNodeRef.self, from: data) else {
+            return
+        }
+
+        onDetachNode?(ref)
     }
 }

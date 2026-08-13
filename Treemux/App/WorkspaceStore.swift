@@ -38,6 +38,11 @@ final class WorkspaceStore {
     var collapsedSections: Set<String> = []
     var remoteGroupOrder: [String]?
 
+    /// Sidebar nodes currently torn off into their own windows. Persisted
+    /// across launches so child windows can be rebuilt. Drives the main
+    /// sidebar's filter (detached nodes are hidden from the main window).
+    var detachedNodes: Set<DetachedNodeRef> = []
+
     var showSettings = false
     var showCommandPalette = false
     var sidebarIconCustomizationRequest: SidebarIconCustomizationRequest?
@@ -127,6 +132,12 @@ final class WorkspaceStore {
     /// Reentry guard for `refreshAllRemoteWorkspaces`. Drops overlapping
     /// triggers (e.g. timer firing while a window-focus refresh is in flight).
     @ObservationIgnored private var isRefreshingRemotes = false
+
+    /// Local repository discovery started while loading persisted state.
+    /// Detached worktree refs cannot be validated until this task completes,
+    /// because `WorkspaceRecord` persists session state but not the runtime
+    /// `worktrees` array.
+    @ObservationIgnored private var initialWorkspaceRefreshTask: Task<Void, Never>?
 
     /// Caches generated repository icons; invalidated whenever the workspace
     /// list mutates (add/remove/rename/icon change all call saveWorkspaceState).
@@ -226,6 +237,29 @@ final class WorkspaceStore {
         loadWorkspaceState()
         ensureBuiltInDefaultTerminal()
         startRemoteWorkspaceRefreshScheduler()
+    }
+
+    /// Suspends until the launch-time local git inspection has populated each
+    /// workspace's runtime worktree models.
+    func waitForInitialWorkspaceRefresh() async {
+        await initialWorkspaceRefreshTask?.value
+    }
+
+    /// Launch-time git refresh targets. Kept as a pure helper so the restore
+    /// ordering policy can be verified without opening SSH connections.
+    static func initialWorkspaceIDsToRefresh(
+        workspaces: [WorkspaceModel],
+        detachedNodes: Set<DetachedNodeRef>
+    ) -> [UUID] {
+        let detachedWorktreeWorkspaceIDs = Set(detachedNodes.compactMap { ref -> UUID? in
+            guard case .worktree(let workspaceID, _) = ref else { return nil }
+            return workspaceID
+        })
+        return workspaces
+            .filter {
+                $0.sshTarget == nil || detachedWorktreeWorkspaceIDs.contains($0.id)
+            }
+            .map(\.id)
     }
 
     /// Ensures exactly one built-in `~` workspace exists in `workspaces`. Inserts one if absent,
@@ -380,6 +414,40 @@ final class WorkspaceStore {
         return "\(target.displayName)|\(user)"
     }
 
+    /// Computes the remote-group key for a workspace, or `nil` if the
+    /// workspace is not SSH-backed (has no `sshTarget`).
+    private func remoteGroupKey(for workspace: WorkspaceModel) -> String? {
+        guard let target = workspace.sshTarget else { return nil }
+        return Self.remoteGroupKey(for: target)
+    }
+
+    /// Returns true if the given node ref is currently recorded as detached
+    /// (torn off into its own window). Drives the main sidebar's filter.
+    func isDetached(_ ref: DetachedNodeRef) -> Bool {
+        detachedNodes.contains(ref)
+    }
+
+    /// Workspaces belonging to a remote group key (used by the detached
+    /// remote-group window view to list the workspaces it owns).
+    func workspacesInRemoteGroup(_ key: String) -> [WorkspaceModel] {
+        workspaces.filter { remoteGroupKey(for: $0) == key }
+    }
+
+    /// Returns true if the referenced node still exists in the store.
+    /// Stale refs (e.g. a workspace/worktree deleted on disk, or a remote
+    /// group that no longer has any member) are dropped during window restore.
+    func isValid(_ ref: DetachedNodeRef) -> Bool {
+        switch ref {
+        case .workspace(let id):
+            return workspaces.contains { $0.id == id }
+        case .worktree(let wsID, let wtID):
+            guard let ws = workspaces.first(where: { $0.id == wsID }) else { return false }
+            return ws.worktrees.contains { $0.id == wtID }
+        case .remoteGroup(let key):
+            return workspaces.contains { remoteGroupKey(for: $0) == key }
+        }
+    }
+
     /// Display title for a remote workspace group, e.g. "my-server (root@192.168.1.100)".
     static func remoteGroupDisplayTitle(for target: SSHTarget) -> String {
         if let user = target.user, !user.isEmpty {
@@ -459,6 +527,22 @@ final class WorkspaceStore {
         workspaces.removeAll { $0.id == id }
         if selectedWorkspaceID == id || selectedWorkspaceID == nil {
             selectedWorkspaceID = workspaces.first?.id
+        }
+        // Drop any detached-window refs that pointed at this workspace or one
+        // of its worktrees. Without this, stale refs would persist in
+        // workspace-state.json until the next launch (isValid is only checked
+        // at restore time), and the torn-off child window would point at a
+        // node that no longer exists.
+        detachedNodes = detachedNodes.filter { ref in
+            switch ref {
+            case .workspace(let wsID):
+                return wsID != id
+            case .worktree(let wsID, _):
+                return wsID != id
+            case .remoteGroup:
+                // The remote group may still have other members; leave it.
+                return true
+            }
         }
         saveWorkspaceState()
     }
@@ -647,16 +731,22 @@ final class WorkspaceStore {
         selectedWorkspaceID = state.selectedWorkspaceID
         collapsedSections = Set(state.collapsedSections ?? [])
         remoteGroupOrder = state.remoteGroupOrder
+        detachedNodes = Set(state.detachedNodes ?? [])
         workspaces = state.workspaces.map { WorkspaceModel(from: $0) }
         startWatchingAll()
 
-        // Populate worktrees and branch info from git on launch.
-        // Skip SSH-backed workspaces — those are owned by the periodic remote
-        // refresh scheduler (timer + window focus), which fires immediately on
-        // app launch via `NSWindow.didBecomeKeyNotification`. This avoids a
-        // redundant SSH round-trip on every launch.
-        Task {
-            for workspace in workspaces where workspace.sshTarget == nil {
+        // Populate local worktrees and branch info from git on launch. Remote
+        // workspaces normally stay with the periodic refresh scheduler, but a
+        // remote workspace owning a persisted detached worktree must refresh
+        // here too so restoration can validate that ref.
+        initialWorkspaceRefreshTask = Task { [weak self] in
+            guard let self else { return }
+            let workspaceIDs = Self.initialWorkspaceIDsToRefresh(
+                workspaces: workspaces,
+                detachedNodes: detachedNodes
+            )
+            for id in workspaceIDs {
+                guard let workspace = workspaces.first(where: { $0.id == id }) else { continue }
                 await refreshWorkspace(workspace)
             }
             // Restart watchers with full worktree paths now available
@@ -715,7 +805,10 @@ final class WorkspaceStore {
             selectedWorkspaceID: persistedSelectedID,
             workspaces: workspaces.map { $0.toRecord() },
             collapsedSections: collapsedSections.isEmpty ? nil : Array(collapsedSections),
-            remoteGroupOrder: persistedRemoteOrder.isEmpty ? nil : persistedRemoteOrder
+            remoteGroupOrder: persistedRemoteOrder.isEmpty ? nil : persistedRemoteOrder,
+            // Omit the key entirely when empty so the persisted file stays
+            // close to the legacy shape for users with no detached windows.
+            detachedNodes: detachedNodes.isEmpty ? nil : detachedNodes
         )
     }
 

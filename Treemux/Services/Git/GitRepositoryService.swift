@@ -257,7 +257,7 @@ actor GitRepositoryService {
             if lineStr.isEmpty {
                 if let path = currentPath {
                     worktrees.append(WorktreeModel(
-                        id: UUID(),
+                        id: WorktreeModel.stableID(for: URL(fileURLWithPath: path)),
                         path: URL(fileURLWithPath: path),
                         branch: currentBranch,
                         headCommit: currentHead,
@@ -281,7 +281,7 @@ actor GitRepositoryService {
         // Handle the last worktree entry if output doesn't end with empty line
         if let path = currentPath {
             worktrees.append(WorktreeModel(
-                id: UUID(),
+                id: WorktreeModel.stableID(for: URL(fileURLWithPath: path)),
                 path: URL(fileURLWithPath: path),
                 branch: currentBranch,
                 headCommit: currentHead,

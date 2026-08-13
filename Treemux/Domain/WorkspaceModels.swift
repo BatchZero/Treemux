@@ -5,6 +5,7 @@
 
 import Foundation
 import AppKit
+import CommonCrypto
 import Observation
 
 // MARK: - Persistent Records (Codable)
@@ -214,6 +215,12 @@ struct PersistedWorkspaceState: Codable {
     let workspaces: [WorkspaceRecord]
     var collapsedSections: [String]?
     var remoteGroupOrder: [String]?
+    /// Sidebar nodes torn off into their own windows. Optional so legacy
+    /// `workspace-state.json` files written before this feature shipped
+    /// (which lack the key) decode cleanly to `nil` — mirrored on the
+    /// existing `collapsedSections`/`remoteGroupOrder` optional pattern,
+    /// rather than adding a custom `init(from:)`.
+    var detachedNodes: Set<DetachedNodeRef>?
 }
 
 // MARK: - Runtime Models
@@ -225,6 +232,29 @@ struct WorktreeModel: Identifiable {
     let branch: String?
     let headCommit: String?
     let isMainWorktree: Bool
+
+    /// A path-derived UUID that survives repository re-inspection and app
+    /// relaunch. Detached worktree refs persist this ID, so generating a fresh
+    /// random UUID on every `git worktree list` made them impossible to restore.
+    static func stableID(for path: URL) -> UUID {
+        let normalizedPath = path.standardizedFileURL.path
+        let data = Data(normalizedPath.utf8)
+        var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+        data.withUnsafeBytes { bytes in
+            _ = CC_SHA256(bytes.baseAddress, CC_LONG(data.count), &digest)
+        }
+        // Mark the name-derived value as UUID version 5 and set the RFC 4122
+        // variant bits. SHA-256 supplies the bytes; only UUID shape matters.
+        digest[6] = (digest[6] & 0x0F) | 0x50
+        digest[8] = (digest[8] & 0x3F) | 0x80
+        let value: uuid_t = (
+            digest[0], digest[1], digest[2], digest[3],
+            digest[4], digest[5], digest[6], digest[7],
+            digest[8], digest[9], digest[10], digest[11],
+            digest[12], digest[13], digest[14], digest[15]
+        )
+        return UUID(uuid: value)
+    }
 }
 
 /// A snapshot of repository state at a point in time.
@@ -347,6 +377,43 @@ final class WorkspaceModel: Identifiable {
             switchToWorktree(path)
         }
         return sessionController
+    }
+
+    /// Returns a session controller for the given worktree path WITHOUT
+    /// mutating `activeWorktreePath` or the active tab state. Used by the
+    /// detached single-worktree window (which renders one worktree's terminal
+    /// in isolation) so it does not switch the SHARED model's active worktree
+    /// out from under the main window's `WorkspaceDetailView`.
+    ///
+    /// Resolves the active terminal tab's controller directly against the
+    /// target worktree path (creating the controller lazily via the private
+    /// `controller(forTabID:worktreePath:)` factory). The controller is shared
+    /// with the main window for that (worktree path, tab) pair — editing it
+    /// updates the same session — but resolving it does not flip which
+    /// worktree/tabs the main window shows.
+    func sessionController(forWorktreePathReadOnly path: String) -> WorkspaceSessionController? {
+        // Load the tab state for the requested worktree path without touching
+        // activeWorktreePath. If it matches the active worktree, use the live
+        // tabs/activeTabID; otherwise use the saved (inactive) tab state, or a
+        // default single-pane terminal tab for the path.
+        let tabsForPath: [WorkspaceTabStateRecord]
+        let activeTabIDForPath: UUID?
+        if path == activeWorktreePath {
+            tabsForPath = tabs
+            activeTabIDForPath = activeTabID
+        } else if let saved = worktreeTabStates[path] {
+            tabsForPath = saved.tabs
+            activeTabIDForPath = saved.activeTabID
+        } else {
+            let defaultTab = WorkspaceTabStateRecord.makeDefault(
+                workingDirectory: path, sshTarget: sshTarget)
+            tabsForPath = [defaultTab]
+            activeTabIDForPath = defaultTab.id
+        }
+        guard let tabID = activeTabIDForPath,
+              let tab = tabsForPath.first(where: { $0.id == tabID }),
+              tab.kind == .terminal else { return nil }
+        return controller(forTabID: tabID, worktreePath: path)
     }
 
     /// Returns true if the given worktree path has any active tab controllers (running sessions).
