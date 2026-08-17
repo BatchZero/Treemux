@@ -47,7 +47,14 @@ final class WindowManagerTests: XCTestCase {
             headCommit: nil,
             isMainWorktree: false
         )
-        workspace.worktrees = [worktree]
+        let siblingWorktree = WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/repo-sibling")),
+            path: URL(fileURLWithPath: "/tmp/repo-sibling"),
+            branch: "sibling",
+            headCommit: nil,
+            isMainWorktree: false
+        )
+        workspace.worktrees = [worktree, siblingWorktree]
         store.workspaces = [workspace]
         let theme = ThemeManager(activeThemeID: store.settings.activeThemeID)
         let root = DetachedRootView(
@@ -63,6 +70,23 @@ final class WindowManagerTests: XCTestCase {
         XCTAssertTrue(
             containsSplitView(in: hostingView),
             "a detached worktree must retain its parent workspace sidebar and folder actions"
+        )
+
+        XCTAssertEqual(
+            SingleWorkspaceWindowView.visibleWorktrees(
+                in: workspace,
+                scopedTo: worktree.id
+            ).map(\.id),
+            [worktree.id],
+            "a detached worktree window must not include sibling worktrees"
+        )
+        XCTAssertEqual(
+            SingleWorkspaceWindowView.visibleWorktrees(
+                in: workspace,
+                scopedTo: nil
+            ).map(\.id),
+            [worktree.id, siblingWorktree.id],
+            "a detached workspace window must continue to include every worktree"
         )
     }
 

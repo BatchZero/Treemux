@@ -28,7 +28,11 @@ struct DetachedRootView: View {
                 // Keep the parent project visible so a detached worktree retains
                 // the same folder actions and project/worktree context as a
                 // detached workspace. The dragged worktree is selected first.
-                SingleWorkspaceWindowView(workspace: ws, initialSelection: wt.id)
+                SingleWorkspaceWindowView(
+                    workspace: ws,
+                    initialSelection: wt.id,
+                    scopedWorktreeID: wt.id
+                )
             } else {
                 missingNodeView
             }

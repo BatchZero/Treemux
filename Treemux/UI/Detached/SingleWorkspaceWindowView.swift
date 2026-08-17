@@ -11,20 +11,40 @@ import SwiftUI
 /// worktree here never changes the main window's global sidebar selection.
 struct SingleWorkspaceWindowView: View {
     @Bindable var workspace: WorkspaceModel
+    let scopedWorktreeID: UUID?
     @Environment(WorkspaceStore.self) private var store
     @Environment(ThemeManager.self) private var theme
     @State private var localSelection: UUID?
 
     /// `initialSelection` lets a worktree tear-off reuse this complete project
     /// layout while opening directly on the worktree that was dragged out.
-    init(workspace: WorkspaceModel, initialSelection: UUID? = nil) {
+    init(
+        workspace: WorkspaceModel,
+        initialSelection: UUID? = nil,
+        scopedWorktreeID: UUID? = nil
+    ) {
         self.workspace = workspace
+        self.scopedWorktreeID = scopedWorktreeID
         _localSelection = State(initialValue: initialSelection ?? workspace.id)
+    }
+
+    /// A detached workspace shows its complete worktree list, while a detached
+    /// worktree keeps only its own ancestry: parent workspace + dragged child.
+    static func visibleWorktrees(
+        in workspace: WorkspaceModel,
+        scopedTo worktreeID: UUID?
+    ) -> [WorktreeModel] {
+        guard let worktreeID else { return workspace.worktrees }
+        return workspace.worktrees.filter { $0.id == worktreeID }
+    }
+
+    private var visibleWorktrees: [WorktreeModel] {
+        Self.visibleWorktrees(in: workspace, scopedTo: scopedWorktreeID)
     }
 
     private var selectedWorktree: WorktreeModel? {
         guard let localSelection else { return nil }
-        return workspace.worktrees.first { $0.id == localSelection }
+        return visibleWorktrees.first { $0.id == localSelection }
     }
 
     var body: some View {
@@ -36,7 +56,7 @@ struct SingleWorkspaceWindowView: View {
                     activity: workspace.hasAnyRunningSessions ? .working : .none
                 )
 
-                ForEach(workspace.worktrees) { worktree in
+                ForEach(visibleWorktrees) { worktree in
                     sidebarRow(
                         SidebarNodeItem(kind: .worktree(workspace, worktree)),
                         id: worktree.id,
@@ -74,7 +94,7 @@ struct SingleWorkspaceWindowView: View {
         }
         .onAppear {
             let isKnownSelection = localSelection == workspace.id
-                || workspace.worktrees.contains { $0.id == localSelection }
+                || visibleWorktrees.contains { $0.id == localSelection }
             if !isKnownSelection {
                 localSelection = workspace.id
             }
