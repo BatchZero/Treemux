@@ -37,6 +37,35 @@ final class WindowManagerTests: XCTestCase {
         )
     }
 
+    func testDetachedWorktreeRetainsParentWorkspaceNavigationContext() {
+        let store = makeStore()
+        let workspace = makeWorkspace()
+        let worktree = WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/repo-feature")),
+            path: URL(fileURLWithPath: "/tmp/repo-feature"),
+            branch: "feature",
+            headCommit: nil,
+            isMainWorktree: false
+        )
+        workspace.worktrees = [worktree]
+        store.workspaces = [workspace]
+        let theme = ThemeManager(activeThemeID: store.settings.activeThemeID)
+        let root = DetachedRootView(
+            ref: .worktree(workspaceID: workspace.id, worktreeID: worktree.id)
+        )
+        .environment(store)
+        .environment(theme)
+        let hostingView = NSHostingView(rootView: root)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 900, height: 600)
+        hostingView.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+        XCTAssertTrue(
+            containsSplitView(in: hostingView),
+            "a detached worktree must retain its parent workspace sidebar and folder actions"
+        )
+    }
+
     // MARK: - detach
 
     func testDetachInsertsRefIntoStoreAndCreatesChildContext() {

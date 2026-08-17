@@ -15,6 +15,13 @@ struct SingleWorkspaceWindowView: View {
     @Environment(ThemeManager.self) private var theme
     @State private var localSelection: UUID?
 
+    /// `initialSelection` lets a worktree tear-off reuse this complete project
+    /// layout while opening directly on the worktree that was dragged out.
+    init(workspace: WorkspaceModel, initialSelection: UUID? = nil) {
+        self.workspace = workspace
+        _localSelection = State(initialValue: initialSelection ?? workspace.id)
+    }
+
     private var selectedWorktree: WorktreeModel? {
         guard let localSelection else { return nil }
         return workspace.worktrees.first { $0.id == localSelection }
@@ -66,7 +73,9 @@ struct SingleWorkspaceWindowView: View {
             }
         }
         .onAppear {
-            if localSelection == nil {
+            let isKnownSelection = localSelection == workspace.id
+                || workspace.worktrees.contains { $0.id == localSelection }
+            if !isKnownSelection {
                 localSelection = workspace.id
             }
         }
