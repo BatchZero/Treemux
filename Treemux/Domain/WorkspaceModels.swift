@@ -333,6 +333,12 @@ final class WorkspaceModel: Identifiable {
     /// to nil dismisses the sheet (used as the Cancel path).
     var pendingBatchClose: BatchCloseRequest?
 
+    /// Remaining tab IDs in a user-requested multi-tab close operation. The
+    /// queue pauses while an unsaved-changes prompt is visible and resumes
+    /// only after the user chooses Save or Don't Save.
+    @ObservationIgnored private var pendingTabCloseIDs: [UUID] = []
+    @ObservationIgnored private var isProcessingTabCloseRequest = false
+
     /// Tab controllers keyed by worktree path → tab ID.
     @ObservationIgnored private var tabControllers: [String: [UUID: WorkspaceSessionController]] = [:]
     /// File browser controllers keyed by worktree path → tab ID.
@@ -597,22 +603,70 @@ final class WorkspaceModel: Identifiable {
     ///   listing relative paths with Save All / Don't Save / Cancel.
     /// Tabs whose dirty list is empty close immediately.
     func requestCloseTab(_ tabID: UUID) {
-        guard let tab = tabs.first(where: { $0.id == tabID }) else { return }
-        if tab.kind == .fileBrowser,
-           let ctrl = fileBrowserControllers[activeWorktreePath]?[tabID] {
-            let dirty = ctrl.dirtySubTabs
-            switch dirty.count {
-            case 0:
-                break  // fall through to closeTab
-            case 1:
-                confirmCloseSingleDirtySubTabAndOuter(tabID: tabID, controller: ctrl, subTab: dirty[0])
-                return
-            default:
-                requestBatchCloseSheet(tabID: tabID, controller: ctrl, dirty: dirty)
-                return
+        requestCloseTabs([tabID])
+    }
+
+    /// Closes every tab except the one that owns the context menu.
+    func requestCloseOtherTabs(keeping tabID: UUID) {
+        requestCloseTabs(tabs.map(\.id).filter { $0 != tabID })
+    }
+
+    /// Closes every tab in the current worktree.
+    func requestCloseAllTabs() {
+        requestCloseTabs(tabs.map(\.id))
+    }
+
+    /// Starts a close operation and serializes any unsaved-changes prompts so
+    /// multiple file-browser tabs cannot overwrite the same sheet request.
+    private func requestCloseTabs(_ tabIDs: [UUID]) {
+        guard !isProcessingTabCloseRequest, pendingBatchClose == nil else { return }
+        isProcessingTabCloseRequest = true
+        pendingTabCloseIDs = tabIDs
+        processNextRequestedTabClose()
+    }
+
+    private func processNextRequestedTabClose() {
+        guard pendingBatchClose == nil else { return }
+
+        while let tabID = pendingTabCloseIDs.first {
+            pendingTabCloseIDs.removeFirst()
+            guard let tab = tabs.first(where: { $0.id == tabID }) else { continue }
+
+            if tab.kind == .fileBrowser,
+               let ctrl = fileBrowserControllers[activeWorktreePath]?[tabID] {
+                let dirty = ctrl.dirtySubTabs
+                switch dirty.count {
+                case 0:
+                    break
+                case 1:
+                    confirmCloseSingleDirtySubTabAndOuter(
+                        tabID: tabID,
+                        controller: ctrl,
+                        subTab: dirty[0]
+                    )
+                    return
+                default:
+                    requestBatchCloseSheet(tabID: tabID, controller: ctrl, dirty: dirty)
+                    return
+                }
             }
+
+            closeTab(tabID)
         }
+
+        isProcessingTabCloseRequest = false
+    }
+
+    /// Cancels the current prompt and abandons the rest of a multi-tab close.
+    func cancelRequestedTabClose() {
+        pendingBatchClose = nil
+        pendingTabCloseIDs.removeAll()
+        isProcessingTabCloseRequest = false
+    }
+
+    private func finishRequestedTabClose(_ tabID: UUID) {
         closeTab(tabID)
+        processNextRequestedTabClose()
     }
 
     private func confirmCloseSingleDirtySubTabAndOuter(tabID: UUID,
@@ -634,8 +688,10 @@ final class WorkspaceModel: Identifiable {
                 do {
                     controller.activateSubTab(subTab.id)
                     try await controller.saveCurrentFile()
-                    self.closeTab(tabID)
+                    self.finishRequestedTabClose(tabID)
                 } catch {
+                    self.pendingTabCloseIDs.removeAll()
+                    self.isProcessingTabCloseRequest = false
                     let err = NSAlert()
                     err.messageText = String(localized: "Save failed")
                     err.informativeText = error.localizedDescription
@@ -643,9 +699,9 @@ final class WorkspaceModel: Identifiable {
                 }
             }
         case .alertSecondButtonReturn: // Don't Save
-            closeTab(tabID)
+            finishRequestedTabClose(tabID)
         default: // Cancel
-            break
+            cancelRequestedTabClose()
         }
     }
 
@@ -669,13 +725,13 @@ final class WorkspaceModel: Identifiable {
     ///     surfaces a Save-failed alert and aborts before the outer tab closes.
     ///   - discard: when `true`, closes the outer tab immediately without
     ///     saving. Mutually exclusive with `saveAll`.
-    /// Cancel is handled by setting `pendingBatchClose = nil` directly via the
-    /// sheet binding.
+    /// Cancel is handled by `cancelRequestedTabClose()`, which also abandons
+    /// the remaining tabs in a multi-tab close operation.
     func resolveBatchClose(saveAll: Bool, discard: Bool) {
         guard let req = pendingBatchClose else { return }
         pendingBatchClose = nil
         if discard {
-            closeTab(req.tabID)
+            finishRequestedTabClose(req.tabID)
             return
         }
         guard saveAll else { return }
@@ -686,6 +742,8 @@ final class WorkspaceModel: Identifiable {
                 do {
                     try await ctrl.saveCurrentFile()
                 } catch {
+                    self.pendingTabCloseIDs.removeAll()
+                    self.isProcessingTabCloseRequest = false
                     let err = NSAlert()
                     err.messageText = String(localized: "Save failed")
                     err.informativeText = error.localizedDescription
@@ -693,7 +751,7 @@ final class WorkspaceModel: Identifiable {
                     return  // abort batch close on first failure
                 }
             }
-            self.closeTab(req.tabID)
+            self.finishRequestedTabClose(req.tabID)
         }
     }
 

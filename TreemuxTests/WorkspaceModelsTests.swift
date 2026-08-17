@@ -177,6 +177,31 @@ final class WorkspaceModelsTests: XCTestCase {
     }
 
     @MainActor
+    func testRequestCloseOtherTabsKeepsContextTab() {
+        let ws = WorkspaceModel(name: "test", kind: .localTerminal)
+        ws.createTab()
+        ws.createTab()
+        let contextTabID = ws.tabs[1].id
+
+        ws.requestCloseOtherTabs(keeping: contextTabID)
+
+        XCTAssertEqual(ws.tabs.map(\.id), [contextTabID])
+        XCTAssertEqual(ws.activeTabID, contextTabID)
+    }
+
+    @MainActor
+    func testRequestCloseAllTabsResultsInEmptyState() {
+        let ws = WorkspaceModel(name: "test", kind: .localTerminal)
+        ws.createTab()
+        ws.createTab()
+
+        ws.requestCloseAllTabs()
+
+        XCTAssertTrue(ws.tabs.isEmpty)
+        XCTAssertNil(ws.activeTabID)
+    }
+
+    @MainActor
     func testRenameTabSetsManuallyNamed() {
         let ws = WorkspaceModel(name: "test", kind: .localTerminal)
         let tabID = ws.tabs[0].id

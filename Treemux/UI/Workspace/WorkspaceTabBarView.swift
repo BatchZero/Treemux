@@ -141,6 +141,8 @@ struct WorkspaceTabBarView: View {
                 dotKind: dotKind(for: tab),
                 onSelect: { workspace.selectTab(tab.id) },
                 onClose: { workspace.requestCloseTab(tab.id) },
+                onCloseOthers: { workspace.requestCloseOtherTabs(keeping: tab.id) },
+                onCloseAll: { workspace.requestCloseAllTabs() },
                 onRename: {
                     renameText = tab.title
                     renamingTabID = tab.id
@@ -189,6 +191,8 @@ private struct TabButton: View {
     let dotKind: TabActivityDot.Kind?
     let onSelect: () -> Void
     let onClose: () -> Void
+    let onCloseOthers: () -> Void
+    let onCloseAll: () -> Void
     let onRename: () -> Void
     let width: CGFloat
 
@@ -256,6 +260,8 @@ private struct TabButton: View {
             Button("Rename…") { onRename() }
             Divider()
             Button("Close Tab") { onClose() }
+            Button("Close Other Tabs") { onCloseOthers() }
+            Button("Close All Tabs") { onCloseAll() }
         }
     }
 }
