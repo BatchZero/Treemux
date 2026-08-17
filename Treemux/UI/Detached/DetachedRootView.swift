@@ -25,7 +25,10 @@ struct DetachedRootView: View {
         case .worktree(let wsID, let wtID):
             if let ws = store.workspaces.first(where: { $0.id == wsID }),
                let wt = ws.worktrees.first(where: { $0.id == wtID }) {
-                SingleWorktreeWindowView(workspace: ws, worktree: wt)
+                // Keep the parent project visible so a detached worktree retains
+                // the same folder actions and project/worktree context as a
+                // detached workspace. The dragged worktree is selected first.
+                SingleWorkspaceWindowView(workspace: ws, initialSelection: wt.id)
             } else {
                 missingNodeView
             }
