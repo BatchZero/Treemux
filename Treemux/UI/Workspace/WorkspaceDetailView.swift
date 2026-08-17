@@ -64,7 +64,7 @@ struct WorkspaceTabContainerView: View {
                 dirtyRelativePaths: req.relativePaths,
                 onSaveAll: { workspace.resolveBatchClose(saveAll: true, discard: false) },
                 onDiscardAll: { workspace.resolveBatchClose(saveAll: false, discard: true) },
-                onCancel: { workspace.pendingBatchClose = nil }
+                onCancel: { workspace.cancelRequestedTabClose() }
             )
         }
     }
