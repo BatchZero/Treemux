@@ -94,16 +94,23 @@ struct SingleWorkspaceWindowView: View {
             }
         }
         .onAppear {
-            let isKnownSelection = localSelection == workspace.id
-                || visibleWorktrees.contains { $0.id == localSelection }
-            if !isKnownSelection {
-                localSelection = workspace.id
-            }
-            updateCommandSelection()
+            normalizeSelection()
         }
         .onChange(of: localSelection) { _, _ in
             updateCommandSelection()
         }
+        .onChange(of: visibleWorktrees.map(\.id)) { _, _ in
+            normalizeSelection()
+        }
+    }
+
+    private func normalizeSelection() {
+        let isKnownSelection = localSelection == workspace.id
+            || visibleWorktrees.contains { $0.id == localSelection }
+        if !isKnownSelection {
+            localSelection = workspace.id
+        }
+        updateCommandSelection()
     }
 
     private func updateCommandSelection() {

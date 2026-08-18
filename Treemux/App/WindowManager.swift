@@ -127,11 +127,81 @@ final class WindowManager {
         // Avoid double-detach: a second window for the same ref would desync
         // the sidebar filter and persist duplicate state.
         guard !store.isDetached(ref) else { return }
+        guard !store.detachedNodes.contains(where: { overlaps($0, ref) }) else { return }
         store.detachedNodes.insert(ref)
+        moveMainSelectionAway(from: ref)
         let ctx = WindowContext(store: store, kind: .detached(ref))
         ctx.windowManager = self
         childContexts.append(ctx)
         ctx.show()
+    }
+
+    /// A detached sidebar node is owned by its child window. If the main
+    /// window was displaying that exact node, move it to the nearest attached
+    /// scope so both windows never drive the same active tab state.
+    private func moveMainSelectionAway(from ref: DetachedNodeRef) {
+        switch ref {
+        case .worktree(let workspaceID, let worktreeID):
+            guard store.selectedWorkspaceID == worktreeID,
+                  let workspace = store.workspaces.first(where: { $0.id == workspaceID }) else {
+                return
+            }
+            if let rootPath = workspace.repositoryRoot?.path ?? workspace.sshTarget?.remotePath,
+               workspace.activeWorktreePath != rootPath {
+                workspace.switchToWorktree(rootPath)
+            }
+            store.selectWorkspace(workspace.id)
+        case .workspace, .remoteGroup:
+            guard selectionIsOwned(by: ref) else { return }
+            store.selectedWorkspaceID = firstAttachedWorkspaceID()
+        }
+    }
+
+    private func selectionIsOwned(by ref: DetachedNodeRef) -> Bool {
+        guard let selectedWorkspace = store.selectedWorkspace else { return false }
+        switch ref {
+        case .workspace(let workspaceID):
+            return selectedWorkspace.id == workspaceID
+        case .worktree(_, let worktreeID):
+            return store.selectedWorkspaceID == worktreeID
+        case .remoteGroup(let key):
+            guard let target = selectedWorkspace.sshTarget else { return false }
+            return WorkspaceStore.remoteGroupKey(for: target) == key
+        }
+    }
+
+    private func firstAttachedWorkspaceID() -> UUID? {
+        store.sidebarWorkspaces.first { workspace in
+            !store.detachedNodes.contains { ref in
+                switch ref {
+                case .workspace(let workspaceID):
+                    return workspaceID == workspace.id
+                case .worktree:
+                    return false
+                case .remoteGroup(let key):
+                    guard let target = workspace.sshTarget else { return false }
+                    return WorkspaceStore.remoteGroupKey(for: target) == key
+                }
+            }
+        }?.id
+    }
+
+    private func overlaps(_ lhs: DetachedNodeRef, _ rhs: DetachedNodeRef) -> Bool {
+        if case .worktree = lhs, case .worktree = rhs {
+            return false
+        }
+        return !workspaceIDs(ownedBy: lhs).intersection(workspaceIDs(ownedBy: rhs)).isEmpty
+    }
+
+    private func workspaceIDs(ownedBy ref: DetachedNodeRef) -> Set<UUID> {
+        switch ref {
+        case .workspace(let workspaceID):
+            return [workspaceID]
+        case .worktree(let workspaceID, _):
+            return [workspaceID]
+        case .remoteGroup(let key):
+            return Set(store.workspacesInRemoteGroup(key).map(\.id))
+        }
     }
 
     /// Called when a child window is closed by the user. Restores the node's
@@ -243,6 +313,9 @@ final class WindowManager {
             ctx.windowManager = self
             childContexts.append(ctx)
             ctx.show()
+        }
+        for ref in store.detachedNodes {
+            moveMainSelectionAway(from: ref)
         }
     }
 }

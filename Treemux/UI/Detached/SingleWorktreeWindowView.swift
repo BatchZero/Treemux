@@ -22,7 +22,11 @@ struct SingleWorktreeWindowView: View {
     var body: some View {
         let _ = commandContext?.revision
         Group {
-            if let controller = workspace.sessionController(forWorktreePathReadOnly: worktree.path.path) {
+            if commandContext?.activeTab?.kind == .fileBrowser,
+               let controller = commandContext?.activeFileBrowserController {
+                FileBrowserTabContentView(controller: controller)
+            } else if let controller = commandContext?.activeSessionController
+                        ?? workspace.sessionController(forWorktreePathReadOnly: worktree.path.path) {
                 WorkspaceSessionDetailView(
                     controller: controller,
                     onCloseTab: {

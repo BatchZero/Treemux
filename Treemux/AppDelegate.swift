@@ -342,7 +342,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func saveCurrentFile() {
         guard let controller = windowCommandContext?.activeFileBrowserController else { return }
-        NotificationCenter.default.post(name: .treemuxSaveCurrentFile, object: controller)
+        Task { try? await controller.saveCurrentFile() }
     }
 
     @objc private func terminalFontSizeIncrease() {

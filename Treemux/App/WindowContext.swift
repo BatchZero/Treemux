@@ -16,6 +16,7 @@ import SwiftUI
 final class WindowCommandContext {
     private let store: WorkspaceStore
     private let followsStoreSelection: Bool
+    private let remoteGroupKey: String?
     private var workspaceID: UUID?
     private var worktreePath: String?
 
@@ -30,22 +31,49 @@ final class WindowCommandContext {
         if followsStoreSelection {
             return store.selectedWorkspace
         }
+        if let remoteGroupKey {
+            let group = store.workspacesInRemoteGroup(remoteGroupKey)
+            return group.first(where: { $0.id == workspaceID }) ?? group.first
+        }
         guard let workspaceID else { return nil }
         return store.workspaces.first { $0.id == workspaceID }
     }
 
+    /// The active tab rendered by this window's selected workspace/worktree.
+    var activeTab: WorkspaceTabStateRecord? {
+        guard let workspace else { return nil }
+        if followsStoreSelection {
+            guard let tabID = workspace.activeTabID else { return nil }
+            return workspace.tabs.first { $0.id == tabID }
+        }
+        return workspace.activeTab(forWorktreePathReadOnly: resolvedWorktreePath(for: workspace))
+    }
+
     /// The active file-browser controller in this window, if its selected tab
-    /// is a file tab. Used as the target of the save notification so Cmd+S
-    /// never fans out to editors hosted by other windows.
+    /// is a file tab. Cmd+S calls this controller directly so the save never
+    /// fans out to editors hosted by other windows.
     var activeFileBrowserController: FileBrowserTabController? {
-        guard let result = withSelectedWorktree({ workspace -> FileBrowserTabController? in
+        guard let workspace else { return nil }
+        if followsStoreSelection {
             guard let tabID = workspace.activeTabID,
                   workspace.tabs.first(where: { $0.id == tabID })?.kind == .fileBrowser else {
                 return nil
             }
             return workspace.fileBrowserController(forTabID: tabID)
-        }) else { return nil }
-        return result
+        }
+        return workspace.fileBrowserController(
+            forWorktreePathReadOnly: resolvedWorktreePath(for: workspace)
+        )
+    }
+
+    var activeSessionController: WorkspaceSessionController? {
+        guard let workspace else { return nil }
+        if followsStoreSelection {
+            return workspace.sessionController
+        }
+        return workspace.sessionController(
+            forWorktreePathReadOnly: resolvedWorktreePath(for: workspace)
+        )
     }
 
     init(store: WorkspaceStore, kind: WindowContext.Kind) {
@@ -53,21 +81,25 @@ final class WindowCommandContext {
         switch kind {
         case .main:
             followsStoreSelection = true
+            remoteGroupKey = nil
             workspaceID = nil
             worktreePath = nil
         case .detached(let ref):
             followsStoreSelection = false
             switch ref {
             case .workspace(let id):
+                remoteGroupKey = nil
                 workspaceID = id
                 worktreePath = nil
             case .worktree(let workspaceID, let worktreeID):
+                remoteGroupKey = nil
                 self.workspaceID = workspaceID
                 worktreePath = store.workspaces
                     .first(where: { $0.id == workspaceID })?
                     .worktrees.first(where: { $0.id == worktreeID })?
                     .path.path
             case .remoteGroup(let key):
+                remoteGroupKey = key
                 workspaceID = store.workspacesInRemoteGroup(key).first?.id
                 worktreePath = nil
             }
@@ -147,10 +179,10 @@ final class WindowCommandContext {
     private func performWithSessionController(
         _ action: (WorkspaceSessionController) -> Void
     ) -> Bool {
-        performInSelectedWorktree { workspace in
-            guard let controller = workspace.sessionController else { return }
-            action(controller)
-        }
+        guard let controller = activeSessionController else { return false }
+        action(controller)
+        revision += 1
+        return true
     }
 
     private func performInSelectedWorktree(
@@ -166,8 +198,8 @@ final class WindowCommandContext {
     ) -> Result? {
         guard let workspace else { return nil }
         let originalPath = workspace.activeWorktreePath
-        let targetPath = resolvedWorktreePath
-        if let targetPath, targetPath != originalPath {
+        let targetPath = resolvedWorktreePath(for: workspace)
+        if targetPath != originalPath {
             workspace.switchToWorktree(targetPath)
         }
         defer {
@@ -178,11 +210,17 @@ final class WindowCommandContext {
         return action(workspace)
     }
 
-    private var resolvedWorktreePath: String? {
+    private func resolvedWorktreePath(for workspace: WorkspaceModel) -> String {
         if followsStoreSelection {
-            return store.selectedWorktree?.path.path
+            return store.selectedWorktree?.path.path ?? workspace.activeWorktreePath
         }
-        return worktreePath
+        if let worktreePath,
+           workspace.worktrees.contains(where: { $0.path.path == worktreePath }) {
+            return worktreePath
+        }
+        return workspace.repositoryRoot?.path
+            ?? workspace.sshTarget?.remotePath
+            ?? workspace.activeWorktreePath
     }
 }
 
