@@ -451,6 +451,63 @@ final class WorkspaceModelsTests: XCTestCase {
     }
 
     @MainActor
+    func testReadOnlyInactiveWorktreePaneChangesPersistAndRestore() throws {
+        let mainPath = "/tmp/project"
+        let featurePath = "/tmp/project-feature"
+        let mainTab = WorkspaceTabStateRecord.makeDefault(workingDirectory: mainPath)
+        let featureTab = WorkspaceTabStateRecord.makeDefault(workingDirectory: featurePath)
+        let record = WorkspaceRecord(
+            id: UUID(),
+            kind: .repository,
+            name: "test",
+            repositoryPath: mainPath,
+            isPinned: false,
+            isArchived: false,
+            sshTarget: nil,
+            worktreeStates: [
+                WorktreeSessionStateRecord(
+                    worktreePath: mainPath,
+                    branch: "main",
+                    tabs: [mainTab],
+                    selectedTabID: mainTab.id
+                ),
+                WorktreeSessionStateRecord(
+                    worktreePath: featurePath,
+                    branch: "feature",
+                    tabs: [featureTab],
+                    selectedTabID: featureTab.id
+                )
+            ],
+            worktreeOrder: nil,
+            workspaceIcon: nil,
+            worktreeIconOverrides: nil
+        )
+        let workspace = WorkspaceModel(from: record)
+        let controller = try XCTUnwrap(
+            workspace.sessionController(forWorktreePathReadOnly: featurePath)
+        )
+        let originalPane = try XCTUnwrap(controller.focusedPaneID)
+
+        controller.splitPane(originalPane, axis: .vertical)
+        controller.toggleZoom()
+
+        XCTAssertEqual(workspace.activeWorktreePath, mainPath)
+        let saved = workspace.toRecord()
+        let featureState = try XCTUnwrap(
+            saved.worktreeStates.first { $0.worktreePath == featurePath }
+        )
+        XCTAssertEqual(featureState.tabs.first?.layout?.paneIDs.count, 2)
+        XCTAssertEqual(featureState.tabs.first?.zoomedPaneID, controller.focusedPaneID)
+
+        let restored = WorkspaceModel(from: saved)
+        let restoredController = try XCTUnwrap(
+            restored.sessionController(forWorktreePathReadOnly: featurePath)
+        )
+        XCTAssertEqual(restoredController.layout.paneIDs.count, 2)
+        XCTAssertEqual(restoredController.zoomedPaneID, controller.focusedPaneID)
+    }
+
+    @MainActor
     func testToRecordSerializesTabs() {
         let ws = WorkspaceModel(name: "test", kind: .localTerminal)
         ws.createTab()

@@ -498,6 +498,74 @@ final class WindowManagerTests: XCTestCase {
         XCTAssertFalse(store.isDetached(stale), "stale refs should be cleaned up out of the store")
     }
 
+    func testRestoreChildWindowsKeepsOnlyBroaderOverlappingRef() {
+        let store = makeStore()
+        let workspace = makeWorkspace()
+        let worktree = WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/repo-feature")),
+            path: URL(fileURLWithPath: "/tmp/repo-feature"),
+            branch: "feature",
+            headCommit: nil,
+            isMainWorktree: false
+        )
+        workspace.worktrees = [worktree]
+        store.workspaces = [workspace]
+        let workspaceRef = DetachedNodeRef.workspace(workspace.id)
+        let worktreeRef = DetachedNodeRef.worktree(
+            workspaceID: workspace.id,
+            worktreeID: worktree.id
+        )
+        store.detachedNodes = [worktreeRef, workspaceRef]
+        let manager = WindowManager(store: store)
+
+        manager.restoreChildWindows()
+        defer { closeChildWindows(of: manager) }
+
+        XCTAssertEqual(store.detachedNodes, [workspaceRef])
+        XCTAssertEqual(manager.childContexts.count, 1)
+    }
+
+    func testRestoreChildWindowsPrefersRemoteGroupOverInnerWorkspace() throws {
+        let store = makeStore()
+        let workspace = makeRemoteWorkspace(name: "remote", path: "/srv/remote")
+        store.workspaces = [workspace]
+        let groupKey = WorkspaceStore.remoteGroupKey(
+            for: try XCTUnwrap(workspace.sshTarget)
+        )
+        let groupRef = DetachedNodeRef.remoteGroup(groupKey)
+        store.detachedNodes = [groupRef, .workspace(workspace.id)]
+        let manager = WindowManager(store: store)
+
+        manager.restoreChildWindows()
+        defer { closeChildWindows(of: manager) }
+
+        XCTAssertEqual(store.detachedNodes, [groupRef])
+        XCTAssertEqual(manager.childContexts.count, 1)
+    }
+
+    func testAddingWorkspaceToDetachedRemoteGroupMovesMainSelectionAway() throws {
+        let store = makeStore()
+        let attached = makeWorkspace(name: "attached", path: "/tmp/attached")
+        let firstRemote = makeRemoteWorkspace(name: "first", path: "/srv/first")
+        store.workspaces = [attached, firstRemote]
+        store.selectedWorkspaceID = attached.id
+        let groupKey = WorkspaceStore.remoteGroupKey(
+            for: try XCTUnwrap(firstRemote.sshTarget)
+        )
+        let manager = WindowManager(store: store)
+        manager.detach(.remoteGroup(groupKey))
+        defer { closeChildWindows(of: manager) }
+
+        let secondRemote = makeRemoteWorkspace(name: "second", path: "/srv/second")
+        store.workspaces.append(secondRemote)
+        store.selectedWorkspaceID = secondRemote.id
+        store.saveWorkspaceState()
+
+        XCTAssertEqual(store.selectedWorkspaceID, attached.id)
+        XCTAssertEqual(manager.childContexts.count, 1)
+        XCTAssertEqual(store.detachedNodes, [.remoteGroup(groupKey)])
+    }
+
     // MARK: - handleMainWindowWillClose
 
     func testMainWindowCloseWithoutChildrenDoesNotPrompt() {

@@ -43,6 +43,11 @@ final class WorkspaceStore {
     /// sidebar's filter (detached nodes are hidden from the main window).
     var detachedNodes: Set<DetachedNodeRef> = []
 
+    /// WindowManager installs this hook before persistence snapshots. It
+    /// compares workspace membership and revalidates detached ownership only
+    /// when that structure changed.
+    @ObservationIgnored var workspaceStructureDidChange: (@MainActor () -> Void)?
+
     var showSettings = false
     var showCommandPalette = false
     var sidebarIconCustomizationRequest: SidebarIconCustomizationRequest?
@@ -771,6 +776,8 @@ final class WorkspaceStore {
         // bespoke invalidation call at each call site.
         sidebarIconCache.removeAll()
         remoteGroupsCache = nil
+
+        workspaceStructureDidChange?()
 
         stateSaver.schedule()
     }

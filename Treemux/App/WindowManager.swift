@@ -48,12 +48,25 @@ final class WindowManager {
     /// without entering an AppKit modal loop.
     @ObservationIgnored private let mainWindowCloseConfirmation: @MainActor (Int) -> Bool
 
+    /// Prevents save-triggered ownership reconciliation from re-entering
+    /// itself while it adjusts the main-window selection.
+    @ObservationIgnored private var isReconcilingOwnership = false
+
+    /// Workspace/group/worktree membership last seen by the ownership arbiter.
+    /// Selection-only saves do not need to validate refs and, during launch,
+    /// must not reject worktrees before the initial git refresh finishes.
+    @ObservationIgnored private var ownershipMembershipSignature: Set<String>
+
     init(
         store: WorkspaceStore,
         mainWindowCloseConfirmation: @escaping @MainActor (Int) -> Bool = WindowManager.presentMainWindowCloseConfirmation
     ) {
         self.store = store
         self.mainWindowCloseConfirmation = mainWindowCloseConfirmation
+        ownershipMembershipSignature = Self.makeOwnershipMembershipSignature(in: store)
+        store.workspaceStructureDidChange = { [weak self] in
+            self?.reconcileOwnershipAfterWorkspaceStructureChange()
+        }
     }
 
     deinit {
@@ -150,7 +163,7 @@ final class WindowManager {
                workspace.activeWorktreePath != rootPath {
                 workspace.switchToWorktree(rootPath)
             }
-            store.selectWorkspace(workspace.id)
+            store.selectedWorkspaceID = workspace.id
         case .workspace, .remoteGroup:
             guard selectionIsOwned(by: ref) else { return }
             store.selectedWorkspaceID = firstAttachedWorkspaceID()
@@ -202,6 +215,93 @@ final class WindowManager {
         case .remoteGroup(let key):
             return Set(store.workspacesInRemoteGroup(key).map(\.id))
         }
+    }
+
+    /// Re-establishes exclusive ownership after workspace membership changes.
+    /// Broader scopes win deterministically over narrower overlapping scopes.
+    private func reconcileOwnershipAfterWorkspaceStructureChange() {
+        let currentSignature = Self.makeOwnershipMembershipSignature(in: store)
+        guard currentSignature != ownershipMembershipSignature else { return }
+        reconcileDetachedOwnership()
+    }
+
+    private func reconcileDetachedOwnership() {
+        guard !isReconcilingOwnership else { return }
+        isReconcilingOwnership = true
+        defer { isReconcilingOwnership = false }
+
+        ownershipMembershipSignature = Self.makeOwnershipMembershipSignature(in: store)
+
+        let acceptedRefs = normalizedDetachedRefs(store.detachedNodes)
+        let acceptedSet = Set(acceptedRefs)
+        store.detachedNodes = acceptedSet
+
+        let contextsLosingOwnership = childContexts.filter { context in
+            detachedRef(for: context).map { !acceptedSet.contains($0) } == true
+        }
+        if !contextsLosingOwnership.isEmpty {
+            for context in contextsLosingOwnership {
+                context.closeImmediately()
+            }
+            childContexts.removeAll { context in
+                detachedRef(for: context).map { !acceptedSet.contains($0) } == true
+            }
+        }
+
+        for ref in acceptedRefs {
+            moveMainSelectionAway(from: ref)
+        }
+    }
+
+    private func normalizedDetachedRefs(_ refs: Set<DetachedNodeRef>) -> [DetachedNodeRef] {
+        let orderedRefs = refs
+            .filter(store.isValid)
+            .sorted { lhs, rhs in
+                let lhsPriority = ownershipPriority(of: lhs)
+                let rhsPriority = ownershipPriority(of: rhs)
+                if lhsPriority != rhsPriority {
+                    return lhsPriority < rhsPriority
+                }
+                return lhs.autosaveKeySuffix < rhs.autosaveKeySuffix
+            }
+
+        var accepted: [DetachedNodeRef] = []
+        for ref in orderedRefs where !accepted.contains(where: { overlaps($0, ref) }) {
+            accepted.append(ref)
+        }
+        return accepted
+    }
+
+    private func ownershipPriority(of ref: DetachedNodeRef) -> Int {
+        switch ref {
+        case .remoteGroup:
+            return 0
+        case .workspace:
+            return 1
+        case .worktree:
+            return 2
+        }
+    }
+
+    private static func makeOwnershipMembershipSignature(
+        in store: WorkspaceStore
+    ) -> Set<String> {
+        var signature = Set<String>()
+        for workspace in store.workspaces {
+            let groupKey = workspace.sshTarget.map(WorkspaceStore.remoteGroupKey(for:)) ?? "local"
+            signature.insert("workspace:\(workspace.id.uuidString):\(groupKey)")
+            for worktree in workspace.worktrees {
+                signature.insert(
+                    "worktree:\(workspace.id.uuidString):\(worktree.id.uuidString)"
+                )
+            }
+        }
+        return signature
+    }
+
+    private func detachedRef(for context: WindowContext) -> DetachedNodeRef? {
+        guard case .detached(let ref) = context.kind else { return nil }
+        return ref
     }
 
     /// Called when a child window is closed by the user. Restores the node's
@@ -302,20 +402,12 @@ final class WindowManager {
     /// to restore the previous session's torn-off windows. Stale refs (whose
     /// nodes no longer exist) are dropped from the store.
     func restoreChildWindows() {
-        // Snapshot the set so removal during iteration is safe.
-        let refs = store.detachedNodes
-        for ref in refs {
-            guard store.isValid(ref) else {
-                store.detachedNodes.remove(ref)
-                continue
-            }
+        reconcileDetachedOwnership()
+        for ref in normalizedDetachedRefs(store.detachedNodes) {
             let ctx = WindowContext(store: store, kind: .detached(ref))
             ctx.windowManager = self
             childContexts.append(ctx)
             ctx.show()
-        }
-        for ref in store.detachedNodes {
-            moveMainSelectionAway(from: ref)
         }
     }
 }

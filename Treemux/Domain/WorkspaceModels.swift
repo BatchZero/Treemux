@@ -878,15 +878,22 @@ final class WorkspaceModel: Identifiable {
     /// Only applies to terminal tabs — file-browser tabs persist their state via
     /// `persistFileBrowserState` and must not be rewritten here.
     func saveActiveTabState() {
-        guard let tabID = activeTabID,
-              let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
-        let existingTab = tabs[index]
+        guard let tabID = activeTabID else { return }
+        saveTabState(tabID: tabID, worktreePath: activeWorktreePath)
+    }
+
+    /// Saves a terminal controller back to the worktree that owns it, even
+    /// when that worktree is not the workspace's globally active path.
+    private func saveTabState(tabID: UUID, worktreePath: String) {
+        var state = tabState(forWorktreePathReadOnly: worktreePath)
+        guard let index = state.tabs.firstIndex(where: { $0.id == tabID }) else { return }
+        let existingTab = state.tabs[index]
         guard existingTab.kind == .terminal,
-              let ctrl = tabControllers[activeWorktreePath]?[tabID] else { return }
+              let ctrl = tabControllers[worktreePath]?[tabID] else { return }
 
         let preferredTitle = suggestedTitle(for: ctrl, existingTab: existingTab)
 
-        tabs[index] = WorkspaceTabStateRecord(
+        state.tabs[index] = WorkspaceTabStateRecord(
             id: tabID,
             title: preferredTitle,
             isManuallyNamed: existingTab.isManuallyNamed,
@@ -897,6 +904,12 @@ final class WorkspaceModel: Identifiable {
             zoomedPaneID: ctrl.zoomedPaneID,
             fileBrowserState: nil
         )
+
+        if worktreePath == activeWorktreePath {
+            tabs = state.tabs
+        } else {
+            worktreeTabStates[worktreePath] = state
+        }
     }
 
     /// Restores tab state from persisted worktree states.
@@ -983,12 +996,13 @@ final class WorkspaceModel: Identifiable {
         // Defensive: this factory should only be reached for terminal tabs.
         // sessionController already gates on tab.kind == .terminal; this assertion
         // catches future regressions where a caller bypasses that guard.
-        if let tab = tabs.first(where: { $0.id == tabID }), tab.kind != .terminal {
+        let worktreeState = tabState(forWorktreePathReadOnly: worktreePath)
+        if let tab = worktreeState.tabs.first(where: { $0.id == tabID }), tab.kind != .terminal {
             assertionFailure("controller(forTabID:) called for non-terminal tab \(tabID)")
         }
 
         // Look up the saved tab state to restore layout and panes
-        let tabState = tabs.first(where: { $0.id == tabID })
+        let tabState = worktreeState.tabs.first(where: { $0.id == tabID })
 
         let ctrl = WorkspaceSessionController(
             workingDirectory: worktreePath,
@@ -1000,7 +1014,7 @@ final class WorkspaceModel: Identifiable {
         )
 
         ctrl.onPaneStateChanged = { [weak self] in
-            self?.saveActiveTabState()
+            self?.saveTabState(tabID: tabID, worktreePath: worktreePath)
         }
 
         if tabControllers[worktreePath] == nil {

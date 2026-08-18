@@ -4,16 +4,13 @@
 
 import SwiftUI
 
-/// Body of a detached child window showing a single worktree's terminal
-/// session (no sidebar, no tab bar).
+/// Body of a detached child window showing one worktree's active tab without
+/// a sidebar or tab bar.
 ///
-/// Resolves the worktree's terminal session via the NON-mutating accessor
-/// (`sessionController(forWorktreePathReadOnly:)`) so the detached window does
-/// NOT switch the shared `WorkspaceModel.activeWorktreePath` out from under the
-/// main window's `WorkspaceDetailView` — the parent workspace stays where the
-/// user left it in the main sidebar. The session controller itself is shared
-/// (same (worktree path, tab) pair), so typing in the detached window updates
-/// the same session. Closing the last pane closes that worktree's terminal tab.
+/// Resolves terminal and file-browser content via NON-mutating accessors so the
+/// detached window does NOT switch `WorkspaceModel.activeWorktreePath` out from
+/// under another view. Controllers remain shared for the same worktree/tab pair,
+/// while the selected worktree and active tab stay scoped to this window.
 struct SingleWorktreeWindowView: View {
     @Bindable var workspace: WorkspaceModel
     let worktree: WorktreeModel
