@@ -32,7 +32,10 @@ final class WorkspaceStore {
     }
 
     var selectedWorkspaceID: UUID? {
-        didSet { handleWorktreeSelectionIfNeeded() }
+        didSet {
+            handleWorktreeSelectionIfNeeded()
+            workspaceSelectionDidChange?()
+        }
     }
 
     var collapsedSections: Set<String> = []
@@ -42,6 +45,15 @@ final class WorkspaceStore {
     /// across launches so child windows can be rebuilt. Drives the main
     /// sidebar's filter (detached nodes are hidden from the main window).
     var detachedNodes: Set<DetachedNodeRef> = []
+
+    /// WindowManager installs this hook before persistence snapshots. It
+    /// compares workspace membership and revalidates detached ownership only
+    /// when that structure changed.
+    @ObservationIgnored var workspaceStructureDidChange: (@MainActor () -> Void)?
+
+    /// WindowManager uses this hook to keep the main-window selection outside
+    /// every currently detached ownership scope.
+    @ObservationIgnored var workspaceSelectionDidChange: (@MainActor () -> Void)?
 
     var showSettings = false
     var showCommandPalette = false
@@ -652,6 +664,7 @@ final class WorkspaceStore {
 
             // Notify SwiftUI that child model data changed so the sidebar rebuilds.
             workspaceMetadataGeneration += 1
+            workspaceStructureDidChange?()
         } catch {
             // Not a git repository or git command failed — that's acceptable.
         }
@@ -771,6 +784,8 @@ final class WorkspaceStore {
         // bespoke invalidation call at each call site.
         sidebarIconCache.removeAll()
         remoteGroupsCache = nil
+
+        workspaceStructureDidChange?()
 
         stateSaver.schedule()
     }

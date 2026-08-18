@@ -16,6 +16,316 @@ import XCTest
 @MainActor
 final class WindowManagerTests: XCTestCase {
 
+    // MARK: - Window-scoped commands
+
+    func testDetachedWindowCommandsTargetItsWorkspaceInsteadOfGlobalSelection() throws {
+        let store = makeStore()
+        let mainWorkspace = makeWorkspace(name: "main", path: "/tmp/main")
+        let detachedWorkspace = makeWorkspace(name: "detached", path: "/tmp/detached")
+        store.workspaces = [mainWorkspace, detachedWorkspace]
+        store.selectedWorkspaceID = mainWorkspace.id
+        let manager = WindowManager(store: store)
+
+        manager.detach(.workspace(detachedWorkspace.id))
+        defer { closeChildWindows(of: manager) }
+
+        let child = try XCTUnwrap(manager.childContexts.first)
+        let window = try XCTUnwrap(child.testWindow())
+        let commands = try XCTUnwrap(manager.commandContext(for: window))
+
+        XCTAssertEqual(commands.workspace?.id, detachedWorkspace.id)
+        XCTAssertTrue(commands.perform(.newTab))
+        XCTAssertEqual(mainWorkspace.tabs.count, 1)
+        XCTAssertEqual(detachedWorkspace.tabs.count, 2)
+    }
+
+    func testDetachedWorktreeTabCommandPreservesMainWindowWorktree() throws {
+        let store = makeStore()
+        let workspace = makeWorkspace(name: "repo", path: "/tmp/repo")
+        let worktree = WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/repo-feature")),
+            path: URL(fileURLWithPath: "/tmp/repo-feature"),
+            branch: "feature",
+            headCommit: nil,
+            isMainWorktree: false
+        )
+        workspace.worktrees = [worktree]
+        store.workspaces = [workspace]
+        store.selectedWorkspaceID = workspace.id
+        let originalPath = workspace.activeWorktreePath
+        let manager = WindowManager(store: store)
+
+        manager.detach(.worktree(workspaceID: workspace.id, worktreeID: worktree.id))
+        defer { closeChildWindows(of: manager) }
+
+        let child = try XCTUnwrap(manager.childContexts.first)
+        let window = try XCTUnwrap(child.testWindow())
+        let commands = try XCTUnwrap(manager.commandContext(for: window))
+        XCTAssertTrue(commands.perform(.newTab))
+
+        XCTAssertEqual(workspace.activeWorktreePath, originalPath)
+        workspace.switchToWorktree(worktree.path.path)
+        XCTAssertEqual(workspace.tabs.count, 2)
+    }
+
+    func testDetachedWindowRoutesAllTabCommandsToItsWorkspace() throws {
+        let store = makeStore()
+        let mainWorkspace = makeWorkspace(name: "main", path: "/tmp/main")
+        let detachedWorkspace = makeWorkspace(name: "detached", path: "/tmp/detached")
+        store.workspaces = [mainWorkspace, detachedWorkspace]
+        store.selectedWorkspaceID = mainWorkspace.id
+        let manager = WindowManager(store: store)
+        manager.detach(.workspace(detachedWorkspace.id))
+        defer { closeChildWindows(of: manager) }
+        let commands = try XCTUnwrap(manager.childContexts.first?.commandContext)
+        let originalTabID = try XCTUnwrap(detachedWorkspace.activeTabID)
+
+        XCTAssertTrue(commands.perform(.newFileBrowserTab))
+        let fileTabID = try XCTUnwrap(detachedWorkspace.activeTabID)
+        XCTAssertNotEqual(fileTabID, originalTabID)
+        XCTAssertEqual(detachedWorkspace.tabs.last?.kind, .fileBrowser)
+
+        XCTAssertTrue(commands.perform(.previousTab))
+        XCTAssertEqual(detachedWorkspace.activeTabID, originalTabID)
+        XCTAssertTrue(commands.perform(.nextTab))
+        XCTAssertEqual(detachedWorkspace.activeTabID, fileTabID)
+        XCTAssertTrue(commands.perform(.closeTab))
+        XCTAssertEqual(detachedWorkspace.tabs.map(\.id), [originalTabID])
+        XCTAssertEqual(mainWorkspace.tabs.count, 1)
+    }
+
+    func testDetachedWindowRoutesAllPaneCommandsToItsSession() throws {
+        let store = makeStore()
+        let mainWorkspace = makeWorkspace(name: "main", path: "/tmp/main")
+        let detachedWorkspace = makeWorkspace(name: "detached", path: "/tmp/detached")
+        store.workspaces = [mainWorkspace, detachedWorkspace]
+        store.selectedWorkspaceID = mainWorkspace.id
+        let mainController = try XCTUnwrap(mainWorkspace.sessionController)
+        let detachedController = try XCTUnwrap(detachedWorkspace.sessionController)
+        let manager = WindowManager(store: store)
+        manager.detach(.workspace(detachedWorkspace.id))
+        defer { closeChildWindows(of: manager) }
+        let commands = try XCTUnwrap(manager.childContexts.first?.commandContext)
+
+        XCTAssertTrue(commands.perform(.splitHorizontal))
+        XCTAssertTrue(commands.perform(.splitVertical))
+        XCTAssertEqual(detachedController.layout.paneIDs.count, 3)
+        XCTAssertEqual(mainController.layout.paneIDs.count, 1)
+
+        let focusedBeforeCycling = detachedController.focusedPaneID
+        XCTAssertTrue(commands.perform(.focusNextPane))
+        XCTAssertNotEqual(detachedController.focusedPaneID, focusedBeforeCycling)
+        XCTAssertTrue(commands.perform(.focusPreviousPane))
+        XCTAssertEqual(detachedController.focusedPaneID, focusedBeforeCycling)
+
+        XCTAssertTrue(commands.perform(.zoomPane))
+        XCTAssertNotNil(detachedController.zoomedPaneID)
+        XCTAssertTrue(commands.perform(.closePane))
+        XCTAssertEqual(detachedController.layout.paneIDs.count, 2)
+    }
+
+    func testDetachedWindowLocalSelectionUpdatesItsCommandTarget() throws {
+        let store = makeStore()
+        let first = makeWorkspace(name: "first", path: "/tmp/first")
+        let second = makeWorkspace(name: "second", path: "/tmp/second")
+        store.workspaces = [first, second]
+        let context = WindowCommandContext(store: store, kind: .detached(.workspace(first.id)))
+
+        context.updateSelection(workspace: second, worktreePath: nil)
+
+        XCTAssertEqual(context.workspace?.id, second.id)
+        XCTAssertTrue(context.perform(.newTab))
+        XCTAssertEqual(first.tabs.count, 1)
+        XCTAssertEqual(second.tabs.count, 2)
+    }
+
+    func testCommandPalettePresentationIsWindowLocal() {
+        let store = makeStore()
+        let workspace = makeWorkspace()
+        store.workspaces = [workspace]
+        let main = WindowCommandContext(store: store, kind: .main)
+        let detached = WindowCommandContext(
+            store: store,
+            kind: .detached(.workspace(workspace.id))
+        )
+
+        XCTAssertTrue(detached.perform(.commandPalette))
+
+        XCTAssertTrue(detached.showCommandPalette)
+        XCTAssertFalse(main.showCommandPalette)
+    }
+
+    func testSaveTargetIsTheActiveDetachedFileBrowserOnly() throws {
+        let store = makeStore()
+        let mainWorkspace = makeWorkspace(name: "main", path: "/tmp/main")
+        let detachedWorkspace = makeWorkspace(name: "detached", path: "/tmp/detached")
+        mainWorkspace.createFileBrowserTab(
+            rootPath: "/tmp/main",
+            rootKind: .project,
+            title: "main"
+        )
+        detachedWorkspace.createFileBrowserTab(
+            rootPath: "/tmp/detached",
+            rootKind: .project,
+            title: "detached"
+        )
+        store.workspaces = [mainWorkspace, detachedWorkspace]
+        store.selectedWorkspaceID = mainWorkspace.id
+        let manager = WindowManager(store: store)
+        manager.detach(.workspace(detachedWorkspace.id))
+        defer { closeChildWindows(of: manager) }
+        let commands = try XCTUnwrap(manager.childContexts.first?.commandContext)
+        let detachedTabID = try XCTUnwrap(detachedWorkspace.activeTabID)
+        let detachedController = try XCTUnwrap(
+            detachedWorkspace.fileBrowserController(forTabID: detachedTabID)
+        )
+        let mainTabID = try XCTUnwrap(mainWorkspace.activeTabID)
+        let mainController = try XCTUnwrap(
+            mainWorkspace.fileBrowserController(forTabID: mainTabID)
+        )
+
+        XCTAssertTrue(commands.activeFileBrowserController === detachedController)
+        XCTAssertFalse(commands.activeFileBrowserController === mainController)
+    }
+
+    func testDetachingCurrentWorkspaceMovesMainSelectionToAnAttachedWorkspace() {
+        let store = makeStore()
+        let detachedWorkspace = makeWorkspace(name: "detached", path: "/tmp/detached")
+        let attachedWorkspace = makeWorkspace(name: "attached", path: "/tmp/attached")
+        store.workspaces = [detachedWorkspace, attachedWorkspace]
+        store.selectedWorkspaceID = detachedWorkspace.id
+        let manager = WindowManager(store: store)
+
+        manager.detach(.workspace(detachedWorkspace.id))
+        defer { closeChildWindows(of: manager) }
+
+        XCTAssertEqual(store.selectedWorkspaceID, attachedWorkspace.id)
+    }
+
+    func testDetachingCurrentWorktreeReturnsMainWindowToWorkspaceRoot() {
+        let store = makeStore()
+        let workspace = makeWorkspace(name: "repo", path: "/tmp/repo")
+        let worktree = WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/repo-feature")),
+            path: URL(fileURLWithPath: "/tmp/repo-feature"),
+            branch: "feature",
+            headCommit: nil,
+            isMainWorktree: false
+        )
+        workspace.worktrees = [worktree]
+        store.workspaces = [workspace]
+        store.selectedWorkspaceID = worktree.id
+        let manager = WindowManager(store: store)
+
+        manager.detach(.worktree(workspaceID: workspace.id, worktreeID: worktree.id))
+        defer { closeChildWindows(of: manager) }
+
+        XCTAssertEqual(store.selectedWorkspaceID, workspace.id)
+        XCTAssertEqual(workspace.activeWorktreePath, workspace.repositoryRoot?.path)
+    }
+
+    func testDetachingCurrentRemoteGroupMovesMainSelectionOutsideTheGroup() throws {
+        let store = makeStore()
+        let remote = makeRemoteWorkspace(name: "remote", path: "/srv/remote")
+        let attached = makeWorkspace(name: "attached", path: "/tmp/attached")
+        store.workspaces = [remote, attached]
+        store.selectedWorkspaceID = remote.id
+        let manager = WindowManager(store: store)
+        let groupKey = WorkspaceStore.remoteGroupKey(for: try XCTUnwrap(remote.sshTarget))
+
+        manager.detach(.remoteGroup(groupKey))
+        defer { closeChildWindows(of: manager) }
+
+        XCTAssertEqual(store.selectedWorkspaceID, attached.id)
+    }
+
+    func testOverlappingDetachedScopesCannotOwnTheSameWorkspace() {
+        let store = makeStore()
+        let workspace = makeWorkspace(name: "repo", path: "/tmp/repo")
+        let worktree = WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/repo-feature")),
+            path: URL(fileURLWithPath: "/tmp/repo-feature"),
+            branch: "feature",
+            headCommit: nil,
+            isMainWorktree: false
+        )
+        workspace.worktrees = [worktree]
+        store.workspaces = [workspace]
+        let manager = WindowManager(store: store)
+
+        manager.detach(.workspace(workspace.id))
+        defer { closeChildWindows(of: manager) }
+        manager.detach(.worktree(workspaceID: workspace.id, worktreeID: worktree.id))
+
+        XCTAssertEqual(manager.childContexts.count, 1)
+        XCTAssertEqual(store.detachedNodes, [.workspace(workspace.id)])
+    }
+
+    func testRemovedDetachedWorktreeFallsBackToWorkspaceRootCommands() throws {
+        let store = makeStore()
+        let workspace = makeWorkspace(name: "repo", path: "/tmp/repo")
+        let worktree = WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/repo-feature")),
+            path: URL(fileURLWithPath: "/tmp/repo-feature"),
+            branch: "feature",
+            headCommit: nil,
+            isMainWorktree: false
+        )
+        workspace.worktrees = [worktree]
+        store.workspaces = [workspace]
+        let commands = WindowCommandContext(
+            store: store,
+            kind: .detached(.worktree(workspaceID: workspace.id, worktreeID: worktree.id))
+        )
+
+        workspace.worktrees = []
+        XCTAssertTrue(commands.perform(.newTab))
+
+        XCTAssertEqual(workspace.activeWorktreePath, workspace.repositoryRoot?.path)
+        XCTAssertEqual(workspace.tabs.count, 2)
+    }
+
+    func testRemovedRemoteSelectionFallsBackToFirstWorkspaceInGroup() throws {
+        let store = makeStore()
+        let first = makeRemoteWorkspace(name: "first", path: "/srv/first")
+        let second = makeRemoteWorkspace(name: "second", path: "/srv/second")
+        store.workspaces = [first, second]
+        let groupKey = WorkspaceStore.remoteGroupKey(for: try XCTUnwrap(first.sshTarget))
+        let commands = WindowCommandContext(
+            store: store,
+            kind: .detached(.remoteGroup(groupKey))
+        )
+        commands.updateSelection(workspace: second, worktreePath: nil)
+
+        store.workspaces.removeAll { $0.id == second.id }
+
+        XCTAssertEqual(commands.workspace?.id, first.id)
+    }
+
+    func testDetachedWorktreeFileTabBecomesItsRenderedActiveTab() throws {
+        let store = makeStore()
+        let workspace = makeWorkspace(name: "repo", path: "/tmp/repo")
+        let worktree = WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/repo-feature")),
+            path: URL(fileURLWithPath: "/tmp/repo-feature"),
+            branch: "feature",
+            headCommit: nil,
+            isMainWorktree: false
+        )
+        workspace.worktrees = [worktree]
+        store.workspaces = [workspace]
+        let commands = WindowCommandContext(
+            store: store,
+            kind: .detached(.worktree(workspaceID: workspace.id, worktreeID: worktree.id))
+        )
+
+        XCTAssertTrue(commands.perform(.newFileBrowserTab))
+
+        XCTAssertEqual(commands.activeTab?.kind, .fileBrowser)
+        XCTAssertNotNil(commands.activeFileBrowserController)
+        XCTAssertEqual(workspace.activeWorktreePath, workspace.repositoryRoot?.path)
+    }
+
     func testDetachedWorkspaceRendersNavigationSplitLayout() {
         let store = makeStore()
         let workspace = makeWorkspace()
@@ -188,6 +498,180 @@ final class WindowManagerTests: XCTestCase {
         XCTAssertFalse(store.isDetached(stale), "stale refs should be cleaned up out of the store")
     }
 
+    func testRestoreChildWindowsKeepsOnlyBroaderOverlappingRef() {
+        let store = makeStore()
+        let workspace = makeWorkspace()
+        let worktree = WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/repo-feature")),
+            path: URL(fileURLWithPath: "/tmp/repo-feature"),
+            branch: "feature",
+            headCommit: nil,
+            isMainWorktree: false
+        )
+        workspace.worktrees = [worktree]
+        store.workspaces = [workspace]
+        let workspaceRef = DetachedNodeRef.workspace(workspace.id)
+        let worktreeRef = DetachedNodeRef.worktree(
+            workspaceID: workspace.id,
+            worktreeID: worktree.id
+        )
+        store.detachedNodes = [worktreeRef, workspaceRef]
+        let manager = WindowManager(store: store)
+
+        manager.restoreChildWindows()
+        defer { closeChildWindows(of: manager) }
+
+        XCTAssertEqual(store.detachedNodes, [workspaceRef])
+        XCTAssertEqual(manager.childContexts.count, 1)
+    }
+
+    func testRestoreChildWindowsPrefersRemoteGroupOverInnerWorkspace() throws {
+        let store = makeStore()
+        let workspace = makeRemoteWorkspace(name: "remote", path: "/srv/remote")
+        store.workspaces = [workspace]
+        let groupKey = WorkspaceStore.remoteGroupKey(
+            for: try XCTUnwrap(workspace.sshTarget)
+        )
+        let groupRef = DetachedNodeRef.remoteGroup(groupKey)
+        store.detachedNodes = [groupRef, .workspace(workspace.id)]
+        let manager = WindowManager(store: store)
+
+        manager.restoreChildWindows()
+        defer { closeChildWindows(of: manager) }
+
+        XCTAssertEqual(store.detachedNodes, [groupRef])
+        XCTAssertEqual(manager.childContexts.count, 1)
+    }
+
+    func testAddingWorkspaceToDetachedRemoteGroupMovesMainSelectionAway() throws {
+        let store = makeStore()
+        let attached = makeWorkspace(name: "attached", path: "/tmp/attached")
+        let firstRemote = makeRemoteWorkspace(name: "first", path: "/srv/first")
+        store.workspaces = [attached, firstRemote]
+        store.selectedWorkspaceID = attached.id
+        let groupKey = WorkspaceStore.remoteGroupKey(
+            for: try XCTUnwrap(firstRemote.sshTarget)
+        )
+        let manager = WindowManager(store: store)
+        manager.restoreChildWindows()
+        manager.detach(.remoteGroup(groupKey))
+        defer { closeChildWindows(of: manager) }
+
+        let secondRemote = makeRemoteWorkspace(name: "second", path: "/srv/second")
+        store.workspaces.append(secondRemote)
+        store.selectedWorkspaceID = secondRemote.id
+        store.saveWorkspaceState()
+
+        XCTAssertEqual(store.selectedWorkspaceID, attached.id)
+        XCTAssertEqual(manager.childContexts.count, 1)
+        XCTAssertEqual(store.detachedNodes, [.remoteGroup(groupKey)])
+    }
+
+    func testHidingDefaultTerminalCannotSelectDetachedRemoteWorkspace() throws {
+        let store = makeStore()
+        let builtIn = try XCTUnwrap(
+            store.workspaces.first { $0.isBuiltInDefaultTerminal }
+        )
+        let remote = makeRemoteWorkspace(name: "remote", path: "/srv/remote")
+        store.workspaces = [builtIn, remote]
+        store.selectedWorkspaceID = builtIn.id
+        let groupKey = WorkspaceStore.remoteGroupKey(
+            for: try XCTUnwrap(remote.sshTarget)
+        )
+        let manager = WindowManager(store: store)
+        manager.detach(.remoteGroup(groupKey))
+        defer { closeChildWindows(of: manager) }
+
+        var settings = store.settings
+        settings.showDefaultTerminal = false
+        store.updateSettings(settings)
+
+        XCTAssertNotEqual(store.selectedWorkspaceID, remote.id)
+    }
+
+    func testRuntimeWorktreeRemovalClosesItsDetachedWindow() {
+        let store = makeStore()
+        let workspace = makeWorkspace()
+        let worktree = WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/repo-feature")),
+            path: URL(fileURLWithPath: "/tmp/repo-feature"),
+            branch: "feature",
+            headCommit: nil,
+            isMainWorktree: false
+        )
+        workspace.worktrees = [worktree]
+        store.workspaces = [workspace]
+        store.selectedWorkspaceID = workspace.id
+        let ref = DetachedNodeRef.worktree(
+            workspaceID: workspace.id,
+            worktreeID: worktree.id
+        )
+        let manager = WindowManager(store: store)
+        manager.restoreChildWindows()
+        manager.detach(ref)
+        defer { closeChildWindows(of: manager) }
+
+        workspace.worktrees = []
+        store.workspaceStructureDidChange?()
+
+        XCTAssertTrue(manager.childContexts.isEmpty)
+        XCTAssertFalse(store.detachedNodes.contains(ref))
+        XCTAssertEqual(workspace.activeWorktreePath, "/tmp/repo")
+    }
+
+    func testRestoreDoesNotDuplicateChildDetachedBeforeRefreshBarrier() {
+        let store = makeStore()
+        let workspace = makeWorkspace()
+        store.workspaces = [workspace]
+        let manager = WindowManager(store: store)
+        manager.detach(.workspace(workspace.id))
+        defer { closeChildWindows(of: manager) }
+
+        manager.restoreChildWindows()
+
+        XCTAssertEqual(manager.childContexts.count, 1)
+        XCTAssertEqual(store.detachedNodes, [.workspace(workspace.id)])
+    }
+
+    func testEarlyDetachDoesNotDropLaterPersistedWorktreeBeforeRefreshBarrier() {
+        let store = makeStore()
+        let first = makeWorkspace(name: "first", path: "/tmp/first")
+        let second = makeWorkspace(name: "second", path: "/tmp/second")
+        let secondWorktree = WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/second-feature")),
+            path: URL(fileURLWithPath: "/tmp/second-feature"),
+            branch: "feature",
+            headCommit: nil,
+            isMainWorktree: false
+        )
+        let persistedRef = DetachedNodeRef.worktree(
+            workspaceID: second.id,
+            worktreeID: secondWorktree.id
+        )
+        store.workspaces = [first, second]
+        store.detachedNodes = [persistedRef]
+        let manager = WindowManager(store: store)
+        manager.detach(.workspace(first.id))
+        defer { closeChildWindows(of: manager) }
+
+        first.worktrees = [WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/first")),
+            path: URL(fileURLWithPath: "/tmp/first"),
+            branch: "main",
+            headCommit: nil,
+            isMainWorktree: true
+        )]
+        store.workspaceStructureDidChange?()
+
+        XCTAssertTrue(store.detachedNodes.contains(persistedRef))
+
+        second.worktrees = [secondWorktree]
+        manager.restoreChildWindows()
+
+        XCTAssertEqual(manager.childContexts.count, 2)
+        XCTAssertTrue(store.detachedNodes.contains(persistedRef))
+    }
+
     // MARK: - handleMainWindowWillClose
 
     func testMainWindowCloseWithoutChildrenDoesNotPrompt() {
@@ -307,26 +791,19 @@ final class WindowManagerTests: XCTestCase {
     }
 
     func testMainWindowCloseAlertHasSimplifiedChineseTranslations() throws {
-        let catalogURL = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("Treemux/Localizable.xcstrings")
-        let data = try Data(contentsOf: catalogURL)
-        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        let strings = try XCTUnwrap(root["strings"] as? [String: Any])
+        let localizationURL = try XCTUnwrap(
+            Bundle.main.url(forResource: "zh-Hans", withExtension: "lproj")
+        )
+        let chineseBundle = try XCTUnwrap(Bundle(url: localizationURL))
 
-        func chineseValue(_ key: String) throws -> String {
-            let entry = try XCTUnwrap(strings[key] as? [String: Any])
-            let localizations = try XCTUnwrap(entry["localizations"] as? [String: Any])
-            let chinese = try XCTUnwrap(localizations["zh-Hans"] as? [String: Any])
-            let unit = try XCTUnwrap(chinese["stringUnit"] as? [String: Any])
-            return try XCTUnwrap(unit["value"] as? String)
+        func chineseValue(_ key: String) -> String {
+            chineseBundle.localizedString(forKey: key, value: nil, table: nil)
         }
 
-        XCTAssertEqual(try chineseValue("Close All Windows?"), "关闭所有窗口？")
-        XCTAssertEqual(try chineseValue("Close All Windows"), "关闭所有窗口")
+        XCTAssertEqual(chineseValue("Close All Windows?"), "关闭所有窗口？")
+        XCTAssertEqual(chineseValue("Close All Windows"), "关闭所有窗口")
         XCTAssertEqual(
-            try chineseValue(
+            chineseValue(
                 "%lld detached windows are still open. Closing the main window will close all windows and quit Treemux."
             ),
             "仍有 %lld 个已分离窗口处于打开状态。关闭主窗口将关闭所有窗口并退出 Treemux。"
@@ -537,11 +1014,29 @@ final class WindowManagerTests: XCTestCase {
     }
 
     /// Builds a minimal repository-backed workspace for validity checks.
-    private func makeWorkspace() -> WorkspaceModel {
+    private func makeWorkspace(
+        name: String = "repo",
+        path: String = "/tmp/repo"
+    ) -> WorkspaceModel {
         WorkspaceModel(
-            name: "repo",
+            name: name,
             kind: .repository,
-            repositoryRoot: URL(fileURLWithPath: "/tmp/repo")
+            repositoryRoot: URL(fileURLWithPath: path)
+        )
+    }
+
+    private func makeRemoteWorkspace(name: String, path: String) -> WorkspaceModel {
+        WorkspaceModel(
+            name: name,
+            kind: .repository,
+            sshTarget: SSHTarget(
+                host: "test.example.com",
+                port: 22,
+                user: nil,
+                identityFile: nil,
+                displayName: "test.example.com",
+                remotePath: path
+            )
         )
     }
 
@@ -557,5 +1052,11 @@ final class WindowManagerTests: XCTestCase {
     private func containsSplitView(in view: NSView) -> Bool {
         if view is NSSplitView { return true }
         return view.subviews.contains(where: containsSplitView(in:))
+    }
+
+    private func closeChildWindows(of manager: WindowManager) {
+        for context in manager.childContexts {
+            manager.closeChild(context)
+        }
     }
 }

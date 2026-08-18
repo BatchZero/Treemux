@@ -398,32 +398,53 @@ final class WorkspaceModel: Identifiable {
     /// updates the same session — but resolving it does not flip which
     /// worktree/tabs the main window shows.
     func sessionController(forWorktreePathReadOnly path: String) -> WorkspaceSessionController? {
-        // Load the tab state for the requested worktree path without touching
-        // activeWorktreePath. If it matches the active worktree, use the live
-        // tabs/activeTabID; otherwise use the saved (inactive) tab state, or a
-        // default single-pane terminal tab for the path.
-        let tabsForPath: [WorkspaceTabStateRecord]
-        let activeTabIDForPath: UUID?
-        if path == activeWorktreePath {
-            tabsForPath = tabs
-            activeTabIDForPath = activeTabID
-        } else if let saved = worktreeTabStates[path] {
-            tabsForPath = saved.tabs
-            activeTabIDForPath = saved.activeTabID
-        } else {
-            let defaultTab = WorkspaceTabStateRecord.makeDefault(
-                workingDirectory: path, sshTarget: sshTarget)
-            tabsForPath = [defaultTab]
-            activeTabIDForPath = defaultTab.id
-            // Keep the lazily-created tab identity stable across SwiftUI body
-            // evaluations. Without this cache, every render creates a new tab
-            // UUID and therefore a new terminal controller and Ghostty surface.
-            worktreeTabStates[path] = (tabs: tabsForPath, activeTabID: activeTabIDForPath)
-        }
-        guard let tabID = activeTabIDForPath,
-              let tab = tabsForPath.first(where: { $0.id == tabID }),
+        let state = tabState(forWorktreePathReadOnly: path)
+        guard let tabID = state.activeTabID,
+              let tab = state.tabs.first(where: { $0.id == tabID }),
               tab.kind == .terminal else { return nil }
         return controller(forTabID: tabID, worktreePath: path)
+    }
+
+    /// Resolves the active tab for a worktree without changing the shared
+    /// workspace selection. Detached windows use this to render their own
+    /// worktree while the main window remains on another path.
+    func activeTab(forWorktreePathReadOnly path: String) -> WorkspaceTabStateRecord? {
+        let state = tabState(forWorktreePathReadOnly: path)
+        guard let tabID = state.activeTabID else { return nil }
+        return state.tabs.first { $0.id == tabID }
+    }
+
+    /// Resolves the active file-browser controller for a worktree without
+    /// changing `activeWorktreePath` or the main window's active tab.
+    func fileBrowserController(
+        forWorktreePathReadOnly path: String
+    ) -> FileBrowserTabController? {
+        let state = tabState(forWorktreePathReadOnly: path)
+        guard let tabID = state.activeTabID,
+              state.tabs.first(where: { $0.id == tabID })?.kind == .fileBrowser else {
+            return nil
+        }
+        return fileBrowserController(forTabID: tabID, worktreePath: path)
+    }
+
+    private func tabState(
+        forWorktreePathReadOnly path: String
+    ) -> (tabs: [WorkspaceTabStateRecord], activeTabID: UUID?) {
+        if path == activeWorktreePath {
+            return (tabs, activeTabID)
+        }
+        if let saved = worktreeTabStates[path] {
+            return saved
+        }
+        let defaultTab = WorkspaceTabStateRecord.makeDefault(
+            workingDirectory: path,
+            sshTarget: sshTarget
+        )
+        let state = (tabs: [defaultTab], activeTabID: Optional(defaultTab.id))
+        // Cache the generated UUID so repeated detached-view renders resolve
+        // the same tab and controller.
+        worktreeTabStates[path] = state
+        return state
     }
 
     /// Returns true if the given worktree path has any active tab controllers (running sessions).
@@ -517,10 +538,17 @@ final class WorkspaceModel: Identifiable {
 
     /// Returns or creates a file browser controller for the given tab.
     func fileBrowserController(forTabID tabID: UUID) -> FileBrowserTabController? {
-        guard let tab = tabs.first(where: { $0.id == tabID }),
+        fileBrowserController(forTabID: tabID, worktreePath: activeWorktreePath)
+    }
+
+    private func fileBrowserController(
+        forTabID tabID: UUID,
+        worktreePath path: String
+    ) -> FileBrowserTabController? {
+        let state = tabState(forWorktreePathReadOnly: path)
+        guard let tab = state.tabs.first(where: { $0.id == tabID }),
               tab.kind == .fileBrowser,
               let state = tab.fileBrowserState else { return nil }
-        let path = activeWorktreePath
         if let existing = fileBrowserControllers[path]?[tabID] { return existing }
 
         let dataSource: any FileBrowserDataSource = makeDataSource()
@@ -541,7 +569,7 @@ final class WorkspaceModel: Identifiable {
             repoRoot: state.rootPath
         )
         ctrl.onPersistableStateChanged = { [weak self] in
-            self?.persistFileBrowserState(tabID: tabID)
+            self?.persistFileBrowserState(tabID: tabID, worktreePath: path)
         }
         if fileBrowserControllers[path] == nil { fileBrowserControllers[path] = [:] }
         fileBrowserControllers[path]?[tabID] = ctrl
@@ -563,12 +591,18 @@ final class WorkspaceModel: Identifiable {
         return LocalFileBrowserDataSource()
     }
 
-    private func persistFileBrowserState(tabID: UUID) {
-        guard let index = tabs.firstIndex(where: { $0.id == tabID }),
-              let ctrl = fileBrowserControllers[activeWorktreePath]?[tabID] else { return }
-        var record = tabs[index]
+    private func persistFileBrowserState(tabID: UUID, worktreePath path: String) {
+        var state = tabState(forWorktreePathReadOnly: path)
+        guard let index = state.tabs.firstIndex(where: { $0.id == tabID }),
+              let ctrl = fileBrowserControllers[path]?[tabID] else { return }
+        var record = state.tabs[index]
         record.fileBrowserState = ctrl.snapshot()
-        tabs[index] = record
+        state.tabs[index] = record
+        if path == activeWorktreePath {
+            tabs = state.tabs
+        } else {
+            worktreeTabStates[path] = state
+        }
     }
 
     /// Switches to the specified tab.
@@ -844,15 +878,22 @@ final class WorkspaceModel: Identifiable {
     /// Only applies to terminal tabs — file-browser tabs persist their state via
     /// `persistFileBrowserState` and must not be rewritten here.
     func saveActiveTabState() {
-        guard let tabID = activeTabID,
-              let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
-        let existingTab = tabs[index]
+        guard let tabID = activeTabID else { return }
+        saveTabState(tabID: tabID, worktreePath: activeWorktreePath)
+    }
+
+    /// Saves a terminal controller back to the worktree that owns it, even
+    /// when that worktree is not the workspace's globally active path.
+    private func saveTabState(tabID: UUID, worktreePath: String) {
+        var state = tabState(forWorktreePathReadOnly: worktreePath)
+        guard let index = state.tabs.firstIndex(where: { $0.id == tabID }) else { return }
+        let existingTab = state.tabs[index]
         guard existingTab.kind == .terminal,
-              let ctrl = tabControllers[activeWorktreePath]?[tabID] else { return }
+              let ctrl = tabControllers[worktreePath]?[tabID] else { return }
 
         let preferredTitle = suggestedTitle(for: ctrl, existingTab: existingTab)
 
-        tabs[index] = WorkspaceTabStateRecord(
+        state.tabs[index] = WorkspaceTabStateRecord(
             id: tabID,
             title: preferredTitle,
             isManuallyNamed: existingTab.isManuallyNamed,
@@ -863,6 +904,22 @@ final class WorkspaceModel: Identifiable {
             zoomedPaneID: ctrl.zoomedPaneID,
             fileBrowserState: nil
         )
+
+        if worktreePath == activeWorktreePath {
+            tabs = state.tabs
+        } else {
+            worktreeTabStates[worktreePath] = state
+        }
+    }
+
+    /// Snapshots every instantiated terminal controller before persistence so
+    /// inactive detached worktrees cannot retain newer runtime-only state.
+    private func saveAllTabStates() {
+        for (worktreePath, controllers) in tabControllers {
+            for tabID in controllers.keys {
+                saveTabState(tabID: tabID, worktreePath: worktreePath)
+            }
+        }
     }
 
     /// Restores tab state from persisted worktree states.
@@ -949,12 +1006,13 @@ final class WorkspaceModel: Identifiable {
         // Defensive: this factory should only be reached for terminal tabs.
         // sessionController already gates on tab.kind == .terminal; this assertion
         // catches future regressions where a caller bypasses that guard.
-        if let tab = tabs.first(where: { $0.id == tabID }), tab.kind != .terminal {
+        let worktreeState = tabState(forWorktreePathReadOnly: worktreePath)
+        if let tab = worktreeState.tabs.first(where: { $0.id == tabID }), tab.kind != .terminal {
             assertionFailure("controller(forTabID:) called for non-terminal tab \(tabID)")
         }
 
         // Look up the saved tab state to restore layout and panes
-        let tabState = tabs.first(where: { $0.id == tabID })
+        let tabState = worktreeState.tabs.first(where: { $0.id == tabID })
 
         let ctrl = WorkspaceSessionController(
             workingDirectory: worktreePath,
@@ -966,7 +1024,7 @@ final class WorkspaceModel: Identifiable {
         )
 
         ctrl.onPaneStateChanged = { [weak self] in
-            self?.saveActiveTabState()
+            self?.saveTabState(tabID: tabID, worktreePath: worktreePath)
         }
 
         if tabControllers[worktreePath] == nil {
@@ -992,7 +1050,7 @@ final class WorkspaceModel: Identifiable {
 
     /// Serializes the runtime model back to a persistable record, including all tab state.
     func toRecord() -> WorkspaceRecord {
-        saveActiveTabState()
+        saveAllTabStates()
 
         var allWorktreeStates: [WorktreeSessionStateRecord] = []
 

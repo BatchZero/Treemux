@@ -75,6 +75,7 @@ final class WorkspaceSessionController {
             )
             session.onFocus = { [weak self] in
                 self?.focusedPaneID = paneID
+                self?.onPaneStateChanged?()
             }
             session.onWorkspaceAction = { [weak self] action in
                 self?.handleWorkspaceAction(action, from: paneID)
@@ -100,6 +101,7 @@ final class WorkspaceSessionController {
         )
         session.onFocus = { [weak self] in
             self?.focusedPaneID = paneID
+            self?.onPaneStateChanged?()
         }
         session.onWorkspaceAction = { [weak self] action in
             self?.handleWorkspaceAction(action, from: paneID)
@@ -201,7 +203,9 @@ final class WorkspaceSessionController {
 
     /// Updates the fraction of a split divider.
     func updateSplitFraction(splitID: UUID, fraction: Double) {
-        _ = layout.updateFraction(splitID: splitID, fraction: fraction)
+        if layout.updateFraction(splitID: splitID, fraction: fraction) {
+            onPaneStateChanged?()
+        }
     }
 
     /// Equalizes all split fractions.

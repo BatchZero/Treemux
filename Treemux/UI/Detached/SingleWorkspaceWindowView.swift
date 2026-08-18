@@ -14,6 +14,7 @@ struct SingleWorkspaceWindowView: View {
     let scopedWorktreeID: UUID?
     @Environment(WorkspaceStore.self) private var store
     @Environment(ThemeManager.self) private var theme
+    @Environment(\.windowCommandContext) private var commandContext
     @State private var localSelection: UUID?
 
     /// `initialSelection` lets a worktree tear-off reuse this complete project
@@ -93,12 +94,30 @@ struct SingleWorkspaceWindowView: View {
             }
         }
         .onAppear {
-            let isKnownSelection = localSelection == workspace.id
-                || visibleWorktrees.contains { $0.id == localSelection }
-            if !isKnownSelection {
-                localSelection = workspace.id
-            }
+            normalizeSelection()
         }
+        .onChange(of: localSelection) { _, _ in
+            updateCommandSelection()
+        }
+        .onChange(of: visibleWorktrees.map(\.id)) { _, _ in
+            normalizeSelection()
+        }
+    }
+
+    private func normalizeSelection() {
+        let isKnownSelection = localSelection == workspace.id
+            || visibleWorktrees.contains { $0.id == localSelection }
+        if !isKnownSelection {
+            localSelection = workspace.id
+        }
+        updateCommandSelection()
+    }
+
+    private func updateCommandSelection() {
+        commandContext?.updateSelection(
+            workspace: workspace,
+            worktreePath: selectedWorktree?.path.path
+        )
     }
 
     private func sidebarRow(
