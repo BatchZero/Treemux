@@ -57,9 +57,12 @@ final class WindowManager {
     /// must not reject worktrees before the initial git refresh finishes.
     @ObservationIgnored private var ownershipMembershipSignature: Set<String>
 
-    /// Persisted refs are not globally valid until launch-time worktree
-    /// discovery completes. Detaching or restoring activates live arbitration.
-    @ObservationIgnored private var isOwnershipReconciliationActive = false
+    /// Selection ownership is safe as soon as the first live child is created.
+    @ObservationIgnored private var isSelectionReconciliationActive = false
+
+    /// Structure ownership waits for the initial git-refresh barrier because
+    /// persisted worktree refs are not globally valid before then.
+    @ObservationIgnored private var isStructureReconciliationActive = false
 
     init(
         store: WorkspaceStore,
@@ -148,7 +151,7 @@ final class WindowManager {
         // the sidebar filter and persist duplicate state.
         guard !store.isDetached(ref) else { return }
         guard !store.detachedNodes.contains(where: { overlaps($0, ref) }) else { return }
-        isOwnershipReconciliationActive = true
+        isSelectionReconciliationActive = true
         ownershipMembershipSignature = Self.makeOwnershipMembershipSignature(in: store)
         store.detachedNodes.insert(ref)
         moveMainSelectionAway(from: ref)
@@ -229,14 +232,14 @@ final class WindowManager {
     /// Re-establishes exclusive ownership after workspace membership changes.
     /// Broader scopes win deterministically over narrower overlapping scopes.
     private func reconcileOwnershipAfterWorkspaceStructureChange() {
-        guard isOwnershipReconciliationActive else { return }
+        guard isStructureReconciliationActive else { return }
         let currentSignature = Self.makeOwnershipMembershipSignature(in: store)
         guard currentSignature != ownershipMembershipSignature else { return }
         reconcileDetachedOwnership()
     }
 
     private func reconcileMainSelectionOwnership() {
-        guard isOwnershipReconciliationActive, !isReconcilingOwnership else { return }
+        guard isSelectionReconciliationActive, !isReconcilingOwnership else { return }
         isReconcilingOwnership = true
         defer { isReconcilingOwnership = false }
 
@@ -424,9 +427,11 @@ final class WindowManager {
     /// to restore the previous session's torn-off windows. Stale refs (whose
     /// nodes no longer exist) are dropped from the store.
     func restoreChildWindows() {
-        isOwnershipReconciliationActive = true
+        isSelectionReconciliationActive = true
+        isStructureReconciliationActive = true
         reconcileDetachedOwnership()
-        for ref in normalizedDetachedRefs(store.detachedNodes) {
+        let liveRefs = Set(childContexts.compactMap(detachedRef(for:)))
+        for ref in normalizedDetachedRefs(store.detachedNodes) where !liveRefs.contains(ref) {
             let ctx = WindowContext(store: store, kind: .detached(ref))
             ctx.windowManager = self
             childContexts.append(ctx)

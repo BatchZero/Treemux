@@ -553,6 +553,7 @@ final class WindowManagerTests: XCTestCase {
             for: try XCTUnwrap(firstRemote.sshTarget)
         )
         let manager = WindowManager(store: store)
+        manager.restoreChildWindows()
         manager.detach(.remoteGroup(groupKey))
         defer { closeChildWindows(of: manager) }
 
@@ -606,6 +607,7 @@ final class WindowManagerTests: XCTestCase {
             worktreeID: worktree.id
         )
         let manager = WindowManager(store: store)
+        manager.restoreChildWindows()
         manager.detach(ref)
         defer { closeChildWindows(of: manager) }
 
@@ -615,6 +617,59 @@ final class WindowManagerTests: XCTestCase {
         XCTAssertTrue(manager.childContexts.isEmpty)
         XCTAssertFalse(store.detachedNodes.contains(ref))
         XCTAssertEqual(workspace.activeWorktreePath, "/tmp/repo")
+    }
+
+    func testRestoreDoesNotDuplicateChildDetachedBeforeRefreshBarrier() {
+        let store = makeStore()
+        let workspace = makeWorkspace()
+        store.workspaces = [workspace]
+        let manager = WindowManager(store: store)
+        manager.detach(.workspace(workspace.id))
+        defer { closeChildWindows(of: manager) }
+
+        manager.restoreChildWindows()
+
+        XCTAssertEqual(manager.childContexts.count, 1)
+        XCTAssertEqual(store.detachedNodes, [.workspace(workspace.id)])
+    }
+
+    func testEarlyDetachDoesNotDropLaterPersistedWorktreeBeforeRefreshBarrier() {
+        let store = makeStore()
+        let first = makeWorkspace(name: "first", path: "/tmp/first")
+        let second = makeWorkspace(name: "second", path: "/tmp/second")
+        let secondWorktree = WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/second-feature")),
+            path: URL(fileURLWithPath: "/tmp/second-feature"),
+            branch: "feature",
+            headCommit: nil,
+            isMainWorktree: false
+        )
+        let persistedRef = DetachedNodeRef.worktree(
+            workspaceID: second.id,
+            worktreeID: secondWorktree.id
+        )
+        store.workspaces = [first, second]
+        store.detachedNodes = [persistedRef]
+        let manager = WindowManager(store: store)
+        manager.detach(.workspace(first.id))
+        defer { closeChildWindows(of: manager) }
+
+        first.worktrees = [WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/first")),
+            path: URL(fileURLWithPath: "/tmp/first"),
+            branch: "main",
+            headCommit: nil,
+            isMainWorktree: true
+        )]
+        store.workspaceStructureDidChange?()
+
+        XCTAssertTrue(store.detachedNodes.contains(persistedRef))
+
+        second.worktrees = [secondWorktree]
+        manager.restoreChildWindows()
+
+        XCTAssertEqual(manager.childContexts.count, 2)
+        XCTAssertTrue(store.detachedNodes.contains(persistedRef))
     }
 
     // MARK: - handleMainWindowWillClose
