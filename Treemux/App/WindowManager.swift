@@ -109,6 +109,16 @@ final class WindowManager {
         closeChild(ctx)
     }
 
+    /// Resolves the command context owned by `window`. Menu shortcuts use this
+    /// boundary so workspace-sensitive actions follow the active window rather
+    /// than the main window's global store selection.
+    func commandContext(for window: NSWindow) -> WindowCommandContext? {
+        if let mainWindowContext, mainWindowContext.ownsWindow(window) {
+            return mainWindowContext.commandContext
+        }
+        return childContexts.first(where: { $0.ownsWindow(window) })?.commandContext
+    }
+
     /// Tears off `ref` into its own window and records it as detached so the
     /// main sidebar hides it. No-op if `ref` is invalid (the referenced node
     /// no longer exists) or already detached.

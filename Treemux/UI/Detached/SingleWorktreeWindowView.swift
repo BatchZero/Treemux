@@ -17,8 +17,10 @@ import SwiftUI
 struct SingleWorktreeWindowView: View {
     @Bindable var workspace: WorkspaceModel
     let worktree: WorktreeModel
+    @Environment(\.windowCommandContext) private var commandContext
 
     var body: some View {
+        let _ = commandContext?.revision
         Group {
             if let controller = workspace.sessionController(forWorktreePathReadOnly: worktree.path.path) {
                 WorkspaceSessionDetailView(

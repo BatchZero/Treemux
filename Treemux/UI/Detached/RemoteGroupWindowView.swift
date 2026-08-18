@@ -15,6 +15,7 @@ struct RemoteGroupWindowView: View {
 
     @Environment(WorkspaceStore.self) private var store
     @Environment(ThemeManager.self) private var theme
+    @Environment(\.windowCommandContext) private var commandContext
     @State private var localSelection: UUID?
 
     /// Workspaces belonging to this remote group, in store order.
@@ -79,5 +80,11 @@ struct RemoteGroupWindowView: View {
             }
         }
         .navigationSplitViewStyle(.prominentDetail)
+        .onAppear { updateCommandSelection() }
+        .onChange(of: localSelection) { _, _ in updateCommandSelection() }
+    }
+
+    private func updateCommandSelection() {
+        commandContext?.updateSelection(workspace: selectedWorkspace, worktreePath: nil)
     }
 }

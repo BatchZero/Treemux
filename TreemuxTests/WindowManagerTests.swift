@@ -16,6 +16,173 @@ import XCTest
 @MainActor
 final class WindowManagerTests: XCTestCase {
 
+    // MARK: - Window-scoped commands
+
+    func testDetachedWindowCommandsTargetItsWorkspaceInsteadOfGlobalSelection() throws {
+        let store = makeStore()
+        let mainWorkspace = makeWorkspace(name: "main", path: "/tmp/main")
+        let detachedWorkspace = makeWorkspace(name: "detached", path: "/tmp/detached")
+        store.workspaces = [mainWorkspace, detachedWorkspace]
+        store.selectedWorkspaceID = mainWorkspace.id
+        let manager = WindowManager(store: store)
+
+        manager.detach(.workspace(detachedWorkspace.id))
+
+        let child = try XCTUnwrap(manager.childContexts.first)
+        let window = try XCTUnwrap(child.testWindow())
+        let commands = try XCTUnwrap(manager.commandContext(for: window))
+
+        XCTAssertEqual(commands.workspace?.id, detachedWorkspace.id)
+        XCTAssertTrue(commands.perform(.newTab))
+        XCTAssertEqual(mainWorkspace.tabs.count, 1)
+        XCTAssertEqual(detachedWorkspace.tabs.count, 2)
+    }
+
+    func testDetachedWorktreeTabCommandPreservesMainWindowWorktree() throws {
+        let store = makeStore()
+        let workspace = makeWorkspace(name: "repo", path: "/tmp/repo")
+        let worktree = WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/repo-feature")),
+            path: URL(fileURLWithPath: "/tmp/repo-feature"),
+            branch: "feature",
+            headCommit: nil,
+            isMainWorktree: false
+        )
+        workspace.worktrees = [worktree]
+        store.workspaces = [workspace]
+        store.selectedWorkspaceID = workspace.id
+        let originalPath = workspace.activeWorktreePath
+        let manager = WindowManager(store: store)
+
+        manager.detach(.worktree(workspaceID: workspace.id, worktreeID: worktree.id))
+
+        let child = try XCTUnwrap(manager.childContexts.first)
+        let window = try XCTUnwrap(child.testWindow())
+        let commands = try XCTUnwrap(manager.commandContext(for: window))
+        XCTAssertTrue(commands.perform(.newTab))
+
+        XCTAssertEqual(workspace.activeWorktreePath, originalPath)
+        workspace.switchToWorktree(worktree.path.path)
+        XCTAssertEqual(workspace.tabs.count, 2)
+    }
+
+    func testDetachedWindowRoutesAllTabCommandsToItsWorkspace() throws {
+        let store = makeStore()
+        let mainWorkspace = makeWorkspace(name: "main", path: "/tmp/main")
+        let detachedWorkspace = makeWorkspace(name: "detached", path: "/tmp/detached")
+        store.workspaces = [mainWorkspace, detachedWorkspace]
+        store.selectedWorkspaceID = mainWorkspace.id
+        let manager = WindowManager(store: store)
+        manager.detach(.workspace(detachedWorkspace.id))
+        let commands = try XCTUnwrap(manager.childContexts.first?.commandContext)
+        let originalTabID = try XCTUnwrap(detachedWorkspace.activeTabID)
+
+        XCTAssertTrue(commands.perform(.newFileBrowserTab))
+        let fileTabID = try XCTUnwrap(detachedWorkspace.activeTabID)
+        XCTAssertNotEqual(fileTabID, originalTabID)
+        XCTAssertEqual(detachedWorkspace.tabs.last?.kind, .fileBrowser)
+
+        XCTAssertTrue(commands.perform(.previousTab))
+        XCTAssertEqual(detachedWorkspace.activeTabID, originalTabID)
+        XCTAssertTrue(commands.perform(.nextTab))
+        XCTAssertEqual(detachedWorkspace.activeTabID, fileTabID)
+        XCTAssertTrue(commands.perform(.closeTab))
+        XCTAssertEqual(detachedWorkspace.tabs.map(\.id), [originalTabID])
+        XCTAssertEqual(mainWorkspace.tabs.count, 1)
+    }
+
+    func testDetachedWindowRoutesAllPaneCommandsToItsSession() throws {
+        let store = makeStore()
+        let mainWorkspace = makeWorkspace(name: "main", path: "/tmp/main")
+        let detachedWorkspace = makeWorkspace(name: "detached", path: "/tmp/detached")
+        store.workspaces = [mainWorkspace, detachedWorkspace]
+        store.selectedWorkspaceID = mainWorkspace.id
+        let mainController = try XCTUnwrap(mainWorkspace.sessionController)
+        let detachedController = try XCTUnwrap(detachedWorkspace.sessionController)
+        let manager = WindowManager(store: store)
+        manager.detach(.workspace(detachedWorkspace.id))
+        let commands = try XCTUnwrap(manager.childContexts.first?.commandContext)
+
+        XCTAssertTrue(commands.perform(.splitHorizontal))
+        XCTAssertTrue(commands.perform(.splitVertical))
+        XCTAssertEqual(detachedController.layout.paneIDs.count, 3)
+        XCTAssertEqual(mainController.layout.paneIDs.count, 1)
+
+        let focusedBeforeCycling = detachedController.focusedPaneID
+        XCTAssertTrue(commands.perform(.focusNextPane))
+        XCTAssertNotEqual(detachedController.focusedPaneID, focusedBeforeCycling)
+        XCTAssertTrue(commands.perform(.focusPreviousPane))
+        XCTAssertEqual(detachedController.focusedPaneID, focusedBeforeCycling)
+
+        XCTAssertTrue(commands.perform(.zoomPane))
+        XCTAssertNotNil(detachedController.zoomedPaneID)
+        XCTAssertTrue(commands.perform(.closePane))
+        XCTAssertEqual(detachedController.layout.paneIDs.count, 2)
+    }
+
+    func testDetachedWindowLocalSelectionUpdatesItsCommandTarget() throws {
+        let store = makeStore()
+        let first = makeWorkspace(name: "first", path: "/tmp/first")
+        let second = makeWorkspace(name: "second", path: "/tmp/second")
+        store.workspaces = [first, second]
+        let context = WindowCommandContext(store: store, kind: .detached(.workspace(first.id)))
+
+        context.updateSelection(workspace: second, worktreePath: nil)
+
+        XCTAssertEqual(context.workspace?.id, second.id)
+        XCTAssertTrue(context.perform(.newTab))
+        XCTAssertEqual(first.tabs.count, 1)
+        XCTAssertEqual(second.tabs.count, 2)
+    }
+
+    func testCommandPalettePresentationIsWindowLocal() {
+        let store = makeStore()
+        let workspace = makeWorkspace()
+        store.workspaces = [workspace]
+        let main = WindowCommandContext(store: store, kind: .main)
+        let detached = WindowCommandContext(
+            store: store,
+            kind: .detached(.workspace(workspace.id))
+        )
+
+        XCTAssertTrue(detached.perform(.commandPalette))
+
+        XCTAssertTrue(detached.showCommandPalette)
+        XCTAssertFalse(main.showCommandPalette)
+    }
+
+    func testSaveTargetIsTheActiveDetachedFileBrowserOnly() throws {
+        let store = makeStore()
+        let mainWorkspace = makeWorkspace(name: "main", path: "/tmp/main")
+        let detachedWorkspace = makeWorkspace(name: "detached", path: "/tmp/detached")
+        mainWorkspace.createFileBrowserTab(
+            rootPath: "/tmp/main",
+            rootKind: .project,
+            title: "main"
+        )
+        detachedWorkspace.createFileBrowserTab(
+            rootPath: "/tmp/detached",
+            rootKind: .project,
+            title: "detached"
+        )
+        store.workspaces = [mainWorkspace, detachedWorkspace]
+        store.selectedWorkspaceID = mainWorkspace.id
+        let manager = WindowManager(store: store)
+        manager.detach(.workspace(detachedWorkspace.id))
+        let commands = try XCTUnwrap(manager.childContexts.first?.commandContext)
+        let detachedTabID = try XCTUnwrap(detachedWorkspace.activeTabID)
+        let detachedController = try XCTUnwrap(
+            detachedWorkspace.fileBrowserController(forTabID: detachedTabID)
+        )
+        let mainTabID = try XCTUnwrap(mainWorkspace.activeTabID)
+        let mainController = try XCTUnwrap(
+            mainWorkspace.fileBrowserController(forTabID: mainTabID)
+        )
+
+        XCTAssertTrue(commands.activeFileBrowserController === detachedController)
+        XCTAssertFalse(commands.activeFileBrowserController === mainController)
+    }
+
     func testDetachedWorkspaceRendersNavigationSplitLayout() {
         let store = makeStore()
         let workspace = makeWorkspace()
@@ -537,11 +704,14 @@ final class WindowManagerTests: XCTestCase {
     }
 
     /// Builds a minimal repository-backed workspace for validity checks.
-    private func makeWorkspace() -> WorkspaceModel {
+    private func makeWorkspace(
+        name: String = "repo",
+        path: String = "/tmp/repo"
+    ) -> WorkspaceModel {
         WorkspaceModel(
-            name: "repo",
+            name: name,
             kind: .repository,
-            repositoryRoot: URL(fileURLWithPath: "/tmp/repo")
+            repositoryRoot: URL(fileURLWithPath: path)
         )
     }
 

@@ -21,8 +21,8 @@ struct PaletteCommand: Identifiable {
 
 /// Fuzzy-search overlay for executing commands. Activated by ⌘⇧P.
 struct CommandPaletteView: View {
-    @Environment(WorkspaceStore.self) private var store
     @Environment(ThemeManager.self) private var theme
+    let commandContext: WindowCommandContext
     @Binding var isPresented: Bool
     @State private var query: String = ""
     @State private var selectedIndex: Int = 0
@@ -123,84 +123,50 @@ struct CommandPaletteView: View {
                 title: "New Tab",
                 subtitle: nil, icon: "plus.rectangle",
                 shortcut: "⌘T",
-                action: { store.selectedWorkspace?.createTab() }
+                action: { commandContext.perform(.newTab) }
             ),
             PaletteCommand(
                 title: "New File Browser Tab",
                 subtitle: "Open the active worktree as a file browser",
                 icon: "folder.badge.plus",
                 shortcut: "⌘⇧T",
-                action: {
-                    guard let ws = store.selectedWorkspace else { return }
-                    let root: String
-                    let kind: FileBrowserRootKind
-                    if !ws.activeWorktreePath.isEmpty {
-                        root = ws.activeWorktreePath
-                        kind = .worktree
-                    } else if let r = ws.repositoryRoot?.path {
-                        root = r
-                        kind = .project
-                    } else {
-                        return
-                    }
-                    let title = URL(fileURLWithPath: root).lastPathComponent
-                    ws.createFileBrowserTab(rootPath: root, rootKind: kind, title: title)
-                }
+                action: { commandContext.perform(.newFileBrowserTab) }
             ),
             PaletteCommand(
                 title: "Close Tab",
                 subtitle: nil, icon: "xmark.rectangle",
                 shortcut: "⌘⇧W",
-                action: {
-                    if let ws = store.selectedWorkspace, let tabID = ws.activeTabID {
-                        ws.closeTab(tabID)
-                    }
-                }
+                action: { commandContext.perform(.closeTab) }
             ),
             PaletteCommand(
                 title: "Next Tab",
                 subtitle: nil, icon: "arrow.right.square",
                 shortcut: "⌘⇧]",
-                action: { store.selectedWorkspace?.selectNextTab() }
+                action: { commandContext.perform(.nextTab) }
             ),
             PaletteCommand(
                 title: "Previous Tab",
                 subtitle: nil, icon: "arrow.left.square",
                 shortcut: "⌘⇧[",
-                action: { store.selectedWorkspace?.selectPreviousTab() }
+                action: { commandContext.perform(.previousTab) }
             ),
             PaletteCommand(
                 title: "Split Down",
                 subtitle: nil, icon: "rectangle.split.1x2",
                 shortcut: "⌘D",
-                action: {
-                    if let sc = store.activeSessionController,
-                       let focused = sc.focusedPaneID {
-                        sc.splitPane(focused, axis: .vertical)
-                    }
-                }
+                action: { commandContext.perform(.splitHorizontal) }
             ),
             PaletteCommand(
                 title: "Split Right",
                 subtitle: nil, icon: "rectangle.split.2x1",
                 shortcut: "⌘⇧D",
-                action: {
-                    if let sc = store.activeSessionController,
-                       let focused = sc.focusedPaneID {
-                        sc.splitPane(focused, axis: .horizontal)
-                    }
-                }
+                action: { commandContext.perform(.splitVertical) }
             ),
             PaletteCommand(
                 title: "Close Pane",
                 subtitle: nil, icon: "xmark.square",
                 shortcut: "⌘W",
-                action: {
-                    if let sc = store.activeSessionController,
-                       let focused = sc.focusedPaneID {
-                        sc.closePane(focused)
-                    }
-                }
+                action: { commandContext.perform(.closePane) }
             ),
             PaletteCommand(
                 title: "Toggle Sidebar",

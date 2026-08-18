@@ -42,7 +42,9 @@ struct FileBrowserTabContentView: View {
         .task {
             await controller.loadRoot()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .treemuxSaveCurrentFile)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .treemuxSaveCurrentFile)) { notification in
+            guard let target = notification.object as? FileBrowserTabController,
+                  target === controller else { return }
             Task { try? await controller.saveCurrentFile() }
         }
     }

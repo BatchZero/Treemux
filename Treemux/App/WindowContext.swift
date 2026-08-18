@@ -4,8 +4,216 @@
 
 import AppKit
 import Combine
+import Observation
 import OSLog
 import SwiftUI
+
+/// Routes workspace-sensitive commands to the content displayed by one window.
+/// Main-window commands follow the store selection, while detached windows keep
+/// an independent workspace/worktree selection.
+@MainActor
+@Observable
+final class WindowCommandContext {
+    private let store: WorkspaceStore
+    private let followsStoreSelection: Bool
+    private var workspaceID: UUID?
+    private var worktreePath: String?
+
+    /// Changes whenever a command mutates an inactive worktree's tab state.
+    /// Detached views read this value so SwiftUI refreshes after the temporary
+    /// worktree switch has restored the main window's selection.
+    private(set) var revision = 0
+
+    var showCommandPalette = false
+
+    var workspace: WorkspaceModel? {
+        if followsStoreSelection {
+            return store.selectedWorkspace
+        }
+        guard let workspaceID else { return nil }
+        return store.workspaces.first { $0.id == workspaceID }
+    }
+
+    /// The active file-browser controller in this window, if its selected tab
+    /// is a file tab. Used as the target of the save notification so Cmd+S
+    /// never fans out to editors hosted by other windows.
+    var activeFileBrowserController: FileBrowserTabController? {
+        guard let result = withSelectedWorktree({ workspace -> FileBrowserTabController? in
+            guard let tabID = workspace.activeTabID,
+                  workspace.tabs.first(where: { $0.id == tabID })?.kind == .fileBrowser else {
+                return nil
+            }
+            return workspace.fileBrowserController(forTabID: tabID)
+        }) else { return nil }
+        return result
+    }
+
+    init(store: WorkspaceStore, kind: WindowContext.Kind) {
+        self.store = store
+        switch kind {
+        case .main:
+            followsStoreSelection = true
+            workspaceID = nil
+            worktreePath = nil
+        case .detached(let ref):
+            followsStoreSelection = false
+            switch ref {
+            case .workspace(let id):
+                workspaceID = id
+                worktreePath = nil
+            case .worktree(let workspaceID, let worktreeID):
+                self.workspaceID = workspaceID
+                worktreePath = store.workspaces
+                    .first(where: { $0.id == workspaceID })?
+                    .worktrees.first(where: { $0.id == worktreeID })?
+                    .path.path
+            case .remoteGroup(let key):
+                workspaceID = store.workspacesInRemoteGroup(key).first?.id
+                worktreePath = nil
+            }
+        }
+    }
+
+    /// Updates a detached window's local navigation selection without changing
+    /// the main window's global store selection.
+    func updateSelection(workspace: WorkspaceModel?, worktreePath: String?) {
+        guard !followsStoreSelection else { return }
+        workspaceID = workspace?.id
+        self.worktreePath = worktreePath
+    }
+
+    @discardableResult
+    func perform(_ action: ShortcutAction) -> Bool {
+        switch action {
+        case .commandPalette:
+            showCommandPalette.toggle()
+            return true
+        case .newTab:
+            return performInSelectedWorktree { $0.createTab() }
+        case .newFileBrowserTab:
+            return performInSelectedWorktree { workspace in
+                let root: String
+                let kind: FileBrowserRootKind
+                if !workspace.activeWorktreePath.isEmpty {
+                    root = workspace.activeWorktreePath
+                    kind = .worktree
+                } else if let repositoryRoot = workspace.repositoryRoot?.path {
+                    root = repositoryRoot
+                    kind = .project
+                } else {
+                    return
+                }
+                let title = URL(fileURLWithPath: root).lastPathComponent
+                workspace.createFileBrowserTab(rootPath: root, rootKind: kind, title: title)
+            }
+        case .closeTab:
+            return performInSelectedWorktree { workspace in
+                guard let tabID = workspace.activeTabID else { return }
+                if workspace.handleCloseShortcut() { return }
+                workspace.closeTab(tabID)
+            }
+        case .nextTab:
+            return performInSelectedWorktree { $0.selectNextTab() }
+        case .previousTab:
+            return performInSelectedWorktree { $0.selectPreviousTab() }
+        case .splitHorizontal:
+            return performWithSessionController { controller in
+                guard let focused = controller.focusedPaneID else { return }
+                controller.splitPane(focused, axis: .vertical)
+            }
+        case .splitVertical:
+            return performWithSessionController { controller in
+                guard let focused = controller.focusedPaneID else { return }
+                controller.splitPane(focused, axis: .horizontal)
+            }
+        case .closePane:
+            return performWithSessionController { controller in
+                guard let focused = controller.focusedPaneID else { return }
+                controller.closePane(focused)
+            }
+        case .focusNextPane:
+            return performWithSessionController { $0.focusNext() }
+        case .focusPreviousPane:
+            return performWithSessionController { $0.focusPrevious() }
+        case .zoomPane:
+            return performWithSessionController { $0.toggleZoom() }
+        case .openSettings, .toggleSidebar, .openProject,
+             .terminalFontSizeIncrease, .terminalFontSizeDecrease,
+             .terminalFontSizeReset:
+            return false
+        }
+    }
+
+    private func performWithSessionController(
+        _ action: (WorkspaceSessionController) -> Void
+    ) -> Bool {
+        performInSelectedWorktree { workspace in
+            guard let controller = workspace.sessionController else { return }
+            action(controller)
+        }
+    }
+
+    private func performInSelectedWorktree(
+        _ action: (WorkspaceModel) -> Void
+    ) -> Bool {
+        guard withSelectedWorktree(action) != nil else { return false }
+        revision += 1
+        return true
+    }
+
+    private func withSelectedWorktree<Result>(
+        _ action: (WorkspaceModel) -> Result
+    ) -> Result? {
+        guard let workspace else { return nil }
+        let originalPath = workspace.activeWorktreePath
+        let targetPath = resolvedWorktreePath
+        if let targetPath, targetPath != originalPath {
+            workspace.switchToWorktree(targetPath)
+        }
+        defer {
+            if workspace.activeWorktreePath != originalPath {
+                workspace.switchToWorktree(originalPath)
+            }
+        }
+        return action(workspace)
+    }
+
+    private var resolvedWorktreePath: String? {
+        if followsStoreSelection {
+            return store.selectedWorktree?.path.path
+        }
+        return worktreePath
+    }
+}
+
+private struct WindowCommandContextEnvironmentKey: EnvironmentKey {
+    static let defaultValue: WindowCommandContext? = nil
+}
+
+extension EnvironmentValues {
+    var windowCommandContext: WindowCommandContext? {
+        get { self[WindowCommandContextEnvironmentKey.self] }
+        set { self[WindowCommandContextEnvironmentKey.self] = newValue }
+    }
+}
+
+private struct WindowCommandHost: View {
+    let content: AnyView
+    @Bindable var commandContext: WindowCommandContext
+
+    var body: some View {
+        content
+            .environment(\.windowCommandContext, commandContext)
+            .overlay {
+                if commandContext.showCommandPalette {
+                    CommandPaletteView(
+                        commandContext: commandContext,
+                        isPresented: $commandContext.showCommandPalette
+                    )
+                }
+            }
+    }
+}
 
 /// Manages the main NSWindow and hosts the SwiftUI content view.
 ///
@@ -29,6 +237,7 @@ final class WindowContext: NSObject, NSWindowDelegate {
     let themeManager: ThemeManager
     let languageManager: LanguageManager
     let kind: Kind
+    let commandContext: WindowCommandContext
     private var window: NSWindow?
     private var themeCancellable: AnyCancellable?
     private var localeCancellable: AnyCancellable?
@@ -46,6 +255,7 @@ final class WindowContext: NSObject, NSWindowDelegate {
     init(store: WorkspaceStore, kind: Kind = .main) {
         self.store = store
         self.kind = kind
+        self.commandContext = WindowCommandContext(store: store, kind: kind)
         let sp = PerfSignpost.begin("window-construct")
         self.themeManager = ThemeManager(activeThemeID: store.settings.activeThemeID)
         self.languageManager = LanguageManager(languageCode: store.settings.language)
@@ -187,13 +397,14 @@ final class WindowContext: NSObject, NSWindowDelegate {
     internal func testWindow() -> NSWindow? { window }
 
     /// Builds the SwiftUI root view for this window based on `kind`.
-    private func makeRootView() -> some View {
-        switch kind {
+    private func makeRootView() -> AnyView {
+        let content: AnyView = switch kind {
         case .main:
-            return AnyView(MainWindowView())
+            AnyView(MainWindowView())
         case .detached(let ref):
-            return AnyView(DetachedRootView(ref: ref))
+            AnyView(DetachedRootView(ref: ref))
         }
+        return AnyView(WindowCommandHost(content: content, commandContext: commandContext))
     }
 
     /// Builds the root view and applies the full environment chain (store,

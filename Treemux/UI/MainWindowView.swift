@@ -97,10 +97,5 @@ struct MainWindowView: View {
             SettingsSheet()
                 .environment(\.locale, languageManager.locale)
         }
-        .overlay {
-            if store.showCommandPalette {
-                CommandPaletteView(isPresented: $store.showCommandPalette)
-            }
-        }
     }
 }

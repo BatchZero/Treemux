@@ -272,8 +272,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         treemuxApp?.store
     }
 
-    private var sessionController: WorkspaceSessionController? {
-        store?.activeSessionController
+    private var windowCommandContext: WindowCommandContext? {
+        guard let window = NSApp.keyWindow else { return nil }
+        return treemuxApp?.windowManager?.commandContext(for: window)
     }
 
     @objc private func openSettings() {
@@ -285,8 +286,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func closePane() {
-        guard let sc = sessionController, let focused = sc.focusedPaneID else { return }
-        sc.closePane(focused)
+        windowCommandContext?.perform(.closePane)
     }
 
     @objc private func toggleSidebar() {
@@ -297,72 +297,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggleCommandPalette() {
-        store?.showCommandPalette.toggle()
+        windowCommandContext?.perform(.commandPalette)
     }
 
     @objc private func splitHorizontal() {
-        guard let sc = sessionController, let focused = sc.focusedPaneID else { return }
-        sc.splitPane(focused, axis: .vertical)
+        windowCommandContext?.perform(.splitHorizontal)
     }
 
     @objc private func splitVertical() {
-        guard let sc = sessionController, let focused = sc.focusedPaneID else { return }
-        sc.splitPane(focused, axis: .horizontal)
+        windowCommandContext?.perform(.splitVertical)
     }
 
     @objc private func focusNextPane() {
-        sessionController?.focusNext()
+        windowCommandContext?.perform(.focusNextPane)
     }
 
     @objc private func focusPreviousPane() {
-        sessionController?.focusPrevious()
+        windowCommandContext?.perform(.focusPreviousPane)
     }
 
     @objc private func zoomPane() {
-        sessionController?.toggleZoom()
+        windowCommandContext?.perform(.zoomPane)
     }
 
     @objc private func newTab() {
-        store?.selectedWorkspace?.createTab()
+        windowCommandContext?.perform(.newTab)
     }
 
     @objc private func newFileBrowserTab() {
-        guard let workspace = store?.selectedWorkspace else { return }
-        let root: String
-        let kind: FileBrowserRootKind
-        if !workspace.activeWorktreePath.isEmpty {
-            root = workspace.activeWorktreePath
-            kind = .worktree
-        } else if let r = workspace.repositoryRoot?.path {
-            root = r
-            kind = .project
-        } else {
-            return
-        }
-        let title = URL(fileURLWithPath: root).lastPathComponent
-        workspace.createFileBrowserTab(rootPath: root, rootKind: kind, title: title)
+        windowCommandContext?.perform(.newFileBrowserTab)
     }
 
     @objc private func closeTab() {
-        guard let ws = store?.selectedWorkspace, let tabID = ws.activeTabID else { return }
-        // Cmd+W cascades through file-browser sub-tabs first. If the active
-        // outer tab has open sub-tabs, close the active sub-tab and stop —
-        // only when there are no sub-tabs left does the shortcut fall through
-        // to closing the outer tab.
-        if ws.handleCloseShortcut() { return }
-        ws.closeTab(tabID)
+        windowCommandContext?.perform(.closeTab)
     }
 
     @objc private func nextTab() {
-        store?.selectedWorkspace?.selectNextTab()
+        windowCommandContext?.perform(.nextTab)
     }
 
     @objc private func previousTab() {
-        store?.selectedWorkspace?.selectPreviousTab()
+        windowCommandContext?.perform(.previousTab)
     }
 
     @objc private func saveCurrentFile() {
-        NotificationCenter.default.post(name: .treemuxSaveCurrentFile, object: nil)
+        guard let controller = windowCommandContext?.activeFileBrowserController else { return }
+        NotificationCenter.default.post(name: .treemuxSaveCurrentFile, object: controller)
     }
 
     @objc private func terminalFontSizeIncrease() {
