@@ -490,6 +490,11 @@ final class WorkspaceModelsTests: XCTestCase {
 
         controller.splitPane(originalPane, axis: .vertical)
         controller.toggleZoom()
+        guard case .split(let split) = controller.layout else {
+            return XCTFail("expected split layout")
+        }
+        controller.updateSplitFraction(splitID: split.id, fraction: 0.72)
+        try XCTUnwrap(controller.session(for: originalPane)).onFocus?()
 
         XCTAssertEqual(workspace.activeWorktreePath, mainPath)
         let saved = workspace.toRecord()
@@ -497,14 +502,23 @@ final class WorkspaceModelsTests: XCTestCase {
             saved.worktreeStates.first { $0.worktreePath == featurePath }
         )
         XCTAssertEqual(featureState.tabs.first?.layout?.paneIDs.count, 2)
-        XCTAssertEqual(featureState.tabs.first?.zoomedPaneID, controller.focusedPaneID)
+        XCTAssertEqual(featureState.tabs.first?.focusedPaneID, originalPane)
+        let savedLayout = try XCTUnwrap(featureState.tabs.first?.layout)
+        guard case .split(let savedSplit) = savedLayout else {
+            return XCTFail("expected saved split layout")
+        }
+        XCTAssertEqual(savedSplit.fraction, 0.72, accuracy: 0.001)
 
         let restored = WorkspaceModel(from: saved)
         let restoredController = try XCTUnwrap(
             restored.sessionController(forWorktreePathReadOnly: featurePath)
         )
         XCTAssertEqual(restoredController.layout.paneIDs.count, 2)
-        XCTAssertEqual(restoredController.zoomedPaneID, controller.focusedPaneID)
+        XCTAssertEqual(restoredController.focusedPaneID, originalPane)
+        guard case .split(let restoredSplit) = restoredController.layout else {
+            return XCTFail("expected restored split layout")
+        }
+        XCTAssertEqual(restoredSplit.fraction, 0.72, accuracy: 0.001)
     }
 
     @MainActor

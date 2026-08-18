@@ -912,6 +912,16 @@ final class WorkspaceModel: Identifiable {
         }
     }
 
+    /// Snapshots every instantiated terminal controller before persistence so
+    /// inactive detached worktrees cannot retain newer runtime-only state.
+    private func saveAllTabStates() {
+        for (worktreePath, controllers) in tabControllers {
+            for tabID in controllers.keys {
+                saveTabState(tabID: tabID, worktreePath: worktreePath)
+            }
+        }
+    }
+
     /// Restores tab state from persisted worktree states.
     private func restoreTabState(from worktreeStates: [WorktreeSessionStateRecord]) {
         for state in worktreeStates {
@@ -1040,7 +1050,7 @@ final class WorkspaceModel: Identifiable {
 
     /// Serializes the runtime model back to a persistable record, including all tab state.
     func toRecord() -> WorkspaceRecord {
-        saveActiveTabState()
+        saveAllTabStates()
 
         var allWorktreeStates: [WorktreeSessionStateRecord] = []
 

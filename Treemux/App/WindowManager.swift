@@ -57,6 +57,10 @@ final class WindowManager {
     /// must not reject worktrees before the initial git refresh finishes.
     @ObservationIgnored private var ownershipMembershipSignature: Set<String>
 
+    /// Persisted refs are not globally valid until launch-time worktree
+    /// discovery completes. Detaching or restoring activates live arbitration.
+    @ObservationIgnored private var isOwnershipReconciliationActive = false
+
     init(
         store: WorkspaceStore,
         mainWindowCloseConfirmation: @escaping @MainActor (Int) -> Bool = WindowManager.presentMainWindowCloseConfirmation
@@ -66,6 +70,9 @@ final class WindowManager {
         ownershipMembershipSignature = Self.makeOwnershipMembershipSignature(in: store)
         store.workspaceStructureDidChange = { [weak self] in
             self?.reconcileOwnershipAfterWorkspaceStructureChange()
+        }
+        store.workspaceSelectionDidChange = { [weak self] in
+            self?.reconcileMainSelectionOwnership()
         }
     }
 
@@ -141,6 +148,8 @@ final class WindowManager {
         // the sidebar filter and persist duplicate state.
         guard !store.isDetached(ref) else { return }
         guard !store.detachedNodes.contains(where: { overlaps($0, ref) }) else { return }
+        isOwnershipReconciliationActive = true
+        ownershipMembershipSignature = Self.makeOwnershipMembershipSignature(in: store)
         store.detachedNodes.insert(ref)
         moveMainSelectionAway(from: ref)
         let ctx = WindowContext(store: store, kind: .detached(ref))
@@ -220,9 +229,20 @@ final class WindowManager {
     /// Re-establishes exclusive ownership after workspace membership changes.
     /// Broader scopes win deterministically over narrower overlapping scopes.
     private func reconcileOwnershipAfterWorkspaceStructureChange() {
+        guard isOwnershipReconciliationActive else { return }
         let currentSignature = Self.makeOwnershipMembershipSignature(in: store)
         guard currentSignature != ownershipMembershipSignature else { return }
         reconcileDetachedOwnership()
+    }
+
+    private func reconcileMainSelectionOwnership() {
+        guard isOwnershipReconciliationActive, !isReconcilingOwnership else { return }
+        isReconcilingOwnership = true
+        defer { isReconcilingOwnership = false }
+
+        for ref in store.detachedNodes.sorted(by: detachedRefPrecedes) {
+            moveMainSelectionAway(from: ref)
+        }
     }
 
     private func reconcileDetachedOwnership() {
@@ -256,20 +276,22 @@ final class WindowManager {
     private func normalizedDetachedRefs(_ refs: Set<DetachedNodeRef>) -> [DetachedNodeRef] {
         let orderedRefs = refs
             .filter(store.isValid)
-            .sorted { lhs, rhs in
-                let lhsPriority = ownershipPriority(of: lhs)
-                let rhsPriority = ownershipPriority(of: rhs)
-                if lhsPriority != rhsPriority {
-                    return lhsPriority < rhsPriority
-                }
-                return lhs.autosaveKeySuffix < rhs.autosaveKeySuffix
-            }
+            .sorted(by: detachedRefPrecedes)
 
         var accepted: [DetachedNodeRef] = []
         for ref in orderedRefs where !accepted.contains(where: { overlaps($0, ref) }) {
             accepted.append(ref)
         }
         return accepted
+    }
+
+    private func detachedRefPrecedes(_ lhs: DetachedNodeRef, _ rhs: DetachedNodeRef) -> Bool {
+        let lhsPriority = ownershipPriority(of: lhs)
+        let rhsPriority = ownershipPriority(of: rhs)
+        if lhsPriority != rhsPriority {
+            return lhsPriority < rhsPriority
+        }
+        return lhs.autosaveKeySuffix < rhs.autosaveKeySuffix
     }
 
     private func ownershipPriority(of ref: DetachedNodeRef) -> Int {
@@ -402,6 +424,7 @@ final class WindowManager {
     /// to restore the previous session's torn-off windows. Stale refs (whose
     /// nodes no longer exist) are dropped from the store.
     func restoreChildWindows() {
+        isOwnershipReconciliationActive = true
         reconcileDetachedOwnership()
         for ref in normalizedDetachedRefs(store.detachedNodes) {
             let ctx = WindowContext(store: store, kind: .detached(ref))

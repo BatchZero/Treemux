@@ -566,6 +566,57 @@ final class WindowManagerTests: XCTestCase {
         XCTAssertEqual(store.detachedNodes, [.remoteGroup(groupKey)])
     }
 
+    func testHidingDefaultTerminalCannotSelectDetachedRemoteWorkspace() throws {
+        let store = makeStore()
+        let builtIn = try XCTUnwrap(
+            store.workspaces.first { $0.isBuiltInDefaultTerminal }
+        )
+        let remote = makeRemoteWorkspace(name: "remote", path: "/srv/remote")
+        store.workspaces = [builtIn, remote]
+        store.selectedWorkspaceID = builtIn.id
+        let groupKey = WorkspaceStore.remoteGroupKey(
+            for: try XCTUnwrap(remote.sshTarget)
+        )
+        let manager = WindowManager(store: store)
+        manager.detach(.remoteGroup(groupKey))
+        defer { closeChildWindows(of: manager) }
+
+        var settings = store.settings
+        settings.showDefaultTerminal = false
+        store.updateSettings(settings)
+
+        XCTAssertNotEqual(store.selectedWorkspaceID, remote.id)
+    }
+
+    func testRuntimeWorktreeRemovalClosesItsDetachedWindow() {
+        let store = makeStore()
+        let workspace = makeWorkspace()
+        let worktree = WorktreeModel(
+            id: WorktreeModel.stableID(for: URL(fileURLWithPath: "/tmp/repo-feature")),
+            path: URL(fileURLWithPath: "/tmp/repo-feature"),
+            branch: "feature",
+            headCommit: nil,
+            isMainWorktree: false
+        )
+        workspace.worktrees = [worktree]
+        store.workspaces = [workspace]
+        store.selectedWorkspaceID = workspace.id
+        let ref = DetachedNodeRef.worktree(
+            workspaceID: workspace.id,
+            worktreeID: worktree.id
+        )
+        let manager = WindowManager(store: store)
+        manager.detach(ref)
+        defer { closeChildWindows(of: manager) }
+
+        workspace.worktrees = []
+        store.workspaceStructureDidChange?()
+
+        XCTAssertTrue(manager.childContexts.isEmpty)
+        XCTAssertFalse(store.detachedNodes.contains(ref))
+        XCTAssertEqual(workspace.activeWorktreePath, "/tmp/repo")
+    }
+
     // MARK: - handleMainWindowWillClose
 
     func testMainWindowCloseWithoutChildrenDoesNotPrompt() {
