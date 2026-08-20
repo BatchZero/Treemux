@@ -45,7 +45,9 @@ final class TerminalViewContainer: NSView {
         let needsAttach = hostedView !== view || view.superview !== self
 
         if needsAttach {
-            hostedView?.removeFromSuperview()
+            if hostedView?.superview === self {
+                hostedView?.removeFromSuperview()
+            }
             view.removeFromSuperview()
             hostedView = view
             view.translatesAutoresizingMaskIntoConstraints = false

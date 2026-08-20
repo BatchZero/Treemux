@@ -17,6 +17,22 @@ final class PaneLayoutTests: XCTestCase {
         XCTAssertTrue(terminalView.superview === newerContainer)
     }
 
+    @MainActor
+    func testTerminalContainersPreserveBothViewsDuringCrossSwap() {
+        let paneAView = NSView()
+        let paneBView = NSView()
+        let leftContainer = TerminalViewContainer()
+        let rightContainer = TerminalViewContainer()
+
+        leftContainer.attach(paneAView, restoreFocus: false)
+        rightContainer.attach(paneBView, restoreFocus: false)
+        leftContainer.attach(paneBView, restoreFocus: false)
+        rightContainer.attach(paneAView, restoreFocus: false)
+
+        XCTAssertTrue(paneAView.superview === rightContainer)
+        XCTAssertTrue(paneBView.superview === leftContainer)
+    }
+
     func testSinglePaneLayout() throws {
         let paneID = UUID()
         let layout = SessionLayoutNode.pane(PaneLeaf(paneID: paneID))

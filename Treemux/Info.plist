@@ -28,5 +28,16 @@
 	<string>https://raw.githubusercontent.com/BatchZero/Treemux/stable/sparkle-feed.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>bfBuujWR9izxMmCzjuTzRkcvqdLe8c+uaGU/visxZbk=</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeIdentifier</key>
+			<string>com.batchzero.treemux.pane</string>
+		</dict>
+	</array>
 </dict>
 </plist>
