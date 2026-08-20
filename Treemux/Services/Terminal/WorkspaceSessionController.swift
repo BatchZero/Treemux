@@ -208,6 +208,25 @@ final class WorkspaceSessionController {
         }
     }
 
+    /// Moves or swaps an existing pane without recreating its shell session.
+    @discardableResult
+    func rearrangePane(
+        _ paneID: UUID,
+        relativeTo targetPaneID: UUID,
+        dropZone: PaneDropZone
+    ) -> Bool {
+        guard layout.rearrangePane(
+            paneID,
+            relativeTo: targetPaneID,
+            dropZone: dropZone
+        ) else {
+            return false
+        }
+        focusedPaneID = paneID
+        onPaneStateChanged?()
+        return true
+    }
+
     /// Equalizes all split fractions.
     func equalizeSplits() {
         layout.equalizeSplits()

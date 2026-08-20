@@ -33,6 +33,15 @@ final class TerminalViewContainer: NSView {
     private weak var hostedView: NSView?
 
     func attach(_ view: NSView, restoreFocus: Bool) {
+        // SwiftUI can update the outgoing representable after a replacement
+        // container has already adopted the terminal view. An old container
+        // must not steal the view back from its current owner.
+        if hostedView === view,
+           let currentSuperview = view.superview,
+           currentSuperview !== self {
+            return
+        }
+
         let needsAttach = hostedView !== view || view.superview !== self
 
         if needsAttach {

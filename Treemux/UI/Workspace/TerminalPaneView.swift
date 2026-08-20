@@ -3,6 +3,7 @@
 //  Treemux
 //
 
+import AppKit
 import SwiftUI
 
 enum TerminalReconnectControlState: Equatable {
@@ -46,6 +47,7 @@ struct TerminalPaneView: View {
     @Environment(ThemeManager.self) private var theme
     let session: ShellSession
     var onClose: () -> Void
+    var onDrag: (() -> NSItemProvider)? = nil
     @State private var isCloseHovered = false
     @State private var isReconnectHovered = false
     @State private var showsReconnectConfirmation = false
@@ -86,37 +88,7 @@ struct TerminalPaneView: View {
 
     private var paneHeader: some View {
         HStack(spacing: 6) {
-            // Status indicator
-            Circle()
-                .fill(statusColor)
-                .frame(width: 6, height: 6)
-
-            // Tmux badge
-            if let tmuxSession = session.detectedTmuxSession {
-                HStack(spacing: 3) {
-                    Image(systemName: "paperclip")
-                        .font(.system(size: 9))
-                    Text("tmux: \(tmuxSession)")
-                        .font(.system(size: 10, weight: .medium))
-                }
-                .foregroundStyle(theme.accentColor)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1)
-                .background(theme.accentColor.opacity(0.12), in: Capsule())
-            }
-
-            Text(session.title)
-                .font(.system(size: 11, weight: .medium))
-                .lineLimit(1)
-
-            Spacer()
-
-            if let cwd = session.reportedWorkingDirectory {
-                Text(abbreviatedPath(cwd))
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            paneDragHandle
 
             Button {
                 showsReconnectConfirmation = true
@@ -166,6 +138,52 @@ struct TerminalPaneView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(theme.paneHeaderBackground)
+    }
+
+    @ViewBuilder
+    private var paneDragHandle: some View {
+        if let onDrag {
+            paneHeaderContent
+                .onDrag(onDrag)
+        } else {
+            paneHeaderContent
+        }
+    }
+
+    private var paneHeaderContent: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 6, height: 6)
+
+            if let tmuxSession = session.detectedTmuxSession {
+                HStack(spacing: 3) {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 9))
+                    Text("tmux: \(tmuxSession)")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .foregroundStyle(theme.accentColor)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(theme.accentColor.opacity(0.12), in: Capsule())
+            }
+
+            Text(session.title)
+                .font(.system(size: 11, weight: .medium))
+                .lineLimit(1)
+
+            Spacer()
+
+            if let cwd = session.reportedWorkingDirectory {
+                Text(abbreviatedPath(cwd))
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
     }
 
     private var reconnectFailureBar: some View {

@@ -12,6 +12,28 @@ enum SplitAxis: String, Codable {
     case vertical
 }
 
+enum PaneDropZone: Equatable {
+    case center
+    case left
+    case right
+    case top
+    case bottom
+
+    static func resolve(location: CGPoint, in size: CGSize) -> PaneDropZone {
+        guard size.width > 0, size.height > 0 else { return .center }
+        let horizontalPosition = (location.x / size.width - 0.5) * 2
+        let verticalPosition = (location.y / size.height - 0.5) * 2
+
+        if abs(horizontalPosition) <= 0.5, abs(verticalPosition) <= 0.5 {
+            return .center
+        }
+        if abs(horizontalPosition) > abs(verticalPosition) {
+            return horizontalPosition < 0 ? .left : .right
+        }
+        return verticalPosition < 0 ? .top : .bottom
+    }
+}
+
 // MARK: - Pane leaf
 
 struct PaneLeaf: Codable, Equatable, Hashable {
@@ -161,6 +183,58 @@ indirect enum SessionLayoutNode: Codable, Equatable, Hashable {
         self = updated
     }
 
+    /// Repositions an existing pane relative to another pane.
+    /// A center drop swaps the two leaves; an edge drop removes the source
+    /// leaf, collapses its old parent, then splits the target on that edge.
+    mutating func rearrangePane(
+        _ paneID: UUID,
+        relativeTo targetPaneID: UUID,
+        dropZone: PaneDropZone
+    ) -> Bool {
+        guard paneID != targetPaneID else { return false }
+        let existingPaneIDs = paneIDs
+        guard existingPaneIDs.contains(paneID), existingPaneIDs.contains(targetPaneID) else {
+            return false
+        }
+
+        if dropZone == .center {
+            self = swappingPaneIDs(paneID, targetPaneID)
+            return true
+        }
+
+        let axis: SplitAxis
+        let placement: PaneSplitPlacement
+        switch dropZone {
+        case .center:
+            return false
+        case .left:
+            axis = .horizontal
+            placement = .before
+        case .right:
+            axis = .horizontal
+            placement = .after
+        case .top:
+            axis = .vertical
+            placement = .before
+        case .bottom:
+            axis = .vertical
+            placement = .after
+        }
+
+        var updated = self
+        updated.removePane(paneID)
+        guard updated.split(
+            paneID: targetPaneID,
+            axis: axis,
+            newPaneID: paneID,
+            placement: placement
+        ) else {
+            return false
+        }
+        self = updated
+        return true
+    }
+
     /// Equalizes all split fractions to 0.5.
     mutating func equalizeSplits() {
         switch self {
@@ -259,6 +333,27 @@ indirect enum SessionLayoutNode: Codable, Equatable, Hashable {
                     )
                 )
             }
+        }
+    }
+
+    private func swappingPaneIDs(_ firstPaneID: UUID, _ secondPaneID: UUID) -> SessionLayoutNode {
+        switch self {
+        case .pane(let leaf):
+            if leaf.paneID == firstPaneID {
+                return .pane(PaneLeaf(paneID: secondPaneID))
+            }
+            if leaf.paneID == secondPaneID {
+                return .pane(PaneLeaf(paneID: firstPaneID))
+            }
+            return self
+        case .split(let split):
+            return .split(PaneSplitNode(
+                id: split.id,
+                axis: split.axis,
+                fraction: split.fraction,
+                first: split.first.swappingPaneIDs(firstPaneID, secondPaneID),
+                second: split.second.swappingPaneIDs(firstPaneID, secondPaneID)
+            ))
         }
     }
 
