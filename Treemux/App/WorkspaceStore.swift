@@ -412,11 +412,14 @@ final class WorkspaceStore {
 
     /// Moves local workspaces by translating sidebar indices to the workspaces array.
     func moveLocalWorkspace(from source: IndexSet, to destination: Int) {
-        var local = localWorkspaces
+        var local = localWorkspaces.filter { !isDetached(.workspace($0.id)) }
         local.move(fromOffsets: source, toOffset: destination)
-        let orderedIDs = local.map { $0.id }
-        let nonLocal = workspaces.filter { ws in !orderedIDs.contains(ws.id) }
-        workspaces = orderedIDs.compactMap { id in workspaces.first { $0.id == id } } + nonLocal
+        let movedIDs = Set(local.map(\.id))
+        var localIterator = local.makeIterator()
+        workspaces = workspaces.map { workspace in
+            guard movedIDs.contains(workspace.id) else { return workspace }
+            return localIterator.next() ?? workspace
+        }
         saveWorkspaceState()
     }
 
@@ -498,6 +501,7 @@ final class WorkspaceStore {
         var group = remotes.filter { ws in
             guard let target = ws.sshTarget else { return false }
             return Self.remoteGroupKey(for: target) == groupKey
+                && !isDetached(.workspace(ws.id))
         }
         group.move(fromOffsets: source, toOffset: destination)
         let movedIDs = Set(group.map { $0.id })

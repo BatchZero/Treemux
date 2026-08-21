@@ -158,6 +158,49 @@ final class WorkspaceStoreDetachTests: XCTestCase {
         XCTAssertEqual(Set(result.map(\.id)), Set([wsA.id, wsB.id]))
     }
 
+    // MARK: - Reordering with detached workspaces
+
+    func testMoveFourthVisibleLocalWorkspaceToSecondIgnoresDetachedWorkspace() {
+        let store = makeStore()
+        let first = WorkspaceModel(name: "first", kind: .repository)
+        let detached = WorkspaceModel(name: "detached", kind: .repository)
+        let second = WorkspaceModel(name: "second", kind: .repository)
+        let third = WorkspaceModel(name: "third", kind: .repository)
+        let fourth = WorkspaceModel(name: "fourth", kind: .repository)
+        store.workspaces = [first, detached, second, third, fourth]
+        store.detachedNodes = [.workspace(detached.id)]
+
+        store.moveLocalWorkspace(from: IndexSet(integer: 3), to: 1)
+
+        let visibleNames = store.localWorkspaces
+            .filter { !store.isDetached(.workspace($0.id)) }
+            .map(\.name)
+        XCTAssertEqual(visibleNames, ["first", "fourth", "second", "third"])
+    }
+
+    func testMoveFourthVisibleRemoteWorkspaceToSecondIgnoresDetachedWorkspace() {
+        let store = makeStore()
+        let target = makeSSHTarget(user: "root")
+        let first = WorkspaceModel(name: "first", kind: .repository, sshTarget: target)
+        let detached = WorkspaceModel(name: "detached", kind: .repository, sshTarget: target)
+        let second = WorkspaceModel(name: "second", kind: .repository, sshTarget: target)
+        let third = WorkspaceModel(name: "third", kind: .repository, sshTarget: target)
+        let fourth = WorkspaceModel(name: "fourth", kind: .repository, sshTarget: target)
+        store.workspaces = [first, detached, second, third, fourth]
+        store.detachedNodes = [.workspace(detached.id)]
+
+        store.moveRemoteWorkspace(
+            groupKey: WorkspaceStore.remoteGroupKey(for: target),
+            from: IndexSet(integer: 3),
+            to: 1
+        )
+
+        let visibleNames = store.remoteWorkspaceGroups[0].targets
+            .filter { !store.isDetached(.workspace($0.id)) }
+            .map(\.name)
+        XCTAssertEqual(visibleNames, ["first", "fourth", "second", "third"])
+    }
+
     // MARK: - Persistence round-trip
 
     func testDetachedNodesRoundTripThroughPersistence() throws {
